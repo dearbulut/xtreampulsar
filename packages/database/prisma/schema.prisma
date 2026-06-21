@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  PENDING
+}
+
+enum LicenseTier {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ServerRole {
+  MAIN
+  LOAD_BALANCER
+}
+
+enum StreamStatus {
+  ONLINE
+  OFFLINE
+  BUFFERING
+  ERROR
+}
+
+enum CategoryType {
+  LIVE
+  VOD
+  SERIES
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  EXPIRED
+  BANNED
+}
+
+enum ResellerTier {
+  BASIC
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  LICENSE_VALIDATE
+  STREAM_START
+  STREAM_STOP
+}
+
+// ─── License ─────────────────────────────────────────────────────────────────
+
+model License {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  serverIp  String
+  tier      LicenseTier   @default(STARTER)
+  status    LicenseStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("licenses")
+}
+
+// ─── Server ──────────────────────────────────────────────────────────────────
+
+model Server {
+  id         String     @id @default(cuid())
+  name       String
+  ip         String     @unique
+  port       Int        @default(8080)
+  role       ServerRole @default(MAIN)
+  maxClients Int        @default(1000)
+  isOnline   Boolean    @default(false)
+  location   String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  streams     Stream[]
+  connections Connection[]
+
+  @@map("servers")
+}
+
+// ─── Category ────────────────────────────────────────────────────────────────
+
+model Bouquet {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  categories Category[]
+
+  @@map("bouquets")
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  name      String
+  type      CategoryType
+  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  bouquetId String
+  bouquet   Bouquet  @relation(fields: [bouquetId], references: [id])
+
+  streams Stream[]
+
+  @@map("categories")
+}
+
+// ─── Stream ──────────────────────────────────────────────────────────────────
+
+model Stream {
+  id          String       @id @default(cuid())
+  name        String
+  primaryUrl  String
+  backupUrl   String?
+  ffmpegPid   Int?
+  status      StreamStatus @default(OFFLINE)
+  tvgId       String?
+  tvgLogo     String?
+  sortOrder   Int          @default(0)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  serverId String?
+  server   Server?  @relation(fields: [serverId], references: [id])
+
+  epgMappings EPGMapping[]
+  connections Connection[]
+
+  @@map("streams")
+}
+
+// ─── EPG ─────────────────────────────────────────────────────────────────────
+
+model EPGSource {
+  id         String    @id @default(cuid())
+  name       String
+  xmltvUrl   String
+  lastParsed DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  mappings EPGMapping[]
+
+  @@map("epg_sources")
+}
+
+model EPGMapping {
+  id           String   @id @default(cuid())
+  epgChannelId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  streamId String
+  stream   Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  epgSourceId String
+  epgSource   EPGSource @relation(fields: [epgSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([streamId, epgSourceId])
+  @@map("epg_mappings")
+}
+
+// ─── User / Reseller ─────────────────────────────────────────────────────────
+
+model Reseller {
+  id        String       @id @default(cuid())
+  username  String       @unique
+  email     String       @unique
+  password  String
+  credits   Int          @default(0)
+  tier      ResellerTier @default(BASIC)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  parentId String?
+  parent   Reseller?  @relation("ResellerHierarchy", fields: [parentId], references: [id])
+  children Reseller[] @relation("ResellerHierarchy")
+
+  users User[]
+
+  @@map("resellers")
+}
+
+model User {
+  id             String     @id @default(cuid())
+  username       String     @unique
+  password       String
+  maxConnections Int        @default(1)
+  status         UserStatus @default(ACTIVE)
+  expiresAt      DateTime
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  resellerId String?
+  reseller   Reseller? @relation(fields: [resellerId], references: [id])
+
+  connections Connection[]
+
+  @@map("users")
+}
+
+// ─── Package ─────────────────────────────────────────────────────────────────
+
+model Package {
+  id             String   @id @default(cuid())
+  name           String
+  durationDays   Int
+  maxConnections Int      @default(1)
+  creditCost     Int
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("packages")
+}
+
+// ─── Connection ──────────────────────────────────────────────────────────────
+
+model Connection {
+  id        String    @id @default(cuid())
+  ip        String
+  userAgent String?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  bytesIn   BigInt    @default(0)
+  bytesOut  BigInt    @default(0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  streamId String
+  stream   Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  serverId String?
+  server   Server? @relation(fields: [serverId], references: [id])
+
+  @@map("connections")
+}
+
+// ─── AuditLog ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  entityType String
+  entityId   String?
+  actorId    String?
+  actorType  String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, actorType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

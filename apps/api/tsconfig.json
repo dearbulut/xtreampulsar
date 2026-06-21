@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "paths": {
+      "@xtreampulsar/types": ["../../packages/types/src"],
+      "@xtreampulsar/database": ["../../packages/database/src"],
+      "@xtreampulsar/config": ["../../packages/config/src"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test"]
+}
