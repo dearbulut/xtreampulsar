@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './filters/http-exception.filter';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -11,7 +12,7 @@ async function bootstrap() {
 
   app.enableCors();
 
-  // Xtream Codes API routes must stay at root — exclude from global prefix
+  // Xtream Codes API routes stay at root, not under global prefix
   app.setGlobalPrefix('api/v1', {
     exclude: [
       { path: 'player_api.php', method: RequestMethod.ALL },
@@ -34,11 +35,14 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   logger.log(`XtreamPulsar API running on port ${port}`);
-  logger.log(`Xtream Codes API: /player_api.php, /get.php, /live, /movie, /series`);
+  logger.log(
+    `Xtream Codes API: /player_api.php | /get.php | /live | /movie | /series`,
+  );
 }
 
 bootstrap();

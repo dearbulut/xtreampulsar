@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateStreamDto } from './dto/create-stream.dto';
+import { UpdateStreamDto } from './dto/update-stream.dto';
+import { QueryStreamDto } from './dto/query-stream.dto';
 
 @Injectable()
 export class StreamService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllLive(userId: string) {
+  // ─── Xtream-facing queries (no auth, type-based) ───────────────────────────
+
+  findAllLive(_userId: string) {
     return this.prisma.stream.findMany({
       where: { isActive: true, category: { type: 'LIVE' } },
       include: { category: true },
@@ -13,7 +18,7 @@ export class StreamService {
     });
   }
 
-  findAllVod(userId: string) {
+  findAllVod(_userId: string) {
     return this.prisma.stream.findMany({
       where: { isActive: true, category: { type: 'VOD' } },
       include: { category: true },
@@ -21,19 +26,11 @@ export class StreamService {
     });
   }
 
-  findAllSeries(userId: string) {
+  findAllSeries(_userId: string) {
     return this.prisma.stream.findMany({
       where: { isActive: true, category: { type: 'SERIES' } },
       include: { category: true },
       orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    });
-  }
-
-  findAllActive(userId: string) {
-    return this.prisma.stream.findMany({
-      where: { isActive: true },
-      include: { category: true },
-      orderBy: { sortOrder: 'asc' },
     });
   }
 
@@ -58,13 +55,6 @@ export class StreamService {
     });
   }
 
-  async findById(id: string) {
-    return this.prisma.stream.findUnique({
-      where: { id },
-      include: { category: true, epgMappings: true },
-    });
-  }
-
   async findByExternalId(externalId: number) {
     return this.prisma.stream.findUnique({
       where: { externalId },
@@ -79,11 +69,7 @@ export class StreamService {
     });
 
     if (!stream) throw new NotFoundException(`Stream ${externalId} not found`);
-
-    if (stream.status === 'OFFLINE' && stream.backupUrl) {
-      return stream.backupUrl;
-    }
-
+    if (stream.status === 'OFFLINE' && stream.backupUrl) return stream.backupUrl;
     return stream.primaryUrl;
   }
 
@@ -92,5 +78,68 @@ export class StreamService {
       where: { streamId },
       include: { epgSource: true },
     });
+  }
+
+  // ─── Admin CRUD ────────────────────────────────────────────────────────────
+
+  async findAllWithFilters(_userId: string, query: QueryStreamDto) {
+    const { page = 1, limit = 20, search, categoryId, serverId, status, type } = query;
+
+    const where = {
+      ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+      ...(categoryId ? { categoryId } : {}),
+      ...(serverId ? { serverId } : {}),
+      ...(status ? { status: status as 'ONLINE' | 'OFFLINE' | 'BUFFERING' | 'ERROR' } : {}),
+      ...(type ? { category: { type: type as 'LIVE' | 'VOD' | 'SERIES' } } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.stream.findMany({
+        where,
+        include: { category: true, server: true },
+        orderBy: { sortOrder: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.stream.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findById(id: string) {
+    const stream = await this.prisma.stream.findUnique({
+      where: { id },
+      include: { category: true, server: true, epgMappings: true },
+    });
+    if (!stream) throw new NotFoundException(`Stream ${id} not found`);
+    return stream;
+  }
+
+  create(dto: CreateStreamDto) {
+    return this.prisma.stream.create({
+      data: dto,
+      include: { category: true },
+    });
+  }
+
+  async update(id: string, dto: UpdateStreamDto) {
+    await this.findById(id);
+    return this.prisma.stream.update({
+      where: { id },
+      data: dto,
+      include: { category: true },
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.findById(id);
+    await this.prisma.stream.delete({ where: { id } });
   }
 }

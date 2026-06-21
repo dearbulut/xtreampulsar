@@ -34,6 +34,13 @@ enum StreamStatus {
   ERROR
 }
 
+enum WorkerStatus {
+  IDLE
+  RUNNING
+  CRASHED
+  STOPPED
+}
+
 enum CategoryType {
   LIVE
   VOD
@@ -45,6 +52,12 @@ enum UserStatus {
   DISABLED
   EXPIRED
   BANNED
+}
+
+enum UserRole {
+  ADMIN
+  RESELLER
+  USER
 }
 
 enum ResellerTier {
@@ -83,16 +96,18 @@ model License {
 // ─── Server ──────────────────────────────────────────────────────────────────
 
 model Server {
-  id         String     @id @default(cuid())
-  name       String
-  ip         String     @unique
-  port       Int        @default(8080)
-  role       ServerRole @default(MAIN)
-  maxClients Int        @default(1000)
-  isOnline   Boolean    @default(false)
-  location   String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id            String     @id @default(cuid())
+  name          String
+  ip            String     @unique
+  port          Int        @default(8080)
+  role          ServerRole @default(MAIN)
+  maxClients    Int        @default(1000)
+  isOnline      Boolean    @default(false)
+  location      String?
+  lastCheckedAt DateTime?
+  responseTime  Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   streams     Stream[]
   connections Connection[]
@@ -103,15 +118,16 @@ model Server {
 // ─── Category ────────────────────────────────────────────────────────────────
 
 model Bouquet {
-  id          String     @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
-  sortOrder   Int        @default(0)
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  categories Category[]
+  categories    Category[]
+  bouquetStreams BouquetStream[]
 
   @@map("bouquets")
 }
@@ -127,7 +143,7 @@ model Category {
   updatedAt  DateTime     @updatedAt
 
   bouquetId String
-  bouquet   Bouquet  @relation(fields: [bouquetId], references: [id])
+  bouquet   Bouquet @relation(fields: [bouquetId], references: [id])
 
   streams Stream[]
 
@@ -137,19 +153,21 @@ model Category {
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
 model Stream {
-  id          String       @id @default(cuid())
-  externalId  Int          @unique @default(autoincrement())
-  name        String
-  primaryUrl  String
-  backupUrl   String?
-  ffmpegPid   Int?
-  status      StreamStatus @default(OFFLINE)
-  tvgId       String?
-  tvgLogo     String?
-  sortOrder   Int          @default(0)
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  externalId   Int          @unique @default(autoincrement())
+  name         String
+  primaryUrl   String
+  backupUrl    String?
+  ffmpegPid    Int?
+  workerStatus WorkerStatus @default(IDLE)
+  restartCount Int          @default(0)
+  status       StreamStatus @default(OFFLINE)
+  tvgId        String?
+  tvgLogo      String?
+  sortOrder    Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
@@ -157,10 +175,26 @@ model Stream {
   serverId String?
   server   Server?  @relation(fields: [serverId], references: [id])
 
-  epgMappings EPGMapping[]
-  connections Connection[]
+  epgMappings   EPGMapping[]
+  connections   Connection[]
+  bouquetStreams BouquetStream[]
 
   @@map("streams")
+}
+
+// ─── Bouquet <-> Stream (M:N) ─────────────────────────────────────────────────
+
+model BouquetStream {
+  sortOrder Int @default(0)
+
+  bouquetId String
+  bouquet   Bouquet @relation(fields: [bouquetId], references: [id], onDelete: Cascade)
+
+  streamId String
+  stream   Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  @@id([bouquetId, streamId])
+  @@map("bouquet_streams")
 }
 
 // ─── EPG ─────────────────────────────────────────────────────────────────────
@@ -221,6 +255,7 @@ model User {
   id             String     @id @default(cuid())
   username       String     @unique
   password       String
+  role           UserRole   @default(USER)
   maxConnections Int        @default(1)
   status         UserStatus @default(ACTIVE)
   expiresAt      DateTime
@@ -231,9 +266,25 @@ model User {
   resellerId String?
   reseller   Reseller? @relation(fields: [resellerId], references: [id])
 
-  connections Connection[]
+  connections   Connection[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
 }
 
 // ─── Package ─────────────────────────────────────────────────────────────────
