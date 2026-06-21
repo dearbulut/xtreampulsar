@@ -4,10 +4,11 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
+    "declaration": false,
+    "declarationMap": false,
     "paths": {
-      "@xtreampulsar/types": ["../../packages/types/src"],
-      "@xtreampulsar/database": ["../../packages/database/src"],
-      "@xtreampulsar/config": ["../../packages/config/src"]
+      "@xtreampulsar/types": ["../../../packages/types/src"],
+      "@xtreampulsar/config": ["../../../packages/config/src"]
     }
   },
   "include": ["src/**/*"],

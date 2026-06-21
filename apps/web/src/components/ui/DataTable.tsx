@@ -14,7 +14,7 @@ export interface Column<T> {
 interface Props<T> {
   columns: Column<T>[];
   data: T[];
-  keyExtractor: (row: T) => string;
+  keyExtractor?: (row: T) => string;
   isLoading?: boolean;
   page?: number;
   totalPages?: number;
@@ -26,6 +26,7 @@ interface Props<T> {
   onSelectAll?: () => void;
   emptyTitle?: string;
   emptyDescription?: string;
+  emptyMessage?: string;
   stickyHeader?: boolean;
 }
 
@@ -44,9 +45,11 @@ export function DataTable<T>({
   onSelectAll,
   emptyTitle,
   emptyDescription,
+  emptyMessage,
   stickyHeader,
 }: Props<T>) {
-  const allSelected = selectedIds && data.length > 0 && data.every((r) => selectedIds.has(keyExtractor(r)));
+  const getKey = keyExtractor ?? ((row: T) => String((row as Record<string, unknown>).id ?? Math.random()));
+  const allSelected = selectedIds && data.length > 0 && data.every((r) => selectedIds.has(getKey(r)));
 
   if (isLoading) {
     return (
@@ -57,7 +60,7 @@ export function DataTable<T>({
   }
 
   if (!data.length) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={emptyMessage ?? emptyTitle} description={emptyDescription} />;
   }
 
   return (
@@ -87,7 +90,7 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {data.map((row) => {
-              const id = keyExtractor(row);
+              const id = getKey(row);
               const selected = selectedIds?.has(id);
               return (
                 <tr

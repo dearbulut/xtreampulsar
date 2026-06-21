@@ -16,18 +16,20 @@ interface AuthState {
   setTokens: (access: string, refresh: string, user: AuthUser) => void;
 }
 
+type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user'>;
+
 export const useAuthStore = create<AuthState>()(
-  persist(
+  persist<AuthState, [], [], PersistedState>(
     (set, get) => ({
       user: null,
       accessToken: null,
       refreshToken: null,
 
-      setTokens(access, refresh, user) {
+      setTokens(access: string, refresh: string, user: AuthUser) {
         set({ accessToken: access, refreshToken: refresh, user });
       },
 
-      async login(username, password) {
+      async login(username: string, password: string) {
         const res = await authClient.post<{
           success: boolean;
           data: { accessToken: string; refreshToken: string; user: AuthUser };
@@ -37,7 +39,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout() {
-        // fire-and-forget logout call to invalidate refresh token
         const token = get().refreshToken;
         if (token) {
           void authClient
@@ -60,11 +61,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'xp-auth',
-      partializer: (state) => ({
+      partialize: (state): PersistedState => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
       }),
-    } as Parameters<typeof persist>[1],
+    },
   ),
 );

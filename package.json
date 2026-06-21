@@ -20,6 +20,15 @@
     "db:migrate": "pnpm --filter @xtreampulsar/database migrate",
     "db:studio": "pnpm --filter @xtreampulsar/database studio"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

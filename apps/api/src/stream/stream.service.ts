@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
@@ -133,7 +134,7 @@ export class StreamService {
     await this.findById(id);
     return this.prisma.stream.update({
       where: { id },
-      data: dto,
+      data: dto as Prisma.StreamUncheckedUpdateInput,
       include: { category: true },
     });
   }

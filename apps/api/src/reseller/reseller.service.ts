@@ -2,9 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  PaymentRequiredException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { PaymentRequiredException } from '../common/exceptions/payment-required.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';

@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as https from 'https';
 import * as http from 'http';
+import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportM3uDto } from './dto/import-m3u.dto';
 import { ImportXtreamDto } from './dto/import-xtream.dto';
@@ -146,7 +147,7 @@ export class MigrationService {
         status: failed === entries.length ? 'FAILED' : 'COMPLETED',
         processedRecords: processed,
         failedRecords: failed,
-        errors: errors.length > 0 ? errors : null,
+        errors: errors.length > 0 ? errors : Prisma.JsonNull,
         completedAt: new Date(),
       },
     });

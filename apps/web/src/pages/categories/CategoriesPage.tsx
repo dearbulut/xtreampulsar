@@ -26,7 +26,7 @@ const TYPE_LABEL: Record<string, string> = {
   SERIES: 'Dizi',
 };
 
-interface FormState { name: string; type: string; bouquetId: string }
+interface FormState { name: string; type: 'LIVE' | 'VOD' | 'SERIES'; bouquetId: string }
 const FORM_DEFAULT: FormState = { name: '', type: 'LIVE', bouquetId: '' };
 
 export function CategoriesPage() {
@@ -42,7 +42,7 @@ export function CategoriesPage() {
   const deleteCat = useDeleteCategory();
 
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((p) => ({ ...p, [k]: e.target.value }));
+    setForm((p) => ({ ...p, [k]: e.target.value as FormState[typeof k] }));
 
   const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setShowModal(true); };
   const openEdit = (c: Category) => {
