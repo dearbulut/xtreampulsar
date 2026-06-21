@@ -1,0 +1,35 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePackageDto } from './dto/create-package.dto';
+import { UpdatePackageDto } from './dto/update-package.dto';
+
+@Injectable()
+export class PackageService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findAll() {
+    return this.prisma.package.findMany({
+      orderBy: { creditCost: 'asc' },
+    });
+  }
+
+  async findById(id: string) {
+    const pkg = await this.prisma.package.findUnique({ where: { id } });
+    if (!pkg) throw new NotFoundException(`Package ${id} not found`);
+    return pkg;
+  }
+
+  create(dto: CreatePackageDto) {
+    return this.prisma.package.create({ data: dto });
+  }
+
+  async update(id: string, dto: UpdatePackageDto) {
+    await this.findById(id);
+    return this.prisma.package.update({ where: { id }, data: dto });
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.findById(id);
+    await this.prisma.package.delete({ where: { id } });
+  }
+}

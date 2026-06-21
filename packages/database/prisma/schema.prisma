@@ -9,63 +9,18 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-enum LicenseStatus {
-  ACTIVE
-  EXPIRED
-  SUSPENDED
-  PENDING
-}
-
-enum LicenseTier {
-  STARTER
-  PROFESSIONAL
-  ENTERPRISE
-}
-
-enum ServerRole {
-  MAIN
-  LOAD_BALANCER
-}
-
-enum StreamStatus {
-  ONLINE
-  OFFLINE
-  BUFFERING
-  ERROR
-}
-
-enum WorkerStatus {
-  IDLE
-  RUNNING
-  CRASHED
-  STOPPED
-}
-
-enum CategoryType {
-  LIVE
-  VOD
-  SERIES
-}
-
-enum UserStatus {
-  ACTIVE
-  DISABLED
-  EXPIRED
-  BANNED
-}
-
-enum UserRole {
-  ADMIN
-  RESELLER
-  USER
-}
-
-enum ResellerTier {
-  BASIC
-  SILVER
-  GOLD
-  PLATINUM
-}
+enum LicenseStatus   { ACTIVE EXPIRED SUSPENDED PENDING }
+enum LicenseTier     { STARTER PROFESSIONAL ENTERPRISE }
+enum ServerRole      { MAIN LOAD_BALANCER }
+enum StreamStatus    { ONLINE OFFLINE BUFFERING ERROR }
+enum WorkerStatus    { IDLE RUNNING CRASHED STOPPED }
+enum CategoryType    { LIVE VOD SERIES }
+enum UserStatus      { ACTIVE DISABLED EXPIRED BANNED }
+enum UserRole        { ADMIN RESELLER USER }
+enum ResellerTier    { BASIC SILVER GOLD PLATINUM }
+enum CreditLogType   { ADD DEDUCT }
+enum MigrationStatus { PENDING RUNNING COMPLETED FAILED CANCELLED }
+enum MigrationSource { XTREAMUI XUIONE M3U XTREAM_API }
 
 enum AuditAction {
   CREATE
@@ -115,7 +70,7 @@ model Server {
   @@map("servers")
 }
 
-// ─── Category ────────────────────────────────────────────────────────────────
+// ─── Bouquet & Category ───────────────────────────────────────────────────────
 
 model Bouquet {
   id          String   @id @default(cuid())
@@ -182,8 +137,6 @@ model Stream {
   @@map("streams")
 }
 
-// ─── Bouquet <-> Stream (M:N) ─────────────────────────────────────────────────
-
 model BouquetStream {
   sortOrder Int @default(0)
 
@@ -204,11 +157,13 @@ model EPGSource {
   name       String
   xmltvUrl   String
   lastParsed DateTime?
+  daysToKeep Int       @default(7)
   isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   mappings EPGMapping[]
+  channels EPGChannel[]
 
   @@map("epg_sources")
 }
@@ -229,7 +184,39 @@ model EPGMapping {
   @@map("epg_mappings")
 }
 
-// ─── User / Reseller ─────────────────────────────────────────────────────────
+model EPGChannel {
+  id          String   @id @default(cuid())
+  channelId   String
+  displayName String
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  epgSourceId String
+  epgSource   EPGSource @relation(fields: [epgSourceId], references: [id], onDelete: Cascade)
+
+  programmes EPGProgramme[]
+
+  @@unique([epgSourceId, channelId])
+  @@map("epg_channels")
+}
+
+model EPGProgramme {
+  id          String   @id @default(cuid())
+  start       DateTime
+  stop        DateTime
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  epgChannelId String
+  epgChannel   EPGChannel @relation(fields: [epgChannelId], references: [id], onDelete: Cascade)
+
+  @@index([epgChannelId, start])
+  @@map("epg_programmes")
+}
+
+// ─── Reseller & User ─────────────────────────────────────────────────────────
 
 model Reseller {
   id        String       @id @default(cuid())
@@ -239,6 +226,7 @@ model Reseller {
   credits   Int          @default(0)
   tier      ResellerTier @default(BASIC)
   isActive  Boolean      @default(true)
+  deletedAt DateTime?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -246,9 +234,26 @@ model Reseller {
   parent   Reseller?  @relation("ResellerHierarchy", fields: [parentId], references: [id])
   children Reseller[] @relation("ResellerHierarchy")
 
-  users User[]
+  users      User[]
+  creditLogs ResellerCreditLog[]
 
   @@map("resellers")
+}
+
+model ResellerCreditLog {
+  id         String        @id @default(cuid())
+  amount     Int
+  type       CreditLogType
+  reason     String?
+  balanceAfter Int
+  adminId    String?
+  createdAt  DateTime      @default(now())
+
+  resellerId String
+  reseller   Reseller @relation(fields: [resellerId], references: [id])
+
+  @@index([resellerId])
+  @@map("reseller_credit_logs")
 }
 
 model User {
@@ -260,6 +265,7 @@ model User {
   status         UserStatus @default(ACTIVE)
   expiresAt      DateTime
   notes          String?
+  deletedAt      DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -295,6 +301,7 @@ model Package {
   durationDays   Int
   maxConnections Int      @default(1)
   creditCost     Int
+  price          Float    @default(0)
   description    String?
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -323,7 +330,28 @@ model Connection {
   serverId String?
   server   Server? @relation(fields: [serverId], references: [id])
 
+  @@index([userId, endedAt])
+  @@index([streamId, endedAt])
+  @@index([startedAt])
   @@map("connections")
+}
+
+// ─── Migration ───────────────────────────────────────────────────────────────
+
+model MigrationJob {
+  id               String          @id @default(cuid())
+  source           MigrationSource
+  status           MigrationStatus @default(PENDING)
+  totalRecords     Int             @default(0)
+  processedRecords Int             @default(0)
+  failedRecords    Int             @default(0)
+  errors           Json?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("migration_jobs")
 }
 
 // ─── AuditLog ────────────────────────────────────────────────────────────────
