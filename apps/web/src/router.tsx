@@ -12,15 +12,22 @@ import { StreamsPage } from '@/pages/streams/StreamsPage';
 import { UsersPage } from '@/pages/users/UsersPage';
 import { ResellersPage } from '@/pages/resellers/ResellersPage';
 import { LiveConnectionsPage } from '@/pages/live-connections/LiveConnectionsPage';
+import { ServersPage } from '@/pages/servers/ServersPage';
+import { CategoriesPage } from '@/pages/categories/CategoriesPage';
+import { BouquetsPage } from '@/pages/bouquets/BouquetsPage';
+import { EPGSourcesPage } from '@/pages/epg/EPGSourcesPage';
+import { EPGMassAssignPage } from '@/pages/epg/EPGMassAssignPage';
+import { PackagesPage } from '@/pages/packages/PackagesPage';
+import { MigrationPage } from '@/pages/migration/MigrationPage';
+import { SecurityPage } from '@/pages/security/SecurityPage';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { useAuthStore } from '@/store/auth.store';
 
-// Root route — just an outlet
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
 });
 
-// Public: login
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -31,17 +38,13 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
-// Index redirect
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/dashboard' });
-  },
+  beforeLoad: () => { throw redirect({ to: '/dashboard' }); },
   component: () => null,
 });
 
-// Protected layout route
 const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_layout',
@@ -52,7 +55,6 @@ const layoutRoute = createRoute({
   component: AppLayout,
 });
 
-// Protected children
 const dashboardRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/dashboard',
@@ -86,9 +88,10 @@ const liveConnectionsRoute = createRoute({
 const serversRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/servers',
-  component: () => <ComingSoonPage title="Sunucular" description="Sunucu yönetimi yakında geliyor." />,
+  component: ServersPage,
 });
 
+// Content stubs (no backend streams yet — VOD/Series separate from streams management)
 const channelsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/channels',
@@ -110,46 +113,51 @@ const seriesRoute = createRoute({
 const categoriesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/categories',
-  component: () => <ComingSoonPage title="Kategoriler" />,
+  component: CategoriesPage,
 });
 
 const bouquetsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/bouquets',
-  component: () => <ComingSoonPage title="Bouquet'lar" />,
+  component: BouquetsPage,
 });
 
 const epgRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/epg',
-  component: () => <ComingSoonPage title="EPG Kaynakları" />,
+  component: EPGSourcesPage,
+});
+
+const epgMassAssignRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/epg/mass-assign',
+  component: EPGMassAssignPage,
 });
 
 const packagesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/packages',
-  component: () => <ComingSoonPage title="Paketler" />,
+  component: PackagesPage,
 });
 
 const migrationRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/migration',
-  component: () => <ComingSoonPage title="Migration" />,
+  component: MigrationPage,
 });
 
 const securityRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/security',
-  component: () => <ComingSoonPage title="Güvenlik" />,
+  component: SecurityPage,
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/settings',
-  component: () => <ComingSoonPage title="Ayarlar" />,
+  component: SettingsPage,
 });
 
-// Route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -166,6 +174,7 @@ const routeTree = rootRoute.addChildren([
     categoriesRoute,
     bouquetsRoute,
     epgRoute,
+    epgMassAssignRoute,
     packagesRoute,
     migrationRoute,
     securityRoute,

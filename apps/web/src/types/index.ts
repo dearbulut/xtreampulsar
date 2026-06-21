@@ -105,7 +105,9 @@ export interface Server {
   ip: string;
   port: number;
   role: 'MAIN' | 'LOAD_BALANCER';
+  status: 'ONLINE' | 'OFFLINE';
   maxClients: number;
+  currentClients: number;
   isOnline: boolean;
   location?: string;
   lastCheckedAt?: string;
@@ -113,6 +115,7 @@ export interface Server {
   activeConnections?: number;
   utilization?: number;
 }
+
 
 // ─── Analytics ────────────────────────────────────────────────────────────
 
@@ -153,4 +156,5 @@ export interface EPGSource {
   daysToKeep: number;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
