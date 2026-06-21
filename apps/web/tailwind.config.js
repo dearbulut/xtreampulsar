@@ -1,16 +1,52 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0f4ff',
-          100: '#dbe4ff',
-          500: '#4c6ef5',
-          600: '#4263eb',
-          700: '#3b5bdb',
-          900: '#1e3a8a',
+        primary: {
+          DEFAULT: '#6366f1',
+          hover: '#4f46e5',
+          light: '#818cf8',
+          50: '#eef2ff',
+        },
+        background: '#0f1117',
+        surface: '#1a1d27',
+        'surface-2': '#22263a',
+        border: '#2a2d3a',
+        muted: '#94a3b8',
+        success: {
+          DEFAULT: '#10b981',
+          bg: 'rgba(16,185,129,0.12)',
+        },
+        danger: {
+          DEFAULT: '#ef4444',
+          bg: 'rgba(239,68,68,0.12)',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          bg: 'rgba(245,158,11,0.12)',
+        },
+        info: {
+          DEFAULT: '#3b82f6',
+          bg: 'rgba(59,130,246,0.12)',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-in': 'slideIn 0.2s ease-out',
+      },
+      keyframes: {
+        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        slideIn: {
+          '0%': { transform: 'translateX(-8px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
         },
       },
     },
