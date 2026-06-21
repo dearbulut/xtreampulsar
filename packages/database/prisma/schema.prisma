@@ -117,13 +117,14 @@ model Bouquet {
 }
 
 model Category {
-  id        String       @id @default(cuid())
-  name      String
-  type      CategoryType
-  sortOrder Int          @default(0)
-  isActive  Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id         String       @id @default(cuid())
+  externalId Int          @unique @default(autoincrement())
+  name       String
+  type       CategoryType
+  sortOrder  Int          @default(0)
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   bouquetId String
   bouquet   Bouquet  @relation(fields: [bouquetId], references: [id])
@@ -137,6 +138,7 @@ model Category {
 
 model Stream {
   id          String       @id @default(cuid())
+  externalId  Int          @unique @default(autoincrement())
   name        String
   primaryUrl  String
   backupUrl   String?

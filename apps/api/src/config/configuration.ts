@@ -2,13 +2,20 @@ export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.PORT ?? '3000', 10),
   database: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL!,
+  },
+  redis: {
+    url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   },
   jwt: {
-    secret: process.env.JWT_SECRET ?? 'default-secret',
+    secret: process.env.JWT_SECRET!,
     expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   },
-  licenseService: {
-    url: process.env.LICENSE_SERVICE_URL ?? 'http://localhost:3001',
+  licenseServer: {
+    url: process.env.LICENSE_SERVER_URL ?? 'http://localhost:3001',
+  },
+  server: {
+    url: process.env.SERVER_URL ?? 'http://localhost',
+    port: parseInt(process.env.SERVER_PORT ?? '8080', 10),
   },
 });
