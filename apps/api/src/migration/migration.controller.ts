@@ -62,4 +62,45 @@ export class MigrationController {
   fixStreamTypes(@Body('dryRun') dryRun?: boolean) {
     return this.migrationService.fixStreamTypes(dryRun ?? false);
   }
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }))
+  uploadDump(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.migrationService.uploadDump(file.buffer, file.originalname);
+  }
+
+  @Post('preview/:jobId')
+  previewDump(@Param('jobId') jobId: string) {
+    return this.migrationService.previewDump(jobId);
+  }
+
+  @Post('import/:jobId')
+  importFromDump(
+    @Param('jobId') jobId: string,
+    @Body() options: {
+      importStreams?: boolean;
+      importCategories?: boolean;
+      importUsers?: boolean;
+      importResellers?: boolean;
+      importPackages?: boolean;
+      importBouquets?: boolean;
+      importEpgMappings?: boolean;
+      conflictMode?: 'SKIP' | 'OVERWRITE' | 'MERGE';
+      defaultPassword?: string;
+    },
+  ) {
+    const opts = {
+      importStreams: options.importStreams ?? true,
+      importCategories: options.importCategories ?? true,
+      importUsers: options.importUsers ?? true,
+      importResellers: options.importResellers ?? true,
+      importPackages: options.importPackages ?? true,
+      importBouquets: options.importBouquets ?? true,
+      importEpgMappings: options.importEpgMappings ?? false,
+      conflictMode: options.conflictMode ?? 'SKIP',
+      defaultPassword: options.defaultPassword,
+    };
+    return this.migrationService.importFromDump(jobId, opts);
+  }
 }

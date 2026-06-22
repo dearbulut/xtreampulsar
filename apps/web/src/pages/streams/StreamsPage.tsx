@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
   Plus,
   RefreshCw,
@@ -97,14 +96,19 @@ const EMPTY_FORM: CreateForm = {
   name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '',
 };
 
+function getUrlPage(): number {
+  return Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') ?? '1', 10));
+}
+
 export function StreamsPage({ type }: { type?: StreamType }) {
-  const rawSearch = useSearch({ strict: false }) as Record<string, string>;
-  const navigate = useNavigate();
-  const page = Math.max(1, parseInt(rawSearch.page ?? '1', 10));
+  const [page, setPageState] = useState(getUrlPage);
 
   const setPage = useCallback((p: number) => {
-    void navigate({ search: (prev) => ({ ...prev, page: p }), replace: true });
-  }, [navigate]);
+    setPageState(p);
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(p));
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }, []);
 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');

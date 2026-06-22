@@ -12,12 +12,37 @@ export interface MigrationJob {
   totalRecords: number;
   processedRecords: number;
   failedRecords: number;
-  errors?: string[];
+  errors?: unknown;
   startedAt?: string;
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface DumpPreview {
+  source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN';
+  streams: { total: number; live: number; vod: number; series: number };
+  categories: { total: number; live: number; vod: number; series: number };
+  users: { total: number };
+  resellers: { total: number };
+  packages: { total: number };
+  bouquets: { total: number };
+  epgMappings: { total: number };
+}
+
+export interface DumpImportOptions {
+  importStreams: boolean;
+  importCategories: boolean;
+  importUsers: boolean;
+  importResellers: boolean;
+  importPackages: boolean;
+  importBouquets: boolean;
+  importEpgMappings: boolean;
+  conflictMode: 'SKIP' | 'OVERWRITE' | 'MERGE';
+  defaultPassword?: string;
+}
+
+// ─── Job queries ──────────────────────────────────────────────────────────────
 
 export function useMigrationJobs() {
   return useQuery({
@@ -56,6 +81,48 @@ export function useCancelJob() {
     onError: () => toast.error('İptal başarısız'),
   });
 }
+
+// ─── SQL Dump flow ────────────────────────────────────────────────────────────
+
+export function useUploadDump() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return api.post<{ success: boolean; data: { jobId: string } }>(
+        '/migration/upload',
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['migration'] }),
+    onError: () => toast.error('Yükleme başarısız'),
+  });
+}
+
+export function usePreviewDump() {
+  return useMutation({
+    mutationFn: (jobId: string) =>
+      api.post<{ success: boolean; data: DumpPreview }>(`/migration/preview/${jobId}`),
+    onError: () => toast.error('Analiz başarısız'),
+  });
+}
+
+export function useStartDumpImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ jobId, options }: { jobId: string; options: DumpImportOptions }) =>
+      api.post<{ success: boolean; data: { jobId: string } }>(`/migration/import/${jobId}`, options),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['migration'] });
+      toast.success('Import başlatıldı');
+    },
+    onError: () => toast.error('Import başarısız'),
+  });
+}
+
+// ─── M3U flow ─────────────────────────────────────────────────────────────────
 
 export function usePreviewM3U() {
   return useMutation({

@@ -1,6 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as https from 'https';
 import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import * as readline from 'readline';
+import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportM3uDto } from './dto/import-m3u.dto';
@@ -15,9 +20,39 @@ interface M3uEntry {
   streamType: 'LIVE' | 'VOD' | 'SERIES';
 }
 
+export interface DumpPreview {
+  source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN';
+  streams: { total: number; live: number; vod: number; series: number };
+  categories: { total: number; live: number; vod: number; series: number };
+  users: { total: number };
+  resellers: { total: number };
+  packages: { total: number };
+  bouquets: { total: number };
+  epgMappings: { total: number };
+}
+
+export interface DumpImportOptions {
+  importStreams: boolean;
+  importCategories: boolean;
+  importUsers: boolean;
+  importResellers: boolean;
+  importPackages: boolean;
+  importBouquets: boolean;
+  importEpgMappings: boolean;
+  conflictMode: 'SKIP' | 'OVERWRITE' | 'MERGE';
+  defaultPassword?: string;
+}
+
 @Injectable()
 export class MigrationService {
   private readonly logger = new Logger(MigrationService.name);
+
+  private readonly jobMeta = new Map<string, {
+    filePath: string;
+    source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN';
+    tableColumns: Map<string, string[]>;
+    tableCounts: Map<string, number>;
+  }>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -374,6 +409,925 @@ export class MigrationService {
       changed: toFix.length,
       details: toFix.map(({ id, name, oldType, newType }) => ({ id, name, oldType, newType })),
     };
+  }
+
+  // ─── SQL Dump upload / preview / import ──────────────────────────────────
+
+  async uploadDump(buffer: Buffer, originalName: string): Promise<{ jobId: string }> {
+    const dir = path.join(os.tmpdir(), 'xp-migrations');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const sanitized = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = path.join(dir, `${Date.now()}-${sanitized}`);
+    fs.writeFileSync(filePath, buffer);
+
+    const scanResult = await this.scanDump(filePath);
+
+    const prismaSource = scanResult.source === 'XUIONE'
+      ? 'XUIONE'
+      : 'XTREAMUI';
+
+    const job = await this.prisma.migrationJob.create({
+      data: {
+        source: prismaSource,
+        status: 'PENDING',
+      },
+    });
+
+    this.jobMeta.set(job.id, {
+      filePath,
+      source: scanResult.source,
+      tableColumns: scanResult.tableColumns,
+      tableCounts: scanResult.tableCounts,
+    });
+
+    return { jobId: job.id };
+  }
+
+  async previewDump(jobId: string): Promise<DumpPreview> {
+    const meta = this.jobMeta.get(jobId);
+    if (!meta) throw new NotFoundException(`No dump metadata found for job ${jobId}`);
+
+    const { source, tableCounts } = meta;
+
+    const getCount = (...tableNames: string[]): number => {
+      for (const name of tableNames) {
+        const count = tableCounts.get(name);
+        if (count !== undefined) return count;
+      }
+      return 0;
+    };
+
+    const streamsTotal = getCount('streams');
+    const categoriesTotal = source === 'XUIONE'
+      ? getCount('categories')
+      : getCount('stream_categories');
+    const usersTotal = source === 'XUIONE'
+      ? getCount('lines')
+      : getCount('user_info', 'users');
+    const resellersTotal = source === 'XUIONE'
+      ? getCount('resellers')
+      : getCount('reg_users');
+    const packagesTotal = getCount('packages');
+    const bouquetsTotal = getCount('bouquets');
+    const epgMappingsTotal = source === 'XUIONE'
+      ? getCount('epg_mappings')
+      : getCount('epg_map');
+
+    return {
+      source,
+      streams: { total: streamsTotal, live: 0, vod: 0, series: 0 },
+      categories: { total: categoriesTotal, live: 0, vod: 0, series: 0 },
+      users: { total: usersTotal },
+      resellers: { total: resellersTotal },
+      packages: { total: packagesTotal },
+      bouquets: { total: bouquetsTotal },
+      epgMappings: { total: epgMappingsTotal },
+    };
+  }
+
+  async importFromDump(jobId: string, options: DumpImportOptions): Promise<void> {
+    const meta = this.jobMeta.get(jobId);
+    if (!meta) throw new NotFoundException(`No dump metadata found for job ${jobId}`);
+
+    await this.prisma.migrationJob.update({
+      where: { id: jobId },
+      data: { status: 'RUNNING', startedAt: new Date() },
+    });
+
+    void this.runDumpImport(jobId, meta.filePath, meta.source, options);
+  }
+
+  // ─── SQL Dump private helpers ─────────────────────────────────────────────
+
+  private async scanDump(filePath: string): Promise<{
+    source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN';
+    tableColumns: Map<string, string[]>;
+    tableCounts: Map<string, number>;
+  }> {
+    const tableColumns = new Map<string, string[]>();
+    const tableCounts = new Map<string, number>();
+
+    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+    let currentTable: string | null = null;
+    let inCreateTable = false;
+    const currentColumns: string[] = [];
+
+    for await (const line of rl) {
+      // CREATE TABLE detection
+      const createMatch = /^CREATE TABLE [`"']?(\w+)[`"']?/i.exec(line);
+      if (createMatch) {
+        currentTable = createMatch[1];
+        inCreateTable = true;
+        currentColumns.length = 0;
+        continue;
+      }
+
+      if (inCreateTable) {
+        // End of CREATE TABLE
+        if (/\)\s*ENGINE=/i.test(line) || /^\s*\)\s*;/.test(line)) {
+          if (currentTable) {
+            tableColumns.set(currentTable, [...currentColumns]);
+          }
+          inCreateTable = false;
+          currentTable = null;
+          currentColumns.length = 0;
+          continue;
+        }
+        // Parse column definition
+        const colMatch = /^\s+[`"'](\w+)[`"']\s+(int|varchar|text|tinyint|bigint|float|double|decimal|datetime|timestamp|date|char|blob|enum|set|mediumtext|longtext)/i.exec(line);
+        if (colMatch) {
+          currentColumns.push(colMatch[1]);
+        }
+        continue;
+      }
+
+      // INSERT INTO detection
+      const insertMatch = /^INSERT INTO [`"']?(\w+)[`"']?.*VALUES/i.exec(line);
+      if (insertMatch) {
+        const tableName = insertMatch[1];
+        // Count rows: number of ),( plus 1
+        const afterValues = line.indexOf('VALUES');
+        const valuesStr = afterValues >= 0 ? line.slice(afterValues + 6) : '';
+        let rowCount = 1;
+        // Count top-level ),( separators
+        let depth = 0;
+        let extraRows = 0;
+        for (let i = 0; i < valuesStr.length; i++) {
+          const ch = valuesStr[i];
+          if (ch === "'") {
+            i++;
+            while (i < valuesStr.length) {
+              if (valuesStr[i] === '\\') { i += 2; continue; }
+              if (valuesStr[i] === "'") break;
+              i++;
+            }
+          } else if (ch === '(') {
+            depth++;
+          } else if (ch === ')') {
+            depth--;
+            if (depth === 0 && i + 1 < valuesStr.length && valuesStr[i + 1] === ',') {
+              extraRows++;
+            }
+          }
+        }
+        rowCount = extraRows + 1;
+        const existing = tableCounts.get(tableName) ?? 0;
+        tableCounts.set(tableName, existing + rowCount);
+      }
+    }
+
+    // Detect source
+    const tables = [...tableColumns.keys(), ...tableCounts.keys()];
+    let source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN' = 'UNKNOWN';
+
+    const hasStreamCategories = tables.some(t => t === 'stream_categories');
+    const hasRegUsers = tables.some(t => t === 'reg_users');
+    const hasUserInfo = tables.some(t => t === 'user_info');
+    const hasLines = tables.some(t => t === 'lines');
+    const hasCategories = tables.some(t => t === 'categories');
+
+    if (hasStreamCategories || hasRegUsers || hasUserInfo) {
+      source = 'XTREAMUI';
+    } else if (hasLines || (hasCategories && !hasStreamCategories)) {
+      source = 'XUIONE';
+    }
+
+    return { source, tableColumns, tableCounts };
+  }
+
+  private parseSqlValues(valuesStr: string): (string | null)[][] {
+    const rows: (string | null)[][] = [];
+    let i = 0;
+    const len = valuesStr.length;
+
+    const skipWhitespace = () => {
+      while (i < len && (valuesStr[i] === ' ' || valuesStr[i] === '\t' || valuesStr[i] === '\n' || valuesStr[i] === '\r')) i++;
+    };
+
+    while (i < len) {
+      skipWhitespace();
+      if (i >= len || valuesStr[i] !== '(') { i++; continue; }
+      i++; // skip (
+
+      const row: (string | null)[] = [];
+      while (i < len && valuesStr[i] !== ')') {
+        skipWhitespace();
+        if (valuesStr[i] === ')') break;
+        if (valuesStr[i] === ',') { i++; continue; }
+
+        if (valuesStr.slice(i, i + 4) === 'NULL') {
+          row.push(null); i += 4;
+        } else if (valuesStr[i] === "'") {
+          i++;
+          let str = '';
+          while (i < len) {
+            if (valuesStr[i] === '\\' && i + 1 < len) {
+              const esc = valuesStr[i + 1];
+              if (esc === "'") str += "'";
+              else if (esc === '\\') str += '\\';
+              else if (esc === 'n') str += '\n';
+              else if (esc === 'r') str += '\r';
+              else if (esc === 't') str += '\t';
+              else str += esc;
+              i += 2;
+            } else if (valuesStr[i] === "'") { i++; break; }
+            else str += valuesStr[i++];
+          }
+          row.push(str);
+        } else {
+          let val = '';
+          while (i < len && valuesStr[i] !== ',' && valuesStr[i] !== ')') val += valuesStr[i++];
+          row.push(val.trim() === 'NULL' ? null : val.trim());
+        }
+      }
+      if (i < len && valuesStr[i] === ')') i++;
+      rows.push(row);
+      // skip comma between rows
+      skipWhitespace();
+      if (i < len && valuesStr[i] === ',') i++;
+    }
+    return rows;
+  }
+
+  private extractInsertData(line: string): { table: string; columns: string[] | null; valuesStr: string } | null {
+    const m = /^INSERT INTO [`"']?(\w+)[`"']?\s+(?:\(([^)]+)\)\s+)?VALUES\s+(.+?);?\s*$/i.exec(line);
+    if (!m) return null;
+
+    const table = m[1];
+    const colsRaw = m[2] ?? null;
+    const valuesStr = m[3];
+
+    const columns = colsRaw
+      ? colsRaw.split(',').map(c => c.trim().replace(/[`"']/g, ''))
+      : null;
+
+    return { table, columns, valuesStr };
+  }
+
+  private getCol(row: (string | null)[], columns: string[] | null, name: string, fallback: number): string | null {
+    if (columns) {
+      const idx = columns.indexOf(name);
+      return idx >= 0 ? (row[idx] ?? null) : null;
+    }
+    return row[fallback] ?? null;
+  }
+
+  private async updateJobProgress(jobId: string, processed: number, failed: number, total: number): Promise<void> {
+    try {
+      await this.prisma.migrationJob.update({
+        where: { id: jobId },
+        data: { processedRecords: processed, failedRecords: failed, totalRecords: total },
+      });
+    } catch {
+      // non-fatal
+    }
+  }
+
+  private async runDumpImport(
+    jobId: string,
+    filePath: string,
+    source: string,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const meta = this.jobMeta.get(jobId);
+    const tableColumns = meta?.tableColumns ?? new Map<string, string[]>();
+    const tableCounts = meta?.tableCounts ?? new Map<string, number>();
+
+    // Compute total records
+    let total = 0;
+    const getCount = (...names: string[]) => {
+      for (const n of names) {
+        const c = tableCounts.get(n);
+        if (c !== undefined) return c;
+      }
+      return 0;
+    };
+
+    if (options.importBouquets) total += getCount('bouquets');
+    if (options.importCategories) {
+      total += source === 'XUIONE' ? getCount('categories') : getCount('stream_categories');
+    }
+    if (options.importStreams) total += getCount('streams');
+    if (options.importUsers) {
+      total += source === 'XUIONE' ? getCount('lines') : getCount('user_info', 'users');
+    }
+    if (options.importResellers) {
+      total += source === 'XUIONE' ? getCount('resellers') : getCount('reg_users');
+    }
+    if (options.importPackages) total += getCount('packages');
+
+    await this.updateJobProgress(jobId, 0, 0, total);
+
+    let processed = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    // Category ID cache: original dump id string → new Category.id
+    const catCache = new Map<string, string>();
+
+    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+    try {
+      for await (const line of rl) {
+        const insertData = this.extractInsertData(line);
+        if (!insertData) continue;
+
+        const { table, columns, valuesStr } = insertData;
+
+        // Resolve columns from tableColumns map if not present in INSERT
+        const resolvedColumns = columns ?? tableColumns.get(table) ?? null;
+
+        // Determine whether to handle this table
+        const isXtreamUI = source !== 'XUIONE';
+
+        let shouldProcess = false;
+        let handler: ((row: (string | null)[], cols: string[] | null) => Promise<void>) | null = null;
+
+        if (isXtreamUI) {
+          if (table === 'bouquets' && options.importBouquets) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIBouquet(row, cols, options);
+          } else if (table === 'stream_categories' && options.importCategories) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUICategory(row, cols, catCache, options);
+          } else if (table === 'streams' && options.importStreams) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIStream(row, cols, catCache, options);
+          } else if ((table === 'user_info' || table === 'users') && options.importUsers) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIUser(row, cols, options);
+          } else if (table === 'reg_users' && options.importResellers) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIReseller(row, cols, options);
+          } else if (table === 'packages' && options.importPackages) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIPackage(row, cols, options);
+          }
+        } else {
+          // XUI.ONE
+          if (table === 'bouquets' && options.importBouquets) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOneBouquet(row, cols, options);
+          } else if (table === 'categories' && options.importCategories) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOneCategory(row, cols, catCache, options);
+          } else if (table === 'streams' && options.importStreams) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOneStream(row, cols, catCache, options);
+          } else if (table === 'lines' && options.importUsers) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOneLine(row, cols, options);
+          } else if (table === 'resellers' && options.importResellers) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOneReseller(row, cols, options);
+          } else if (table === 'packages' && options.importPackages) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXUIOnePackage(row, cols, options);
+          }
+        }
+
+        if (!shouldProcess || !handler) continue;
+
+        const rows = this.parseSqlValues(valuesStr);
+        for (const row of rows) {
+          try {
+            await handler(row, resolvedColumns);
+            processed++;
+          } catch (err) {
+            failed++;
+            errors.push((err as Error).message);
+          }
+
+          if ((processed + failed) % 100 === 0) {
+            await this.updateJobProgress(jobId, processed, failed, total);
+          }
+        }
+      }
+
+      await this.prisma.migrationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'COMPLETED',
+          processedRecords: processed,
+          failedRecords: failed,
+          totalRecords: total,
+          errors: errors.length > 0 ? errors : Prisma.JsonNull,
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`Dump import ${jobId}: ${processed} ok, ${failed} failed`);
+    } catch (err) {
+      this.logger.error(`Dump import ${jobId} failed: ${(err as Error).message}`);
+      await this.prisma.migrationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'FAILED',
+          processedRecords: processed,
+          failedRecords: failed,
+          errors: [...errors, (err as Error).message],
+          completedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  // ─── XtreamUI row handlers ────────────────────────────────────────────────
+
+  private async importXtreamUIBouquet(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'bouquet_name', 1) ?? this.getCol(row, columns, 'name', 1);
+    if (!name) return;
+
+    const sortOrderRaw = this.getCol(row, columns, 'bouquet_order', 2) ?? this.getCol(row, columns, 'sort_order', 2);
+    const sortOrder = sortOrderRaw ? parseInt(sortOrderRaw, 10) : 0;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.bouquet.upsert({
+        where: { name } as Parameters<typeof this.prisma.bouquet.upsert>[0]['where'],
+        create: { name, sortOrder },
+        update: { sortOrder },
+      });
+    } else {
+      const existing = await this.prisma.bouquet.findFirst({ where: { name }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.bouquet.create({ data: { name, sortOrder } });
+      }
+    }
+  }
+
+  private async importXtreamUICategory(
+    row: (string | null)[],
+    columns: string[] | null,
+    cache: Map<string, string>,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const originalId = this.getCol(row, columns, 'id', 0);
+    const name = this.getCol(row, columns, 'category_name', 1) ?? 'Uncategorized';
+    const catTypeRaw = this.getCol(row, columns, 'cat_type', 2) ?? '';
+    const sortOrderRaw = this.getCol(row, columns, 'cat_order', 3);
+
+    let type: 'LIVE' | 'VOD' | 'SERIES' = 'LIVE';
+    const ct = catTypeRaw.toLowerCase();
+    if (ct === 'vod' || ct === '2') type = 'VOD';
+    else if (ct === 'series' || ct === '3') type = 'SERIES';
+    else if (ct === 'live' || ct === '1') type = 'LIVE';
+
+    const sortOrder = sortOrderRaw ? parseInt(sortOrderRaw, 10) : 0;
+    const bouquetId = await this.getOrCreateDefaultBouquet();
+
+    let categoryId: string;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.category.findFirst({ where: { name, type }, select: { id: true } });
+      if (existing) {
+        await this.prisma.category.update({ where: { id: existing.id }, data: { sortOrder } });
+        categoryId = existing.id;
+      } else {
+        const created = await this.prisma.category.create({ data: { name, type, sortOrder, bouquetId }, select: { id: true } });
+        categoryId = created.id;
+      }
+    } else {
+      const existing = await this.prisma.category.findFirst({ where: { name, type }, select: { id: true } });
+      if (existing) {
+        categoryId = existing.id;
+      } else {
+        const created = await this.prisma.category.create({ data: { name, type, sortOrder, bouquetId }, select: { id: true } });
+        categoryId = created.id;
+      }
+    }
+
+    if (originalId) {
+      cache.set(originalId, categoryId);
+    }
+  }
+
+  private async importXtreamUIStream(
+    row: (string | null)[],
+    columns: string[] | null,
+    catCache: Map<string, string>,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'stream_display_name', 1) ?? 'Unknown';
+    const categoryIdRaw = this.getCol(row, columns, 'category_id', 2);
+    const sourceRaw = this.getCol(row, columns, 'stream_source', 3) ?? '';
+    const tvgLogo = this.getCol(row, columns, 'stream_icon', 4) ?? null;
+
+    // Resolve primary URL
+    let primaryUrl = sourceRaw;
+    if (sourceRaw.trimStart().startsWith('[')) {
+      try {
+        const arr = JSON.parse(sourceRaw) as string[];
+        primaryUrl = Array.isArray(arr) && arr.length > 0 ? arr[0] : sourceRaw;
+      } catch {
+        primaryUrl = sourceRaw.split(',')[0].trim();
+      }
+    } else if (sourceRaw.includes(',')) {
+      primaryUrl = sourceRaw.split(',')[0].trim();
+    }
+
+    if (!primaryUrl) return;
+
+    const categoryId = categoryIdRaw ? catCache.get(categoryIdRaw) : undefined;
+    if (!categoryId) return;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
+      if (existing) {
+        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId } });
+      } else {
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+      }
+    } else {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+      }
+    }
+  }
+
+  private async importXtreamUIUser(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const username = this.getCol(row, columns, 'username', 1);
+    if (!username) return;
+
+    let password = this.getCol(row, columns, 'password', 2) ?? '';
+    const maxConnectionsRaw = this.getCol(row, columns, 'max_connections', 3);
+    const expDateRaw = this.getCol(row, columns, 'exp_date', 4);
+    const isTrial = this.getCol(row, columns, 'is_trial', 5);
+    const enabledRaw = this.getCol(row, columns, 'enabled', 6);
+
+    // Hash password if not bcrypt
+    if (!password.startsWith('$2')) {
+      if (options.defaultPassword) {
+        password = await bcrypt.hash(options.defaultPassword, 10);
+      } else if (password) {
+        password = await bcrypt.hash(password, 10);
+      } else {
+        password = await bcrypt.hash('changeme', 10);
+      }
+    }
+
+    const maxConnections = maxConnectionsRaw ? parseInt(maxConnectionsRaw, 10) : 1;
+    const defaultExpiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const expiresAt = expDateRaw && expDateRaw !== 'NULL' && expDateRaw !== '0'
+      ? new Date(parseInt(expDateRaw, 10) * 1000)
+      : defaultExpiry;
+    const status = enabledRaw === '0' ? 'DISABLED' : 'ACTIVE';
+    const notes = isTrial === '1' ? 'trial' : null;
+
+    const data = {
+      password,
+      maxConnections,
+      expiresAt,
+      status: status as 'ACTIVE' | 'DISABLED',
+      notes,
+    };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.user.upsert({
+        where: { username },
+        create: { username, ...data },
+        update: data,
+      });
+    } else {
+      const existing = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.user.create({ data: { username, ...data } });
+      }
+    }
+  }
+
+  private async importXtreamUIReseller(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const username = this.getCol(row, columns, 'username', 1);
+    if (!username) return;
+
+    let password = this.getCol(row, columns, 'password', 2) ?? '';
+    const creditsRaw = this.getCol(row, columns, 'credits', 3);
+    const email = `${username}@imported.local`;
+    const credits = creditsRaw ? parseInt(creditsRaw, 10) : 0;
+
+    if (!password.startsWith('$2')) {
+      if (options.defaultPassword) {
+        password = await bcrypt.hash(options.defaultPassword, 10);
+      } else if (password) {
+        password = await bcrypt.hash(password, 10);
+      } else {
+        password = await bcrypt.hash('changeme', 10);
+      }
+    }
+
+    const data = { password, credits };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.reseller.upsert({
+        where: { username },
+        create: { username, email, ...data },
+        update: data,
+      });
+    } else {
+      const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.reseller.create({ data: { username, email, ...data } });
+      }
+    }
+  }
+
+  private async importXtreamUIPackage(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'package_name', 1);
+    if (!name) return;
+
+    const durationDaysRaw = this.getCol(row, columns, 'package_duration', 2);
+    const priceRaw = this.getCol(row, columns, 'package_price', 3);
+    const maxConnectionsRaw = this.getCol(row, columns, 'allowed_outputs', 4);
+
+    const durationDays = durationDaysRaw ? parseInt(durationDaysRaw, 10) : 30;
+    const price = priceRaw ? parseFloat(priceRaw) : 0;
+    const maxConnections = maxConnectionsRaw ? parseInt(maxConnectionsRaw, 10) : 1;
+    const creditCost = 1;
+
+    const data = { durationDays, price, maxConnections, creditCost };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.package.findFirst({ where: { name }, select: { id: true } });
+      if (existing) {
+        await this.prisma.package.update({ where: { id: existing.id }, data });
+      } else {
+        await this.prisma.package.create({ data: { name, ...data } });
+      }
+    } else {
+      const existing = await this.prisma.package.findFirst({ where: { name }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.package.create({ data: { name, ...data } });
+      }
+    }
+  }
+
+  // ─── XUI.ONE row handlers ─────────────────────────────────────────────────
+
+  private async importXUIOneBouquet(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'name', 1) ?? this.getCol(row, columns, 'bouquet_name', 1);
+    if (!name) return;
+
+    const sortOrderRaw = this.getCol(row, columns, 'sort_order', 2) ?? this.getCol(row, columns, 'order', 2);
+    const sortOrder = sortOrderRaw ? parseInt(sortOrderRaw, 10) : 0;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.bouquet.upsert({
+        where: { name } as Parameters<typeof this.prisma.bouquet.upsert>[0]['where'],
+        create: { name, sortOrder },
+        update: { sortOrder },
+      });
+    } else {
+      const existing = await this.prisma.bouquet.findFirst({ where: { name }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.bouquet.create({ data: { name, sortOrder } });
+      }
+    }
+  }
+
+  private async importXUIOneCategory(
+    row: (string | null)[],
+    columns: string[] | null,
+    cache: Map<string, string>,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const originalId = this.getCol(row, columns, 'id', 0);
+    const name = this.getCol(row, columns, 'category_name', 1) ?? this.getCol(row, columns, 'name', 1) ?? 'Uncategorized';
+    const catTypeRaw = this.getCol(row, columns, 'category_type', 2) ?? this.getCol(row, columns, 'type', 2) ?? '';
+    const sortOrderRaw = this.getCol(row, columns, 'sort_order', 3) ?? this.getCol(row, columns, 'order', 3);
+
+    let type: 'LIVE' | 'VOD' | 'SERIES' = 'LIVE';
+    const ct = catTypeRaw.toLowerCase();
+    if (ct === 'vod' || ct === '2') type = 'VOD';
+    else if (ct === 'series' || ct === '3') type = 'SERIES';
+    else if (ct === 'live' || ct === '1') type = 'LIVE';
+
+    const sortOrder = sortOrderRaw ? parseInt(sortOrderRaw, 10) : 0;
+    const bouquetId = await this.getOrCreateDefaultBouquet();
+
+    let categoryId: string;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.category.findFirst({ where: { name, type }, select: { id: true } });
+      if (existing) {
+        await this.prisma.category.update({ where: { id: existing.id }, data: { sortOrder } });
+        categoryId = existing.id;
+      } else {
+        const created = await this.prisma.category.create({ data: { name, type, sortOrder, bouquetId }, select: { id: true } });
+        categoryId = created.id;
+      }
+    } else {
+      const existing = await this.prisma.category.findFirst({ where: { name, type }, select: { id: true } });
+      if (existing) {
+        categoryId = existing.id;
+      } else {
+        const created = await this.prisma.category.create({ data: { name, type, sortOrder, bouquetId }, select: { id: true } });
+        categoryId = created.id;
+      }
+    }
+
+    if (originalId) {
+      cache.set(originalId, categoryId);
+    }
+  }
+
+  private async importXUIOneStream(
+    row: (string | null)[],
+    columns: string[] | null,
+    catCache: Map<string, string>,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'stream_display_name', 1)
+      ?? this.getCol(row, columns, 'name', 1)
+      ?? 'Unknown';
+    const categoryIdRaw = this.getCol(row, columns, 'category_id', 2);
+    const sourceRaw = this.getCol(row, columns, 'stream_source', 3)
+      ?? this.getCol(row, columns, 'url', 3)
+      ?? '';
+    const tvgLogo = this.getCol(row, columns, 'stream_icon', 4)
+      ?? this.getCol(row, columns, 'logo', 4)
+      ?? null;
+
+    let primaryUrl = sourceRaw;
+    if (sourceRaw.trimStart().startsWith('[')) {
+      try {
+        const arr = JSON.parse(sourceRaw) as string[];
+        primaryUrl = Array.isArray(arr) && arr.length > 0 ? arr[0] : sourceRaw;
+      } catch {
+        primaryUrl = sourceRaw.split(',')[0].trim();
+      }
+    } else if (sourceRaw.includes(',')) {
+      primaryUrl = sourceRaw.split(',')[0].trim();
+    }
+
+    if (!primaryUrl) return;
+
+    const categoryId = categoryIdRaw ? catCache.get(categoryIdRaw) : undefined;
+    if (!categoryId) return;
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
+      if (existing) {
+        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId } });
+      } else {
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+      }
+    } else {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+      }
+    }
+  }
+
+  private async importXUIOneLine(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const username = this.getCol(row, columns, 'username', 1);
+    if (!username) return;
+
+    let password = this.getCol(row, columns, 'password', 2) ?? '';
+    const maxConnectionsRaw = this.getCol(row, columns, 'max_connections', 3);
+    const expDateRaw = this.getCol(row, columns, 'exp_date', 4);
+    const enabledRaw = this.getCol(row, columns, 'enabled', 5);
+
+    if (!password.startsWith('$2')) {
+      if (options.defaultPassword) {
+        password = await bcrypt.hash(options.defaultPassword, 10);
+      } else if (password) {
+        password = await bcrypt.hash(password, 10);
+      } else {
+        password = await bcrypt.hash('changeme', 10);
+      }
+    }
+
+    const maxConnections = maxConnectionsRaw ? parseInt(maxConnectionsRaw, 10) : 1;
+    const defaultExpiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const expiresAt = expDateRaw && expDateRaw !== 'NULL' && expDateRaw !== '0'
+      ? new Date(parseInt(expDateRaw, 10) * 1000)
+      : defaultExpiry;
+    const status = enabledRaw === '0' ? 'DISABLED' : 'ACTIVE';
+
+    const data = {
+      password,
+      maxConnections,
+      expiresAt,
+      status: status as 'ACTIVE' | 'DISABLED',
+    };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.user.upsert({
+        where: { username },
+        create: { username, ...data },
+        update: data,
+      });
+    } else {
+      const existing = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.user.create({ data: { username, ...data } });
+      }
+    }
+  }
+
+  private async importXUIOneReseller(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const username = this.getCol(row, columns, 'username', 1);
+    if (!username) return;
+
+    let password = this.getCol(row, columns, 'password', 2) ?? '';
+    const creditsRaw = this.getCol(row, columns, 'credits', 3);
+    const emailRaw = this.getCol(row, columns, 'email', 4);
+    const email = emailRaw && emailRaw !== 'NULL' ? emailRaw : `${username}@imported.local`;
+    const credits = creditsRaw ? parseInt(creditsRaw, 10) : 0;
+
+    if (!password.startsWith('$2')) {
+      if (options.defaultPassword) {
+        password = await bcrypt.hash(options.defaultPassword, 10);
+      } else if (password) {
+        password = await bcrypt.hash(password, 10);
+      } else {
+        password = await bcrypt.hash('changeme', 10);
+      }
+    }
+
+    const data = { password, credits };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      await this.prisma.reseller.upsert({
+        where: { username },
+        create: { username, email, ...data },
+        update: data,
+      });
+    } else {
+      const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.reseller.create({ data: { username, email, ...data } });
+      }
+    }
+  }
+
+  private async importXUIOnePackage(
+    row: (string | null)[],
+    columns: string[] | null,
+    options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'package_name', 1) ?? this.getCol(row, columns, 'name', 1);
+    if (!name) return;
+
+    const durationDaysRaw = this.getCol(row, columns, 'package_duration', 2) ?? this.getCol(row, columns, 'duration_days', 2);
+    const priceRaw = this.getCol(row, columns, 'price', 3) ?? this.getCol(row, columns, 'package_price', 3);
+    const maxConnectionsRaw = this.getCol(row, columns, 'max_connections', 4) ?? this.getCol(row, columns, 'allowed_outputs', 4);
+
+    const durationDays = durationDaysRaw ? parseInt(durationDaysRaw, 10) : 30;
+    const price = priceRaw ? parseFloat(priceRaw) : 0;
+    const maxConnections = maxConnectionsRaw ? parseInt(maxConnectionsRaw, 10) : 1;
+    const creditCost = 1;
+
+    const data = { durationDays, price, maxConnections, creditCost };
+
+    if (options.conflictMode === 'OVERWRITE') {
+      const existing = await this.prisma.package.findFirst({ where: { name }, select: { id: true } });
+      if (existing) {
+        await this.prisma.package.update({ where: { id: existing.id }, data });
+      } else {
+        await this.prisma.package.create({ data: { name, ...data } });
+      }
+    } else {
+      const existing = await this.prisma.package.findFirst({ where: { name }, select: { id: true } });
+      if (!existing) {
+        await this.prisma.package.create({ data: { name, ...data } });
+      }
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
