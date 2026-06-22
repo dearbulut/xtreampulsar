@@ -357,7 +357,7 @@ export class MigrationService {
 
     for (const stream of streams) {
       if (!stream.category) continue;
-      const inferredType = this.inferStreamType(stream.category.name, stream.primaryUrl);
+      const inferredType = this.inferStreamType(stream.category.name, stream.primaryUrl, stream.name);
       if (inferredType !== stream.category.type) {
         toFix.push({
           id: stream.id,
@@ -1348,22 +1348,39 @@ export class MigrationService {
     return bouquet.id;
   }
 
-  private inferStreamType(groupTitle: string, url: string): 'LIVE' | 'VOD' | 'SERIES' {
-    const gt = groupTitle.toUpperCase();
-
-    const vodWords = ['VOD', 'MOVIE', 'FILM', 'MOVIES'];
-    const seriesWords = ['SERİ', 'SERIES', 'SERIE', 'SHOW'];
-
-    if (vodWords.some((w) => gt.includes(w))) return 'VOD';
-    if (seriesWords.some((w) => gt.includes(w))) return 'SERIES';
-
+  private inferStreamType(groupTitle: string, url: string, name?: string): 'LIVE' | 'VOD' | 'SERIES' {
+    // ── 1. URL is the strongest signal ──────────────────────────────────────
     try {
+      const urlLower = url.toLowerCase();
       const urlPath = new URL(url).pathname.toLowerCase();
+
       if (/\/(movie|vod)\//.test(urlPath)) return 'VOD';
       if (/\/series\//.test(urlPath)) return 'SERIES';
+      if (/\.(mp4|mkv|avi)(\?|$)/.test(urlLower)) return 'VOD';
+      if (/\.m3u8(\?|$)/.test(urlLower)) return 'LIVE';
+      if (/\/live\//.test(urlPath)) return 'LIVE';
     } catch {
-      // malformed URL — fall through to LIVE
+      // malformed URL — fall through
     }
+
+    // ── 2. Stream name: season-episode pattern → SERIES ───────────────────
+    if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
+
+    // ── 3. Group-title analysis (with 24/7 live-channel guard) ────────────
+    const gt = groupTitle.toUpperCase();
+    const is247 = gt.includes('24/7') || gt.includes('24H');
+    const isChannel = gt.includes('KANAL') || gt.includes('CHANNEL');
+
+    // Explicit live signals override everything else
+    if (is247 || isChannel) return 'LIVE';
+
+    // Exact match on common standalone genre labels
+    const gtTrimmed = gt.trim();
+    if (gtTrimmed === 'VOD' || gtTrimmed === 'MOVIES' || gtTrimmed === 'FILMS') return 'VOD';
+
+    // Substring matches — only when live guards are absent
+    if (/\b(SERIE|SERIES|DİZİ)\b/.test(gt)) return 'SERIES';
+    if (/\b(MOVIE|FILM|FİLM|MOVIES|FILMS)\b/.test(gt)) return 'VOD';
 
     return 'LIVE';
   }
@@ -1396,7 +1413,7 @@ export class MigrationService {
             groupTitle,
             tvgId: meta.tvgId ?? '',
             url: line,
-            streamType: this.inferStreamType(groupTitle, line),
+            streamType: this.inferStreamType(groupTitle, line, meta.name),
           });
           meta = {};
         }
