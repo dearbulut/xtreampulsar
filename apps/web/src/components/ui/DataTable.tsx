@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,35 @@ interface Props<T> {
   emptyDescription?: string;
   emptyMessage?: string;
   stickyHeader?: boolean;
+}
+
+/** Returns the page numbers (or '...') to render in the pagination bar. */
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 1) return [1];
+
+  const pageSet = new Set<number>();
+  pageSet.add(1);
+  pageSet.add(total);
+  for (let i = current - 2; i <= current + 2; i++) {
+    if (i >= 1 && i <= total) pageSet.add(i);
+  }
+
+  const sorted = [...pageSet].sort((a, b) => a - b);
+  const result: (number | '...')[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0) {
+      const gap = sorted[i] - sorted[i - 1];
+      if (gap === 2) {
+        result.push(sorted[i] - 1); // insert the single missing page instead of '...'
+      } else if (gap > 2) {
+        result.push('...');
+      }
+    }
+    result.push(sorted[i]);
+  }
+
+  return result;
 }
 
 export function DataTable<T>({
@@ -62,6 +91,8 @@ export function DataTable<T>({
   if (!data.length) {
     return <EmptyState title={emptyMessage ?? emptyTitle} description={emptyDescription} />;
   }
+
+  const pageNumbers = getPageNumbers(page, totalPages);
 
   return (
     <div className="flex flex-col">
@@ -120,44 +151,87 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {totalPages > 1 && onPageChange && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface">
-          <div className="text-xs text-muted">
-            {total !== undefined && `Toplam ${total} kayıt`}
+      {onPageChange && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface flex-wrap gap-2">
+          {/* Left: record count + page info */}
+          <div className="flex items-center gap-3 text-xs text-muted">
+            {total !== undefined && <span>Toplam {total.toLocaleString()} kayıt</span>}
+            {totalPages > 1 && (
+              <span className="font-medium" style={{ color: 'var(--color-fg)' }}>
+                Sayfa {page} / {totalPages}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1}
-              className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const p = i + 1;
-              return (
-                <button
-                  key={p}
-                  onClick={() => onPageChange(p)}
-                  className={cn(
-                    'w-7 h-7 rounded-lg text-xs transition-colors',
-                    page === p
-                      ? 'bg-primary text-white font-medium'
-                      : 'text-muted hover:text-fg hover:bg-surface-2',
-                  )}
-                >
-                  {p}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages}
-              className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+
+          {/* Right: pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-0.5">
+              {/* İlk */}
+              <button
+                onClick={() => onPageChange(1)}
+                disabled={page <= 1}
+                title="İlk sayfa"
+                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+
+              {/* Önceki */}
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+                title="Önceki sayfa"
+                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page numbers with ellipsis */}
+              {pageNumbers.map((p, i) =>
+                p === '...' ? (
+                  <span
+                    key={`ellipsis-${i}`}
+                    className="px-1 text-xs text-muted select-none"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => onPageChange(p)}
+                    className={cn(
+                      'min-w-[28px] h-7 px-1.5 rounded-lg text-xs transition-colors',
+                      page === p
+                        ? 'bg-primary text-white font-medium'
+                        : 'text-muted hover:text-fg hover:bg-surface-2',
+                    )}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+
+              {/* Sonraki */}
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+                title="Sonraki sayfa"
+                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Son */}
+              <button
+                onClick={() => onPageChange(totalPages)}
+                disabled={page >= totalPages}
+                title="Son sayfa"
+                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

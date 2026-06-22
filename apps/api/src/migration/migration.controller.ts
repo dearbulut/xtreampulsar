@@ -57,4 +57,9 @@ export class MigrationController {
   importXtream(@Body() dto: ImportXtreamDto) {
     return this.migrationService.importXtream(dto);
   }
+
+  @Post('fix-stream-types')
+  fixStreamTypes(@Body('dryRun') dryRun?: boolean) {
+    return this.migrationService.fixStreamTypes(dryRun ?? false);
+  }
 }

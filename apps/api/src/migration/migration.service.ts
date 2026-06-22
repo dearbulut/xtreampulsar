@@ -12,6 +12,7 @@ interface M3uEntry {
   groupTitle: string;
   tvgId: string;
   url: string;
+  streamType: 'LIVE' | 'VOD' | 'SERIES';
 }
 
 @Injectable()
@@ -91,33 +92,34 @@ export class MigrationService {
     let processed = 0;
     let failed = 0;
     const errors: string[] = [];
-    const categoryType = (dto.defaultType ?? 'LIVE') as 'LIVE' | 'VOD' | 'SERIES';
 
+    // categoryMap key = `${name}::${type}` to support same name across types
     const categoryMap = new Map<string, string>();
 
-    const ensureCategory = async (name: string): Promise<string> => {
-      if (categoryMap.has(name)) return categoryMap.get(name)!;
+    const ensureCategory = async (name: string, type: 'LIVE' | 'VOD' | 'SERIES'): Promise<string> => {
+      const key = `${name}::${type}`;
+      if (categoryMap.has(key)) return categoryMap.get(key)!;
 
       let cat = await this.prisma.category.findFirst({
-        where: { name, type: categoryType },
+        where: { name, type },
         select: { id: true },
       });
 
       if (!cat) {
         const bouquetId = dto.defaultBouquetId ?? await this.getOrCreateDefaultBouquet();
         cat = await this.prisma.category.create({
-          data: { name, type: categoryType, bouquetId },
+          data: { name, type, bouquetId },
           select: { id: true },
         });
       }
 
-      categoryMap.set(name, cat.id);
+      categoryMap.set(key, cat.id);
       return cat.id;
     };
 
     for (const entry of entries) {
       try {
-        const categoryId = await ensureCategory(entry.groupTitle || 'Uncategorized');
+        const categoryId = await ensureCategory(entry.groupTitle || 'Uncategorized', entry.streamType);
         const existing = await this.prisma.stream.findFirst({
           where: { primaryUrl: entry.url, categoryId },
           select: { id: true },
@@ -299,6 +301,81 @@ export class MigrationService {
     return count;
   }
 
+  // ─── Fix stream types ─────────────────────────────────────────────────────
+
+  async fixStreamTypes(dryRun: boolean): Promise<{
+    checked: number;
+    changed: number;
+    details: Array<{ id: string; name: string; oldType: string; newType: string }>;
+  }> {
+    const streams = await this.prisma.stream.findMany({
+      select: {
+        id: true,
+        name: true,
+        primaryUrl: true,
+        categoryId: true,
+        category: { select: { id: true, name: true, type: true, bouquetId: true } },
+      },
+    });
+
+    const toFix: Array<{ id: string; name: string; oldType: string; newType: string; categoryName: string; bouquetId: string }> = [];
+
+    for (const stream of streams) {
+      if (!stream.category) continue;
+      const inferredType = this.inferStreamType(stream.category.name, stream.primaryUrl);
+      if (inferredType !== stream.category.type) {
+        toFix.push({
+          id: stream.id,
+          name: stream.name,
+          oldType: stream.category.type,
+          newType: inferredType,
+          categoryName: stream.category.name,
+          bouquetId: stream.category.bouquetId,
+        });
+      }
+    }
+
+    if (!dryRun && toFix.length > 0) {
+      const categoryCache = new Map<string, string>(); // `${name}::${type}` → id
+
+      for (const item of toFix) {
+        const cacheKey = `${item.categoryName}::${item.newType}`;
+        let newCategoryId = categoryCache.get(cacheKey);
+
+        if (!newCategoryId) {
+          let cat = await this.prisma.category.findFirst({
+            where: { name: item.categoryName, type: item.newType as 'LIVE' | 'VOD' | 'SERIES' },
+            select: { id: true },
+          });
+
+          if (!cat) {
+            const bouquetId = item.bouquetId ?? await this.getOrCreateDefaultBouquet();
+            cat = await this.prisma.category.create({
+              data: { name: item.categoryName, type: item.newType as 'LIVE' | 'VOD' | 'SERIES', bouquetId },
+              select: { id: true },
+            });
+          }
+
+          newCategoryId = cat.id;
+          categoryCache.set(cacheKey, newCategoryId);
+        }
+
+        await this.prisma.stream.update({
+          where: { id: item.id },
+          data: { categoryId: newCategoryId },
+        });
+      }
+
+      this.logger.log(`fixStreamTypes: moved ${toFix.length} streams to correct type categories`);
+    }
+
+    return {
+      checked: streams.length,
+      changed: toFix.length,
+      details: toFix.map(({ id, name, oldType, newType }) => ({ id, name, oldType, newType })),
+    };
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private async getOrCreateDefaultBouquet(): Promise<string> {
@@ -315,6 +392,26 @@ export class MigrationService {
     }
 
     return bouquet.id;
+  }
+
+  private inferStreamType(groupTitle: string, url: string): 'LIVE' | 'VOD' | 'SERIES' {
+    const gt = groupTitle.toUpperCase();
+
+    const vodWords = ['VOD', 'MOVIE', 'FILM', 'MOVIES'];
+    const seriesWords = ['SERİ', 'SERIES', 'SERIE', 'SHOW'];
+
+    if (vodWords.some((w) => gt.includes(w))) return 'VOD';
+    if (seriesWords.some((w) => gt.includes(w))) return 'SERIES';
+
+    try {
+      const urlPath = new URL(url).pathname.toLowerCase();
+      if (/\/(movie|vod)\//.test(urlPath)) return 'VOD';
+      if (/\/series\//.test(urlPath)) return 'SERIES';
+    } catch {
+      // malformed URL — fall through to LIVE
+    }
+
+    return 'LIVE';
   }
 
   private parseM3uLines(lines: string[]): M3uEntry[] {
@@ -338,12 +435,14 @@ export class MigrationService {
         if (tvgIdMatch) meta.tvgId = tvgIdMatch[1];
       } else if (line && !line.startsWith('#')) {
         if (meta.name) {
+          const groupTitle = meta.groupTitle ?? '';
           entries.push({
-            name: meta.name ?? '',
+            name: meta.name,
             logo: meta.logo ?? '',
-            groupTitle: meta.groupTitle ?? '',
+            groupTitle,
             tvgId: meta.tvgId ?? '',
             url: line,
+            streamType: this.inferStreamType(groupTitle, line),
           });
           meta = {};
         }
