@@ -647,3 +647,40 @@ model ApiKey {
   @@index([userId])
   @@map("api_keys")
 }
+
+// ─── WhiteLabel ───────────────────────────────────────────────────────────────
+
+model WhiteLabel {
+  id             String   @id @default(cuid())
+  panelName      String
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String   @default("#6366f1")
+  secondaryColor String   @default("#8b5cf6")
+  customDomain   String?  @unique
+  customCss      String?
+  footerText     String?
+  supportEmail   String?
+  supportUrl     String?
+  isActive       Boolean  @default(true)
+  licenseKey     String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("white_labels")
+}
+
+// ─── BandwidthLog ─────────────────────────────────────────────────────────────
+
+model BandwidthLog {
+  id       String   @id @default(cuid())
+  streamId String?
+  serverId String?
+  bytesIn  BigInt   @default(0)
+  bytesOut BigInt   @default(0)
+  hour     DateTime
+
+  @@unique([streamId, serverId, hour])
+  @@index([hour])
+  @@map("bandwidth_logs")
+}

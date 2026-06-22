@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Delete, Param, Query, HttpCode, HttpStatus, UseGuards, Post } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -62,5 +62,20 @@ export class AnalyticsController {
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date(end.getTime() - 180 * 24 * 60 * 60 * 1000);
     return this.analyticsService.getRevenueReport(start, end, resellerId);
+  }
+
+  @Get('bandwidth/stream/:id')
+  getBandwidthByStream(@Param('id') id: string, @Query('hours') hours?: string) {
+    return this.analyticsService.getBandwidthByStream(id, hours ? parseInt(hours, 10) : 24);
+  }
+
+  @Get('bandwidth/user/:id')
+  getBandwidthByUser(@Param('id') id: string, @Query('hours') hours?: string) {
+    return this.analyticsService.getBandwidthByUser(id, hours ? parseInt(hours, 10) : 24);
+  }
+
+  @Get('bandwidth/today')
+  getTodayBandwidthTotal() {
+    return this.analyticsService.getTodayBandwidthTotal();
   }
 }

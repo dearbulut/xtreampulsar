@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell, Key, Copy, Check } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell, Key, Copy, Check, Palette, Image as ImageIcon } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, formatBytes } from '@/hooks/useBackup';
 import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
+import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,7 @@ const SETTINGS_TABS: TabItem[] = [
   { id: 'security', label: 'Güvenlik', icon: Shield },
   { id: 'database', label: 'Veritabanı', icon: Database },
   { id: 'api', label: 'API', icon: Key },
+  { id: 'white-label', label: 'White-Label', icon: Palette },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -565,6 +567,9 @@ export function SettingsPage() {
 
         {/* === API KEYS === */}
         {activeTab === 'api' && <ApiKeyTab />}
+
+        {/* === WHITE-LABEL === */}
+        {activeTab === 'white-label' && <WhiteLabelTab />}
       </div>
     </div>
   );
@@ -685,6 +690,126 @@ function ApiKeyTab() {
                 {createKey.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── White-Label Tab ──────────────────────────────────────────────────────────
+
+function WhiteLabelTab() {
+  const { data: config } = useWhiteLabel();
+  const updateWl = useUpdateWhiteLabel();
+  const uploadLogo = useUploadLogo();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [form, setForm] = useState({
+    panelName: '',
+    primaryColor: '#6366f1',
+    secondaryColor: '#8b5cf6',
+    customDomain: '',
+    footerText: '',
+    supportEmail: '',
+    supportUrl: '',
+    customCss: '',
+  });
+  const [formInit, setFormInit] = useState(false);
+
+  if (config && !formInit) {
+    setForm({
+      panelName: config.panelName ?? '',
+      primaryColor: config.primaryColor ?? '#6366f1',
+      secondaryColor: config.secondaryColor ?? '#8b5cf6',
+      customDomain: config.customDomain ?? '',
+      footerText: config.footerText ?? '',
+      supportEmail: config.supportEmail ?? '',
+      supportUrl: config.supportUrl ?? '',
+      customCss: config.customCss ?? '',
+    });
+    setFormInit(true);
+  }
+
+  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [k]: e.target.value }));
+
+  return (
+    <>
+      <SectionTitle>White-Label Ayarları</SectionTitle>
+
+      <div className="mb-6">
+        <label className="label mb-2">Logo</label>
+        <div
+          className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+          onClick={() => fileRef.current?.click()}
+          onDrop={(e) => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) uploadLogo.mutate(file); }}
+          onDragOver={(e) => e.preventDefault()}
+        >
+          {config?.logoUrl ? (
+            <img src={config.logoUrl} alt="logo" className="h-12 mx-auto mb-2 object-contain" />
+          ) : (
+            <ImageIcon className="w-8 h-8 text-muted mx-auto mb-2" />
+          )}
+          <p className="text-sm text-muted">Sürükle & bırak veya tıkla (max 2MB)</p>
+          {uploadLogo.isPending && <p className="text-xs text-primary mt-1">Yükleniyor…</p>}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadLogo.mutate(file); }} />
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label className="label">Panel Adı</label>
+            <input className="input" value={form.panelName} onChange={f('panelName')} placeholder="XtreamPulsar" /></div>
+          <div><label className="label">Özel Domain</label>
+            <input className="input" value={form.customDomain} onChange={f('customDomain')} placeholder="panel.sirketniz.com" /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="label">Birincil Renk</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={form.primaryColor} onChange={f('primaryColor')} className="h-9 w-12 rounded cursor-pointer border border-border bg-transparent" />
+              <input className="input flex-1 font-mono" value={form.primaryColor} onChange={f('primaryColor')} />
+            </div></div>
+          <div><label className="label">İkincil Renk</label>
+            <div className="flex items-center gap-2">
+              <input type="color" value={form.secondaryColor} onChange={f('secondaryColor')} className="h-9 w-12 rounded cursor-pointer border border-border bg-transparent" />
+              <input className="input flex-1 font-mono" value={form.secondaryColor} onChange={f('secondaryColor')} />
+            </div></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label className="label">Destek E-posta</label>
+            <input className="input" value={form.supportEmail} onChange={f('supportEmail')} /></div>
+          <div><label className="label">Destek URL</label>
+            <input className="input" value={form.supportUrl} onChange={f('supportUrl')} /></div>
+        </div>
+        <div><label className="label">Footer Metni</label>
+          <input className="input" value={form.footerText} onChange={f('footerText')} /></div>
+        <div><label className="label">Özel CSS</label>
+          <textarea className="input font-mono text-xs resize-y" rows={4} value={form.customCss} onChange={f('customCss')}
+            placeholder=":root { --color-primary: #6366f1; }" /></div>
+
+        <div className="flex gap-2 pt-2">
+          <button className="btn-ghost" onClick={() => setShowPreview(true)}>Önizle</button>
+          <button className="btn-primary flex items-center gap-2" disabled={updateWl.isPending} onClick={() => updateWl.mutate(form)}>
+            <Save className="w-4 h-4" />
+            {updateWl.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowPreview(false)}>
+          <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-4" style={{ color: form.primaryColor }}>{form.panelName || 'Panel Adı'}</h3>
+            <div className="space-y-2">
+              <div className="h-8 rounded-lg" style={{ background: form.primaryColor, opacity: 0.8 }} />
+              <div className="h-4 rounded" style={{ background: form.secondaryColor, opacity: 0.5, width: '60%' }} />
+              <div className="h-4 rounded bg-border w-3/4" />
+            </div>
+            {config?.logoUrl && <img src={config.logoUrl} alt="preview" className="h-10 object-contain mt-4" />}
+            <p className="text-xs text-muted mt-4 text-center">{form.footerText}</p>
+            <button className="mt-4 text-xs text-muted hover:text-fg" onClick={() => setShowPreview(false)}>Kapat</button>
           </div>
         </div>
       )}

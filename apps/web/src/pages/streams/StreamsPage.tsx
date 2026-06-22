@@ -13,6 +13,7 @@ import {
   Tv,
   Play,
   Microscope,
+  Copy,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -300,6 +301,16 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               api.post(`/streams/${r.id}/analyze`)
                 .then(() => toast.success(`${r.name}: analiz başlatıldı`))
                 .catch(() => toast.error('Analiz başlatılamadı'));
+            }}
+          />
+          <ActionBtn
+            icon={Copy}
+            title="Klonla"
+            color="text-sky-400"
+            onClick={() => {
+              api.post<{ success: boolean; data: { name: string } }>(`/streams/${r.id}/clone`)
+                .then((res) => toast.success(`Klonlandı → ${res.data.data.name}`))
+                .catch(() => toast.error('Klonlama başarısız'));
             }}
           />
         </div>

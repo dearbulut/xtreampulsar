@@ -125,4 +125,16 @@ export class UserController {
   generateQr(@Param('id') id: string) {
     return this.userService.generateQrCode(id);
   }
+
+  @Post('bulk-renew')
+  @Roles('ADMIN', 'RESELLER')
+  bulkRenew(@Body() body: { userIds: string[]; packageId: string }) {
+    return this.userService.bulkRenew(body.userIds, body.packageId);
+  }
+
+  @Get('expiring-count')
+  @Roles('ADMIN')
+  getExpiringCount(@Query('days') days?: string) {
+    return this.userService.countExpiringSoon(days ? parseInt(days, 10) : 7);
+  }
 }

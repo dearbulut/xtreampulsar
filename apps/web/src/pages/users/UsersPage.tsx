@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -10,6 +10,9 @@ import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser,
 } from '@/hooks/useUsers';
+import { useBulkRenew } from '@/hooks/useBulkRenew';
+import { usePackages } from '@/hooks/usePackages';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useBouquets } from '@/hooks/useBouquets';
@@ -32,9 +35,16 @@ export function UsersPage() {
   const [createForm, setCreateForm] = useState({
     username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[],
   });
+  // Bulk renew state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkRenew, setShowBulkRenew] = useState(false);
+  const [bulkPackageId, setBulkPackageId] = useState('');
 
   const { data, isLoading } = useUsers({ page, limit: 25, search, status });
   const { data: bouquets = [] } = useBouquets();
+  const { data: packages = [] } = usePackages();
+  const qc = useQueryClient();
+  const bulkRenew = useBulkRenew();
   const createUser = useCreateUser();
   const extendUser = useExtendUser();
   const banUser = useBanUser();
@@ -49,6 +59,18 @@ export function UsersPage() {
   };
 
   const columns: Column<User>[] = [
+    {
+      key: 'select' as keyof User,
+      header: '',
+      render: (r) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedIds((prev) => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; }); }}
+          className="text-muted hover:text-primary"
+        >
+          {selectedIds.has(r.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+        </button>
+      ),
+    },
     {
       key: 'username',
       header: 'Kullanıcı',
@@ -155,6 +177,15 @@ export function UsersPage() {
         description={`${data?.total ?? 0} kullanıcı`}
         actions={
           <>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={() => setShowBulkRenew(true)}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {selectedIds.size} Seçili Yenile
+              </button>
+            )}
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Kullanıcı Ekle</span>
@@ -299,6 +330,43 @@ export function UsersPage() {
               className="btn-primary"
             >
               {extendUser.isPending ? 'Uzatılıyor…' : 'Uzat'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Renew Modal */}
+      <Modal open={showBulkRenew} onClose={() => setShowBulkRenew(false)} title={`${selectedIds.size} Kullanıcıyı Yenile`} size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="label">Paket Seç</label>
+            <select className="input" value={bulkPackageId} onChange={(e) => setBulkPackageId(e.target.value)}>
+              <option value="">— Paket seçin —</option>
+              {packages.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.durationDays} gün, {p.creditCost} kredi)</option>
+              ))}
+            </select>
+          </div>
+          {bulkPackageId && (
+            <p className="text-xs text-muted">
+              Seçilen {selectedIds.size} kullanıcı {packages.find((p) => p.id === bulkPackageId)?.durationDays ?? 0} gün uzatılacak.
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <button className="btn-ghost" onClick={() => setShowBulkRenew(false)}>İptal</button>
+            <button
+              className="btn-primary flex items-center gap-2"
+              disabled={!bulkPackageId || bulkRenew.isPending}
+              onClick={async () => {
+                if (!bulkPackageId) return;
+                await bulkRenew.mutateAsync({ userIds: [...selectedIds], packageId: bulkPackageId });
+                setShowBulkRenew(false);
+                setSelectedIds(new Set());
+                void qc.invalidateQueries({ queryKey: ['users'] });
+              }}
+            >
+              <RefreshCw className="w-4 h-4" />
+              {bulkRenew.isPending ? 'Yenileniyor…' : 'Yenile'}
             </button>
           </div>
         </div>

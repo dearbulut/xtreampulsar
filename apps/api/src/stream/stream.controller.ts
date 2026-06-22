@@ -130,4 +130,10 @@ export class StreamController {
   analyzeStream(@Param('id') id: string) {
     return this.qualityService.analyzeStream(id);
   }
+
+  @Post(':id/clone')
+  @Roles('ADMIN')
+  cloneStream(@Param('id') id: string, @Body() body?: { name?: string; primaryUrl?: string }) {
+    return this.streamService.cloneStream(id, body);
+  }
 }

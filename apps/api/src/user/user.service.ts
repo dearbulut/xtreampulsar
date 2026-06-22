@@ -2,7 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import * as bcrypt from 'bcryptjs';
 import * as qrcode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +15,8 @@ import { QueryUserDto } from './dto/query-user.dto';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     private readonly userRepo: UserRepository,
     private readonly prisma: PrismaService,
@@ -284,6 +288,149 @@ export class UserService {
 
     const qrCodeImage = await qrcode.toDataURL(payload);
     return { qrCodeImage, serverUrl: baseUrl, username: user.username };
+  }
+
+  // ─── Subscription Automation ──────────────────────────────────────────────
+
+  @Cron('0 8 * * *')
+  async dailyExpiryCheck(): Promise<void> {
+    this.logger.log('Running daily expiry check');
+    const now = new Date();
+
+    // Expire users whose time is up
+    const expired = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        status: 'ACTIVE',
+        expiresAt: { lt: now },
+      },
+      select: { id: true, username: true, resellerId: true },
+    });
+
+    for (const u of expired) {
+      await this.prisma.user.update({ where: { id: u.id }, data: { status: 'EXPIRED' } });
+      await this.userRepo.closeAllUserConnections(u.id).catch(() => {});
+      await this.logNotification(u.id, 'EXPIRED', `${u.username} aboneliği sona erdi`);
+    }
+    if (expired.length > 0) this.logger.log(`Expired ${expired.length} users`);
+
+    // Send expiry warning emails
+    const WARN_DAYS = [7, 3, 1];
+    for (const days of WARN_DAYS) {
+      const threshold = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      const dayStart = new Date(threshold); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(threshold); dayEnd.setHours(23, 59, 59, 999);
+
+      const expiring = await this.prisma.user.findMany({
+        where: {
+          deletedAt: null,
+          status: 'ACTIVE',
+          expiresAt: { gte: dayStart, lte: dayEnd },
+        },
+        include: { reseller: { select: { email: true, username: true } } },
+      });
+
+      for (const u of expiring) {
+        // Dedup: only one notification per user per day per type
+        const already = await this.prisma.notificationLog.findFirst({
+          where: {
+            type: `EXPIRY_${days}D`,
+            recipient: u.id,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+        });
+        if (already) continue;
+
+        await this.sendExpiryWarning(u, days);
+        await this.logNotification(u.id, `EXPIRY_${days}D`, `${u.username} ${days} gün içinde sona eriyor`);
+      }
+    }
+  }
+
+  private async sendExpiryWarning(user: { id: string; username: string; reseller?: { email: string; username: string } | null }, days: number) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || !user.reseller?.email) return;
+    const urgency = days === 1 ? '🚨 SON UYARI' : days === 3 ? '⚠️ Acil' : '📅 Bilgi';
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'XtreamPulsar <noreply@xtreampulsar.io>',
+          to: [user.reseller.email],
+          subject: `${urgency}: ${user.username} kullanıcısı ${days} gün içinde sona eriyor`,
+          html: `<p>Merhaba ${user.reseller.username},</p><p><strong>${user.username}</strong> kullanıcısının aboneliği <strong>${days} gün içinde</strong> sona erecek.</p><p>Kullanıcıyı yenilemek için panele giriş yapın.</p>`,
+        }),
+      });
+    } catch (err) {
+      this.logger.error(`Expiry warning email failed: ${(err as Error).message}`);
+    }
+  }
+
+  private async logNotification(recipient: string, type: string, subject: string) {
+    await this.prisma.notificationLog.create({
+      data: { type, recipient, subject, status: 'SENT' },
+    }).catch(() => {});
+  }
+
+  async bulkRenew(userIds: string[], packageId: string): Promise<{ renewed: number; failed: number; errors: string[] }> {
+    const pkg = await this.prisma.package.findUnique({ where: { id: packageId } });
+    if (!pkg) throw new NotFoundException(`Package ${packageId} not found`);
+
+    let renewed = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const userId of userIds) {
+      try {
+        const user = await this.prisma.user.findFirst({
+          where: { id: userId, deletedAt: null },
+          include: { reseller: { select: { id: true, credits: true } } },
+        });
+        if (!user) { failed++; errors.push(`${userId}: not found`); continue; }
+
+        if (user.reseller && user.reseller.credits < pkg.creditCost) {
+          failed++;
+          errors.push(`${user.username}: insufficient credits`);
+          continue;
+        }
+
+        const base = user.expiresAt > new Date() ? user.expiresAt : new Date();
+        const newExpiry = new Date(base.getTime() + pkg.durationDays * 24 * 60 * 60 * 1000);
+
+        await this.prisma.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: userId },
+            data: { expiresAt: newExpiry, status: 'ACTIVE', maxConnections: pkg.maxConnections },
+          });
+          if (user.reseller) {
+            await tx.reseller.update({
+              where: { id: user.reseller!.id },
+              data: { credits: { decrement: pkg.creditCost } },
+            });
+          }
+        });
+        renewed++;
+      } catch (err) {
+        failed++;
+        errors.push(`${userId}: ${(err as Error).message}`);
+      }
+    }
+
+    this.logger.log(`Bulk renew: ${renewed} renewed, ${failed} failed`);
+    return { renewed, failed, errors };
+  }
+
+  async countExpiringSoon(days = 7): Promise<number> {
+    const now = new Date();
+    const threshold = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    return this.prisma.user.count({
+      where: {
+        deletedAt: null,
+        status: 'ACTIVE',
+        expiresAt: { gte: now, lte: threshold },
+      },
+    });
   }
 
   private async assertExists(id: string) {

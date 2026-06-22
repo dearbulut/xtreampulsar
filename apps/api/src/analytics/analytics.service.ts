@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -315,5 +316,129 @@ export class AnalyticsService {
       monthly: [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month)),
       byReseller: [...resellerMap.values()].sort((a, b) => b.userCount - a.userCount),
     };
+  }
+
+  // ─── Bandwidth Tracking ───────────────────────────────────────────────────
+
+  async trackBandwidth(streamId: string, bytes: number, userId?: string): Promise<void> {
+    const hour = new Date();
+    hour.setMinutes(0, 0, 0);
+    const hourStr = hour.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+
+    const streamKey = `bw:${hourStr}:${streamId}`;
+    await this.redis.incrby(streamKey, bytes).catch(() => {});
+    await this.redis.expire(streamKey, 7200).catch(() => {}); // 2h TTL
+
+    if (userId) {
+      const userKey = `bw:user:${hourStr}:${userId}`;
+      await this.redis.incrby(userKey, bytes).catch(() => {});
+      await this.redis.expire(userKey, 7200).catch(() => {});
+    }
+  }
+
+  @Cron('0 * * * *') // every hour
+  async flushBandwidthToDb(): Promise<void> {
+    const prevHour = new Date();
+    prevHour.setHours(prevHour.getHours() - 1, 0, 0, 0);
+    const hourStr = prevHour.toISOString().slice(0, 13);
+
+    const keys = await this.redis.keys(`bw:${hourStr}:*`).catch(() => [] as string[]);
+
+    for (const key of keys) {
+      const parts = key.split(':');
+      // key format: bw:{hourStr}:{streamId}
+      if (parts.length < 3) continue;
+      const streamId = parts.slice(2).join(':');
+      if (streamId.startsWith('user:')) continue; // skip user keys here
+
+      const bytes = await this.redis.get(key).catch(() => '0');
+      const bytesNum = parseInt(bytes ?? '0', 10);
+      if (bytesNum === 0) continue;
+
+      try {
+        await this.prisma.bandwidthLog.upsert({
+          where: {
+            streamId_serverId_hour: {
+              streamId,
+              serverId: null as unknown as string,
+              hour: prevHour,
+            },
+          },
+          update: { bytesOut: { increment: BigInt(bytesNum) } },
+          create: { streamId, hour: prevHour, bytesOut: BigInt(bytesNum) },
+        });
+        await this.redis.del(key).catch(() => {});
+      } catch (err) {
+        this.logger.error(`flushBandwidth ${key}: ${(err as Error).message}`);
+      }
+    }
+  }
+
+  async getBandwidthByStream(streamId: string, hours = 24) {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+
+    const logs = await this.prisma.bandwidthLog.findMany({
+      where: { streamId, hour: { gte: cutoff } },
+      orderBy: { hour: 'asc' },
+    });
+
+    return logs.map((l) => ({
+      hour: l.hour.toISOString(),
+      bytesIn: l.bytesIn.toString(),
+      bytesOut: l.bytesOut.toString(),
+    }));
+  }
+
+  async getBandwidthByUser(userId: string, hours = 24) {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - hours);
+
+    // Aggregate from Redis live keys + DB historical
+    const hourStr = new Date().toISOString().slice(0, 13);
+    const liveKey = `bw:user:${hourStr}:${userId}`;
+    const liveBytes = parseInt(await this.redis.get(liveKey).catch(() => '0') ?? '0', 10);
+
+    const connections = await this.prisma.connection.findMany({
+      where: { userId, startedAt: { gte: cutoff } },
+      select: { startedAt: true, bytesOut: true, bytesIn: true },
+    });
+
+    const hourMap = new Map<string, { bytesIn: number; bytesOut: number }>();
+    for (const c of connections) {
+      const h = c.startedAt.toISOString().slice(0, 13);
+      const existing = hourMap.get(h) ?? { bytesIn: 0, bytesOut: 0 };
+      hourMap.set(h, {
+        bytesIn: existing.bytesIn + Number(c.bytesIn),
+        bytesOut: existing.bytesOut + Number(c.bytesOut),
+      });
+    }
+
+    const result = [...hourMap.entries()].map(([hour, v]) => ({
+      hour: `${hour}:00:00.000Z`,
+      bytesIn: v.bytesIn.toString(),
+      bytesOut: v.bytesOut.toString(),
+    }));
+
+    if (liveBytes > 0) {
+      result.push({ hour: `${hourStr}:00:00.000Z`, bytesIn: '0', bytesOut: liveBytes.toString() });
+    }
+
+    return result.sort((a, b) => a.hour.localeCompare(b.hour));
+  }
+
+  async getTodayBandwidthTotal(): Promise<{ bytesIn: number; bytesOut: number }> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const rows = await this.prisma.$queryRaw<{ bytes_in: bigint; bytes_out: bigint }[]>`
+      SELECT
+        COALESCE(SUM("bytesIn"), 0)::bigint  AS bytes_in,
+        COALESCE(SUM("bytesOut"), 0)::bigint AS bytes_out
+      FROM connections
+      WHERE "startedAt" >= ${todayStart}
+    `;
+    const r = rows[0] ?? { bytes_in: BigInt(0), bytes_out: BigInt(0) };
+    return { bytesIn: Number(r.bytes_in), bytesOut: Number(r.bytes_out) };
   }
 }

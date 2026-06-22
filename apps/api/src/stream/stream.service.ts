@@ -165,4 +165,33 @@ export class StreamService {
     await this.findById(id);
     await this.prisma.stream.delete({ where: { id } });
   }
+
+  async cloneStream(id: string, overrides?: Partial<{ name: string; primaryUrl: string }>) {
+    const original = await this.findById(id);
+
+    const maxResult = await this.prisma.stream.aggregate({ _max: { externalId: true } });
+    const newExternalId = (maxResult._max.externalId ?? 0) + 1;
+
+    const maxSort = await this.prisma.stream.aggregate({ _max: { sortOrder: true } });
+    const newSortOrder = (maxSort._max.sortOrder ?? 0) + 1;
+
+    const cloned = await this.prisma.stream.create({
+      data: {
+        name: overrides?.name ?? `${original.name} (Kopya)`,
+        primaryUrl: overrides?.primaryUrl ?? original.primaryUrl,
+        backupUrl: original.backupUrl ?? undefined,
+        externalId: newExternalId,
+        sortOrder: newSortOrder,
+        categoryId: original.categoryId,
+        serverId: original.serverId ?? undefined,
+        tvgId: original.tvgId ?? undefined,
+        tvgLogo: original.tvgLogo ?? undefined,
+        isActive: false,
+      },
+      include: { category: true },
+    });
+
+    this.logger.log(`Stream cloned: ${original.name} → ${cloned.name} (externalId=${newExternalId})`);
+    return cloned;
+  }
 }

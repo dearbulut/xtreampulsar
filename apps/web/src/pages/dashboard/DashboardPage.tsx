@@ -22,6 +22,8 @@ import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections } from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
+import { useExpiringCount } from '@/hooks/useBulkRenew';
+import { useNavigate } from '@tanstack/react-router';
 import { formatBytes, formatDateTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +34,8 @@ export function DashboardPage() {
   const { data: servers } = useServerStats();
   const { data: topStreams } = useTopStreams(5);
   const { data: geoData } = useGeoConnections();
+  const { data: expiringCount } = useExpiringCount(7);
+  const navigate = useNavigate();
 
   const bwChartData = (bandwidth ?? []).map((b, i) => ({
     time: new Date(b.hour).getHours() + ':00',
@@ -132,6 +136,20 @@ export function DashboardPage() {
           variant="default"
         />
       </div>
+
+      {/* Expiring soon warning */}
+      {expiringCount !== undefined && expiringCount > 0 && (
+        <button
+          onClick={() => void navigate({ to: '/users' })}
+          className="w-full card p-4 flex items-center gap-3 border-warning/30 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
+        >
+          <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+          <div>
+            <div className="text-sm font-medium text-warning">7 Gün İçinde Sona Erecek: {expiringCount} kullanıcı</div>
+            <div className="text-xs text-muted">Kullanıcı listesine gitmek için tıklayın</div>
+          </div>
+        </button>
+      )}
 
       {/* ── Bandwidth chart ── */}
       <div className="card p-5">

@@ -31,6 +31,7 @@ import { SecurityModule } from './security/security.module';
 import { StalkerModule } from './stalker/stalker.module';
 import { ApiKeyModule } from './api-key/api-key.module';
 import { UpdateModule } from './update/update.module';
+import { WhiteLabelModule } from './white-label/white-label.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { UpdateModule } from './update/update.module';
     StalkerModule,
     ApiKeyModule,
     UpdateModule,
+    WhiteLabelModule,
   ],
   controllers: [AppController],
   providers: [
