@@ -25,7 +25,7 @@ export function AppLayout() {
   const breadcrumb = ROUTE_TITLES[location.pathname] ?? [location.pathname];
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-bg overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0">
         <Header breadcrumb={breadcrumb} />

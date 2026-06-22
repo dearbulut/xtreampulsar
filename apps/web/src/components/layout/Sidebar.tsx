@@ -97,6 +97,7 @@ export function Sidebar() {
         'flex flex-col h-screen bg-sidebar border-r border-border transition-all duration-200 flex-shrink-0 relative',
         collapsed ? 'w-16' : 'w-60',
       )}
+      style={{ backgroundColor: 'var(--color-sidebar)' }}
     >
       {/* Logo */}
       <div className="flex items-center h-14 px-4 border-b border-border flex-shrink-0">
@@ -147,7 +148,7 @@ export function Sidebar() {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-slate-200 truncate">{user?.username}</div>
+                <div className="text-xs font-medium truncate" style={{ color: 'var(--color-fg)' }}>{user?.username}</div>
                 <div className="text-[10px] text-muted">{user?.role}</div>
               </div>
               <button

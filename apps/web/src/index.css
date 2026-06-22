@@ -2,26 +2,25 @@
 
 /* ── CSS custom properties ────────────────────────────────────────────────
    Light mode = default (:root). Dark mode overrides .dark class on <html>.
-   The Tailwind config references these vars so semantic tokens auto-adapt.
    ──────────────────────────────────────────────────────────────────────── */
 :root {
-  --color-bg:       #f4f6fb;
-  --color-surface:  #ffffff;
-  --color-surface2: #f0f2f8;
-  --color-sidebar:  #ffffff;
-  --color-border:   #e2e6f0;
-  --color-fg:       #1a1d2e;
-  --muted:          100 116 139;   /* #64748b  rgb channels for opacity support */
+  --color-bg:        #f4f6fb;
+  --color-surface:   #ffffff;
+  --color-surface-2: #f0f2f8;
+  --color-sidebar:   #ffffff;
+  --color-border:    #e2e6f0;
+  --color-fg:        #1a1d2e;
+  --color-muted:     #64748b;
 }
 
 .dark {
-  --color-bg:       #111318;
-  --color-surface:  #1c1f2e;
-  --color-surface2: #232638;
-  --color-sidebar:  #13151f;
-  --color-border:   #2e3347;
-  --color-fg:       #e2e8f0;
-  --muted:          139 149 168;   /* #8b95a8 */
+  --color-bg:        #111318;
+  --color-surface:   #1c1f2e;
+  --color-surface-2: #232638;
+  --color-sidebar:   #13151f;
+  --color-border:    #2e3347;
+  --color-fg:        #e2e8f0;
+  --color-muted:     #8b95a8;
 }
 
 @tailwind base;
@@ -30,8 +29,11 @@
 
 @layer base {
   body {
-    @apply bg-background font-sans antialiased;
+    background-color: var(--color-bg);
     color: var(--color-fg);
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * { box-sizing: border-box; }
@@ -55,12 +57,16 @@
 
   /* ── Scrollbar ─────────────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--color-surface2); }
+  ::-webkit-scrollbar-track { background: var(--color-surface-2); }
   ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted)); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
 }
 
 @layer components {
+  /* ── Layout helpers ─────────────────────────────────────────────────── */
+  .sidebar       { background-color: var(--color-sidebar); }
+  .main-content  { background-color: var(--color-bg); }
+
   /* ── Card ───────────────────────────────────────────────────────────── */
   .card {
     @apply bg-surface rounded-xl;
@@ -99,7 +105,7 @@
     border: 1px solid var(--color-border);
     color: var(--color-fg);
   }
-  .input::placeholder { color: rgb(var(--muted)); }
+  .input::placeholder { color: var(--color-muted); }
   .input:focus { border-color: #6366f1; }
 
   .label {
@@ -121,7 +127,7 @@
     @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted transition-all cursor-pointer;
   }
   .nav-item:hover {
-    background-color: var(--color-surface2);
+    background-color: var(--color-surface-2);
     color: var(--color-fg);
   }
 

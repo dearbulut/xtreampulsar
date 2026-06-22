@@ -12,15 +12,13 @@ export default {
           50: '#eef2ff',
         },
         // Semantic tokens — resolved via CSS custom properties at runtime
-        background: 'var(--color-bg)',
+        bg: 'var(--color-bg)',
         surface: 'var(--color-surface)',
-        'surface-2': 'var(--color-surface2)',
+        'surface-2': 'var(--color-surface-2)',
         sidebar: 'var(--color-sidebar)',
         border: 'var(--color-border)',
-        // muted uses rgb-channel form so opacity modifiers (text-muted/60) work
-        muted: 'rgb(var(--muted) / <alpha-value>)',
-        // fg = primary text colour (dark in light-mode, light in dark-mode)
         fg: 'var(--color-fg)',
+        muted: 'var(--color-muted)',
         success: {
           DEFAULT: '#10b981',
           bg: 'rgba(16,185,129,0.12)',
