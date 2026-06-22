@@ -28,6 +28,8 @@ import { GatewayModule } from './gateway/gateway.module';
 import { BackupModule } from './backup/backup.module';
 import { NotificationModule } from './notification/notification.module';
 import { SecurityModule } from './security/security.module';
+import { StalkerModule } from './stalker/stalker.module';
+import { ApiKeyModule } from './api-key/api-key.module';
 
 @Module({
   imports: [
@@ -57,6 +59,8 @@ import { SecurityModule } from './security/security.module';
     BackupModule,
     NotificationModule,
     SecurityModule,
+    StalkerModule,
+    ApiKeyModule,
   ],
   controllers: [AppController],
   providers: [

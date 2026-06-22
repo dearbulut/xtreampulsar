@@ -47,3 +47,20 @@ export function useTopStreams(limit = 5) {
     refetchInterval: 15_000,
   });
 }
+
+export interface GeoEntry {
+  countryCode: string;
+  country: string;
+  count: number;
+}
+
+export function useGeoConnections() {
+  return useQuery<GeoEntry[]>({
+    queryKey: ['analytics', 'geo-connections'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: GeoEntry[] }>('/analytics/geo-connections');
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
+  });
+}

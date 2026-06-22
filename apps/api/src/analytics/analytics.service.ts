@@ -1,7 +1,8 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { SecurityService } from '../security/security.service';
 
 interface HourlyBandwidth {
   hour: Date;
@@ -16,6 +17,7 @@ export class AnalyticsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    @Optional() private readonly securityService?: SecurityService,
   ) {}
 
   async getDashboard() {
@@ -221,5 +223,43 @@ export class AnalyticsService {
       this.logger.error(`getServerStats: ${(err as Error).message}`);
       return [];
     }
+  }
+
+  async getGeoConnections() {
+    const cacheKey = 'analytics:geo-connections';
+    const cached = await this.redis.get(cacheKey).catch(() => null);
+    if (cached) return JSON.parse(cached) as unknown[];
+
+    const connections = await this.prisma.connection.findMany({
+      where: { endedAt: null },
+      select: { ip: true },
+      take: 500,
+    });
+
+    const uniqueIps = [...new Set(connections.map((c) => c.ip))];
+    const countryMap = new Map<string, { country: string; count: number; connections: string[] }>();
+
+    await Promise.allSettled(
+      uniqueIps.map(async (ip) => {
+        if (!this.securityService) return;
+        try {
+          const info = await this.securityService.getIpInfo(ip);
+          const existing = countryMap.get(info.countryCode);
+          if (existing) {
+            existing.count++;
+            existing.connections.push(ip);
+          } else {
+            countryMap.set(info.countryCode, { country: info.country, count: 1, connections: [ip] });
+          }
+        } catch { /* skip unknown IPs */ }
+      }),
+    );
+
+    const result = [...countryMap.entries()]
+      .map(([countryCode, v]) => ({ countryCode, country: v.country, count: v.count }))
+      .sort((a, b) => b.count - a.count);
+
+    await this.redis.setex(cacheKey, 30, JSON.stringify(result)).catch(() => {});
+    return result;
   }
 }

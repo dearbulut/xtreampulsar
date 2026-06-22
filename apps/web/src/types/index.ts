@@ -44,6 +44,12 @@ export interface Stream {
   lastHealthCheck?: string;
   healthStatus?: HealthStatus;
   uptimePercent?: number;
+  qualityScore?: string;
+  resolution?: string;
+  videoBitrate?: number;
+  videoCodec?: string;
+  fps?: number;
+  lastAnalyzedAt?: string;
   createdAt: string;
   updatedAt: string;
   _count?: { connections: number };

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell, Key, Copy, Check } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, formatBytes } from '@/hooks/useBackup';
 import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
+import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
@@ -15,6 +16,7 @@ const SETTINGS_TABS: TabItem[] = [
   { id: 'streaming', label: 'Streaming', icon: Radio },
   { id: 'security', label: 'Güvenlik', icon: Shield },
   { id: 'database', label: 'Veritabanı', icon: Database },
+  { id: 'api', label: 'API', icon: Key },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -560,7 +562,132 @@ export function SettingsPage() {
             </div>
           </>
         )}
+
+        {/* === API KEYS === */}
+        {activeTab === 'api' && <ApiKeyTab />}
       </div>
     </div>
+  );
+}
+
+const PERM_OPTIONS = ['read', 'write', 'admin'];
+
+function ApiKeyTab() {
+  const { data: keys } = useApiKeys();
+  const createKey = useCreateApiKey();
+  const deleteKey = useDeleteApiKey();
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState('');
+  const [permissions, setPermissions] = useState(['read']);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCreate = async () => {
+    const res = await createKey.mutateAsync({ name, permissions });
+    setNewKey(res.data.data.key);
+    setShowCreate(false);
+    setName('');
+    setPermissions(['read']);
+  };
+
+  const handleCopy = () => {
+    if (!newKey) return;
+    void navigator.clipboard.writeText(newKey).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <SectionTitle>API Anahtarları</SectionTitle>
+        <button className="btn-primary text-sm px-3 py-1.5" onClick={() => setShowCreate(true)}>
+          + Yeni Anahtar
+        </button>
+      </div>
+
+      {newKey && (
+        <div className="mb-6 p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-2">
+          <p className="text-sm text-green-400 font-semibold">Yeni API Anahtarınız (bir kez gösterilir):</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs font-mono text-slate-200 bg-surface p-2 rounded-lg break-all">{newKey}</code>
+            <button onClick={handleCopy} className="p-2 rounded-lg hover:bg-surface-2 text-muted">
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <button className="text-xs text-muted hover:text-slate-300" onClick={() => setNewKey(null)}>Kapat</button>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {(keys ?? []).map((k) => (
+          <div key={k.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+            <Key className="w-4 h-4 text-muted flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-slate-200">{k.name}</div>
+              <div className="text-xs text-muted font-mono">{k.key}</div>
+              <div className="flex gap-2 mt-1">
+                {k.permissions.map((p) => (
+                  <span key={p} className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary-light">{p}</span>
+                ))}
+              </div>
+            </div>
+            <div className="text-right text-xs text-muted space-y-0.5">
+              <div>Oluşturuldu: {new Date(k.createdAt).toLocaleDateString('tr-TR')}</div>
+              {k.lastUsedAt && <div>Son kullanım: {new Date(k.lastUsedAt).toLocaleDateString('tr-TR')}</div>}
+            </div>
+            <button
+              onClick={() => deleteKey.mutate(k.id)}
+              className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors"
+              title="Sil"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+        {(!keys || keys.length === 0) && (
+          <div className="text-center text-muted text-sm py-8">Henüz API anahtarı yok</div>
+        )}
+      </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="card p-6 max-w-sm w-full mx-4 space-y-4">
+            <h3 className="font-semibold text-slate-100">Yeni API Anahtarı</h3>
+            <div>
+              <label className="label">Ad</label>
+              <input className="input" placeholder="CI/CD entegrasyonu" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">İzinler</label>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {PERM_OPTIONS.map((p) => (
+                  <label key={p} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      className="accent-primary"
+                      checked={permissions.includes(p)}
+                      onChange={(e) => setPermissions(e.target.checked ? [...permissions, p] : permissions.filter((x) => x !== p))}
+                    />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button className="btn-ghost" onClick={() => setShowCreate(false)}>İptal</button>
+              <button
+                className="btn-primary"
+                disabled={!name || createKey.isPending}
+                onClick={() => void handleCreate()}
+              >
+                {createKey.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

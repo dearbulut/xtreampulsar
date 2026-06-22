@@ -20,7 +20,7 @@ import {
 } from 'recharts';
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useDashboard, useBandwidth, useServerStats, useTopStreams } from '@/hooks/useDashboard';
+import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections } from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
 import { formatBytes, formatDateTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ export function DashboardPage() {
   const { data: bandwidth } = useBandwidth();
   const { data: servers } = useServerStats();
   const { data: topStreams } = useTopStreams(5);
+  const { data: geoData } = useGeoConnections();
 
   const bwChartData = (bandwidth ?? []).map((b, i) => ({
     time: new Date(b.hour).getHours() + ':00',
@@ -262,6 +263,38 @@ export function DashboardPage() {
             ))}
             {(!topStreams || topStreams.length === 0) && (
               <div className="text-center text-muted text-sm py-6">Veri yok</div>
+            )}
+          </div>
+        </div>
+
+        {/* Geo watch map */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart2 className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold text-slate-200">İzleme Haritası</h2>
+          </div>
+          <div className="space-y-2">
+            {(geoData ?? []).slice(0, 10).map((entry) => {
+              const max = geoData?.[0]?.count ?? 1;
+              const pct = Math.round((entry.count / max) * 100);
+              const flag = entry.countryCode
+                .toUpperCase()
+                .split('')
+                .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+                .join('');
+              return (
+                <div key={entry.countryCode} className="flex items-center gap-2 text-sm">
+                  <span className="w-6 text-base">{flag}</span>
+                  <span className="w-24 text-xs text-slate-300 truncate">{entry.country}</span>
+                  <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary/70 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-8 text-xs text-muted text-right">{entry.count}</span>
+                </div>
+              );
+            })}
+            {(!geoData || geoData.length === 0) && (
+              <div className="text-center text-muted text-sm py-6">Aktif bağlantı yok</div>
             )}
           </div>
         </div>

@@ -14,6 +14,7 @@ import {
 import { StreamService } from './stream.service';
 import { StreamWorkerService } from './stream-worker.service';
 import { StreamHealthService } from './stream-health.service';
+import { StreamQualityService } from './stream-quality.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
@@ -30,6 +31,7 @@ export class StreamController {
     private readonly streamService: StreamService,
     private readonly workerService: StreamWorkerService,
     private readonly healthService: StreamHealthService,
+    private readonly qualityService: StreamQualityService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -116,5 +118,16 @@ export class StreamController {
   @Roles('ADMIN', 'RESELLER')
   probe(@Param('id') id: string) {
     return this.healthService.probeStream(id);
+  }
+
+  @Get('quality-summary')
+  qualitySummary() {
+    return this.qualityService.getQualitySummary();
+  }
+
+  @Post(':id/analyze')
+  @Roles('ADMIN', 'RESELLER')
+  analyzeStream(@Param('id') id: string) {
+    return this.qualityService.analyzeStream(id);
   }
 }

@@ -21,6 +21,9 @@ async function bootstrap() {
       { path: 'movie/:username/:password/:streamId', method: RequestMethod.ALL },
       { path: 'series/:username/:password/:streamId', method: RequestMethod.ALL },
       { path: 'hls/:streamId/:segment', method: RequestMethod.GET },
+      { path: 'stalker/server/load.php', method: RequestMethod.GET },
+      { path: 'stalker/portal.php', method: RequestMethod.ALL },
+      { path: 'stalker/server/api', method: RequestMethod.GET },
     ],
   });
 

@@ -47,4 +47,9 @@ export class AnalyticsController {
   getServerStats() {
     return this.analyticsService.getServerStats();
   }
+
+  @Get('geo-connections')
+  getGeoConnections() {
+    return this.analyticsService.getGeoConnections();
+  }
 }

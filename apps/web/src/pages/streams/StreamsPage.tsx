@@ -12,6 +12,7 @@ import {
   ToggleRight,
   Tv,
   Play,
+  Microscope,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -20,6 +21,8 @@ import { Modal } from '@/components/ui/Modal';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
+import api from '@/lib/axios';
+import toast from 'react-hot-toast';
 import type { Stream } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -241,9 +244,25 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'resolution',
-      header: 'Çözünürlük',
-      className: 'w-24',
-      render: () => <span className="text-xs text-muted">—</span>,
+      header: 'Çözünürlük / Kalite',
+      className: 'w-36',
+      render: (r) => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted">{r.resolution ?? '—'}</span>
+          {r.qualityScore && (
+            <span className={cn(
+              'text-xs font-bold px-1.5 py-0.5 rounded',
+              r.qualityScore === 'A' && 'bg-green-500/20 text-green-400',
+              r.qualityScore === 'B' && 'bg-lime-500/20 text-lime-400',
+              r.qualityScore === 'C' && 'bg-yellow-500/20 text-yellow-400',
+              r.qualityScore === 'D' && 'bg-orange-500/20 text-orange-400',
+              r.qualityScore === 'F' && 'bg-red-500/20 text-red-400',
+            )}>
+              {r.qualityScore}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -273,6 +292,16 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => {}} />
           <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
           <ActionBtn icon={Eye} title="Önizle" color="text-muted" onClick={() => setPreviewUrl(r.primaryUrl)} />
+          <ActionBtn
+            icon={Microscope}
+            title="Kalite Analiz Et"
+            color="text-purple-400"
+            onClick={() => {
+              api.post(`/streams/${r.id}/analyze`)
+                .then(() => toast.success(`${r.name}: analiz başlatıldı`))
+                .catch(() => toast.error('Analiz başlatılamadı'));
+            }}
+          />
         </div>
       ),
     },
