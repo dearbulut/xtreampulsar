@@ -171,11 +171,36 @@ export function SettingsPage() {
                 <input type="number" className="input" value={settings.streaming.bufferSize}
                   onChange={(e) => updateSettings('streaming', { bufferSize: parseInt(e.target.value, 10) })} />
               </Field>
+              <Field label="VOD İndirme Hızı">
+                <input type="number" className="input" value={settings.streaming.vodDownloadSpeed}
+                  onChange={(e) => updateSettings('streaming', { vodDownloadSpeed: parseInt(e.target.value, 10) })} />
+              </Field>
+              <Field label="VOD İndirme Limiti">
+                <input type="number" className="input" value={settings.streaming.vodDownloadLimit}
+                  onChange={(e) => updateSettings('streaming', { vodDownloadLimit: parseInt(e.target.value, 10) })} />
+              </Field>
               <Field label="VPN Engelle">
                 <Toggle checked={settings.streaming.blockVPN}
                   onChange={(v) => updateSettings('streaming', { blockVPN: v })} />
               </Field>
-              <SectionTitle>Yönlendirme URL'leri</SectionTitle>
+              <Field label="Öncelikli Yedek Stream">
+                <Toggle checked={settings.streaming.priorityBackupStream}
+                  onChange={(v) => updateSettings('streaming', { priorityBackupStream: v })} />
+              </Field>
+              <Field label="Admin Streaming IP'leri">
+                <TagInput value={settings.streaming.adminStreamingIps}
+                  onChange={(v) => updateSettings('streaming', { adminStreamingIps: v })}
+                  placeholder="192.168.1.1..." />
+              </Field>
+              <Field label="Anlık Bağlantı Kapat">
+                <Toggle checked={settings.streaming.instantCloseConn}
+                  onChange={(v) => updateSettings('streaming', { instantCloseConn: v })} />
+              </Field>
+              <Field label="Bağlantı Aşım Log">
+                <Toggle checked={settings.streaming.enableConxExceedLog}
+                  onChange={(v) => updateSettings('streaming', { enableConxExceedLog: v })} />
+              </Field>
+              <SectionTitle>Video Yönlendirmeleri</SectionTitle>
               <Field label="Stream Çevrimdışı URL">
                 <input className="input" value={settings.streaming.streamDownUrl}
                   onChange={(e) => updateSettings('streaming', { streamDownUrl: e.target.value })}
@@ -189,6 +214,16 @@ export function SettingsPage() {
               <Field label="Süresi Dolmuş URL">
                 <input className="input" value={settings.streaming.expiredUserUrl}
                   onChange={(e) => updateSettings('streaming', { expiredUserUrl: e.target.value })}
+                  placeholder="https://..." />
+              </Field>
+              <Field label="Ülke Kısıtlama URL">
+                <input className="input" value={settings.streaming.countryLockVideo}
+                  onChange={(e) => updateSettings('streaming', { countryLockVideo: e.target.value })}
+                  placeholder="https://..." />
+              </Field>
+              <Field label="Maks Bağlantı Aşım URL">
+                <input className="input" value={settings.streaming.maxConxExceedVideo}
+                  onChange={(e) => updateSettings('streaming', { maxConxExceedVideo: e.target.value })}
                   placeholder="https://..." />
               </Field>
             </div>

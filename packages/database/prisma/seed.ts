@@ -79,6 +79,66 @@ async function main() {
     }
   }
 
+  // ── Test Streams ─────────────────────────────────────────────────────────
+  const testCategory = await prisma.category.upsert({
+    where: { externalId: 99999 },
+    update: {},
+    create: {
+      externalId: 99999,
+      name: 'Test',
+      type: 'LIVE',
+      bouquetId: defaultBouquet.id,
+      isActive: true,
+    },
+  });
+  console.log(`✓ Test kategorisi    : ${testCategory.name} (${testCategory.type})`);
+
+  const testStreams = [
+    {
+      name: 'Big Buck Bunny (VOD)',
+      primaryUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      externalId: 90001,
+    },
+    {
+      name: 'Mux Test Stream (LIVE)',
+      primaryUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+      externalId: 90002,
+    },
+    {
+      name: 'Apple HLS Test (LIVE)',
+      primaryUrl: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+      externalId: 90003,
+    },
+    {
+      name: 'Arte Live FR (LIVE)',
+      primaryUrl: 'https://artesimulcast.akamaized.net/hls/live/2031003/artelive_fr/index.m3u8',
+      externalId: 90004,
+    },
+    {
+      name: 'NASA TV (LIVE)',
+      primaryUrl: 'https://ntv3.akamaized.net/hls/live/2014075/NASA-NTV3-HLS/master.m3u8',
+      externalId: 90005,
+    },
+  ];
+
+  for (const s of testStreams) {
+    const existing = await prisma.stream.findUnique({ where: { externalId: s.externalId } });
+    if (!existing) {
+      await prisma.stream.create({
+        data: {
+          name: s.name,
+          primaryUrl: s.primaryUrl,
+          externalId: s.externalId,
+          categoryId: testCategory.id,
+          isActive: true,
+        },
+      });
+      console.log(`✓ Test stream        : ${s.name}`);
+    } else {
+      console.log(`→ Test stream var    : ${s.name}`);
+    }
+  }
+
   console.log('\n✅ Seed tamamlandı!');
   console.log('─────────────────────────────────────────');
   console.log('  Admin giriş bilgileri:');

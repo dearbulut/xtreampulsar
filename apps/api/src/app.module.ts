@@ -19,6 +19,8 @@ import { EpgModule } from './epg/epg.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { MigrationModule } from './migration/migration.module';
 import { XtreamModule } from './xtream/xtream.module';
+import { ToolsModule } from './tools/tools.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { XtreamModule } from './xtream/xtream.module';
     AnalyticsModule,
     MigrationModule,
     XtreamModule,
+    ToolsModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

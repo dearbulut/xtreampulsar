@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Server, Plus, Wifi, WifiOff, Trash2, RefreshCw, MapPin,
-  Users, Activity, Edit2, MoreVertical,
+  Users, Activity, Edit2, MoreVertical, Shield, Lock,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { MiniSparkline } from '@/components/ui/MiniSparkline';
 import { useServers, useCreateServer, useDeleteServer, useServerHealth, useUpdateServer } from '@/hooks/useServers';
+import { useServerGuard, useUpdateServerGuard, useBlockedIps, useUnblockIp, type ServerGuard } from '@/hooks/useServerGuard';
+import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 
 const sparkSeed = (base: number) =>
@@ -46,6 +48,138 @@ const FORM_DEFAULT: FormState = {
   location: '',
 };
 
+function ServerGuardPanel({ serverId }: { serverId: string }) {
+  const { data: guard, isLoading } = useServerGuard(serverId);
+  const updateGuard = useUpdateServerGuard(serverId);
+  const { data: blockedIps = [] } = useBlockedIps(serverId);
+  const unblockIp = useUnblockIp(serverId);
+
+  const [form, setForm] = useState<Partial<ServerGuard>>({});
+
+  useEffect(() => {
+    if (guard) setForm(guard);
+  }, [guard]);
+
+  if (isLoading) return <div className="p-6 text-center text-muted">Yükleniyor...</div>;
+
+  const g = { ...guard, ...form };
+  const set = <K extends keyof ServerGuard>(k: K, v: ServerGuard[K]) => setForm(p => ({ ...p, [k]: v }));
+
+  return (
+    <div className="p-6 space-y-5">
+      {/* Enable toggle */}
+      <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl">
+        <div>
+          <div className="text-sm font-medium">Server Guard</div>
+          <div className="text-xs text-muted">Otomatik IP engelleme sistemi</div>
+        </div>
+        <button type="button" onClick={() => set('enabled', !g.enabled)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${g.enabled ? 'bg-primary' : 'bg-border'}`}>
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${g.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">IP Başına Maks Bağlantı</label>
+          <input type="number" className="input" value={g.maxConnsPerIp ?? 200}
+            onChange={e => set('maxConnsPerIp', parseInt(e.target.value, 10))} />
+        </div>
+        <div>
+          <label className="label">Blok Süresi (dk)</label>
+          <input type="number" className="input" value={g.blockDurationMinutes ?? 10}
+            onChange={e => set('blockDurationMinutes', parseInt(e.target.value, 10))} />
+        </div>
+        <div>
+          <label className="label">Normal User Hit Limiti</label>
+          <input type="number" className="input" value={g.maxHitsNormalUser ?? 50}
+            onChange={e => set('maxHitsNormalUser', parseInt(e.target.value, 10))} />
+        </div>
+        <div>
+          <label className="label">Restreamer Hit Limiti</label>
+          <input type="number" className="input" value={g.maxHitsRestreamer ?? 500}
+            onChange={e => set('maxHitsRestreamer', parseInt(e.target.value, 10))} />
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Hassas Portlar</label>
+        <TagInput value={(g.sensitivePorts ?? []).map(String)}
+          onChange={v => set('sensitivePorts', v.map(Number))} placeholder="22, 3306..." />
+      </div>
+      <div>
+        <label className="label">Açık Portlar</label>
+        <TagInput value={(g.openPorts ?? []).map(String)}
+          onChange={v => set('openPorts', v.map(Number))} placeholder="80, 443, 25461..." />
+      </div>
+      <div>
+        <label className="label">Whitelist IP'ler</label>
+        <TagInput value={g.whitelistIps ?? []}
+          onChange={v => set('whitelistIps', v)} placeholder="192.168.1.1..." />
+      </div>
+      <div>
+        <label className="label">Whitelist Kullanıcı Adları</label>
+        <TagInput value={g.whitelistUsernames ?? []}
+          onChange={v => set('whitelistUsernames', v)} />
+      </div>
+
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="accent-primary" checked={g.denyInvalidStreamIds ?? true}
+            onChange={e => set('denyInvalidStreamIds', e.target.checked)} />
+          <span className="text-sm">Geçersiz Stream ID Engelle</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="accent-primary" checked={g.blockVpnProxy ?? false}
+            onChange={e => set('blockVpnProxy', e.target.checked)} />
+          <span className="text-sm">VPN/Proxy Engelle</span>
+        </label>
+      </div>
+
+      <div className="flex justify-end">
+        <button className="btn btn-primary" disabled={updateGuard.isPending}
+          onClick={() => void updateGuard.mutateAsync(form)}>
+          {updateGuard.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+        </button>
+      </div>
+
+      {/* Blocked IPs table */}
+      {blockedIps.length > 0 && (
+        <div>
+          <div className="text-sm font-medium mb-2 flex items-center gap-2">
+            <Lock className="w-4 h-4 text-danger" /> Engellenen IP'ler ({blockedIps.length})
+          </div>
+          <div className="border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="table-th">IP</th>
+                  <th className="table-th">Sebep</th>
+                  <th className="table-th">Süre</th>
+                  <th className="table-th w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {blockedIps.map(b => (
+                  <tr key={b.id} className="table-row">
+                    <td className="table-td font-mono">{b.ip}</td>
+                    <td className="table-td text-muted">{b.reason}</td>
+                    <td className="table-td text-xs text-muted">{new Date(b.expiresAt).toLocaleString('tr-TR')}</td>
+                    <td className="table-td">
+                      <button onClick={() => void unblockIp.mutateAsync(b.ip)}
+                        className="text-xs text-danger hover:underline">Kaldır</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ServersPage() {
   const { data: servers = [], isLoading } = useServers();
   const createServer = useCreateServer();
@@ -55,6 +189,7 @@ export function ServersPage() {
 
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [editTab, setEditTab] = useState<'details' | 'guard'>('details');
   const [form, setForm] = useState<FormState>(FORM_DEFAULT);
   const [healthResults, setHealthResults] = useState<Record<string, { ms: number; ok: boolean } | null>>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -62,10 +197,11 @@ export function ServersPage() {
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setShowAdd(true); };
+  const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setEditTab('details'); setShowAdd(true); };
   const openEdit = (s: (typeof servers)[0]) => {
     setForm({ name: s.name, ip: s.ip, port: String(s.port), maxClients: String(s.maxClients), role: s.role as 'MAIN' | 'LOAD_BALANCER', location: s.location ?? '' });
     setEditTarget(s.id);
+    setEditTab('details');
     setShowAdd(true);
   };
 
@@ -249,43 +385,69 @@ export function ServersPage() {
         title={editTarget ? 'Sunucuyu Düzenle' : 'Sunucu Ekle'}
         size="md"
       >
-        <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="label">Sunucu Adı</label>
-              <input required className="input" value={form.name} onChange={f('name')} placeholder="Ana Sunucu TR-1" />
-            </div>
-            <div>
-              <label className="label">IP Adresi</label>
-              <input required className="input" value={form.ip} onChange={f('ip')} placeholder="192.168.1.10" />
-            </div>
-            <div>
-              <label className="label">Port</label>
-              <input required type="number" className="input" value={form.port} onChange={f('port')} />
-            </div>
-            <div>
-              <label className="label">Maks Bağlantı</label>
-              <input required type="number" className="input" value={form.maxClients} onChange={f('maxClients')} />
-            </div>
-            <div>
-              <label className="label">Rol</label>
-              <select className="input" value={form.role} onChange={f('role')}>
-                <option value="MAIN">Ana Sunucu</option>
-                <option value="LOAD_BALANCER">Yük Dağıtıcı</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="label">Konum (opsiyonel)</label>
-              <input className="input" value={form.location} onChange={f('location')} placeholder="İstanbul, TR" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>İptal</button>
-            <button type="submit" className="btn btn-primary" disabled={createServer.isPending || updateServer.isPending}>
-              {editTarget ? 'Güncelle' : 'Ekle'}
+        {/* Tabs — only shown when editing an existing server */}
+        {editTarget && (
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setEditTab('details')}
+              className={cn('px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2', editTab === 'details' ? 'border-b-2 border-primary text-primary-light' : 'text-muted hover:text-fg')}
+            >
+              <Edit2 className="w-3.5 h-3.5" /> Detaylar
+            </button>
+            <button
+              onClick={() => setEditTab('guard')}
+              className={cn('px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2', editTab === 'guard' ? 'border-b-2 border-primary text-primary-light' : 'text-muted hover:text-fg')}
+            >
+              <Shield className="w-3.5 h-3.5" /> Sunucu Güvenliği
             </button>
           </div>
-        </form>
+        )}
+
+        {/* Details form */}
+        {(!editTarget || editTab === 'details') && (
+          <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="label">Sunucu Adı</label>
+                <input required className="input" value={form.name} onChange={f('name')} placeholder="Ana Sunucu TR-1" />
+              </div>
+              <div>
+                <label className="label">IP Adresi</label>
+                <input required className="input" value={form.ip} onChange={f('ip')} placeholder="192.168.1.10" />
+              </div>
+              <div>
+                <label className="label">Port</label>
+                <input required type="number" className="input" value={form.port} onChange={f('port')} />
+              </div>
+              <div>
+                <label className="label">Maks Bağlantı</label>
+                <input required type="number" className="input" value={form.maxClients} onChange={f('maxClients')} />
+              </div>
+              <div>
+                <label className="label">Rol</label>
+                <select className="input" value={form.role} onChange={f('role')}>
+                  <option value="MAIN">Ana Sunucu</option>
+                  <option value="LOAD_BALANCER">Yük Dağıtıcı</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="label">Konum (opsiyonel)</label>
+                <input className="input" value={form.location} onChange={f('location')} placeholder="İstanbul, TR" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>İptal</button>
+              <button type="submit" className="btn btn-primary" disabled={createServer.isPending || updateServer.isPending}>
+                {editTarget ? 'Güncelle' : 'Ekle'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Guard panel */}
+        {editTarget && editTab === 'guard' && (
+          <ServerGuardPanel serverId={editTarget} />
+        )}
       </Modal>
     </div>
   );

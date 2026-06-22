@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   Shield,
   Settings,
+  Wrench,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -79,6 +80,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'Paketler', to: '/packages', icon: Package },
       { label: 'Migration', to: '/migration', icon: ArrowRightLeft },
+      { label: 'Gelişmiş Araçlar', to: '/tools/advanced', icon: Wrench },
       { label: 'Güvenlik', to: '/security', icon: Shield },
       { label: 'Ayarlar', to: '/settings', icon: Settings },
     ],

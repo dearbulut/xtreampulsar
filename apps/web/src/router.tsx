@@ -21,6 +21,7 @@ import { PackagesPage } from '@/pages/packages/PackagesPage';
 import { MigrationPage } from '@/pages/migration/MigrationPage';
 import { SecurityPage } from '@/pages/security/SecurityPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { AdvancedToolsPage } from '@/pages/tools/AdvancedToolsPage';
 import { ChannelsPage } from '@/pages/channels/ChannelsPage';
 import { VodPage } from '@/pages/vod/VodPage';
 import { SeriesPage } from '@/pages/series/SeriesPage';
@@ -159,6 +160,12 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+const advancedToolsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/tools/advanced',
+  component: AdvancedToolsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -180,6 +187,7 @@ const routeTree = rootRoute.addChildren([
     migrationRoute,
     securityRoute,
     settingsRoute,
+    advancedToolsRoute,
   ]),
 ]);
 

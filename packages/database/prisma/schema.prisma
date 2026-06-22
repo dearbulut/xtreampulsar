@@ -150,8 +150,46 @@ model Server {
 
   streams     Stream[]
   connections Connection[]
+  guard       ServerGuard?
+  blockedIps  BlockedIp[]
 
   @@map("servers")
+}
+
+model ServerGuard {
+  id                   String   @id @default(cuid())
+  enabled              Boolean  @default(false)
+  sensitivePorts       Int[]    @default([22, 7999])
+  whitelistIps         String[] @default([])
+  openPorts            Int[]    @default([80, 25461, 443])
+  maxConnsPerIp        Int      @default(200)
+  maxHitsNormalUser    Int      @default(50)
+  maxHitsRestreamer    Int      @default(500)
+  whitelistUsernames   String[] @default([])
+  blockDurationMinutes Int      @default(10)
+  denyInvalidStreamIds Boolean  @default(true)
+  blockVpnProxy        Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  serverId String @unique
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("server_guards")
+}
+
+model BlockedIp {
+  id        String   @id @default(cuid())
+  ip        String
+  reason    String
+  blockedAt DateTime @default(now())
+  expiresAt DateTime
+
+  serverId String
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, ip])
+  @@map("blocked_ips")
 }
 
 // ─── Bouquet & Category ───────────────────────────────────────────────────────
@@ -436,6 +474,33 @@ model MigrationJob {
   updatedAt        DateTime        @updatedAt
 
   @@map("migration_jobs")
+}
+
+// ─── Settings (singleton) ────────────────────────────────────────────────────
+
+model Settings {
+  id                   String   @id @default("singleton")
+  vodDownloadSpeed     Int      @default(200)
+  vodDownloadLimit     Int      @default(20)
+  bufferSize           Int      @default(8192)
+  blockVpnProxy        Boolean  @default(false)
+  priorityBackupStream Boolean  @default(false)
+  streamDownVideo      String?
+  bannedVideo          String?
+  expiredVideo         String?
+  countryLockVideo     String?
+  maxConxExceedVideo   String?
+  enableConxExceedLog  Boolean  @default(false)
+  instantCloseConn     Boolean  @default(false)
+  adminStreamingIps    String[] @default([])
+  panelName            String   @default("XtreamPulsar")
+  serverUrl            String   @default("")
+  serverPort           Int      @default(25461)
+  timezone             String   @default("UTC")
+  trialUserLimit       Int      @default(500)
+  updatedAt            DateTime @updatedAt
+
+  @@map("settings")
 }
 
 // ─── AuditLog ────────────────────────────────────────────────────────────────

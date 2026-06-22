@@ -32,11 +32,19 @@ export interface StreamingSettings {
   hlsListSize: number;
   vodSpeedLimit: number;
   bufferSize: number;
+  vodDownloadSpeed: number;
+  vodDownloadLimit: number;
   blockVPN: boolean;
+  priorityBackupStream: boolean;
+  adminStreamingIps: string[];
+  instantCloseConn: boolean;
+  enableConxExceedLog: boolean;
   priorityBackup: boolean;
   streamDownUrl: string;
   bannedUserUrl: string;
   expiredUserUrl: string;
+  countryLockVideo: string;
+  maxConxExceedVideo: string;
 }
 
 export interface SecuritySettings {
@@ -73,7 +81,7 @@ const DEFAULTS: AllSettings = {
   general: { panelName: 'XtreamPulsar', timezone: 'Europe/Istanbul', language: 'tr', serverUrl: '', logoUrl: '' },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '' },
-  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, blockVPN: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '' },
+  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
   security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '' },
 };
