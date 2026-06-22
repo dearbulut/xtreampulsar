@@ -21,7 +21,9 @@ import { PackagesPage } from '@/pages/packages/PackagesPage';
 import { MigrationPage } from '@/pages/migration/MigrationPage';
 import { SecurityPage } from '@/pages/security/SecurityPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
-import { ComingSoonPage } from '@/pages/ComingSoonPage';
+import { ChannelsPage } from '@/pages/channels/ChannelsPage';
+import { VodPage } from '@/pages/vod/VodPage';
+import { SeriesPage } from '@/pages/series/SeriesPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -91,23 +93,22 @@ const serversRoute = createRoute({
   component: ServersPage,
 });
 
-// Content stubs (no backend streams yet — VOD/Series separate from streams management)
 const channelsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/channels',
-  component: () => <ComingSoonPage title="Kanallar" />,
+  component: ChannelsPage,
 });
 
 const vodRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/vod',
-  component: () => <ComingSoonPage title="VOD" />,
+  component: VodPage,
 });
 
 const seriesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/series',
-  component: () => <ComingSoonPage title="Diziler" />,
+  component: SeriesPage,
 });
 
 const categoriesRoute = createRoute({

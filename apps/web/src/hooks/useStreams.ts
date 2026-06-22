@@ -10,19 +10,23 @@ interface StreamFilter {
   status?: string;
   categoryId?: string;
   serverId?: string;
+  type?: string;
+  refetchInterval?: number | false;
 }
 
 export function useStreams(filter: StreamFilter = {}) {
+  const { refetchInterval, ...apiFilter } = filter;
   const params = new URLSearchParams();
-  if (filter.page) params.set('page', String(filter.page));
-  if (filter.limit) params.set('limit', String(filter.limit));
-  if (filter.search) params.set('search', filter.search);
-  if (filter.status) params.set('status', filter.status);
-  if (filter.categoryId) params.set('categoryId', filter.categoryId);
-  if (filter.serverId) params.set('serverId', filter.serverId);
+  if (apiFilter.page) params.set('page', String(apiFilter.page));
+  if (apiFilter.limit) params.set('limit', String(apiFilter.limit));
+  if (apiFilter.search) params.set('search', apiFilter.search);
+  if (apiFilter.status) params.set('status', apiFilter.status);
+  if (apiFilter.categoryId) params.set('categoryId', apiFilter.categoryId);
+  if (apiFilter.serverId) params.set('serverId', apiFilter.serverId);
+  if (apiFilter.type) params.set('type', apiFilter.type);
 
   return useQuery({
-    queryKey: ['streams', filter],
+    queryKey: ['streams', apiFilter],
     queryFn: async () => {
       const res = await api.get<{ success: boolean; data: PaginatedResponse<Stream> }>(
         `/streams?${params.toString()}`,
@@ -30,6 +34,7 @@ export function useStreams(filter: StreamFilter = {}) {
       return res.data.data;
     },
     placeholderData: (prev) => prev,
+    refetchInterval: refetchInterval ?? false,
   });
 }
 

@@ -94,7 +94,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-surface border-r border-border transition-all duration-200 flex-shrink-0 relative',
+        'flex flex-col h-screen bg-sidebar border-r border-border transition-all duration-200 flex-shrink-0 relative',
         collapsed ? 'w-16' : 'w-60',
       )}
     >
@@ -113,7 +113,7 @@ export function Sidebar() {
       {/* Collapse toggle */}
       <button
         onClick={toggle}
-        className="absolute -right-3 top-[4.25rem] w-6 h-6 rounded-full bg-surface border border-border flex items-center justify-center text-muted hover:text-slate-200 z-10 transition-colors"
+        className="absolute -right-3 top-[4.25rem] w-6 h-6 rounded-full bg-sidebar border border-border flex items-center justify-center text-muted hover:text-slate-200 z-10 transition-colors"
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>

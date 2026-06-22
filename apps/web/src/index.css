@@ -6,7 +6,8 @@
 
 @layer base {
   body {
-    @apply bg-background text-slate-200 font-sans antialiased;
+    @apply bg-background font-sans antialiased;
+    color: #e2e8f0;
   }
 
   * {
@@ -33,7 +34,8 @@
 
 @layer components {
   .card {
-    @apply bg-surface border border-border rounded-xl;
+    @apply bg-surface rounded-xl;
+    border: 1px solid rgba(99, 102, 241, 0.15);
   }
 
   .btn-primary {
@@ -49,8 +51,14 @@
   }
 
   .input {
-    @apply bg-surface-2 border border-border text-slate-200 placeholder-muted rounded-lg px-3 py-2 text-sm
+    @apply rounded-lg px-3 py-2 text-sm
            focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors w-full;
+    background-color: #1c1f2e;
+    border: 1px solid #2e3347;
+    color: #e2e8f0;
+  }
+  .input::placeholder {
+    color: #8b95a8;
   }
 
   .label {
@@ -90,7 +98,15 @@
   }
 
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted hover:text-slate-200 hover:bg-surface-2 transition-all cursor-pointer;
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted transition-all cursor-pointer;
+  }
+  .nav-item:hover {
+    background-color: #232638;
+    color: #e2e8f0;
+  }
+  .nav-item.active {
+    background-color: rgba(99, 102, 241, 0.18);
+    color: #818cf8;
   }
 
   .table-th {
@@ -102,7 +118,10 @@
   }
 
   .table-row {
-    @apply border-b border-border hover:bg-surface-2/50 transition-colors;
+    @apply border-b border-border transition-colors;
+  }
+  .table-row:hover {
+    background-color: #1e2130;
   }
 }
 
