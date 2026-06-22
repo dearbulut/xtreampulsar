@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsIn,
@@ -37,4 +38,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   resellerId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bouquetIds?: string[];
 }

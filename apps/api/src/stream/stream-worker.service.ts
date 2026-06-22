@@ -17,6 +17,7 @@ interface WorkerState {
   restarts: number;
   startedAt: Date;
   stopping: boolean;
+  activeUrl: string;
 }
 
 @Injectable()
@@ -32,7 +33,7 @@ export class StreamWorkerService implements OnModuleDestroy {
     this.logger.log(`FFmpeg path configured: ${this.ffmpegPath}`);
   }
 
-  async startWorker(streamId: string): Promise<void> {
+  async startWorker(streamId: string, overrideUrl?: string): Promise<void> {
     const stream = await this.prisma.stream.findUnique({
       where: { id: streamId },
     });
@@ -42,13 +43,14 @@ export class StreamWorkerService implements OnModuleDestroy {
       await this.stopWorker(streamId);
     }
 
+    const activeUrl = overrideUrl ?? stream.primaryUrl;
     const outputDir = path.join(this.hlsOutputPath, streamId);
     fs.mkdirSync(outputDir, { recursive: true });
 
     const outputFile = path.join(outputDir, 'index.m3u8');
     const segmentPattern = path.join(outputDir, 'seg%05d.ts');
     const args = [
-      '-i', stream.primaryUrl,
+      '-i', activeUrl,
       '-c', 'copy',
       '-f', 'hls',
       '-hls_time', '4',
@@ -78,6 +80,7 @@ export class StreamWorkerService implements OnModuleDestroy {
       restarts: stream.restartCount,
       startedAt: new Date(),
       stopping: false,
+      activeUrl,
     };
 
     this.workers.set(streamId, state);
@@ -170,6 +173,23 @@ export class StreamWorkerService implements OnModuleDestroy {
 
       setTimeout(() => void this.startWorker(streamId), RESTART_DELAY_MS);
     } else {
+      if (code !== 0 && restarts >= MAX_RESTARTS) {
+        // Try failover to backup URL if not already using it
+        const streamData = await this.prisma.stream.findUnique({
+          where: { id: streamId },
+          select: { backupUrl: true },
+        });
+        if (streamData?.backupUrl && state.activeUrl !== streamData.backupUrl) {
+          this.logger.warn(`Switching to backup URL for stream ${streamId}`);
+          await this.prisma.stream.update({
+            where: { id: streamId },
+            data: { workerStatus: 'CRASHED', restartCount: 0 },
+          });
+          setTimeout(() => void this.startWorker(streamId, streamData.backupUrl!), RESTART_DELAY_MS);
+          return;
+        }
+      }
+
       const finalStatus = restarts >= MAX_RESTARTS ? 'CRASHED' : 'STOPPED';
       if (restarts >= MAX_RESTARTS) {
         this.logger.error(

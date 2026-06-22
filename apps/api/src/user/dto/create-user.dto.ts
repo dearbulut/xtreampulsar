@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -41,4 +42,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   packageId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bouquetIds?: string[];
 }

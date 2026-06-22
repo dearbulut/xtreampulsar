@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
-import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
+import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
 import toast from 'react-hot-toast';
 
 const SETTINGS_TABS: TabItem[] = [
@@ -48,8 +48,10 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
   const settings = useSettings();
   const updateSettings = useUpdateSettings();
+  useSyncSettings();
+  const saveSettings = useSaveSettings();
 
-  const save = () => toast.success('Ayarlar kaydedildi');
+  const save = () => saveSettings.mutate(settings);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -62,8 +64,8 @@ export function SettingsPage() {
           <button className="btn btn-ghost" onClick={() => toast('Varsayılanlara döndürüldü', { icon: '↺' })}>
             <RotateCcw className="w-4 h-4" /> Sıfırla
           </button>
-          <button className="btn btn-primary" onClick={save}>
-            <Save className="w-4 h-4" /> Kaydet
+          <button className="btn btn-primary" onClick={save} disabled={saveSettings.isPending}>
+            <Save className="w-4 h-4" /> {saveSettings.isPending ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>
       </div>

@@ -41,6 +41,7 @@ export function useCreateUser() {
       expiresAt: string;
       resellerId?: string;
       notes?: string;
+      bouquetIds?: string[];
     }) => api.post<{ success: boolean; data: User }>('/users', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });

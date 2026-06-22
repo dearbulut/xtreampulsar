@@ -105,9 +105,9 @@ export class UserService {
     if (existing) throw new ConflictException(`Username "${dto.username}" already taken`);
 
     const hashed = await bcrypt.hash(dto.password, 12);
-    const { password: _, packageId: __, ...rest } = dto;
+    const { password: _, packageId: __, bouquetIds, ...rest } = dto;
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         ...rest,
         password: hashed,
@@ -119,12 +119,22 @@ export class UserService {
         maxConnections: true, expiresAt: true, createdAt: true,
       },
     });
+
+    if (bouquetIds && bouquetIds.length > 0) {
+      await this.prisma.userBouquet.createMany({
+        data: bouquetIds.map((bouquetId) => ({ userId: user.id, bouquetId })),
+        skipDuplicates: true,
+      });
+    }
+
+    return user;
   }
 
   async update(id: string, dto: UpdateUserDto) {
     await this.assertExists(id);
 
-    const data: Record<string, unknown> = { ...dto };
+    const { bouquetIds, ...updateFields } = dto;
+    const data: Record<string, unknown> = { ...updateFields };
     if (dto.password) {
       data.password = await bcrypt.hash(dto.password, 12);
     }
@@ -132,7 +142,7 @@ export class UserService {
       data.expiresAt = new Date(dto.expiresAt);
     }
 
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id },
       data,
       select: {
@@ -140,6 +150,18 @@ export class UserService {
         maxConnections: true, expiresAt: true, updatedAt: true,
       },
     });
+
+    if (bouquetIds !== undefined) {
+      await this.prisma.userBouquet.deleteMany({ where: { userId: id } });
+      if (bouquetIds.length > 0) {
+        await this.prisma.userBouquet.createMany({
+          data: bouquetIds.map((bouquetId) => ({ userId: id, bouquetId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    return user;
   }
 
   async softDelete(id: string): Promise<void> {

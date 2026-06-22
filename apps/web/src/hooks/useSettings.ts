@@ -1,9 +1,7 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-// Settings are stored locally until a proper settings API is implemented.
-// To integrate with a backend: replace the Zustand store with TanStack Query calls
-// to GET /api/v1/settings and PATCH /api/v1/settings.
+import api from '@/lib/axios';
+import toast from 'react-hot-toast';
 
 export interface GeneralSettings {
   panelName: string;
@@ -86,25 +84,128 @@ const DEFAULTS: AllSettings = {
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '' },
 };
 
+interface DbSettings {
+  panelName: string;
+  serverUrl: string;
+  serverPort: number;
+  timezone: string;
+  trialUserLimit: number;
+  vodDownloadSpeed: number;
+  vodDownloadLimit: number;
+  bufferSize: number;
+  blockVpnProxy: boolean;
+  priorityBackupStream: boolean;
+  adminStreamingIps: string[];
+  instantCloseConn: boolean;
+  enableConxExceedLog: boolean;
+  streamDownVideo: string | null;
+  bannedVideo: string | null;
+  expiredVideo: string | null;
+  countryLockVideo: string | null;
+  maxConxExceedVideo: string | null;
+}
+
+function mapDbToStore(db: DbSettings): AllSettings {
+  return {
+    ...DEFAULTS,
+    general: {
+      ...DEFAULTS.general,
+      panelName: db.panelName,
+      serverUrl: db.serverUrl,
+      timezone: db.timezone,
+    },
+    xtream: {
+      ...DEFAULTS.xtream,
+      port: db.serverPort,
+      trialUserLimit: db.trialUserLimit,
+    },
+    streaming: {
+      ...DEFAULTS.streaming,
+      vodDownloadSpeed: db.vodDownloadSpeed,
+      vodDownloadLimit: db.vodDownloadLimit,
+      bufferSize: db.bufferSize,
+      blockVPN: db.blockVpnProxy,
+      priorityBackupStream: db.priorityBackupStream,
+      adminStreamingIps: db.adminStreamingIps,
+      instantCloseConn: db.instantCloseConn,
+      enableConxExceedLog: db.enableConxExceedLog,
+      streamDownUrl: db.streamDownVideo ?? '',
+      bannedUserUrl: db.bannedVideo ?? '',
+      expiredUserUrl: db.expiredVideo ?? '',
+      countryLockVideo: db.countryLockVideo ?? '',
+      maxConxExceedVideo: db.maxConxExceedVideo ?? '',
+    },
+  };
+}
+
+function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
+  return {
+    panelName: settings.general.panelName,
+    serverUrl: settings.general.serverUrl,
+    timezone: settings.general.timezone,
+    serverPort: settings.xtream.port,
+    trialUserLimit: settings.xtream.trialUserLimit,
+    vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
+    vodDownloadLimit: settings.streaming.vodDownloadLimit,
+    bufferSize: settings.streaming.bufferSize,
+    blockVpnProxy: settings.streaming.blockVPN,
+    priorityBackupStream: settings.streaming.priorityBackupStream,
+    adminStreamingIps: settings.streaming.adminStreamingIps,
+    instantCloseConn: settings.streaming.instantCloseConn,
+    enableConxExceedLog: settings.streaming.enableConxExceedLog,
+    streamDownVideo: settings.streaming.streamDownUrl || null,
+    bannedVideo: settings.streaming.bannedUserUrl || null,
+    expiredVideo: settings.streaming.expiredUserUrl || null,
+    countryLockVideo: settings.streaming.countryLockVideo || null,
+    maxConxExceedVideo: settings.streaming.maxConxExceedVideo || null,
+  };
+}
+
 interface SettingsStore {
   settings: AllSettings;
   update: <K extends keyof AllSettings>(tab: K, values: Partial<AllSettings[K]>) => void;
+  setAll: (settings: AllSettings) => void;
   reset: () => void;
 }
 
-export const useSettingsStore = create<SettingsStore>()(
-  persist(
-    (set) => ({
-      settings: DEFAULTS,
-      update: (tab, values) =>
-        set((s) => ({
-          settings: { ...s.settings, [tab]: { ...s.settings[tab], ...values } },
-        })),
-      reset: () => set({ settings: DEFAULTS }),
-    }),
-    { name: 'xp-settings' },
-  ),
-);
+const useSettingsStore = create<SettingsStore>()((set) => ({
+  settings: DEFAULTS,
+  update: (tab, values) =>
+    set((s) => ({
+      settings: { ...s.settings, [tab]: { ...s.settings[tab], ...values } },
+    })),
+  setAll: (settings) => set({ settings }),
+  reset: () => set({ settings: DEFAULTS }),
+}));
 
 export const useSettings = () => useSettingsStore((s) => s.settings);
 export const useUpdateSettings = () => useSettingsStore((s) => s.update);
+
+// Call at the top of SettingsPage to populate store from API
+export function useSyncSettings() {
+  const setAll = useSettingsStore((s) => s.setAll);
+
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: DbSettings }>('/settings');
+      setAll(mapDbToStore(res.data.data));
+      return res.data.data;
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useSaveSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: AllSettings) =>
+      api.patch('/settings', mapStoreToDB(settings)),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['settings'] });
+      toast.success('Ayarlar kaydedildi');
+    },
+    onError: () => toast.error('Kaydetme başarısız'),
+  });
+}

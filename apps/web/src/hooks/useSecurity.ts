@@ -86,3 +86,53 @@ export function useBlockIP() {
     onError: () => toast.error('Engelleme başarısız'),
   });
 }
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  actorId?: string;
+  actorType?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
+}
+
+interface AuditLogsResponse {
+  items: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface AuditLogFilter {
+  page?: number;
+  limit?: number;
+  adminId?: string;
+  resource?: string;
+  action?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function useAuditLogs(filter: AuditLogFilter = {}) {
+  const params = new URLSearchParams();
+  if (filter.page) params.set('page', String(filter.page));
+  if (filter.limit) params.set('limit', String(filter.limit));
+  if (filter.adminId) params.set('adminId', filter.adminId);
+  if (filter.resource) params.set('resource', filter.resource);
+  if (filter.action) params.set('action', filter.action);
+  if (filter.dateFrom) params.set('dateFrom', filter.dateFrom);
+  if (filter.dateTo) params.set('dateTo', filter.dateTo);
+
+  return useQuery({
+    queryKey: ['audit', 'logs', filter],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: AuditLogsResponse }>(`/audit/logs?${params.toString()}`);
+      return res.data.data;
+    },
+    placeholderData: (prev) => prev,
+  });
+}

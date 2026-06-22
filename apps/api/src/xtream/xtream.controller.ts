@@ -9,6 +9,7 @@ import {
   Inject,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import * as http from 'http';
 import * as https from 'https';
@@ -42,6 +43,7 @@ interface GetPhpQuery {
 }
 
 @Controller()
+@Throttle({ default: { ttl: 60000, limit: 500 } })
 export class XtreamController {
   private readonly logger = new Logger(XtreamController.name);
 

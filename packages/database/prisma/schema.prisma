@@ -205,6 +205,7 @@ model Bouquet {
 
   categories    Category[]
   bouquetStreams BouquetStream[]
+  userBouquets  UserBouquet[]
 
   @@map("bouquets")
 }
@@ -396,6 +397,7 @@ model User {
 
   connections   Connection[]
   refreshTokens RefreshToken[]
+  userBouquets  UserBouquet[]
 
   @@map("users")
 }
@@ -504,6 +506,18 @@ model Settings {
   updatedAt            DateTime @updatedAt
 
   @@map("settings")
+}
+
+// ─── UserBouquet ─────────────────────────────────────────────────────────────
+
+model UserBouquet {
+  userId    String
+  bouquetId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bouquet   Bouquet @relation(fields: [bouquetId], references: [id], onDelete: Cascade)
+
+  @@id([userId, bouquetId])
+  @@map("user_bouquets")
 }
 
 // ─── AuditLog ────────────────────────────────────────────────────────────────

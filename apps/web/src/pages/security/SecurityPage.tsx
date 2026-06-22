@@ -1,23 +1,26 @@
 import { useState } from 'react';
-import { Shield, Ban, RefreshCw, AlertTriangle, Globe } from 'lucide-react';
+import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
-import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, type BlockedIP, type BruteForceLog } from '@/hooks/useSecurity';
+import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, type BlockedIP, type BruteForceLog, type AuditLog } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
 const SECURITY_TABS: TabItem[] = [
   { id: 'blocks', label: 'Aktif Bloklar' },
   { id: 'bruteforce', label: 'Brute Force Logu' },
+  { id: 'audit', label: 'Audit Log', icon: ScrollText },
 ];
 
 export function SecurityPage() {
   const [activeTab, setActiveTab] = useState('blocks');
   const [showBlock, setShowBlock] = useState(false);
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', durationMinutes: '0' });
+  const [auditPage, setAuditPage] = useState(1);
 
   const { data: blocks = [], isLoading: bLoading } = useBlockedIPs();
   const { data: bfLogs = [], isLoading: bfLoading } = useBruteForceLogs();
+  const { data: auditData, isLoading: auditLoading } = useAuditLogs({ page: auditPage, limit: 50 });
   const unblock = useUnblockIP();
   const blockIP = useBlockIP();
 
@@ -114,6 +117,54 @@ export function SecurityPage() {
     },
   ];
 
+  const auditColumns: Column<AuditLog>[] = [
+    {
+      key: 'createdAt',
+      header: 'Tarih',
+      render: (row) => (
+        <span className="text-xs text-muted font-mono">
+          {new Date(row.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+        </span>
+      ),
+    },
+    {
+      key: 'actorId',
+      header: 'Kullanıcı',
+      render: (row) => (
+        <span className="text-sm font-mono text-slate-300">{row.actorId ?? <span className="text-muted">—</span>}</span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Aksiyon',
+      render: (row) => {
+        const colorMap: Record<string, string> = {
+          CREATE: 'badge-success',
+          UPDATE: 'badge-warning',
+          DELETE: 'badge-danger',
+          LOGIN: 'bg-primary/10 text-primary-light',
+          LOGOUT: 'badge-gray',
+        };
+        return <span className={cn('badge text-[10px]', colorMap[row.action] ?? 'badge-gray')}>{row.action}</span>;
+      },
+    },
+    {
+      key: 'entityType',
+      header: 'Resource',
+      render: (row) => (
+        <div>
+          <span className="text-sm text-slate-300">{row.entityType}</span>
+          {row.entityId && <span className="text-xs text-muted font-mono ml-1">#{row.entityId.slice(-8)}</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'ipAddress',
+      header: 'IP',
+      render: (row) => <span className="font-mono text-xs text-muted">{row.ipAddress ?? '—'}</span>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -163,6 +214,21 @@ export function SecurityPage() {
           data={bfLogs}
           isLoading={bfLoading}
           emptyMessage="Brute force girişimi tespit edilmedi"
+        />
+      )}
+
+      {activeTab === 'audit' && (
+        <DataTable
+          columns={auditColumns}
+          data={auditData?.items ?? []}
+          keyExtractor={(r) => r.id}
+          isLoading={auditLoading}
+          page={auditPage}
+          totalPages={auditData?.totalPages}
+          total={auditData?.total}
+          onPageChange={setAuditPage}
+          emptyTitle="Audit log boş"
+          emptyDescription="Henüz kayıtlı aksiyon yok."
         />
       )}
 

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppConfigModule } from './config/config.module';
@@ -21,10 +23,12 @@ import { MigrationModule } from './migration/migration.module';
 import { XtreamModule } from './xtream/xtream.module';
 import { ToolsModule } from './tools/tools.module';
 import { SettingsModule } from './settings/settings.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     AppConfigModule,
     PrismaModule,
     RedisModule,
@@ -44,8 +48,12 @@ import { SettingsModule } from './settings/settings.module';
     XtreamModule,
     ToolsModule,
     SettingsModule,
+    AuditModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

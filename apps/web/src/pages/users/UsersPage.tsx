@@ -5,10 +5,12 @@ import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser,
 } from '@/hooks/useUsers';
+import { useBouquets } from '@/hooks/useBouquets';
 import type { User } from '@/types';
 import { daysLeft, formatDate, cn } from '@/lib/utils';
 
@@ -23,10 +25,11 @@ export function UsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
-    username: '', password: '', maxConnections: 1, expiresAt: '', notes: '',
+    username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[],
   });
 
   const { data, isLoading } = useUsers({ page, limit: 25, search, status });
+  const { data: bouquets = [] } = useBouquets();
   const createUser = useCreateUser();
   const extendUser = useExtendUser();
   const banUser = useBanUser();
@@ -218,14 +221,26 @@ export function UsersPage() {
               value={createForm.notes}
               onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
+          {bouquets.length > 0 && (
+            <div>
+              <label className="label">Bouquet'ler (isteğe bağlı)</label>
+              <MultiSelect
+                options={bouquets.map((b) => ({ value: b.id, label: b.name }))}
+                value={createForm.bouquetIds}
+                onChange={(v) => setCreateForm((f) => ({ ...f, bouquetIds: v }))}
+                placeholder="Bouquet seçin…"
+              />
+            </div>
+          )}
           <div className="flex gap-2 justify-end pt-2">
             <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
             <button
               disabled={createUser.isPending}
               onClick={() => {
                 if (createForm.username && createForm.password && createForm.expiresAt) {
+                  const { bouquetIds, ...rest } = createForm;
                   createUser.mutate(
-                    { ...createForm, expiresAt: new Date(createForm.expiresAt).toISOString() },
+                    { ...rest, expiresAt: new Date(createForm.expiresAt).toISOString(), ...(bouquetIds.length > 0 ? { bouquetIds } : {}) },
                     { onSuccess: () => setShowCreate(false) },
                   );
                 }
