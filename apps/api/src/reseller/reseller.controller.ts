@@ -10,7 +10,9 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { ResellerService } from './reseller.service';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';
@@ -25,7 +27,54 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class ResellerController {
-  constructor(private readonly resellerService: ResellerService) {}
+  constructor(
+    private readonly resellerService: ResellerService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  // ─── Reseller self-service (reseller token) ──────────────────────────────
+
+  @Get('me')
+  @Roles('RESELLER')
+  async getMe(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.findById(user.id);
+  }
+
+  @Get('me/stats')
+  @Roles('RESELLER')
+  async getMyStats(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getStats(user.id);
+  }
+
+  @Get('me/expiring')
+  @Roles('RESELLER')
+  async getMyExpiringUsers(@CurrentUser() user: JwtUser, @Query('days') days?: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    const d = days ? parseInt(days, 10) : 7;
+    const now = new Date();
+    const threshold = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+    return this.prisma.user.findMany({
+      where: {
+        resellerId: user.id,
+        deletedAt: null,
+        status: 'ACTIVE',
+        expiresAt: { gte: now, lte: threshold },
+      },
+      select: { id: true, username: true, expiresAt: true, maxConnections: true, status: true },
+      orderBy: { expiresAt: 'asc' },
+    });
+  }
+
+  @Get('me/credits')
+  @Roles('RESELLER')
+  async getMyCreditHistory(@CurrentUser() user: JwtUser, @Query() pagination: PaginationDto) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getCreditHistory(user.id, pagination.page, pagination.limit);
+  }
+
+  // ─── Admin endpoints ──────────────────────────────────────────────────────
 
   @Get()
   findAll() {

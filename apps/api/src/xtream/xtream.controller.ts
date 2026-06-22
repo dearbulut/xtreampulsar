@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Inject,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -23,6 +24,7 @@ import { StreamService } from '../stream/stream.service';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { EventsGateway } from '../gateway/events.gateway';
 
 interface PlayerApiQuery {
   username?: string;
@@ -53,6 +55,7 @@ export class XtreamController {
     private readonly userService: UserService,
     private readonly prisma: PrismaService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    @Optional() private readonly gateway?: EventsGateway,
   ) {}
 
   // ─── Authentication + action dispatch ──────────────────────────────────────
@@ -309,12 +312,20 @@ export class XtreamController {
         user.id, streamRecord.id, clientIp, req.headers['user-agent'], undefined, hlsToken,
       );
       connectionId = conn.id;
+      this.gateway?.emitConnectionUpdate({
+        id: conn.id,
+        userId: user.id,
+        streamId: streamRecord.id,
+        ip: clientIp,
+        startedAt: new Date().toISOString(),
+      });
     } catch { /* non-fatal: don't block streaming on connection tracking */ }
 
     const closeConn = (): void => {
       if (!connectionId) return;
       const id = connectionId;
       connectionId = null;
+      this.gateway?.emitConnectionClose(id);
       void this.userService.closeConnection(id);
     };
     res.on('close', closeConn);

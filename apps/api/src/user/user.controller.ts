@@ -11,7 +11,9 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from './user.service';
+import { ResellerService } from '../reseller/reseller.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
@@ -19,11 +21,16 @@ import { BulkExtendDto, BulkDeleteDto, ExtendDto } from './dto/bulk-user.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly resellerService: ResellerService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // Must be before :id routes
   @Get('expiring')
@@ -45,13 +52,28 @@ export class UserController {
 
   @Get()
   @Roles('ADMIN', 'RESELLER')
-  findAll(@Query() query: QueryUserDto) {
+  findAll(@Query() query: QueryUserDto, @CurrentUser() user: JwtUser) {
+    if (user.type === 'reseller') {
+      query.resellerId = user.id;
+    }
     return this.userService.findAll(query);
   }
 
   @Post()
   @Roles('ADMIN', 'RESELLER')
-  create(@Body() dto: CreateUserDto) {
+  async create(@Body() dto: CreateUserDto, @CurrentUser() user: JwtUser) {
+    if (user.type === 'reseller') {
+      dto.resellerId = user.id;
+      let creditCost = 1;
+      if (dto.packageId) {
+        const pkg = await this.prisma.package.findUnique({
+          where: { id: dto.packageId },
+          select: { creditCost: true },
+        });
+        if (pkg) creditCost = pkg.creditCost;
+      }
+      await this.resellerService.deductCredits(user.id, creditCost, `Kullanıcı oluşturma: ${dto.username}`);
+    }
     return this.userService.create(dto);
   }
 

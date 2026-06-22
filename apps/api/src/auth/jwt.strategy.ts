@@ -8,6 +8,7 @@ interface JwtPayload {
   sub: string;
   username: string;
   role: string;
+  type?: string;
 }
 
 @Injectable()
@@ -24,6 +25,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    if (payload.type === 'reseller') {
+      const reseller = await this.prisma.reseller.findFirst({
+        where: { id: payload.sub, deletedAt: null },
+        select: { id: true, username: true, isActive: true },
+      });
+      if (!reseller || !reseller.isActive) {
+        throw new UnauthorizedException('Reseller not found or inactive');
+      }
+      return { id: reseller.id, username: reseller.username, role: 'RESELLER', type: 'reseller' };
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, username: true, role: true, status: true },

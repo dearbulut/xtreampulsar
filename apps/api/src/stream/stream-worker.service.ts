@@ -3,11 +3,13 @@ import {
   Logger,
   OnModuleDestroy,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventsGateway } from '../gateway/events.gateway';
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 2000;
@@ -28,7 +30,10 @@ export class StreamWorkerService implements OnModuleDestroy {
     process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
   private readonly ffmpegPath: string;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly gateway?: EventsGateway,
+  ) {
     this.ffmpegPath = process.env.FFMPEG_PATH || '/usr/bin/ffmpeg';
     this.logger.log(`FFmpeg path configured: ${this.ffmpegPath}`);
   }
@@ -102,6 +107,7 @@ export class StreamWorkerService implements OnModuleDestroy {
       data: { ffmpegPid: proc.pid ?? null, workerStatus: 'RUNNING' },
     });
 
+    this.gateway?.emitStreamStatus(streamId, 'RUNNING');
     this.logger.log(`Stream ${streamId} worker started (PID ${proc.pid})`);
   }
 
@@ -118,6 +124,7 @@ export class StreamWorkerService implements OnModuleDestroy {
       data: { workerStatus: 'STOPPED', ffmpegPid: null },
     });
 
+    this.gateway?.emitStreamStatus(streamId, 'STOPPED');
     this.logger.log(`Stream ${streamId} worker stopped`);
   }
 
@@ -201,6 +208,8 @@ export class StreamWorkerService implements OnModuleDestroy {
         where: { id: streamId },
         data: { workerStatus: finalStatus, ffmpegPid: null },
       });
+
+      this.gateway?.emitStreamStatus(streamId, finalStatus);
     }
   }
 

@@ -6,17 +6,28 @@ import type { AuthUser } from '@/types';
 // Raw axios for auth calls — no circular dep with api.ts
 const authClient = axios.create({ baseURL: '/api/v1' });
 
+export interface ResellerUser {
+  id: string;
+  username: string;
+  credits: number;
+  tier: string;
+}
+
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
   refreshToken: string | null;
+  resellerToken: string | null;
+  resellerUser: ResellerUser | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
   setTokens: (access: string, refresh: string, user: AuthUser) => void;
+  resellerLogin: (username: string, password: string) => Promise<void>;
+  resellerLogout: () => void;
 }
 
-type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user'>;
+type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user' | 'resellerToken' | 'resellerUser'>;
 
 export const useAuthStore = create<AuthState>()(
   persist<AuthState, [], [], PersistedState>(
@@ -24,6 +35,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      resellerToken: null,
+      resellerUser: null,
 
       setTokens(access: string, refresh: string, user: AuthUser) {
         set({ accessToken: access, refreshToken: refresh, user });
@@ -58,6 +71,19 @@ export const useAuthStore = create<AuthState>()(
         const { accessToken, refreshToken } = res.data.data;
         set({ accessToken, refreshToken });
       },
+
+      async resellerLogin(username: string, password: string) {
+        const res = await authClient.post<{
+          success: boolean;
+          data: { accessToken: string; reseller: ResellerUser };
+        }>('/auth/reseller/login', { username, password });
+        const { accessToken, reseller } = res.data.data;
+        set({ resellerToken: accessToken, resellerUser: reseller });
+      },
+
+      resellerLogout() {
+        set({ resellerToken: null, resellerUser: null });
+      },
     }),
     {
       name: 'xp-auth',
@@ -65,6 +91,8 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
+        resellerToken: state.resellerToken,
+        resellerUser: state.resellerUser,
       }),
     },
   ),

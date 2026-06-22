@@ -43,4 +43,11 @@ export class AuthController {
   me(@CurrentUser() user: JwtUser) {
     return this.authService.me(user.id);
   }
+
+  @Post('reseller/login')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  resellerLogin(@Body() dto: LoginDto) {
+    return this.authService.resellerLogin(dto);
+  }
 }

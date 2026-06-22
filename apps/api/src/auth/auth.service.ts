@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Reseller } from '@xtreampulsar/database';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -76,6 +77,39 @@ export class AuthService {
         resellerId: true,
       },
     });
+  }
+
+  async resellerLogin(dto: LoginDto) {
+    const reseller = await this.prisma.reseller.findFirst({
+      where: { username: dto.username, deletedAt: null },
+    });
+
+    if (!reseller || !(await bcrypt.compare(dto.password, reseller.password))) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!reseller.isActive) {
+      throw new ForbiddenException('Reseller account is inactive');
+    }
+
+    const payload = {
+      sub: reseller.id,
+      username: reseller.username,
+      role: 'RESELLER',
+      type: 'reseller',
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    return {
+      accessToken,
+      reseller: {
+        id: reseller.id,
+        username: reseller.username,
+        credits: reseller.credits,
+        tier: reseller.tier,
+      } satisfies Partial<Reseller>,
+    };
   }
 
   private async issueTokens(user: {

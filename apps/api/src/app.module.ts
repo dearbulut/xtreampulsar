@@ -24,6 +24,7 @@ import { XtreamModule } from './xtream/xtream.module';
 import { ToolsModule } from './tools/tools.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
+import { GatewayModule } from './gateway/gateway.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AuditModule } from './audit/audit.module';
     ToolsModule,
     SettingsModule,
     AuditModule,
+    GatewayModule,
   ],
   controllers: [AppController],
   providers: [

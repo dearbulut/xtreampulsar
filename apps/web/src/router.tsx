@@ -25,6 +25,11 @@ import { AdvancedToolsPage } from '@/pages/tools/AdvancedToolsPage';
 import { ChannelsPage } from '@/pages/channels/ChannelsPage';
 import { VodPage } from '@/pages/vod/VodPage';
 import { SeriesPage } from '@/pages/series/SeriesPage';
+import { ResellerLayout } from '@/components/layout/ResellerLayout';
+import { ResellerLoginPage } from '@/pages/reseller/ResellerLoginPage';
+import { ResellerDashboardPage } from '@/pages/reseller/ResellerDashboardPage';
+import { ResellerUsersPage } from '@/pages/reseller/ResellerUsersPage';
+import { ResellerCreateUserPage } from '@/pages/reseller/ResellerCreateUserPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -166,9 +171,55 @@ const advancedToolsRoute = createRoute({
   component: AdvancedToolsPage,
 });
 
+// ─── Reseller routes ─────────────────────────────────────────────────────────
+
+const resellerLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reseller/login',
+  beforeLoad: () => {
+    const token = useAuthStore.getState().resellerToken;
+    if (token) throw redirect({ to: '/reseller/dashboard' });
+  },
+  component: ResellerLoginPage,
+});
+
+const resellerLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_reseller',
+  beforeLoad: () => {
+    const token = useAuthStore.getState().resellerToken;
+    if (!token) throw redirect({ to: '/reseller/login' });
+  },
+  component: ResellerLayout,
+});
+
+const resellerDashboardRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/dashboard',
+  component: ResellerDashboardPage,
+});
+
+const resellerUsersRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/users',
+  component: ResellerUsersPage,
+});
+
+const resellerCreateUserRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/users/create',
+  component: ResellerCreateUserPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  resellerLoginRoute,
+  resellerLayoutRoute.addChildren([
+    resellerDashboardRoute,
+    resellerUsersRoute,
+    resellerCreateUserRoute,
+  ]),
   layoutRoute.addChildren([
     dashboardRoute,
     streamsRoute,

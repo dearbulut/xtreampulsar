@@ -21,10 +21,12 @@ import {
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useDashboard, useBandwidth, useServerStats, useTopStreams } from '@/hooks/useDashboard';
+import { useSocket } from '@/hooks/useSocket';
 import { formatBytes, formatDateTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 export function DashboardPage() {
+  const { connected } = useSocket();
   const { data: dash, isLoading: dashLoading } = useDashboard();
   const { data: bandwidth } = useBandwidth();
   const { data: servers } = useServerStats();
@@ -51,6 +53,22 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* ── Live connection indicator ── */}
+      <div className="flex justify-end">
+        <div className={cn(
+          'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border',
+          connected
+            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+            : 'border-slate-700 bg-surface-1 text-muted',
+        )}>
+          <span className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
+          )} />
+          {connected ? 'Canlı' : 'Bağlantı kesildi'}
+        </div>
+      </div>
+
       {/* ── Top stat row ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard

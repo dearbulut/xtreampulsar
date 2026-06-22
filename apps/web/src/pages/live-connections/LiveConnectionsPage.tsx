@@ -3,6 +3,7 @@ import { RefreshCw, Wifi, ToggleRight, ToggleLeft } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { useLiveConnections, useKickConnection } from '@/hooks/useConnections';
+import { useSocket } from '@/hooks/useSocket';
 import type { Connection } from '@/types';
 import { formatDuration, cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ export function LiveConnectionsPage() {
   const [page, setPage] = useState(1);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const { connected } = useSocket();
   const { data, isLoading, refetch, isFetching } = useLiveConnections(page, 50, autoRefresh);
   const kickConnection = useKickConnection();
 
@@ -131,12 +133,24 @@ export function LiveConnectionsPage() {
         }
       />
 
-      {autoRefresh && (
-        <div className="flex items-center gap-2 text-xs text-emerald-400 mb-4 px-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          3 saniyede bir otomatik yenileniyor
+      <div className="flex items-center gap-3 mb-4 px-1">
+        {autoRefresh && (
+          <div className="flex items-center gap-2 text-xs text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            3 saniyede bir otomatik yenileniyor
+          </div>
+        )}
+        <div className={cn(
+          'flex items-center gap-1.5 text-xs',
+          connected ? 'text-emerald-400' : 'text-muted',
+        )}>
+          <span className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
+          )} />
+          {connected ? 'WebSocket bağlı' : 'WebSocket bağlantısı yok'}
         </div>
-      )}
+      </div>
 
       <div className="card overflow-hidden">
         <DataTable
