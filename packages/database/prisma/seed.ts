@@ -93,20 +93,28 @@ async function main() {
   });
   console.log(`✓ Test kategorisi    : ${testCategory.name} (${testCategory.type})`);
 
+  // Eski test stream'leri temizle — duplicate olmadan yeniden oluşturmak için
+  const deleted = await prisma.stream.deleteMany({
+    where: { externalId: { in: [90001, 90002, 90003, 90004, 90005] } },
+  });
+  if (deleted.count > 0) {
+    console.log(`✓ Eski test stream'ler silindi: ${deleted.count} adet`);
+  }
+
   const testStreams = [
-    {
-      name: 'Big Buck Bunny (VOD)',
-      primaryUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      externalId: 90001,
-    },
     {
       name: 'Mux Test Stream (LIVE)',
       primaryUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-      externalId: 90002,
+      externalId: 90001,
     },
     {
       name: 'Apple HLS Test (LIVE)',
       primaryUrl: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+      externalId: 90002,
+    },
+    {
+      name: 'CPH Live Test (LIVE)',
+      primaryUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
       externalId: 90003,
     },
     {
@@ -115,28 +123,23 @@ async function main() {
       externalId: 90004,
     },
     {
-      name: 'NASA TV (LIVE)',
-      primaryUrl: 'https://ntv3.akamaized.net/hls/live/2014075/NASA-NTV3-HLS/master.m3u8',
+      name: 'Peer5 BBB Live (LIVE)',
+      primaryUrl: 'https://wowza.peer5.com/live/smil:bbb_abr.smil/chunklist_w182342104_b336000_slen_t64RW5nbGlzaA==.m3u8',
       externalId: 90005,
     },
   ];
 
   for (const s of testStreams) {
-    const existing = await prisma.stream.findUnique({ where: { externalId: s.externalId } });
-    if (!existing) {
-      await prisma.stream.create({
-        data: {
-          name: s.name,
-          primaryUrl: s.primaryUrl,
-          externalId: s.externalId,
-          categoryId: testCategory.id,
-          isActive: true,
-        },
-      });
-      console.log(`✓ Test stream        : ${s.name}`);
-    } else {
-      console.log(`→ Test stream var    : ${s.name}`);
-    }
+    await prisma.stream.create({
+      data: {
+        name: s.name,
+        primaryUrl: s.primaryUrl,
+        externalId: s.externalId,
+        categoryId: testCategory.id,
+        isActive: true,
+      },
+    });
+    console.log(`✓ Test stream        : ${s.name}`);
   }
 
   console.log('\n✅ Seed tamamlandı!');
