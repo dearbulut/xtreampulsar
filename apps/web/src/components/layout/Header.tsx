@@ -1,6 +1,7 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
@@ -8,6 +9,27 @@ import { useUpdateCheck, useApplyUpdate } from '@/hooks/useUpdate';
 import { cn } from '@/lib/utils';
 import { THEMES, THEME_LABELS, type ThemeName } from '@/styles/themes';
 import api from '@/lib/axios';
+
+interface NotificationLog {
+  id: string;
+  type: string;
+  recipient: string;
+  subject: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  createdAt: string;
+}
+
+function useNotificationLogs() {
+  return useQuery<NotificationLog[]>({
+    queryKey: ['notification-logs'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { items: NotificationLog[] } }>('/notifications/logs?limit=10');
+      return res.data.data?.items ?? [];
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+}
 
 interface Props {
   title?: string;
@@ -211,6 +233,7 @@ export function Header({ title, breadcrumb }: Props) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const { data: notifLogs = [] } = useNotificationLogs();
 
   const { data: updateInfo } = useUpdateCheck();
   const applyUpdate = useApplyUpdate();
@@ -355,10 +378,50 @@ export function Header({ title, breadcrumb }: Props) {
           </DropdownMenu.Root>
 
           {/* Notification bell */}
-          <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
-          </button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
+                <Bell className="w-4 h-4" />
+                {notifLogs.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
+                )}
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="bg-surface border border-border rounded-xl shadow-2xl p-1.5 w-80 z-50 animate-fade-in"
+                align="end"
+                sideOffset={6}
+              >
+                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold flex items-center justify-between">
+                  <span>Bildirimler</span>
+                  <button onClick={() => void router.navigate({ to: '/settings' })} className="hover:text-primary transition-colors">Ayarlar</button>
+                </div>
+                {notifLogs.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-muted">Bildirim yok</div>
+                ) : (
+                  notifLogs.slice(0, 8).map((n) => (
+                    <div key={n.id} className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors">
+                      {n.status === 'SENT' ? (
+                        <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0 mt-0.5" />
+                      ) : n.status === 'FAILED' ? (
+                        <AlertCircle className="w-3.5 h-3.5 text-danger flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-slate-200 truncate">{n.subject}</div>
+                        <div className="text-[11px] text-muted truncate">{n.recipient}</div>
+                        <div className="text-[10px] text-muted/60 mt-0.5">
+                          {new Date(n.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
 
           {/* User dropdown */}
           <DropdownMenu.Root>
@@ -384,8 +447,8 @@ export function Header({ title, breadcrumb }: Props) {
                   <div className="text-xs font-medium">{user?.username}</div>
                   <div className="text-[11px] text-muted">{user?.role}</div>
                 </div>
-                <DropdownItem icon={User} label="Profilim" />
-                <DropdownItem icon={Settings} label="Ayarlar" />
+                <DropdownItem icon={User} label="Profilim" onClick={() => void router.navigate({ to: '/profile' })} />
+                <DropdownItem icon={Settings} label="Ayarlar" onClick={() => void router.navigate({ to: '/settings' })} />
                 <DropdownMenu.Separator className="h-px bg-border my-1" />
                 <DropdownItem icon={LogOut} label="Çıkış Yap" danger onClick={handleLogout} />
               </DropdownMenu.Content>

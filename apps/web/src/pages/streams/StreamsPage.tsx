@@ -584,7 +584,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       <Modal
         open={showCreate}
         onClose={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
-        title="Yeni Kanal Ekle"
+        title={`Yeni ${type === 'VOD' ? 'Film' : type === 'SERIES' ? 'Dizi' : 'Kanal'} Ekle`}
         size="md"
       >
         <div className="space-y-3">
@@ -665,14 +665,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 !createForm.categoryId
               }
               onClick={() => {
-                const payload: Partial<Stream> = {
+                const payload = {
                   name: createForm.name,
                   primaryUrl: createForm.primaryUrl,
                   categoryId: createForm.categoryId,
+                  type: type ?? 'LIVE',
                   ...(createForm.backupUrl && { backupUrl: createForm.backupUrl }),
                   ...(createForm.serverId && { serverId: createForm.serverId }),
                   ...(createForm.tvgLogo && { tvgLogo: createForm.tvgLogo }),
-                };
+                } as Partial<Stream> & { type: string };
                 createStream.mutate(payload, {
                   onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); },
                 });

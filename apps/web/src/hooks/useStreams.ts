@@ -90,7 +90,7 @@ export function useDeleteStream() {
 export function useCreateStream() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Stream>) => api.post<{ success: boolean; data: Stream }>('/streams', data),
+    mutationFn: (data: Partial<Stream> & Record<string, unknown>) => api.post<{ success: boolean; data: Stream }>('/streams', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['streams'] });
       toast.success('Stream oluşturuldu');

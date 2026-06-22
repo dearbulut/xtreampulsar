@@ -222,6 +222,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
       to={item.to}
       className="nav-item"
       activeProps={{ className: 'nav-item active' }}
+      activeOptions={{ exact: true }}
       onClick={onNavigate}
     >
       <Icon className="w-4 h-4 flex-shrink-0" />

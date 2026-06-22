@@ -33,6 +33,7 @@ import { ResellerCreateUserPage } from '@/pages/reseller/ResellerCreateUserPage'
 import { RevenuePage } from '@/pages/analytics/RevenuePage';
 import { EpgGuidePage } from '@/pages/epg/EpgGuidePage';
 import { UserReportPage } from '@/pages/users/UserReportPage';
+import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -192,6 +193,12 @@ const userReportRoute = createRoute({
   component: UserReportPage,
 });
 
+const profileRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/profile',
+  component: ProfilePage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -263,6 +270,7 @@ const routeTree = rootRoute.addChildren([
     advancedToolsRoute,
     revenueRoute,
     userReportRoute,
+    profileRoute,
   ]),
 ]);
 
