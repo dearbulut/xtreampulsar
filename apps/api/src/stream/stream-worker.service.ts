@@ -5,12 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
-import { mkdirSync } from 'fs';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 2000;
-const HLS_BASE = '/tmp/xtreampulsar/hls';
 
 interface WorkerState {
   process: ChildProcess;
@@ -23,6 +23,8 @@ interface WorkerState {
 export class StreamWorkerService implements OnModuleDestroy {
   private readonly logger = new Logger(StreamWorkerService.name);
   private readonly workers = new Map<string, WorkerState>();
+  private readonly hlsOutputPath =
+    process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -36,21 +38,18 @@ export class StreamWorkerService implements OnModuleDestroy {
       await this.stopWorker(streamId);
     }
 
-    const outputDir = `${HLS_BASE}/${streamId}`;
-    try {
-      mkdirSync(outputDir, { recursive: true });
-    } catch {
-      // directory may already exist
-    }
+    const outputDir = path.join(this.hlsOutputPath, streamId);
+    fs.mkdirSync(outputDir, { recursive: true });
 
-    const outputPath = `${outputDir}/index.m3u8`;
+    const outputFile = path.join(outputDir, 'index.m3u8');
     const args = [
       '-i', stream.primaryUrl,
       '-c', 'copy',
       '-f', 'hls',
       '-hls_time', '2',
       '-hls_list_size', '5',
-      outputPath,
+      '-hls_flags', 'delete_segments',
+      outputFile,
     ];
 
     const proc = spawn('ffmpeg', args, {
