@@ -4,7 +4,8 @@ WORKDIR /repo
 RUN npm install -g pnpm
 RUN apk add --no-cache python3 make g++ openssl ffmpeg
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
@@ -21,7 +22,6 @@ ENV NODE_ENV=production
 COPY --from=builder /repo/apps/api/dist ./dist
 COPY --from=builder /repo/node_modules ./node_modules
 COPY --from=builder /repo/packages ./packages
-COPY --from=builder /repo/apps/api/node_modules ./apps/api/node_modules
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

@@ -5,6 +5,7 @@ RUN npm install -g pnpm
 RUN apk add --no-cache python3 make g++ openssl
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY apps/license/ ./apps/license/
 
