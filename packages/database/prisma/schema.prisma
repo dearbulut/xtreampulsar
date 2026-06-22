@@ -410,11 +410,12 @@ model User {
   resellerId String?
   reseller   Reseller? @relation(fields: [resellerId], references: [id])
 
-  connections   Connection[]
-  refreshTokens RefreshToken[]
-  userBouquets  UserBouquet[]
-  magDevices    MagDevice[]
-  apiKeys       ApiKey[]
+  connections    Connection[]
+  refreshTokens  RefreshToken[]
+  userBouquets   UserBouquet[]
+  magDevices     MagDevice[]
+  apiKeys        ApiKey[]
+  activityLogs   UserActivityLog[]
 
   @@map("users")
 }
@@ -683,4 +684,20 @@ model BandwidthLog {
   @@unique([streamId, serverId, hour])
   @@index([hour])
   @@map("bandwidth_logs")
+}
+
+// ─── UserActivityLog ─────────────────────────────────────────────────────────
+
+model UserActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  streamId  String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("user_activity_logs")
 }

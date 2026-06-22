@@ -21,9 +21,11 @@ import { URL } from 'url';
 import type Redis from 'ioredis';
 import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
+import { StreamPrefetchService } from '../stream/stream-prefetch.service';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
+import { LoadBalancerService } from '../server/load-balancer.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { EventsGateway } from '../gateway/events.gateway';
 
@@ -56,6 +58,8 @@ export class XtreamController {
     private readonly userService: UserService,
     private readonly prisma: PrismaService,
     private readonly securityService: SecurityService,
+    private readonly lbService: LoadBalancerService,
+    @Optional() private readonly prefetchService: StreamPrefetchService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Optional() private readonly gateway?: EventsGateway,
   ) {}
@@ -65,6 +69,7 @@ export class XtreamController {
   @Get('player_api.php')
   async playerApi(
     @Query() query: PlayerApiQuery,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     const { username = '', password = '', action } = query;
@@ -83,6 +88,9 @@ export class XtreamController {
     }
 
     if (!action) {
+      void this.userService.logActivity(user.id, 'LOGIN', {
+        ip: (req as unknown as { ip?: string }).ip,
+      });
       res.json(await this.xtream.buildAuthResponse(user, username, password));
       return;
     }
@@ -331,7 +339,14 @@ export class XtreamController {
         ip: clientIp,
         startedAt: new Date().toISOString(),
       });
-    } catch { /* non-fatal: don't block streaming on connection tracking */ }
+    } catch { /* non-fatal */ }
+
+    // Log stream start
+    void this.userService.logActivity(user.id, 'STREAM_START', {
+      streamId: streamRecord.id,
+      ip: clientIp,
+      userAgent: req.headers['user-agent'],
+    });
 
     const closeConn = (): void => {
       if (!connectionId) return;
@@ -339,6 +354,7 @@ export class XtreamController {
       connectionId = null;
       this.gateway?.emitConnectionClose(id);
       void this.userService.closeConnection(id);
+      void this.userService.logActivity(user.id, 'STREAM_STOP', { streamId: streamRecord.id, ip: clientIp });
     };
     res.on('close', closeConn);
     res.on('finish', closeConn);
@@ -348,15 +364,17 @@ export class XtreamController {
     const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');
 
     if (fs.existsSync(hlsFile)) {
-      const serverUrl = (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-      const raw = fs.readFileSync(hlsFile, 'utf-8');
+      // Use load-balanced server IP if available, otherwise default
+      const optimalServer = await this.lbService.getOptimalServer().catch(() => null);
+      const baseUrl = optimalServer
+        ? `http://${optimalServer.serverIp}:25461`
+        : (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
-      // Rewrite relative .ts segment names to absolute URLs.
-      // Append ?token=hlsToken so segments heartbeat the connection and can be blocked on kick.
+      const raw = fs.readFileSync(hlsFile, 'utf-8');
       const tokenSuffix = connectionId ? `?token=${hlsToken}` : '';
       const fixed = raw.replace(
         /^([^#\r\n][^\r\n]*\.ts)$/gm,
-        `${serverUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
+        `${baseUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
       );
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -391,12 +409,18 @@ export class XtreamController {
     // Guard against path traversal
     const safeSegment = path.basename(segment);
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
-    const segmentFile = path.join(hlsBase, streamId, safeSegment);
+
+    // Prefer prefetch cache, fall back to HLS dir
+    const cachedPath = this.prefetchService?.getCachedSegmentPath(streamId, safeSegment);
+    const segmentFile = cachedPath ?? path.join(hlsBase, streamId, safeSegment);
 
     if (!fs.existsSync(segmentFile)) {
       res.status(HttpStatus.NOT_FOUND).send('Segment not found');
       return;
     }
+
+    // Trigger prefetch for next segments in background
+    this.prefetchService?.prefetchSegments(streamId, 3);
 
     if (token) {
       // Kick check: if token is blacklisted, deny segment — VLC/player will stop

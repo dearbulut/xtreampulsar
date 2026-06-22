@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { MiniSparkline } from '@/components/ui/MiniSparkline';
 import { useServers, useCreateServer, useDeleteServer, useServerHealth, useUpdateServer } from '@/hooks/useServers';
 import { useServerGuard, useUpdateServerGuard, useBlockedIps, useUnblockIp, type ServerGuard } from '@/hooks/useServerGuard';
+import { useServerLoad } from '@/hooks/useUserActivity';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 
@@ -182,6 +183,7 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
 
 export function ServersPage() {
   const { data: servers = [], isLoading } = useServers();
+  const { data: loadStats = [] } = useServerLoad() as { data: Array<{ serverId: string; name: string; connections: number; maxClients: number; utilization: number; isOnline: boolean }> };
   const createServer = useCreateServer();
   const deleteServer = useDeleteServer();
   const updateServer = useUpdateServer();
@@ -238,6 +240,10 @@ export function ServersPage() {
     await deleteServer.mutateAsync(id);
   };
 
+  const totalConns = loadStats.reduce((s, x) => s + x.connections, 0);
+  const totalMax = loadStats.reduce((s, x) => s + x.maxClients, 0);
+  const overallUtil = totalMax > 0 ? Math.round((totalConns / totalMax) * 100) : 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -250,6 +256,37 @@ export function ServersPage() {
           <Plus className="w-4 h-4" /> Sunucu Ekle
         </button>
       </div>
+
+      {/* Yük Dengesi Özet */}
+      {loadStats.length > 0 && (
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold text-slate-200">Yük Dengesi</div>
+            <div className={cn('text-xs font-semibold', overallUtil > 90 ? 'text-danger' : overallUtil > 70 ? 'text-warning' : 'text-success')}>
+              {overallUtil}% toplam kullanım
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {loadStats.map((s) => (
+              <div key={s.serverId} className="text-xs">
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-300 truncate">{s.name}</span>
+                  <span className={cn('font-mono ml-1 flex-shrink-0', s.utilization > 90 ? 'text-danger' : s.utilization > 70 ? 'text-warning' : 'text-success')}>
+                    {s.utilization}%
+                  </span>
+                </div>
+                <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full transition-all duration-500', s.utilization > 90 ? 'bg-danger' : s.utilization > 70 ? 'bg-warning' : 'bg-success')}
+                    style={{ width: `${Math.min(s.utilization, 100)}%` }}
+                  />
+                </div>
+                <div className="text-muted mt-0.5">{s.connections}/{s.maxClients}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Grid */}
       {isLoading ? (

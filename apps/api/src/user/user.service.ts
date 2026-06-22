@@ -433,6 +433,32 @@ export class UserService {
     });
   }
 
+  async logActivity(
+    userId: string,
+    action: 'LOGIN' | 'STREAM_START' | 'STREAM_STOP' | 'PASSWORD_CHANGE',
+    opts?: { streamId?: string; ip?: string; userAgent?: string },
+  ): Promise<void> {
+    try {
+      await this.prisma.userActivityLog.create({
+        data: { userId, action, ...opts },
+      });
+    } catch { /* non-fatal */ }
+  }
+
+  async getActivityLog(userId: string, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.prisma.userActivityLog.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.userActivityLog.count({ where: { userId } }),
+    ]);
+    return { items, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
   private async assertExists(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },

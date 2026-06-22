@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ServerService } from './server.service';
 import { ServerHealthService } from './server-health.service';
+import { LoadBalancerService } from './load-balancer.service';
 import { CreateServerDto } from './dto/create-server.dto';
 import { UpdateServerDto } from './dto/update-server.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -24,11 +25,17 @@ export class ServerController {
   constructor(
     private readonly serverService: ServerService,
     private readonly healthService: ServerHealthService,
+    private readonly lbService: LoadBalancerService,
   ) {}
 
   @Get()
   findAll() {
     return this.serverService.findAll();
+  }
+
+  @Get('load')
+  getLoad() {
+    return this.lbService.getLoadStats();
   }
 
   @Get(':id')

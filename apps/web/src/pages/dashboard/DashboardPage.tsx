@@ -9,6 +9,8 @@ import {
   AlertTriangle,
   Clock,
   BarChart2,
+  Bell,
+  Timer,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -23,9 +25,52 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections } from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
 import { useExpiringCount } from '@/hooks/useBulkRenew';
+import { useNotificationLogs } from '@/hooks/useUserActivity';
 import { useNavigate } from '@tanstack/react-router';
-import { formatBytes, formatDateTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/axios';
+
+// Fetch top streams sorted by uptime (longest running)
+function useUptimeStreams(limit = 5) {
+  return useQuery({
+    queryKey: ['streams-uptime', limit],
+    queryFn: async () => {
+      const res = await api.get<{ data: { items: Array<{ id: string; name: string; status: string; updatedAt: string }> } }>(
+        `/streams?status=ONLINE&limit=${limit}&sort=uptime`,
+      );
+      return res.data.data?.items ?? [];
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
+function formatUptime(since: string): string {
+  const ms = Date.now() - new Date(since).getTime();
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+const ACTION_COLOR: Record<string, string> = {
+  STREAM_FAIL: 'text-danger',
+  SERVER_DOWN: 'text-danger',
+  LOW_BANDWIDTH: 'text-warning',
+  NEW_CONNECTION: 'text-info',
+  USER_EXPIRY: 'text-warning',
+  LOGIN: 'text-primary',
+  DEFAULT: 'text-muted',
+};
+
+function alarmColor(type: string): string {
+  for (const [k, v] of Object.entries(ACTION_COLOR)) {
+    if (type?.includes(k)) return v;
+  }
+  return ACTION_COLOR.DEFAULT;
+}
 
 export function DashboardPage() {
   const { connected } = useSocket();
@@ -35,6 +80,8 @@ export function DashboardPage() {
   const { data: topStreams } = useTopStreams(5);
   const { data: geoData } = useGeoConnections();
   const { data: expiringCount } = useExpiringCount(7);
+  const { data: alarmLogs = [] } = useNotificationLogs(5);
+  const { data: uptimeStreams = [] } = useUptimeStreams(5);
   const navigate = useNavigate();
 
   const bwChartData = (bandwidth ?? []).map((b, i) => ({
@@ -44,7 +91,6 @@ export function DashboardPage() {
     idx: i,
   }));
 
-  // Placeholder sparkline for servers (last 7 "ticks")
   const sparkSeed = (base: number) =>
     Array.from({ length: 7 }, (_, i) => ({ v: Math.max(0, base + Math.sin(i) * (base * 0.3)) }));
 
@@ -96,9 +142,7 @@ export function DashboardPage() {
           value={`${dash?.streams.online ?? 0} / ${dash?.streams.total ?? 0}`}
           subtitle="Çalışıyor / Toplam"
           icon={Tv}
-          variant={
-            (dash?.streams.online ?? 0) > 0 ? 'success' : 'danger'
-          }
+          variant={(dash?.streams.online ?? 0) > 0 ? 'success' : 'danger'}
         />
         <StatCard
           title="Sunucular"
@@ -186,13 +230,14 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Server cards + Top streams ── */}
+      {/* ── Server cards + Top streams + Uptime + Alarms ── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Server cards */}
         <div className="xl:col-span-2 space-y-3">
           <h2 className="text-sm font-semibold text-slate-200">Sunucu Durumu</h2>
           {(servers ?? []).map((srv) => {
             const sparkData = sparkSeed(srv.activeConnections ?? 0);
+            const util = srv.utilization ?? 0;
             return (
               <div key={srv.id} className="card p-4 flex items-center gap-4">
                 <div
@@ -212,21 +257,20 @@ export function DashboardPage() {
                   <div className="text-xs text-muted">
                     {srv.activeConnections ?? 0} / {srv.maxClients} bağlantı
                     {srv.responseTime && ` • ${srv.responseTime}ms`}
-                    {srv.utilization !== undefined && ` • %${srv.utilization.toFixed(0)} kullanım`}
+                    {srv.utilization !== undefined && ` • %${util.toFixed(0)} kullanım`}
                   </div>
-                  {/* Utilization bar */}
+                  {/* Utilization bar — color coded: green <70%, yellow 70-90%, red >90% */}
                   <div className="mt-2 h-1 bg-surface-2 rounded-full overflow-hidden">
                     <div
                       className={cn(
-                        'h-full rounded-full transition-all',
-                        (srv.utilization ?? 0) > 80 ? 'bg-danger' :
-                        (srv.utilization ?? 0) > 60 ? 'bg-warning' : 'bg-success',
+                        'h-full rounded-full transition-all duration-500',
+                        util > 90 ? 'bg-danger' : util > 70 ? 'bg-warning' : 'bg-success',
                       )}
-                      style={{ width: `${Math.min(srv.utilization ?? 0, 100)}%` }}
+                      style={{ width: `${Math.min(util, 100)}%` }}
                     />
                   </div>
                 </div>
-                {/* Sparkline */}
+                {/* Mini sparkline */}
                 <div className="w-24 h-10 flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={sparkData}>
@@ -313,6 +357,51 @@ export function DashboardPage() {
             })}
             {(!geoData || geoData.length === 0) && (
               <div className="text-center text-muted text-sm py-6">Aktif bağlantı yok</div>
+            )}
+          </div>
+        </div>
+
+        {/* En Uzun Çalışan Streamler */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Timer className="w-4 h-4 text-success" />
+            <h2 className="text-sm font-semibold text-slate-200">En Uzun Çalışan Streamler</h2>
+          </div>
+          <div className="space-y-3">
+            {uptimeStreams.map((s, i) => (
+              <div key={s.id ?? i} className="flex items-center gap-3">
+                <span className="w-5 text-xs text-muted font-mono">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-slate-300 truncate">{s.name}</div>
+                  <div className="font-mono text-xs text-success">{formatUptime(s.updatedAt)}</div>
+                </div>
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
+              </div>
+            ))}
+            {uptimeStreams.length === 0 && (
+              <div className="text-center text-muted text-sm py-6">Online stream yok</div>
+            )}
+          </div>
+        </div>
+
+        {/* Alarm Merkezi */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-warning" />
+            <h2 className="text-sm font-semibold text-slate-200">Son Alarmlar</h2>
+          </div>
+          <div className="space-y-2">
+            {(alarmLogs as Array<{ id?: string; type?: string; subject?: string; recipient?: string; createdAt?: string }>).map((log, i) => (
+              <div key={log.id ?? i} className="flex items-start gap-2 text-xs">
+                <span className={cn('mt-0.5 flex-shrink-0 font-semibold', alarmColor(log.type ?? ''))}>●</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-slate-300 truncate">{log.subject ?? log.type ?? '—'}</div>
+                  <div className="text-muted">{log.createdAt ? new Date(log.createdAt).toLocaleString('tr-TR') : ''}</div>
+                </div>
+              </div>
+            ))}
+            {alarmLogs.length === 0 && (
+              <div className="text-center text-muted text-sm py-6">Alarm yok</div>
             )}
           </div>
         </div>

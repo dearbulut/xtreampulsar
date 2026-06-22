@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity } from 'lucide-react';
+import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -39,6 +40,7 @@ export function UsersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkRenew, setShowBulkRenew] = useState(false);
   const [bulkPackageId, setBulkPackageId] = useState('');
+  const [activityUserId, setActivityUserId] = useState<string | null>(null);
 
   const { data, isLoading } = useUsers({ page, limit: 25, search, status });
   const { data: bouquets = [] } = useBouquets();
@@ -163,6 +165,8 @@ export function UsersPage() {
                 setQrLoading(false);
               }
             }} />
+          <ActionBtn icon={Activity} title="Aktivite" color="text-primary"
+            onClick={() => setActivityUserId(r.id)} />
           <ActionBtn icon={Trash2} title="Sil" color="text-danger"
             onClick={() => setDeleteId(r.id)} />
         </div>
@@ -430,7 +434,46 @@ export function UsersPage() {
           )}
         </div>
       </Modal>
+
+      {/* Aktivite Modal */}
+      {activityUserId && (
+        <ActivityModal userId={activityUserId} onClose={() => setActivityUserId(null)} />
+      )}
     </div>
+  );
+}
+
+const ACTION_BADGE: Record<string, string> = {
+  LOGIN: 'bg-primary/20 text-primary',
+  STREAM_START: 'bg-success/20 text-success',
+  STREAM_STOP: 'bg-danger/20 text-danger',
+  PASSWORD_CHANGE: 'bg-warning/20 text-warning',
+};
+
+function ActivityModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { data, isLoading } = useUserActivity(userId);
+
+  return (
+    <Modal open onClose={onClose} title="Kullanıcı Aktivitesi" size="lg">
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+        {isLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
+        {!isLoading && (!data?.items || data.items.length === 0) && (
+          <p className="text-muted text-sm text-center py-6">Aktivite kaydı yok</p>
+        )}
+        {data?.items.map((log) => (
+          <div key={log.id} className="flex items-start gap-3 text-sm py-2 border-b border-border/30">
+            <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', ACTION_BADGE[log.action] ?? 'bg-surface-2 text-muted')}>
+              {log.action}
+            </span>
+            <div className="flex-1 min-w-0">
+              {log.ip && <span className="font-mono text-xs text-muted mr-2">{log.ip}</span>}
+              {log.streamId && <span className="text-xs text-muted">Stream: {log.streamId.slice(0, 8)}…</span>}
+            </div>
+            <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString('tr-TR')}</span>
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 

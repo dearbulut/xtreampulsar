@@ -137,4 +137,18 @@ export class UserController {
   getExpiringCount(@Query('days') days?: string) {
     return this.userService.countExpiringSoon(days ? parseInt(days, 10) : 7);
   }
+
+  @Get(':id/activity')
+  @Roles('ADMIN', 'RESELLER')
+  getActivity(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.userService.getActivityLog(
+      id,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 50,
+    );
+  }
 }

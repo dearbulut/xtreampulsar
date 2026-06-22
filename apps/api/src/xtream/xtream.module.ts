@@ -5,9 +5,10 @@ import { UserModule } from '../user/user.module';
 import { StreamModule } from '../stream/stream.module';
 import { GatewayModule } from '../gateway/gateway.module';
 import { SecurityModule } from '../security/security.module';
+import { ServerModule } from '../server/server.module';
 
 @Module({
-  imports: [UserModule, StreamModule, GatewayModule, SecurityModule],
+  imports: [UserModule, StreamModule, GatewayModule, SecurityModule, ServerModule],
   controllers: [XtreamController],
   providers: [XtreamService],
 })
