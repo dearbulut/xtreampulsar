@@ -7,6 +7,7 @@ export interface CreateConnectionData {
   ip: string;
   userAgent?: string;
   serverId?: string;
+  token?: string;
 }
 
 @Injectable()

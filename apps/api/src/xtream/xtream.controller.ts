@@ -6,17 +6,21 @@ import {
   Req,
   Res,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { URL } from 'url';
+import type Redis from 'ioredis';
 import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
 
 interface PlayerApiQuery {
   username?: string;
@@ -43,6 +47,7 @@ export class XtreamController {
     private readonly streamService: StreamService,
     private readonly userService: UserService,
     private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   // ─── Authentication + action dispatch ──────────────────────────────────────
@@ -292,10 +297,11 @@ export class XtreamController {
     const clientIp =
       (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
       req.ip ?? '';
+    const hlsToken = randomUUID();
     let connectionId: string | null = null;
     try {
       const conn = await this.userService.createConnection(
-        user.id, streamRecord.id, clientIp, req.headers['user-agent'],
+        user.id, streamRecord.id, clientIp, req.headers['user-agent'], undefined, hlsToken,
       );
       connectionId = conn.id;
     } catch { /* non-fatal: don't block streaming on connection tracking */ }
@@ -318,8 +324,8 @@ export class XtreamController {
       const raw = fs.readFileSync(hlsFile, 'utf-8');
 
       // Rewrite relative .ts segment names to absolute URLs.
-      // Append ?token=connectionId so segment requests can heartbeat the connection.
-      const tokenSuffix = connectionId ? `?token=${connectionId}` : '';
+      // Append ?token=hlsToken so segments heartbeat the connection and can be blocked on kick.
+      const tokenSuffix = connectionId ? `?token=${hlsToken}` : '';
       const fixed = raw.replace(
         /^([^#\r\n][^\r\n]*\.ts)$/gm,
         `${serverUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
@@ -346,12 +352,12 @@ export class XtreamController {
   // ─── HLS segment serve ─────────────────────────────────────────────────────
 
   @Get('hls/:streamId/:segment')
-  serveHlsSegment(
+  async serveHlsSegment(
     @Param('streamId') streamId: string,
     @Param('segment') segment: string,
     @Query('token') token: string | undefined,
     @Res() res: Response,
-  ): void {
+  ): Promise<void> {
     // Guard against path traversal
     const safeSegment = path.basename(segment);
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
@@ -362,12 +368,19 @@ export class XtreamController {
       return;
     }
 
-    // Heartbeat: refresh connection updatedAt so analytics can detect live viewers
     if (token) {
-      void this.prisma.connection.update({
-        where: { id: token },
-        data: { updatedAt: new Date() },
-      }).catch(() => { /* stale token — ignore */ });
+      // Kick check: if token is blacklisted, deny segment — VLC/player will stop
+      const isKicked = await this.redis.get(`kicked:${token}`).catch(() => null);
+      if (isKicked) {
+        res.status(HttpStatus.FORBIDDEN).send('Connection terminated');
+        return;
+      }
+
+      // Heartbeat: refresh connection updatedAt so analytics detects live viewers
+      // token is stored on the connection record; use updateMany since token has no unique index
+      void this.prisma.connection
+        .updateMany({ where: { token }, data: { updatedAt: new Date() } })
+        .catch(() => { /* stale token — ignore */ });
     }
 
     res.setHeader('Content-Type', 'video/MP2T');

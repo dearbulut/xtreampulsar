@@ -47,8 +47,8 @@ export class UserService {
     return { allowed: true };
   }
 
-  async createConnection(userId: string, streamId: string, ip: string, userAgent?: string, serverId?: string) {
-    return this.userRepo.createConnection({ userId, streamId, ip, userAgent, serverId });
+  async createConnection(userId: string, streamId: string, ip: string, userAgent?: string, serverId?: string, token?: string) {
+    return this.userRepo.createConnection({ userId, streamId, ip, userAgent, serverId, token });
   }
 
   async closeConnection(connectionId: string): Promise<void> {

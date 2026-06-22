@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
 
 interface HourlyBandwidth {
   hour: Date;
@@ -11,7 +13,10 @@ interface HourlyBandwidth {
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+  ) {}
 
   async getDashboard() {
     const now = new Date();
@@ -98,6 +103,16 @@ export class AnalyticsService {
   }
 
   async kickConnection(connectionId: string): Promise<{ kicked: boolean }> {
+    const conn = await this.prisma.connection.findUnique({
+      where: { id: connectionId },
+      select: { token: true },
+    });
+
+    // Blacklist the HLS token so the next segment request returns 403
+    if (conn?.token) {
+      await this.redis.setex(`kicked:${conn.token}`, 300, '1');
+    }
+
     await this.prisma.connection.delete({ where: { id: connectionId } });
     return { kicked: true };
   }

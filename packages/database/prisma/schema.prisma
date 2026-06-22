@@ -438,6 +438,7 @@ model Connection {
   id        String    @id @default(cuid())
   ip        String
   userAgent String?
+  token     String?
   startedAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   endedAt   DateTime?
