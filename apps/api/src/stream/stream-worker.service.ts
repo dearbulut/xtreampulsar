@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../gateway/events.gateway';
+import { NotificationService } from '../notification/notification.service';
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 2000;
@@ -33,6 +34,7 @@ export class StreamWorkerService implements OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly gateway?: EventsGateway,
+    @Optional() private readonly notificationService?: NotificationService,
   ) {
     this.ffmpegPath = process.env.FFMPEG_PATH || '/usr/bin/ffmpeg';
     this.logger.log(`FFmpeg path configured: ${this.ffmpegPath}`);
@@ -202,6 +204,11 @@ export class StreamWorkerService implements OnModuleDestroy {
         this.logger.error(
           `Stream ${streamId} exceeded max restarts (${MAX_RESTARTS}) — marking CRASHED`,
         );
+        const s = await this.prisma.stream.findUnique({
+          where: { id: streamId },
+          select: { name: true },
+        });
+        void this.notificationService?.notifyStreamDown(streamId, s?.name ?? streamId);
       }
 
       await this.prisma.stream.update({

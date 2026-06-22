@@ -9,6 +9,9 @@ export interface GeneralSettings {
   language: string;
   serverUrl: string;
   logoUrl: string;
+  adminEmail: string;
+  streamDownAlert: boolean;
+  resellerNotifyExpiry: boolean;
 }
 
 export interface XtreamSettings {
@@ -76,7 +79,7 @@ export interface AllSettings {
 }
 
 const DEFAULTS: AllSettings = {
-  general: { panelName: 'XtreamPulsar', timezone: 'Europe/Istanbul', language: 'tr', serverUrl: '', logoUrl: '' },
+  general: { panelName: 'XtreamPulsar', timezone: 'Europe/Istanbul', language: 'tr', serverUrl: '', logoUrl: '', adminEmail: '', streamDownAlert: true, resellerNotifyExpiry: true },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '' },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
@@ -103,6 +106,15 @@ interface DbSettings {
   expiredVideo: string | null;
   countryLockVideo: string | null;
   maxConxExceedVideo: string | null;
+  adminEmail: string;
+  resellerNotifyExpiry: boolean;
+  streamDownAlert: boolean;
+  enableLocalBackups: boolean;
+  localBackupDir: string;
+  autoBackupIntervalHours: number;
+  backupsToKeep: number;
+  enableRemoteBackup: boolean;
+  dropboxApiKey: string;
 }
 
 function mapDbToStore(db: DbSettings): AllSettings {
@@ -113,6 +125,9 @@ function mapDbToStore(db: DbSettings): AllSettings {
       panelName: db.panelName,
       serverUrl: db.serverUrl,
       timezone: db.timezone,
+      adminEmail: db.adminEmail ?? '',
+      streamDownAlert: db.streamDownAlert ?? true,
+      resellerNotifyExpiry: db.resellerNotifyExpiry ?? true,
     },
     xtream: {
       ...DEFAULTS.xtream,
@@ -135,6 +150,15 @@ function mapDbToStore(db: DbSettings): AllSettings {
       countryLockVideo: db.countryLockVideo ?? '',
       maxConxExceedVideo: db.maxConxExceedVideo ?? '',
     },
+    database: {
+      ...DEFAULTS.database,
+      enableLocalBackups: db.enableLocalBackups ?? false,
+      localBackupDir: db.localBackupDir ?? '/opt/xtreampulsar/backups',
+      autoBackupIntervalHours: db.autoBackupIntervalHours ?? 6,
+      backupsToKeep: db.backupsToKeep ?? 5,
+      enableRemoteBackup: db.enableRemoteBackup ?? false,
+      dropboxApiKey: db.dropboxApiKey ?? '',
+    },
   };
 }
 
@@ -143,6 +167,9 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     panelName: settings.general.panelName,
     serverUrl: settings.general.serverUrl,
     timezone: settings.general.timezone,
+    adminEmail: settings.general.adminEmail,
+    streamDownAlert: settings.general.streamDownAlert,
+    resellerNotifyExpiry: settings.general.resellerNotifyExpiry,
     serverPort: settings.xtream.port,
     trialUserLimit: settings.xtream.trialUserLimit,
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
@@ -158,6 +185,12 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     expiredVideo: settings.streaming.expiredUserUrl || null,
     countryLockVideo: settings.streaming.countryLockVideo || null,
     maxConxExceedVideo: settings.streaming.maxConxExceedVideo || null,
+    enableLocalBackups: settings.database.enableLocalBackups,
+    localBackupDir: settings.database.localBackupDir,
+    autoBackupIntervalHours: settings.database.autoBackupIntervalHours,
+    backupsToKeep: settings.database.backupsToKeep,
+    enableRemoteBackup: settings.database.enableRemoteBackup,
+    dropboxApiKey: settings.database.dropboxApiKey,
   };
 }
 

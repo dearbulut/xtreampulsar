@@ -25,6 +25,8 @@ import { ToolsModule } from './tools/tools.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { BackupModule } from './backup/backup.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { GatewayModule } from './gateway/gateway.module';
     SettingsModule,
     AuditModule,
     GatewayModule,
+    BackupModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [

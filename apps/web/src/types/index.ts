@@ -22,6 +22,8 @@ export interface ApiResponse<T> {
 export type StreamStatus = 'ONLINE' | 'OFFLINE' | 'BUFFERING' | 'ERROR';
 export type WorkerStatus = 'IDLE' | 'RUNNING' | 'CRASHED' | 'STOPPED';
 
+export type HealthStatus = 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN';
+
 export interface Stream {
   id: string;
   externalId: number;
@@ -39,6 +41,9 @@ export interface Stream {
   category?: { id: string; name: string; type: string };
   serverId?: string;
   server?: { id: string; name: string; ip: string };
+  lastHealthCheck?: string;
+  healthStatus?: HealthStatus;
+  uptimePercent?: number;
   createdAt: string;
   updatedAt: string;
   _count?: { connections: number };

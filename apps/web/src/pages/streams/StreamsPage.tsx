@@ -38,6 +38,12 @@ const WORKER_CFG = {
   IDLE:    { dot: 'bg-gray-500',                  label: 'Bekliyor',   text: 'text-gray-400' },
 } as const;
 
+const HEALTH_DOT: Record<string, string> = {
+  HEALTHY:   'bg-emerald-400 animate-pulse',
+  UNHEALTHY: 'bg-yellow-400',
+  UNKNOWN:   'bg-gray-500',
+};
+
 function formatUptime(since: string): string {
   const s = Math.floor((Date.now() - new Date(since).getTime()) / 1000);
   const h = Math.floor(s / 3600);
@@ -167,10 +173,21 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       className: 'w-28',
       render: (r) => {
         const cfg = WORKER_CFG[r.workerStatus] ?? WORKER_CFG.IDLE;
+        const healthDot = r.workerStatus === 'RUNNING' && r.healthStatus
+          ? HEALTH_DOT[r.healthStatus] ?? HEALTH_DOT.UNKNOWN
+          : null;
         return (
-          <div className="flex items-center gap-2">
-            <span className={cn('w-2 h-2 rounded-full flex-shrink-0', cfg.dot)} />
-            <span className={cn('text-xs font-medium', cfg.text)}>{cfg.label}</span>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', healthDot ?? cfg.dot)} />
+              <span className={cn('text-xs font-medium', cfg.text)}>{cfg.label}</span>
+            </div>
+            {r.workerStatus === 'RUNNING' && r.healthStatus && r.healthStatus !== 'HEALTHY' && (
+              <span className="text-xs text-yellow-400 ml-4">
+                {r.healthStatus === 'UNHEALTHY' ? 'Sorunlu' : 'Bilinmiyor'}
+                {r.uptimePercent != null && ` · %${r.uptimePercent}`}
+              </span>
+            )}
           </div>
         );
       },

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { StreamService } from './stream.service';
 import { StreamWorkerService } from './stream-worker.service';
+import { StreamHealthService } from './stream-health.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
@@ -28,6 +29,7 @@ export class StreamController {
   constructor(
     private readonly streamService: StreamService,
     private readonly workerService: StreamWorkerService,
+    private readonly healthService: StreamHealthService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -98,5 +100,21 @@ export class StreamController {
   @Get(':id/stats')
   stats(@Param('id') id: string) {
     return this.workerService.getWorkerStats(id);
+  }
+
+  @Get('health-summary')
+  healthSummary() {
+    return this.healthService.getHealthSummary();
+  }
+
+  @Get(':id/health')
+  getHealth(@Param('id') id: string) {
+    return this.healthService.getStreamHealth(id);
+  }
+
+  @Post(':id/probe')
+  @Roles('ADMIN', 'RESELLER')
+  probe(@Param('id') id: string) {
+    return this.healthService.probeStream(id);
   }
 }

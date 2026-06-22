@@ -231,21 +231,24 @@ model Category {
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
 model Stream {
-  id           String       @id @default(cuid())
-  externalId   Int          @unique @default(autoincrement())
-  name         String
-  primaryUrl   String
-  backupUrl    String?
-  ffmpegPid    Int?
-  workerStatus WorkerStatus @default(IDLE)
-  restartCount Int          @default(0)
-  status       StreamStatus @default(OFFLINE)
-  tvgId        String?
-  tvgLogo      String?
-  sortOrder    Int          @default(0)
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  externalId      Int          @unique @default(autoincrement())
+  name            String
+  primaryUrl      String
+  backupUrl       String?
+  ffmpegPid       Int?
+  workerStatus    WorkerStatus @default(IDLE)
+  restartCount    Int          @default(0)
+  status          StreamStatus @default(OFFLINE)
+  tvgId           String?
+  tvgLogo         String?
+  sortOrder       Int          @default(0)
+  isActive        Boolean      @default(true)
+  lastHealthCheck DateTime?
+  healthStatus    String?
+  uptimePercent   Float?       @default(100)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
@@ -253,9 +256,10 @@ model Stream {
   serverId String?
   server   Server?  @relation(fields: [serverId], references: [id])
 
-  epgMappings   EPGMapping[]
-  connections   Connection[]
+  epgMappings    EPGMapping[]
+  connections    Connection[]
   bouquetStreams BouquetStream[]
+  healthLogs     StreamHealthLog[]
 
   @@map("streams")
 }
@@ -484,26 +488,35 @@ model MigrationJob {
 // ─── Settings (singleton) ────────────────────────────────────────────────────
 
 model Settings {
-  id                   String   @id @default("singleton")
-  vodDownloadSpeed     Int      @default(200)
-  vodDownloadLimit     Int      @default(20)
-  bufferSize           Int      @default(8192)
-  blockVpnProxy        Boolean  @default(false)
-  priorityBackupStream Boolean  @default(false)
-  streamDownVideo      String?
-  bannedVideo          String?
-  expiredVideo         String?
-  countryLockVideo     String?
-  maxConxExceedVideo   String?
-  enableConxExceedLog  Boolean  @default(false)
-  instantCloseConn     Boolean  @default(false)
-  adminStreamingIps    String[] @default([])
-  panelName            String   @default("XtreamPulsar")
-  serverUrl            String   @default("")
-  serverPort           Int      @default(25461)
-  timezone             String   @default("UTC")
-  trialUserLimit       Int      @default(500)
-  updatedAt            DateTime @updatedAt
+  id                      String   @id @default("singleton")
+  vodDownloadSpeed        Int      @default(200)
+  vodDownloadLimit        Int      @default(20)
+  bufferSize              Int      @default(8192)
+  blockVpnProxy           Boolean  @default(false)
+  priorityBackupStream    Boolean  @default(false)
+  streamDownVideo         String?
+  bannedVideo             String?
+  expiredVideo            String?
+  countryLockVideo        String?
+  maxConxExceedVideo      String?
+  enableConxExceedLog     Boolean  @default(false)
+  instantCloseConn        Boolean  @default(false)
+  adminStreamingIps       String[] @default([])
+  panelName               String   @default("XtreamPulsar")
+  serverUrl               String   @default("")
+  serverPort              Int      @default(25461)
+  timezone                String   @default("UTC")
+  trialUserLimit          Int      @default(500)
+  adminEmail              String   @default("")
+  resellerNotifyExpiry    Boolean  @default(true)
+  streamDownAlert         Boolean  @default(true)
+  enableLocalBackups      Boolean  @default(false)
+  localBackupDir          String   @default("/opt/xtreampulsar/backups")
+  autoBackupIntervalHours Int      @default(6)
+  backupsToKeep           Int      @default(5)
+  enableRemoteBackup      Boolean  @default(false)
+  dropboxApiKey           String   @default("")
+  updatedAt               DateTime @updatedAt
 
   @@map("settings")
 }
@@ -518,6 +531,46 @@ model UserBouquet {
 
   @@id([userId, bouquetId])
   @@map("user_bouquets")
+}
+
+// ─── BackupLog ───────────────────────────────────────────────────────────────
+
+model BackupLog {
+  id        String   @id @default(cuid())
+  filename  String
+  size      Int
+  type      String   @default("LOCAL")
+  status    String   @default("SUCCESS")
+  createdAt DateTime @default(now())
+
+  @@map("backup_logs")
+}
+
+// ─── NotificationLog ─────────────────────────────────────────────────────────
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  type      String
+  recipient String
+  subject   String
+  status    String   @default("SENT")
+  createdAt DateTime @default(now())
+
+  @@map("notification_logs")
+}
+
+// ─── StreamHealthLog ─────────────────────────────────────────────────────────
+
+model StreamHealthLog {
+  id           String   @id @default(cuid())
+  streamId     String
+  stream       Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  status       String
+  responseTime Int?
+  checkedAt    DateTime @default(now())
+
+  @@index([streamId, checkedAt])
+  @@map("stream_health_logs")
 }
 
 // ─── AuditLog ────────────────────────────────────────────────────────────────

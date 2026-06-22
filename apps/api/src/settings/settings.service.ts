@@ -32,6 +32,15 @@ export class SettingsService {
     serverPort: number;
     timezone: string;
     trialUserLimit: number;
+    adminEmail: string;
+    resellerNotifyExpiry: boolean;
+    streamDownAlert: boolean;
+    enableLocalBackups: boolean;
+    localBackupDir: string;
+    autoBackupIntervalHours: number;
+    backupsToKeep: number;
+    enableRemoteBackup: boolean;
+    dropboxApiKey: string;
   }>) {
     return this.prisma.settings.upsert({
       where: { id: 'singleton' },

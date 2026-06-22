@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
+import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, formatBytes } from '@/hooks/useBackup';
 import toast from 'react-hot-toast';
 
 const SETTINGS_TABS: TabItem[] = [
@@ -46,10 +47,16 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
+  const [deleteBackupFile, setDeleteBackupFile] = useState<string | null>(null);
   const settings = useSettings();
   const updateSettings = useUpdateSettings();
   useSyncSettings();
   const saveSettings = useSaveSettings();
+
+  const { data: backupList = [], isLoading: backupsLoading } = useBackupList();
+  const createBackup = useCreateBackup();
+  const deleteBackup = useDeleteBackup();
+  const uploadDropbox = useUploadDropbox();
 
   const save = () => saveSettings.mutate(settings);
 
@@ -100,6 +107,22 @@ export function SettingsPage() {
                 <input className="input" value={settings.general.logoUrl}
                   onChange={(e) => updateSettings('general', { logoUrl: e.target.value })}
                   placeholder="https://..." />
+              </Field>
+            </div>
+            <SectionTitle>Bildirimler</SectionTitle>
+            <div className="space-y-5">
+              <Field label="Admin E-posta" hint="Stream çöküş bildirimleri bu adrese gönderilir">
+                <input className="input" type="email" value={settings.general.adminEmail}
+                  onChange={(e) => updateSettings('general', { adminEmail: e.target.value })}
+                  placeholder="admin@example.com" />
+              </Field>
+              <Field label="Stream Çöküş Uyarısı" hint="Stream CRASHED olduğunda e-posta gönder">
+                <Toggle checked={settings.general.streamDownAlert}
+                  onChange={(v) => updateSettings('general', { streamDownAlert: v })} />
+              </Field>
+              <Field label="Reseller Sona Erme Bildirimi" hint="Kullanıcı 3 gün içinde dolacaksa reseller'a bildir">
+                <Toggle checked={settings.general.resellerNotifyExpiry}
+                  onChange={(v) => updateSettings('general', { resellerNotifyExpiry: v })} />
               </Field>
             </div>
           </>
@@ -309,6 +332,96 @@ export function SettingsPage() {
                   onChange={(e) => updateSettings('database', { dropboxApiKey: e.target.value })}
                   placeholder="••••••••••••••••" />
               </Field>
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-4">
+                <SectionTitle>Yedekler</SectionTitle>
+                <button
+                  className="btn btn-primary flex items-center gap-2"
+                  onClick={() => createBackup.mutate()}
+                  disabled={createBackup.isPending}
+                >
+                  <HardDrive className="w-4 h-4" />
+                  {createBackup.isPending ? 'Yedekleniyor…' : 'Şimdi Yedekle'}
+                </button>
+              </div>
+
+              {backupsLoading ? (
+                <div className="text-sm text-muted text-center py-6">Yükleniyor…</div>
+              ) : backupList.length === 0 ? (
+                <div className="text-sm text-muted text-center py-6">Henüz yedek yok.</div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted uppercase tracking-wider">
+                        <th className="px-4 py-2">Dosya Adı</th>
+                        <th className="px-4 py-2">Boyut</th>
+                        <th className="px-4 py-2">Tarih</th>
+                        <th className="px-4 py-2 text-right">İşlemler</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backupList.map((b) => (
+                        <tr key={b.filename} className="border-b border-border last:border-0 hover:bg-surface-2 transition-colors">
+                          <td className="px-4 py-2 font-mono text-xs text-slate-300">{b.filename}</td>
+                          <td className="px-4 py-2 text-muted">{formatBytes(b.size)}</td>
+                          <td className="px-4 py-2 text-muted">
+                            {new Date(b.createdAt).toLocaleString('tr-TR')}
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-1 justify-end">
+                              {settings.database.enableRemoteBackup && settings.database.dropboxApiKey && (
+                                <button
+                                  title="Dropbox'a Yükle"
+                                  onClick={() => uploadDropbox.mutate(b.filename)}
+                                  disabled={uploadDropbox.isPending}
+                                  className="p-1.5 rounded hover:bg-blue-500/10 text-blue-400 transition-colors disabled:opacity-50"
+                                >
+                                  <Upload className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                title="Sil"
+                                onClick={() => setDeleteBackupFile(b.filename)}
+                                className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {deleteBackupFile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                  <div className="card p-6 max-w-sm w-full mx-4 space-y-4">
+                    <h3 className="font-semibold text-slate-100">Yedeği Sil</h3>
+                    <p className="text-sm text-muted">
+                      <span className="font-mono text-slate-300">{deleteBackupFile}</span> kalıcı olarak silinecek.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <button className="btn btn-ghost" onClick={() => setDeleteBackupFile(null)}>İptal</button>
+                      <button
+                        className="btn btn-primary bg-red-600 hover:bg-red-700"
+                        disabled={deleteBackup.isPending}
+                        onClick={() => {
+                          deleteBackup.mutate(deleteBackupFile, {
+                            onSuccess: () => setDeleteBackupFile(null),
+                          });
+                        }}
+                      >
+                        {deleteBackup.isPending ? 'Siliniyor…' : 'Sil'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
