@@ -1,14 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { REDIS_CLIENT } from '../redis/redis.module';
 
 @Injectable()
 export class ToolsService {
   private readonly logger = new Logger(ToolsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+  ) {}
 
   // ─── Fix Users Output ────────────────────────────────────────────────────────
 
@@ -359,6 +364,17 @@ export class ToolsService {
 
   // ─── System Stats ────────────────────────────────────────────────────────────
 
+  private formatUptimeSeconds(seconds: number): string {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d} gün`);
+    if (h > 0) parts.push(`${h} saat`);
+    parts.push(`${m} dak`);
+    return parts.join(' ');
+  }
+
   async systemStats(): Promise<{
     cpuLoad: number;
     totalMemMb: number;
@@ -366,7 +382,9 @@ export class ToolsService {
     memUsedPct: number;
     runningWorkers: number;
     dbConnected: boolean;
+    redisConnected: boolean;
     uptime: number;
+    uptimeFormatted: string;
   }> {
     const cpuLoad = Math.min(
       100,
@@ -390,7 +408,15 @@ export class ToolsService {
       dbConnected = false;
     }
 
-    const uptime = os.uptime();
+    let redisConnected = false;
+    try {
+      const pong = await this.redis.ping();
+      redisConnected = pong === 'PONG';
+    } catch {
+      redisConnected = false;
+    }
+
+    const uptime = Math.floor(process.uptime());
 
     return {
       cpuLoad,
@@ -399,7 +425,9 @@ export class ToolsService {
       memUsedPct,
       runningWorkers,
       dbConnected,
+      redisConnected,
       uptime,
+      uptimeFormatted: this.formatUptimeSeconds(uptime),
     };
   }
 }

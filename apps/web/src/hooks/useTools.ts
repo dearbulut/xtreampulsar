@@ -160,7 +160,9 @@ export interface SystemStats {
   memUsedPct: number;
   runningWorkers: number;
   dbConnected: boolean;
+  redisConnected: boolean;
   uptime: number;
+  uptimeFormatted: string;
 }
 
 export function useSystemStats() {

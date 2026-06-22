@@ -11,12 +11,13 @@ import {
   ToggleLeft,
   ToggleRight,
   Tv,
+  Play,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
-import { useStreams, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
+import { useStreams, useStartStream, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
 import type { Stream } from '@/types';
@@ -126,6 +127,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   });
   const { data: categories } = useCategories(type);
   const { data: servers } = useServers();
+  const startStream = useStartStream();
   const restart = useRestartStream();
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
@@ -231,6 +233,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       className: 'w-36',
       render: (r) => (
         <div className="flex items-center gap-0.5">
+          {(r.workerStatus === 'IDLE' || r.workerStatus === 'STOPPED') && (
+            <ActionBtn
+              icon={Play} title="Başlat" color="text-green-400"
+              onClick={() => startStream.mutate(r.id)}
+              loading={startStream.isPending && startStream.variables === r.id}
+            />
+          )}
           <ActionBtn
             icon={RotateCcw} title="Yeniden başlat" color="text-emerald-400"
             onClick={() => restart.mutate(r.id)}

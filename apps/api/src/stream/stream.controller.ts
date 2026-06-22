@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { StreamService } from './stream.service';
 import { StreamWorkerService } from './stream-worker.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
 import { QueryStreamDto } from './dto/query-stream.dto';
@@ -27,6 +28,7 @@ export class StreamController {
   constructor(
     private readonly streamService: StreamService,
     private readonly workerService: StreamWorkerService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -56,6 +58,17 @@ export class StreamController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.streamService.remove(id);
+  }
+
+  @Post(':id/start')
+  @Roles('ADMIN', 'RESELLER')
+  async start(@Param('id') id: string) {
+    await this.workerService.startWorker(id);
+    const stream = await this.prisma.stream.findUnique({
+      where: { id },
+      select: { ffmpegPid: true },
+    });
+    return { status: 'started', pid: stream?.ffmpegPid ?? null };
   }
 
   @Post(':id/restart')

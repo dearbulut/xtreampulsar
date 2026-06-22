@@ -38,6 +38,19 @@ export function useStreams(filter: StreamFilter = {}) {
   });
 }
 
+export function useStartStream() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<{ data: { status: string; pid: number | null } }>(`/streams/${id}/start`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+      toast.success('Stream başlatıldı');
+    },
+    onError: () => toast.error('Başlatma başarısız'),
+  });
+}
+
 export function useRestartStream() {
   const qc = useQueryClient();
   return useMutation({

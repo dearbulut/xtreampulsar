@@ -587,7 +587,11 @@ function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  return `${d}g ${h}s ${m}d`;
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d} gün`);
+  if (h > 0) parts.push(`${h} saat`);
+  parts.push(`${m} dak`);
+  return parts.join(' ');
 }
 
 function SystemStatsPanel() {
@@ -662,11 +666,23 @@ function SystemStatsPanel() {
             </div>
             <div className="flex justify-between items-center px-4 py-3 text-sm">
               <span className="text-muted">Redis</span>
-              <span className="text-xs text-muted italic">N/A (kontrol edilmiyor)</span>
+              {stats.redisConnected ? (
+                <span className="flex items-center gap-1 text-success text-xs font-medium">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Bağlı
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-danger text-xs font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Bağlı Değil
+                </span>
+              )}
             </div>
             <div className="flex justify-between items-center px-4 py-3 text-sm">
               <span className="text-muted">Uptime</span>
-              <span className="font-mono font-bold">{formatUptime(stats.uptime)}</span>
+              <span className="font-mono font-bold">
+                {stats.uptimeFormatted ?? formatUptime(stats.uptime)}
+              </span>
             </div>
           </div>
         </div>
