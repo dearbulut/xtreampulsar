@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
@@ -7,32 +7,49 @@ import { QueryStreamDto } from './dto/query-stream.dto';
 
 @Injectable()
 export class StreamService {
+  private readonly logger = new Logger(StreamService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ─── Xtream-facing queries (no auth, type-based) ───────────────────────────
 
-  findAllLive(_userId: string) {
-    return this.prisma.stream.findMany({
-      where: { isActive: true, category: { type: 'LIVE' } },
-      include: { category: true },
-      orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    });
+  async findAllLive(_userId: string) {
+    try {
+      return await this.prisma.stream.findMany({
+        where: { isActive: true, category: { type: 'LIVE' } },
+        include: { category: true },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+      });
+    } catch (err) {
+      this.logger.error(`findAllLive: ${(err as Error).message}`);
+      return [];
+    }
   }
 
-  findAllVod(_userId: string) {
-    return this.prisma.stream.findMany({
-      where: { isActive: true, category: { type: 'VOD' } },
-      include: { category: true },
-      orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    });
+  async findAllVod(_userId: string) {
+    try {
+      return await this.prisma.stream.findMany({
+        where: { isActive: true, category: { type: 'VOD' } },
+        include: { category: true },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+      });
+    } catch (err) {
+      this.logger.error(`findAllVod: ${(err as Error).message}`);
+      return [];
+    }
   }
 
-  findAllSeries(_userId: string) {
-    return this.prisma.stream.findMany({
-      where: { isActive: true, category: { type: 'SERIES' } },
-      include: { category: true },
-      orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    });
+  async findAllSeries(_userId: string) {
+    try {
+      return await this.prisma.stream.findMany({
+        where: { isActive: true, category: { type: 'SERIES' } },
+        include: { category: true },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+      });
+    } catch (err) {
+      this.logger.error(`findAllSeries: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   findLiveCategories() {
@@ -94,24 +111,29 @@ export class StreamService {
       ...(type ? { category: { type: type as 'LIVE' | 'VOD' | 'SERIES' } } : {}),
     };
 
-    const [items, total] = await Promise.all([
-      this.prisma.stream.findMany({
-        where,
-        include: { category: true, server: true },
-        orderBy: { sortOrder: 'asc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.stream.count({ where }),
-    ]);
+    try {
+      const [items, total] = await Promise.all([
+        this.prisma.stream.findMany({
+          where,
+          include: { category: true, server: true },
+          orderBy: { sortOrder: 'asc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.stream.count({ where }),
+      ]);
 
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+      return {
+        items,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (err) {
+      this.logger.error(`findAllWithFilters: ${(err as Error).message}`);
+      return { items: [], total: 0, page, limit, totalPages: 0 };
+    }
   }
 
   async findById(id: string) {

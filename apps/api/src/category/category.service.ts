@@ -1,18 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoryService {
+  private readonly logger = new Logger(CategoryService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(type?: 'LIVE' | 'VOD' | 'SERIES') {
-    return this.prisma.category.findMany({
-      where: { ...(type ? { type } : {}) },
-      include: { bouquet: true, _count: { select: { streams: true } } },
-      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }],
-    });
+  async findAll(type?: 'LIVE' | 'VOD' | 'SERIES') {
+    try {
+      return await this.prisma.category.findMany({
+        where: { ...(type ? { type } : {}) },
+        include: { bouquet: true, _count: { select: { streams: true } } },
+        orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }],
+      });
+    } catch (err) {
+      this.logger.error(`findAll: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   async findById(id: string) {

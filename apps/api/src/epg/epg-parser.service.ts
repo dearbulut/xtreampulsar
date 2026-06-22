@@ -25,9 +25,15 @@ export class EpgParserService {
 
   @Cron('0 3 * * *')
   async parseAllSources(): Promise<void> {
-    const sources = await this.prisma.ePGSource.findMany({
-      where: { isActive: true },
-    });
+    let sources: Awaited<ReturnType<typeof this.prisma.ePGSource.findMany>>;
+    try {
+      sources = await this.prisma.ePGSource.findMany({ where: { isActive: true } });
+    } catch (err) {
+      this.logger.error(`EPG cron: failed to fetch sources — ${(err as Error).message}`);
+      return;
+    }
+
+    if (!sources.length) return;
 
     this.logger.log(`EPG parse started — ${sources.length} sources`);
 
@@ -74,11 +80,23 @@ export class EpgParserService {
   }
 
   private parseXml(xml: string): Promise<{ tv: { channel?: XmltvChannel[]; programme?: XmltvProgramme[] } }> {
-    return new Promise((resolve, reject) => {
-      parseString(xml, { explicitArray: true, mergeAttrs: false }, (err, result) => {
-        if (err) reject(err);
-        else resolve(result as { tv: { channel?: XmltvChannel[]; programme?: XmltvProgramme[] } });
-      });
+    if (!xml || !xml.trim()) {
+      return Promise.resolve({ tv: { channel: [], programme: [] } });
+    }
+    return new Promise((resolve) => {
+      try {
+        parseString(xml, { explicitArray: true, mergeAttrs: false }, (err, result) => {
+          if (err) {
+            this.logger.error(`XML parse error: ${err.message}`);
+            resolve({ tv: { channel: [], programme: [] } });
+          } else {
+            resolve(result as { tv: { channel?: XmltvChannel[]; programme?: XmltvProgramme[] } });
+          }
+        });
+      } catch (err) {
+        this.logger.error(`XML parse exception: ${(err as Error).message}`);
+        resolve({ tv: { channel: [], programme: [] } });
+      }
     });
   }
 

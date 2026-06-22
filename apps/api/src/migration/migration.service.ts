@@ -46,9 +46,14 @@ export class MigrationService {
   // ─── M3U preview ──────────────────────────────────────────────────────────
 
   previewM3u(fileBuffer: Buffer): { entries: M3uEntry[]; total: number } {
-    const lines = fileBuffer.toString('utf-8').split('\n');
-    const entries = this.parseM3uLines(lines);
-    return { entries: entries.slice(0, 20), total: entries.length };
+    try {
+      const lines = fileBuffer.toString('utf-8').split('\n');
+      const entries = this.parseM3uLines(lines);
+      return { entries: entries.slice(0, 20), total: entries.length };
+    } catch (err) {
+      this.logger.error(`previewM3u: ${(err as Error).message}`);
+      return { entries: [], total: 0 };
+    }
   }
 
   // ─── M3U import ──────────────────────────────────────────────────────────
