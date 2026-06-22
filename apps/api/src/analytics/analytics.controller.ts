@@ -52,4 +52,15 @@ export class AnalyticsController {
   getGeoConnections() {
     return this.analyticsService.getGeoConnections();
   }
+
+  @Get('revenue')
+  getRevenueReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('resellerId') resellerId?: string,
+  ) {
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 180 * 24 * 60 * 60 * 1000);
+    return this.analyticsService.getRevenueReport(start, end, resellerId);
+  }
 }

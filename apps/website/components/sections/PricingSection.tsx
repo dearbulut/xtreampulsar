@@ -201,6 +201,7 @@ export function PricingSection() {
                 variant={plan.highlight ? 'primary' : 'outline'}
                 size="md"
                 className="w-full"
+                onClick={() => window.location.href = `/pricing`}
               >
                 {plan.cta}
               </Button>

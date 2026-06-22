@@ -30,6 +30,7 @@ import { ResellerLoginPage } from '@/pages/reseller/ResellerLoginPage';
 import { ResellerDashboardPage } from '@/pages/reseller/ResellerDashboardPage';
 import { ResellerUsersPage } from '@/pages/reseller/ResellerUsersPage';
 import { ResellerCreateUserPage } from '@/pages/reseller/ResellerCreateUserPage';
+import { RevenuePage } from '@/pages/analytics/RevenuePage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -171,6 +172,12 @@ const advancedToolsRoute = createRoute({
   component: AdvancedToolsPage,
 });
 
+const revenueRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/analytics/revenue',
+  component: RevenuePage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -239,6 +246,7 @@ const routeTree = rootRoute.addChildren([
     securityRoute,
     settingsRoute,
     advancedToolsRoute,
+    revenueRoute,
   ]),
 ]);
 

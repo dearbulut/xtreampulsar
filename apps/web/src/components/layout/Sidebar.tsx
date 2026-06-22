@@ -20,6 +20,7 @@ import {
   Zap,
   LogOut,
   Activity,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUiStore } from '@/store/ui.store';
@@ -73,6 +74,12 @@ const NAV: NavGroup[] = [
     label: 'EPG',
     items: [
       { label: 'EPG Kaynakları', to: '/epg', icon: Radio },
+    ],
+  },
+  {
+    label: 'ANALİTİK',
+    items: [
+      { label: 'Gelir Raporu', to: '/analytics/revenue', icon: TrendingUp },
     ],
   },
   {

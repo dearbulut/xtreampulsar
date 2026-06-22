@@ -262,4 +262,58 @@ export class AnalyticsService {
     await this.redis.setex(cacheKey, 30, JSON.stringify(result)).catch(() => {});
     return result;
   }
+
+  async getRevenueReport(startDate: Date, endDate: Date, resellerId?: string) {
+    const userWhere: Record<string, unknown> = {
+      createdAt: { gte: startDate, lte: endDate },
+      role: 'USER',
+    };
+    if (resellerId) userWhere.resellerId = resellerId;
+
+    const users = await this.prisma.user.findMany({
+      where: userWhere,
+      select: {
+        id: true,
+        createdAt: true,
+        resellerId: true,
+        reseller: { select: { id: true, username: true, tier: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Build monthly buckets
+    const monthMap = new Map<string, { month: string; newUsers: number; totalRevenue: number }>();
+
+    for (const u of users) {
+      const m = u.createdAt.toISOString().slice(0, 7); // YYYY-MM
+      if (!monthMap.has(m)) monthMap.set(m, { month: m, newUsers: 0, totalRevenue: 0 });
+      const bucket = monthMap.get(m)!;
+      bucket.newUsers++;
+      // Revenue estimate: 5€ average per user creation credit
+      bucket.totalRevenue += 5;
+    }
+
+    // Reseller breakdown
+    const resellerMap = new Map<string, { resellerId: string; username: string; tier: string; userCount: number; estimatedRevenue: number }>();
+    for (const u of users) {
+      if (!u.reseller) continue;
+      const r = u.reseller;
+      if (!resellerMap.has(r.id)) {
+        resellerMap.set(r.id, { resellerId: r.id, username: r.username, tier: r.tier, userCount: 0, estimatedRevenue: 0 });
+      }
+      const row = resellerMap.get(r.id)!;
+      row.userCount++;
+      row.estimatedRevenue += 5;
+    }
+
+    const totalUsers = users.length;
+    const totalRevenue = totalUsers * 5;
+
+    return {
+      period: { start: startDate, end: endDate },
+      summary: { totalUsers, totalRevenue },
+      monthly: [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month)),
+      byReseller: [...resellerMap.values()].sort((a, b) => b.userCount - a.userCount),
+    };
+  }
 }

@@ -1,8 +1,10 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Sun, Moon, Download, X, ExternalLink } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
+import { useUpdateCheck, useApplyUpdate } from '@/hooks/useUpdate';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -16,6 +18,13 @@ export function Header({ title, breadcrumb }: Props) {
   const router = useRouter();
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+
+  const { data: updateInfo } = useUpdateCheck();
+  const applyUpdate = useApplyUpdate();
+
+  const hasUpdate = updateInfo?.hasUpdate && !bannerDismissed;
 
   const handleLogout = () => {
     logout();
@@ -23,87 +32,157 @@ export function Header({ title, breadcrumb }: Props) {
   };
 
   return (
-    <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-5 flex-shrink-0">
-      {/* Breadcrumb / Title */}
-      <div className="flex items-center gap-2 text-sm">
-        {breadcrumb ? (
-          breadcrumb.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-2">
-              {i > 0 && <span className="text-muted">/</span>}
-              <span
-                className={cn(
-                  i === breadcrumb.length - 1 ? 'font-medium' : 'text-muted',
-                )}
-                style={i === breadcrumb.length - 1 ? { color: 'var(--color-fg)' } : undefined}
-              >
-                {crumb}
-              </span>
+    <div className="flex-shrink-0">
+      {/* Update banner */}
+      {hasUpdate && (
+        <div className="bg-indigo-600/90 text-white text-xs px-4 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Download className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>
+              Yeni sürüm mevcut: <strong>v{updateInfo?.latestVersion}</strong>
+              {' '}&mdash; mevcut: v{updateInfo?.currentVersion}
             </span>
-          ))
-        ) : (
-          <span className="font-medium" style={{ color: 'var(--color-fg)' }}>{title}</span>
-        )}
-      </div>
-
-      {/* Right side */}
-      <div className="flex items-center gap-1.5">
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === 'light' ? 'Karanlık moda geç' : 'Aydınlık moda geç'}
-          className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200"
-        >
-          {theme === 'light' ? (
-            <Moon className="w-4 h-4 transition-transform duration-200" />
-          ) : (
-            <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 rotate-12" />
-          )}
-        </button>
-
-        {/* Notification bell */}
-        <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
-        </button>
-
-        {/* User dropdown */}
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-surface-2 transition-colors text-sm">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-[11px] font-bold text-primary">
-                  {user?.username?.[0]?.toUpperCase() ?? 'A'}
-                </span>
-              </div>
-              <span className="font-medium hidden sm:block" style={{ color: 'var(--color-fg)' }}>
-                {user?.username}
-              </span>
-              <ChevronDown className="w-3 h-3 text-muted" />
-            </button>
-          </DropdownMenu.Trigger>
-
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              className="bg-surface border border-border rounded-xl shadow-2xl p-1.5 min-w-44 z-50 animate-fade-in"
-              align="end"
-              sideOffset={6}
+            <button
+              onClick={() => setShowNotes(true)}
+              className="underline underline-offset-2 hover:text-indigo-200 transition-colors"
             >
-              <div className="px-3 py-2 border-b border-border mb-1">
-                <div className="text-xs font-medium" style={{ color: 'var(--color-fg)' }}>
-                  {user?.username}
-                </div>
-                <div className="text-[11px] text-muted">{user?.role}</div>
-              </div>
+              Notlar
+            </button>
+            <a
+              href={updateInfo?.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 underline underline-offset-2 hover:text-indigo-200"
+            >
+              GitHub <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => applyUpdate.mutate()}
+              disabled={applyUpdate.isPending}
+              className="bg-white text-indigo-700 font-semibold px-3 py-0.5 rounded-md hover:bg-indigo-50 transition text-xs disabled:opacity-60"
+            >
+              {applyUpdate.isPending ? 'Güncelleniyor...' : 'Güncelle'}
+            </button>
+            <button onClick={() => setBannerDismissed(true)} className="p-0.5 hover:text-indigo-200">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
-              <DropdownItem icon={User} label="Profilim" />
-              <DropdownItem icon={Settings} label="Ayarlar" />
-              <DropdownMenu.Separator className="h-px bg-border my-1" />
-              <DropdownItem icon={LogOut} label="Çıkış Yap" danger onClick={handleLogout} />
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-      </div>
-    </header>
+      <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-5">
+        {/* Breadcrumb / Title */}
+        <div className="flex items-center gap-2 text-sm">
+          {breadcrumb ? (
+            breadcrumb.map((crumb, i) => (
+              <span key={i} className="flex items-center gap-2">
+                {i > 0 && <span className="text-muted">/</span>}
+                <span
+                  className={cn(
+                    i === breadcrumb.length - 1 ? 'font-medium' : 'text-muted',
+                  )}
+                  style={i === breadcrumb.length - 1 ? { color: 'var(--color-fg)' } : undefined}
+                >
+                  {crumb}
+                </span>
+              </span>
+            ))
+          ) : (
+            <span className="font-medium" style={{ color: 'var(--color-fg)' }}>{title}</span>
+          )}
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-1.5">
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Karanlık moda geç' : 'Aydınlık moda geç'}
+            className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200"
+          >
+            {theme === 'light' ? (
+              <Moon className="w-4 h-4 transition-transform duration-200" />
+            ) : (
+              <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 rotate-12" />
+            )}
+          </button>
+
+          {/* Notification bell */}
+          <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
+          </button>
+
+          {/* User dropdown */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-surface-2 transition-colors text-sm">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-[11px] font-bold text-primary">
+                    {user?.username?.[0]?.toUpperCase() ?? 'A'}
+                  </span>
+                </div>
+                <span className="font-medium hidden sm:block" style={{ color: 'var(--color-fg)' }}>
+                  {user?.username}
+                </span>
+                <ChevronDown className="w-3 h-3 text-muted" />
+              </button>
+            </DropdownMenu.Trigger>
+
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="bg-surface border border-border rounded-xl shadow-2xl p-1.5 min-w-44 z-50 animate-fade-in"
+                align="end"
+                sideOffset={6}
+              >
+                <div className="px-3 py-2 border-b border-border mb-1">
+                  <div className="text-xs font-medium" style={{ color: 'var(--color-fg)' }}>
+                    {user?.username}
+                  </div>
+                  <div className="text-[11px] text-muted">{user?.role}</div>
+                </div>
+
+                <DropdownItem icon={User} label="Profilim" />
+                <DropdownItem icon={Settings} label="Ayarlar" />
+                <DropdownMenu.Separator className="h-px bg-border my-1" />
+                <DropdownItem icon={LogOut} label="Çıkış Yap" danger onClick={handleLogout} />
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
+      </header>
+
+      {/* Release notes modal */}
+      {showNotes && updateInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowNotes(false)}>
+          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold" style={{ color: 'var(--color-fg)' }}>
+                v{updateInfo.latestVersion} — Sürüm Notları
+              </h2>
+              <button onClick={() => setShowNotes(false)} className="text-muted hover:text-fg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <pre className="text-sm text-muted whitespace-pre-wrap max-h-80 overflow-y-auto font-mono leading-relaxed">
+              {updateInfo.releaseNotes || 'Sürüm notu yok.'}
+            </pre>
+            <div className="mt-4 flex justify-end gap-2">
+              <a
+                href={updateInfo.releaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                GitHub'da Gör <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
