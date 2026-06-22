@@ -1,11 +1,8 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { RefreshCw, Wifi, ToggleRight, ToggleLeft } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
-import { useLiveConnections } from '@/hooks/useConnections';
-import api from '@/lib/axios';
-import toast from 'react-hot-toast';
+import { useLiveConnections, useKickConnection } from '@/hooks/useConnections';
 import type { Connection } from '@/types';
 import { formatDuration, cn } from '@/lib/utils';
 
@@ -29,12 +26,7 @@ export function LiveConnectionsPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const { data, isLoading, refetch, isFetching } = useLiveConnections(page, 50, autoRefresh);
-
-  const kickUser = useMutation({
-    mutationFn: (userId: string) => api.post(`/users/${userId}/kick`),
-    onSuccess: () => { void refetch(); toast.success('Bağlantı kesildi'); },
-    onError: () => toast.error('İşlem başarısız'),
-  });
+  const kickConnection = useKickConnection();
 
   const columns: Column<Connection>[] = [
     {
@@ -103,9 +95,9 @@ export function LiveConnectionsPage() {
       className: 'w-20',
       render: (r) => (
         <button
-          onClick={() => kickUser.mutate(r.userId)}
-          disabled={kickUser.isPending}
-          className="flex items-center gap-1 text-xs text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors"
+          onClick={() => kickConnection.mutate(r.id)}
+          disabled={kickConnection.isPending && kickConnection.variables === r.id}
+          className="flex items-center gap-1 text-xs text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
         >
           <Wifi className="w-3 h-3" />
           Kes

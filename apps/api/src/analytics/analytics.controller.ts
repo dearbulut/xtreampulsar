@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Delete, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -19,6 +19,13 @@ export class AnalyticsController {
   @Get('connections')
   getLiveConnections(@Query() pagination: PaginationDto) {
     return this.analyticsService.getLiveConnections(pagination.page, pagination.limit);
+  }
+
+  @Delete('connections/:id')
+  @Roles('ADMIN', 'RESELLER')
+  @HttpCode(HttpStatus.OK)
+  kickConnection(@Param('id') id: string) {
+    return this.analyticsService.kickConnection(id);
   }
 
   @Get('bandwidth')

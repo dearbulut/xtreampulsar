@@ -97,6 +97,11 @@ export class AnalyticsService {
     }
   }
 
+  async kickConnection(connectionId: string): Promise<{ kicked: boolean }> {
+    await this.prisma.connection.delete({ where: { id: connectionId } });
+    return { kicked: true };
+  }
+
   async getBandwidthChart(): Promise<{ hour: string; bytesIn: string; bytesOut: string }[]> {
     try {
       const cutoff = new Date();
