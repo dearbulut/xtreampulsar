@@ -61,6 +61,7 @@ EMAIL=""
 INSTALL_DIR="/opt/xtreampulsar"
 REPO_URL="https://github.com/xtreampulsar/xtreampulsar"
 LICENSE_SERVER="https://license.xtreampulsar.io"
+DEV_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -68,8 +69,10 @@ while [[ $# -gt 0 ]]; do
     --domain)  DOMAIN="$2";      shift 2 ;;
     --email)   EMAIL="$2";       shift 2 ;;
     --dir)     INSTALL_DIR="$2"; shift 2 ;;
+    --dev)     DEV_MODE=true;    shift ;;
     --help|-h)
-      echo "Kullanım: $0 --key LICENSE_KEY [--domain DOMAIN] [--email EMAIL]"
+      echo "Kullanım: $0 --key LICENSE_KEY [--domain DOMAIN] [--email EMAIL] [--dev]"
+      echo "  --dev   Geliştirme modu: lisans doğrulaması atlanır, test anahtarı kullanılır"
       exit 0 ;;
     *) log_error "Bilinmeyen parametre: $1"; exit 1 ;;
   esac
@@ -92,11 +95,16 @@ echo -e "───────────────────────�
 # ─── Pre-flight Checks ───────────────────────────────────────────────────────
 log_step "▶ Ön kontroller"
 
-# License key zorunlu
-if [[ -z "$LICENSE_KEY" ]]; then
+# License key zorunlu (dev modda opsiyonel)
+if [[ -z "$LICENSE_KEY" && "$DEV_MODE" = false ]]; then
   log_error "--key parametresi zorunludur."
   echo -e "Kullanım: $0 --key YOUR_LICENSE_KEY [--domain panel.example.com] [--email admin@example.com]"
+  echo -e "  Geliştirme için: $0 --dev [--domain ...] [--email ...]"
   exit 1
+fi
+
+if [[ "$DEV_MODE" = true ]]; then
+  log_warning "DEV MODE aktif — lisans doğrulaması atlanacak, test ortamı kurulacak"
 fi
 
 # Root / sudo kontrolü
@@ -189,32 +197,41 @@ SERVER_IP=$(curl -s --max-time 10 ifconfig.me 2>/dev/null || \
             hostname -I | awk '{print $1}')
 
 log_info "Sunucu IP: $SERVER_IP"
-log_info "Lisans anahtarı: ${LICENSE_KEY:0:8}****"
 
-ACTIVATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
-  -X POST "${LICENSE_SERVER}/licenses/activate" \
-  -H "Content-Type: application/json" \
-  -d "{\"key\": \"${LICENSE_KEY}\", \"serverIp\": \"${SERVER_IP}\"}" \
-  --max-time 30 2>/dev/null || echo '{"status":"error"}')
+if [[ "$DEV_MODE" = true ]]; then
+  log_warning "DEV MODE: Lisans doğrulama atlanıyor"
+  LICENSE_KEY="DEV-TEST-KEY"
+  LICENSE_SERVER="http://localhost:3001"
+  log_info "Lisans anahtarı: $LICENSE_KEY (dev)"
+  log_info "Lisans sunucusu: $LICENSE_SERVER (dev — henüz deploy edilmedi)"
+else
+  log_info "Lisans anahtarı: ${LICENSE_KEY:0:8}****"
 
-HTTP_CODE=$(echo "$ACTIVATE_RESPONSE" | tail -1)
-RESPONSE_BODY=$(echo "$ACTIVATE_RESPONSE" | head -1)
+  ACTIVATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST "${LICENSE_SERVER}/licenses/activate" \
+    -H "Content-Type: application/json" \
+    -d "{\"key\": \"${LICENSE_KEY}\", \"serverIp\": \"${SERVER_IP}\"}" \
+    --max-time 30 2>/dev/null || echo '{"status":"error"}')
 
-if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
-  log_error "Lisans aktivasyonu başarısız (HTTP $HTTP_CODE)."
-  log_error "Yanıt: $RESPONSE_BODY"
-  log_error "Lütfen lisans anahtarınızı kontrol edin veya support@xtreampulsar.io ile iletişime geçin."
-  exit 1
+  HTTP_CODE=$(echo "$ACTIVATE_RESPONSE" | tail -1)
+  RESPONSE_BODY=$(echo "$ACTIVATE_RESPONSE" | head -1)
+
+  if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
+    log_error "Lisans aktivasyonu başarısız (HTTP $HTTP_CODE)."
+    log_error "Yanıt: $RESPONSE_BODY"
+    log_error "Lütfen lisans anahtarınızı kontrol edin veya support@xtreampulsar.io ile iletişime geçin."
+    exit 1
+  fi
+
+  # valid alanını kontrol et
+  IS_VALID=$(echo "$RESPONSE_BODY" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "PENDING")
+  if [[ "$IS_VALID" == "SUSPENDED" || "$IS_VALID" == "EXPIRED" ]]; then
+    log_error "Lisans geçersiz veya askıya alınmış: $IS_VALID"
+    exit 1
+  fi
+
+  log_success "Lisans aktif — Tier: $(echo "$RESPONSE_BODY" | grep -o '"tier":"[^"]*"' | cut -d'"' -f4 || echo 'UNKNOWN')"
 fi
-
-# valid alanını kontrol et
-IS_VALID=$(echo "$RESPONSE_BODY" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "PENDING")
-if [[ "$IS_VALID" == "SUSPENDED" || "$IS_VALID" == "EXPIRED" ]]; then
-  log_error "Lisans geçersiz veya askıya alınmış: $IS_VALID"
-  exit 1
-fi
-
-log_success "Lisans aktif — Tier: $(echo "$RESPONSE_BODY" | grep -o '"tier":"[^"]*"' | cut -d'"' -f4 || echo 'UNKNOWN')"
 
 # ─── Step 5/9: XtreamPulsar İndir ────────────────────────────────────────────
 log_step "[5/9] XtreamPulsar indiriliyor..."
@@ -269,6 +286,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 LICENSE_KEY=${LICENSE_KEY}
 LICENSE_SERVER_URL=${LICENSE_SERVER}
 ADMIN_API_KEY=${ADMIN_API_KEY}
+DEV_MODE=${DEV_MODE}
 
 # ─── Server ───────────────────────────────────────────────────────────────
 SERVER_URL=${SERVER_URL}
