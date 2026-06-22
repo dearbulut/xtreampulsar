@@ -65,7 +65,7 @@ export class AuthService {
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User not found or inactive');
     if (!user.twoFactorSecret) throw new UnauthorizedException('2FA not configured');
 
-    const valid = this.twoFactorService.verify(code, user.twoFactorSecret);
+    const valid = await this.twoFactorService.verifyCode(code, user.twoFactorSecret);
     if (!valid) throw new UnauthorizedException('Invalid verification code');
 
     return this.issueTokens({ id: user.id, username: user.username, role: user.role });

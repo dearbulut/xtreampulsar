@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { authenticator } from 'otplib';
+import { generate, verify as otpVerify, generateSecret, generateURI } from 'otplib';
 import * as qrcode from 'qrcode';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,15 +8,19 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TwoFactorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async generateSecret(userId: string) {
+  async generateSetup(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { username: true },
     });
     if (!user) throw new UnauthorizedException('User not found');
 
-    const secret = authenticator.generateSecret();
-    const otpauthUrl = authenticator.keyuri(user.username, 'XtreamPulsar', secret);
+    const secret = generateSecret();
+    const otpauthUrl = generateURI({
+      issuer: 'XtreamPulsar',
+      label: user.username,
+      secret,
+    });
     const qrCodeImage = await qrcode.toDataURL(otpauthUrl);
 
     await this.prisma.user.update({
@@ -27,9 +31,10 @@ export class TwoFactorService {
     return { secret, qrCodeUrl: otpauthUrl, qrCodeImage };
   }
 
-  verify(code: string, secret: string): boolean {
+  async verifyCode(code: string, secret: string): Promise<boolean> {
     try {
-      return authenticator.verify({ token: code, secret });
+      const result = await otpVerify({ token: code, secret });
+      return result.valid;
     } catch {
       return false;
     }
@@ -42,7 +47,7 @@ export class TwoFactorService {
     });
     if (!user?.twoFactorSecret) throw new UnauthorizedException('2FA setup not started');
 
-    const valid = this.verify(code, user.twoFactorSecret);
+    const valid = await this.verifyCode(code, user.twoFactorSecret);
     if (!valid) throw new UnauthorizedException('Invalid verification code');
 
     await this.prisma.user.update({
@@ -65,5 +70,9 @@ export class TwoFactorService {
       where: { id: userId },
       data: { twoFactorEnabled: false, twoFactorSecret: null },
     });
+  }
+
+  async generateToken(secret: string): Promise<string> {
+    return generate({ secret });
   }
 }

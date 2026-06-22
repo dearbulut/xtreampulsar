@@ -39,7 +39,7 @@ export class AuthController {
   @Get('2fa/setup')
   @UseGuards(JwtAuthGuard)
   setupTwoFactor(@CurrentUser() user: JwtUser) {
-    return this.twoFactorService.generateSecret(user.id);
+    return this.twoFactorService.generateSetup(user.id);
   }
 
   @Post('2fa/enable')
