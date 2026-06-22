@@ -11,6 +11,9 @@ COPY apps/license/ ./apps/license/
 
 RUN pnpm install --frozen-lockfile
 RUN cd packages/database && npx prisma generate
+RUN pnpm --filter @xtreampulsar/database build
+RUN pnpm --filter @xtreampulsar/types build
+RUN pnpm --filter @xtreampulsar/config build
 RUN pnpm --filter @xtreampulsar/license build
 
 FROM node:20-alpine
