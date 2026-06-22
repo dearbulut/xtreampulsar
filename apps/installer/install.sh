@@ -233,25 +233,30 @@ else
   log_success "Lisans aktif — Tier: $(echo "$RESPONSE_BODY" | grep -o '"tier":"[^"]*"' | cut -d'"' -f4 || echo 'UNKNOWN')"
 fi
 
-# ─── Step 5/9: XtreamPulsar İndir ────────────────────────────────────────────
-log_step "[5/9] XtreamPulsar indiriliyor..."
+# ─── Step 5/9: Dosyaları Hazırla ─────────────────────────────────────────────
+log_step "[5/9] Kurulum dosyaları hazırlanıyor..."
 mkdir -p "$INSTALL_DIR"
 
-# Kurulum dizinine kaynak kopyala (zaten buradaysak)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+REPO_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"  # apps/installer → 2 üst dizin = repo root
+
+log_info "Script dizini : $SCRIPT_DIR"
+log_info "Repo kökü     : $REPO_ROOT"
+log_info "Kurulum dizini: $INSTALL_DIR"
 
 if [[ -f "$REPO_ROOT/docker-compose.yml" ]]; then
-  log_info "Kaynak dosyalar yerel dizinde bulundu: $REPO_ROOT"
-  cp "$REPO_ROOT/docker-compose.yml" "$INSTALL_DIR/"
-  cp "$REPO_ROOT/.env.example" "$INSTALL_DIR/.env.example" 2>/dev/null || true
-  [[ -d "$REPO_ROOT/nginx" ]] && cp -r "$REPO_ROOT/nginx" "$INSTALL_DIR/"
+  if [[ "$INSTALL_DIR" != "$REPO_ROOT" ]]; then
+    log_info "Dosyalar kopyalanıyor: $REPO_ROOT → $INSTALL_DIR"
+    cp -r "$REPO_ROOT/." "$INSTALL_DIR/"
+    log_success "Tüm kaynak dosyalar kopyalandı"
+  else
+    log_info "Script zaten kurulum dizininde — kopyalama atlanıyor"
+  fi
 else
-  log_info "GitHub'dan indiriliyor..."
-  run_with_spinner "Kaynak indirilıyor" \
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR/src"
-  cp "$INSTALL_DIR/src/docker-compose.yml" "$INSTALL_DIR/"
-  cp -r "$INSTALL_DIR/src/nginx" "$INSTALL_DIR/"
+  log_info "Yerel kaynak bulunamadı, GitHub'dan indiriliyor..."
+  run_with_spinner "Kaynak indiriliyor" \
+    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+  log_success "Kaynak GitHub'dan indirildi"
 fi
 
 # .env dosyasını oluştur
@@ -328,7 +333,8 @@ log_success "Veritabanı hazır"
 
 # ─── Step 7/9: Servisleri Başlat ─────────────────────────────────────────────
 log_step "[7/9] Servisler başlatılıyor..."
-run_with_spinner "Tüm servisler başlatılıyor" docker compose up -d
+cd "$INSTALL_DIR"
+run_with_spinner "Tüm servisler derleniyor ve başlatılıyor" docker compose up -d --build
 
 log_info "Servislerin hazır olması bekleniyor (30s)..."
 sleep 30
