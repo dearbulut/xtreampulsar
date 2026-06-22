@@ -34,56 +34,29 @@ export class SettingsService {
     });
   }
 
-  async updateSettings(data: Partial<{
-    vodDownloadSpeed: number;
-    vodDownloadLimit: number;
-    bufferSize: number;
-    blockVpnProxy: boolean;
-    priorityBackupStream: boolean;
-    streamDownVideo: string | null;
-    bannedVideo: string | null;
-    expiredVideo: string | null;
-    countryLockVideo: string | null;
-    maxConxExceedVideo: string | null;
-    enableConxExceedLog: boolean;
-    instantCloseConn: boolean;
-    adminStreamingIps: string[];
-    panelName: string;
-    serverUrl: string;
-    serverPort: number;
-    timezone: string;
-    trialUserLimit: number;
-    adminEmail: string;
-    resellerNotifyExpiry: boolean;
-    streamDownAlert: boolean;
-    enableLocalBackups: boolean;
-    localBackupDir: string;
-    autoBackupIntervalHours: number;
-    backupsToKeep: number;
-    enableRemoteBackup: boolean;
-    dropboxApiKey: string;
-    discordWebhookUrl?: string | null;
-    telegramBotToken?: string | null;
-    telegramChatId?: string | null;
-    discordAlerts?: boolean;
-    telegramAlerts?: boolean;
-    // Reseller
-    registrationOpen?: boolean;
-    // Security
-    enableGuard?: boolean;
-    maxConnsPerIp?: number;
-    maxHitsNormal?: number;
-    maxHitsRestreamer?: number;
-    blockDuration?: number;
-    denyInvalidStreamIds?: boolean;
-    sensitivePorts?: string[];
-    whitelistIPs?: string[];
-    openPorts?: string[];
-  }>) {
+  async updateSettings(data: Record<string, unknown>) {
+    // Strip undefined, coerce booleans sent as strings or numbers
+    const BOOLEAN_FIELDS = new Set([
+      'blockVpnProxy', 'priorityBackupStream', 'enableConxExceedLog', 'instantCloseConn',
+      'resellerNotifyExpiry', 'streamDownAlert', 'enableLocalBackups', 'enableRemoteBackup',
+      'discordAlerts', 'telegramAlerts', 'registrationOpen', 'enableGuard', 'denyInvalidStreamIds',
+      'autoEnrichMetadata',
+    ]);
+
+    const clean: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined) continue;
+      if (BOOLEAN_FIELDS.has(key)) {
+        clean[key] = value === true || value === 'true' || value === 1;
+      } else {
+        clean[key] = value;
+      }
+    }
+
     return this.prisma.settings.upsert({
       where: { id: 'singleton' },
-      update: data,
-      create: { id: 'singleton', ...data },
+      update: clean,
+      create: { id: 'singleton', ...clean },
     });
   }
 }

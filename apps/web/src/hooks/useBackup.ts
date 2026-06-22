@@ -43,6 +43,22 @@ export function useDeleteBackup() {
   });
 }
 
+export function useDownloadBackup() {
+  return async (filename: string) => {
+    const res = await api.get(`/backup/download/${encodeURIComponent(filename)}`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+}
+
 export function useUploadDropbox() {
   return useMutation({
     mutationFn: (filename: string) =>

@@ -86,6 +86,14 @@ export class BackupService {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
+  async getDownloadPath(filename: string): Promise<string> {
+    this.validateFilename(filename);
+    const backupDir = await this.getBackupDir();
+    const filePath = path.join(backupDir, filename);
+    if (!fs.existsSync(filePath)) throw new NotFoundException(`Backup not found: ${filename}`);
+    return filePath;
+  }
+
   async deleteBackup(filename: string): Promise<void> {
     this.validateFilename(filename);
     const backupDir = await this.getBackupDir();

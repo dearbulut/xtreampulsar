@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Res, UseGuards, HttpCode, HttpStatus, StreamableFile } from '@nestjs/common';
+import { createReadStream } from 'fs';
+import type { Response } from 'express';
 import { BackupService } from './backup.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -13,6 +15,17 @@ export class BackupController {
   @Get('list')
   list() {
     return this.backupService.listLocalBackups();
+  }
+
+  @Get('download/:filename')
+  async download(
+    @Param('filename') filename: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const filePath = await this.backupService.getDownloadPath(filename);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/gzip');
+    return new StreamableFile(createReadStream(filePath));
   }
 
   @Post('create')

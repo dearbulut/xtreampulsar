@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { create } from 'zustand';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
@@ -309,12 +309,12 @@ export function useSyncSettings() {
 }
 
 export function useSaveSettings() {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: (settings: AllSettings) =>
       api.patch('/settings', mapStoreToDB(settings)),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['settings'] });
+      // Don't invalidate/refetch — the Zustand store already holds the saved state.
+      // A refetch would race against the DB write and could overwrite local values.
       toast.success('Ayarlar kaydedildi');
     },
     onError: () => toast.error('Kaydetme başarısız'),

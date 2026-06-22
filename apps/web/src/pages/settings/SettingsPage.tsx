@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Bell, Key, Copy, Check, Palette, Image as ImageIcon } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
-import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, formatBytes } from '@/hooks/useBackup';
+import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, formatBytes } from '@/hooks/useBackup';
 import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
@@ -152,6 +152,7 @@ export function SettingsPage() {
   const createBackup = useCreateBackup();
   const deleteBackup = useDeleteBackup();
   const uploadDropbox = useUploadDropbox();
+  const downloadBackup = useDownloadBackup();
 
   const save = () => saveSettings.mutate(settings);
 
@@ -521,6 +522,13 @@ export function SettingsPage() {
                                   <Upload className="w-3.5 h-3.5" />
                                 </button>
                               )}
+                              <button
+                                title="İndir"
+                                onClick={() => { void downloadBackup(b.filename); }}
+                                className="p-1.5 rounded hover:bg-emerald-500/10 text-emerald-400 transition-colors"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 title="Sil"
                                 onClick={() => setDeleteBackupFile(b.filename)}
