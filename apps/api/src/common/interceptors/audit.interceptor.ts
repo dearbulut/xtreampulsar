@@ -10,7 +10,7 @@ import { tap } from 'rxjs/operators';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtUser } from '../decorators/current-user.decorator';
-import type { AuditAction } from '@prisma/client';
+import type { AuditAction } from '@xtreampulsar/database';
 
 const AUDITED_RESOURCES = new Set(['users', 'streams', 'resellers', 'settings', 'bouquets']);
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@xtreampulsar/database';
+import type { AuditAction } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
-import type { AuditAction } from '@prisma/client';
 
 interface CreateAuditLogDto {
   action: AuditAction;
@@ -28,7 +29,12 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateAuditLogDto) {
-    return this.prisma.auditLog.create({ data: dto });
+    return this.prisma.auditLog.create({
+      data: {
+        ...dto,
+        metadata: dto.metadata ? (dto.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+      },
+    });
   }
 
   async getLogs({ page = 1, limit = 100, adminId, resource, action, dateFrom, dateTo }: AuditLogQuery) {
