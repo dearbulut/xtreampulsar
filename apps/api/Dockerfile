@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 WORKDIR /repo
 
 RUN npm install -g pnpm
-RUN apk add --no-cache python3 make g++ openssl ffmpeg
+RUN apk add --no-cache python3 make g++ openssl
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY tsconfig.base.json ./
@@ -19,9 +19,10 @@ RUN apk add --no-cache ffmpeg openssl
 
 ENV NODE_ENV=production
 
-COPY --from=builder /repo/apps/api/dist ./dist
 COPY --from=builder /repo/node_modules ./node_modules
 COPY --from=builder /repo/packages ./packages
+COPY --from=builder /repo/apps/api/dist ./dist
+COPY --from=builder /repo/apps/api/package.json ./package.json
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

@@ -19,10 +19,10 @@ RUN apk add --no-cache openssl
 
 ENV NODE_ENV=production
 
-COPY --from=builder /repo/apps/license/dist ./dist
 COPY --from=builder /repo/node_modules ./node_modules
 COPY --from=builder /repo/packages ./packages
-COPY --from=builder /repo/apps/license/node_modules ./apps/license/node_modules
+COPY --from=builder /repo/apps/license/dist ./dist
+COPY --from=builder /repo/apps/license/package.json ./package.json
 
 EXPOSE 3001
 CMD ["node", "dist/main.js"]
