@@ -7,6 +7,7 @@ import {
   Res,
   HttpStatus,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import * as http from 'http';
@@ -42,6 +43,8 @@ interface GetPhpQuery {
 
 @Controller()
 export class XtreamController {
+  private readonly logger = new Logger(XtreamController.name);
+
   constructor(
     private readonly xtream: XtreamService,
     private readonly streamService: StreamService,
@@ -358,6 +361,8 @@ export class XtreamController {
     @Query('token') token: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
+    this.logger.log(`Segment request: token=${token}, streamId=${streamId}, segment=${segment}`);
+
     // Guard against path traversal
     const safeSegment = path.basename(segment);
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
@@ -370,9 +375,10 @@ export class XtreamController {
 
     if (token) {
       // Kick check: if token is blacklisted, deny segment — VLC/player will stop
-      const isKicked = await this.redis.get(`kicked:${token}`).catch(() => null);
-      if (isKicked) {
-        res.status(HttpStatus.FORBIDDEN).send('Connection terminated');
+      const kicked = await this.redis.get(`kicked:${token}`).catch(() => null);
+      this.logger.log(`Kicked check: token=${token}, result=${kicked}`);
+      if (kicked) {
+        res.status(HttpStatus.FORBIDDEN).json({ error: 'Connection terminated' });
         return;
       }
 

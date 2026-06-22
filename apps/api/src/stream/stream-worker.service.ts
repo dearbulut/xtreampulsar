@@ -25,9 +25,12 @@ export class StreamWorkerService implements OnModuleDestroy {
   private readonly workers = new Map<string, WorkerState>();
   private readonly hlsOutputPath =
     process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
-  private readonly ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+  private readonly ffmpegPath: string;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.ffmpegPath = process.env.FFMPEG_PATH || '/usr/bin/ffmpeg';
+    this.logger.log(`FFmpeg path configured: ${this.ffmpegPath}`);
+  }
 
   async startWorker(streamId: string): Promise<void> {
     const stream = await this.prisma.stream.findUnique({
