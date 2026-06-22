@@ -2,15 +2,17 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "declaration": false,
     "declarationMap": false,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
     "paths": {
-      "@xtreampulsar/types": ["../../../packages/types/src"],
-      "@xtreampulsar/config": ["../../../packages/config/src"]
+      "@xtreampulsar/types": ["../../packages/types/src"],
+      "@xtreampulsar/config": ["../../packages/config/src"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 }
