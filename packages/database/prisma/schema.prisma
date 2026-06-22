@@ -439,6 +439,7 @@ model Connection {
   ip        String
   userAgent String?
   startedAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   endedAt   DateTime?
   bytesIn   BigInt    @default(0)
   bytesOut  BigInt    @default(0)
@@ -455,6 +456,7 @@ model Connection {
   @@index([userId, endedAt])
   @@index([streamId, endedAt])
   @@index([startedAt])
+  @@index([updatedAt])
   @@map("connections")
 }
 

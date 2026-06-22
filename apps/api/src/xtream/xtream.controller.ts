@@ -16,6 +16,7 @@ import { URL } from 'url';
 import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
 import { UserService } from '../user/user.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 interface PlayerApiQuery {
   username?: string;
@@ -41,6 +42,7 @@ export class XtreamController {
     private readonly xtream: XtreamService,
     private readonly streamService: StreamService,
     private readonly userService: UserService,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ─── Authentication + action dispatch ──────────────────────────────────────
@@ -316,10 +318,11 @@ export class XtreamController {
       const raw = fs.readFileSync(hlsFile, 'utf-8');
 
       // Rewrite relative .ts segment names to absolute URLs.
-      // Matches any non-comment line ending in .ts (handles seg00165.ts, etc.)
+      // Append ?token=connectionId so segment requests can heartbeat the connection.
+      const tokenSuffix = connectionId ? `?token=${connectionId}` : '';
       const fixed = raw.replace(
         /^([^#\r\n][^\r\n]*\.ts)$/gm,
-        `${serverUrl}/hls/${streamRecord.id}/$1`,
+        `${serverUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
       );
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -346,6 +349,7 @@ export class XtreamController {
   serveHlsSegment(
     @Param('streamId') streamId: string,
     @Param('segment') segment: string,
+    @Query('token') token: string | undefined,
     @Res() res: Response,
   ): void {
     // Guard against path traversal
@@ -356,6 +360,14 @@ export class XtreamController {
     if (!fs.existsSync(segmentFile)) {
       res.status(HttpStatus.NOT_FOUND).send('Segment not found');
       return;
+    }
+
+    // Heartbeat: refresh connection updatedAt so analytics can detect live viewers
+    if (token) {
+      void this.prisma.connection.update({
+        where: { id: token },
+        data: { updatedAt: new Date() },
+      }).catch(() => { /* stale token — ignore */ });
     }
 
     res.setHeader('Content-Type', 'video/MP2T');

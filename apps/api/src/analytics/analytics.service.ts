@@ -43,7 +43,9 @@ export class AnalyticsService {
       safe('onlineStreams',     () => this.prisma.stream.count({ where: { isActive: true, status: 'ONLINE' } }), 0),
       safe('totalServers',      () => this.prisma.server.count(), 0),
       safe('onlineServers',     () => this.prisma.server.count({ where: { isOnline: true } }), 0),
-      safe('activeConnections', () => this.prisma.connection.count({ where: { endedAt: null } }), 0),
+      safe('activeConnections', () => this.prisma.connection.count({
+        where: { updatedAt: { gte: new Date(Date.now() - 30_000) } },
+      }), 0),
       safe('connectionsToday',  () => this.prisma.connection.count({ where: { startedAt: { gte: todayStart } } }), 0),
     ]);
 
@@ -56,10 +58,11 @@ export class AnalyticsService {
   }
 
   async getLiveConnections(page = 1, limit = 50) {
+    const activeThreshold = new Date(Date.now() - 30_000);
     try {
       const [items, total] = await Promise.all([
         this.prisma.connection.findMany({
-          where: { endedAt: null },
+          where: { updatedAt: { gte: activeThreshold } },
           include: {
             user: { select: { id: true, username: true } },
             stream: { select: { id: true, name: true, status: true } },
@@ -69,7 +72,7 @@ export class AnalyticsService {
           skip: (page - 1) * limit,
           take: limit,
         }),
-        this.prisma.connection.count({ where: { endedAt: null } }),
+        this.prisma.connection.count({ where: { updatedAt: { gte: activeThreshold } } }),
       ]);
       return { items, total, page, limit };
     } catch (err) {
