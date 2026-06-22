@@ -19,10 +19,8 @@ async function bootstrap() {
       { path: 'get.php', method: RequestMethod.ALL },
       { path: 'live/:username/:password/:streamId', method: RequestMethod.ALL },
       { path: 'movie/:username/:password/:streamId', method: RequestMethod.ALL },
-      {
-        path: 'series/:username/:password/:streamId',
-        method: RequestMethod.ALL,
-      },
+      { path: 'series/:username/:password/:streamId', method: RequestMethod.ALL },
+      { path: 'hls/:streamId/:segment', method: RequestMethod.GET },
     ],
   });
 
