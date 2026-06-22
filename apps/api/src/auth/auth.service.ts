@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly twoFactorService: TwoFactorService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -32,7 +34,41 @@ export class AuthService {
       throw new ForbiddenException(`Account is ${user.status.toLowerCase()}`);
     }
 
+    if (user.twoFactorEnabled) {
+      const tempToken = this.jwtService.sign(
+        { sub: user.id, type: '2fa_pending', username: user.username, role: user.role },
+        { expiresIn: '5m' },
+      );
+      return { requiresTwoFactor: true, tempToken };
+    }
+
     return this.issueTokens(user);
+  }
+
+  async verifyTwoFactor(tempToken: string, code: string) {
+    let payload: { sub: string; type: string; username: string; role: string };
+    try {
+      payload = this.jwtService.verify<typeof payload>(tempToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    if (payload.type !== '2fa_pending') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, username: true, role: true, twoFactorSecret: true, status: true },
+    });
+
+    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User not found or inactive');
+    if (!user.twoFactorSecret) throw new UnauthorizedException('2FA not configured');
+
+    const valid = this.twoFactorService.verify(code, user.twoFactorSecret);
+    if (!valid) throw new UnauthorizedException('Invalid verification code');
+
+    return this.issueTokens({ id: user.id, username: user.username, role: user.role });
   }
 
   async refresh(rawToken: string) {
@@ -75,6 +111,7 @@ export class AuthService {
         expiresAt: true,
         createdAt: true,
         resellerId: true,
+        twoFactorEnabled: true,
       },
     });
   }
@@ -112,11 +149,7 @@ export class AuthService {
     };
   }
 
-  private async issueTokens(user: {
-    id: string;
-    username: string;
-    role: string;
-  }) {
+  private async issueTokens(user: { id: string; username: string; role: string }) {
     const payload = { sub: user.id, username: user.username, role: user.role };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -124,10 +157,7 @@ export class AuthService {
     });
 
     const rawRefresh = crypto.randomBytes(64).toString('hex');
-    const hashedRefresh = crypto
-      .createHash('sha256')
-      .update(rawRefresh)
-      .digest('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefresh).digest('hex');
 
     await this.prisma.refreshToken.create({
       data: {
@@ -137,6 +167,10 @@ export class AuthService {
       },
     });
 
-    return { accessToken, refreshToken: rawRefresh };
+    return {
+      accessToken,
+      refreshToken: rawRefresh,
+      user: { id: user.id, username: user.username, role: user.role as 'ADMIN' | 'RESELLER' | 'USER' },
+    };
   }
 }

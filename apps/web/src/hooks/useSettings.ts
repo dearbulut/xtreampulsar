@@ -12,6 +12,11 @@ export interface GeneralSettings {
   adminEmail: string;
   streamDownAlert: boolean;
   resellerNotifyExpiry: boolean;
+  discordWebhookUrl: string;
+  telegramBotToken: string;
+  telegramChatId: string;
+  discordAlerts: boolean;
+  telegramAlerts: boolean;
 }
 
 export interface XtreamSettings {
@@ -79,7 +84,21 @@ export interface AllSettings {
 }
 
 const DEFAULTS: AllSettings = {
-  general: { panelName: 'XtreamPulsar', timezone: 'Europe/Istanbul', language: 'tr', serverUrl: '', logoUrl: '', adminEmail: '', streamDownAlert: true, resellerNotifyExpiry: true },
+  general: {
+    panelName: 'XtreamPulsar',
+    timezone: 'Europe/Istanbul',
+    language: 'tr',
+    serverUrl: '',
+    logoUrl: '',
+    adminEmail: '',
+    streamDownAlert: true,
+    resellerNotifyExpiry: true,
+    discordWebhookUrl: '',
+    telegramBotToken: '',
+    telegramChatId: '',
+    discordAlerts: false,
+    telegramAlerts: false,
+  },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '' },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
@@ -115,6 +134,11 @@ interface DbSettings {
   backupsToKeep: number;
   enableRemoteBackup: boolean;
   dropboxApiKey: string;
+  discordWebhookUrl?: string | null;
+  telegramBotToken?: string | null;
+  telegramChatId?: string | null;
+  discordAlerts?: boolean;
+  telegramAlerts?: boolean;
 }
 
 function mapDbToStore(db: DbSettings): AllSettings {
@@ -128,6 +152,11 @@ function mapDbToStore(db: DbSettings): AllSettings {
       adminEmail: db.adminEmail ?? '',
       streamDownAlert: db.streamDownAlert ?? true,
       resellerNotifyExpiry: db.resellerNotifyExpiry ?? true,
+      discordWebhookUrl: db.discordWebhookUrl ?? '',
+      telegramBotToken: db.telegramBotToken ?? '',
+      telegramChatId: db.telegramChatId ?? '',
+      discordAlerts: db.discordAlerts ?? false,
+      telegramAlerts: db.telegramAlerts ?? false,
     },
     xtream: {
       ...DEFAULTS.xtream,
@@ -170,6 +199,11 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     adminEmail: settings.general.adminEmail,
     streamDownAlert: settings.general.streamDownAlert,
     resellerNotifyExpiry: settings.general.resellerNotifyExpiry,
+    discordWebhookUrl: settings.general.discordWebhookUrl || null,
+    telegramBotToken: settings.general.telegramBotToken || null,
+    telegramChatId: settings.general.telegramChatId || null,
+    discordAlerts: settings.general.discordAlerts,
+    telegramAlerts: settings.general.telegramAlerts,
     serverPort: settings.xtream.port,
     trialUserLimit: settings.xtream.trialUserLimit,
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,

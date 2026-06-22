@@ -22,4 +22,14 @@ export class NotificationController {
   sendTest() {
     return this.notificationService.testEmail();
   }
+
+  @Post('test-discord')
+  testDiscord() {
+    return this.notificationService.testDiscord();
+  }
+
+  @Post('test-telegram')
+  testTelegram() {
+    return this.notificationService.testTelegram();
+  }
 }

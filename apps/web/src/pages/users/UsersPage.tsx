@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -10,6 +10,8 @@ import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser,
 } from '@/hooks/useUsers';
+import api from '@/lib/axios';
+import toast from 'react-hot-toast';
 import { useBouquets } from '@/hooks/useBouquets';
 import type { User } from '@/types';
 import { daysLeft, formatDate, cn } from '@/lib/utils';
@@ -24,6 +26,9 @@ export function UsersPage() {
   const [extendDays, setExtendDays] = useState(30);
   const [showCreate, setShowCreate] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [qrUserId, setQrUserId] = useState<string | null>(null);
+  const [qrData, setQrData] = useState<{ qrCodeImage: string; serverUrl: string; username: string } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
   const [createForm, setCreateForm] = useState({
     username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[],
   });
@@ -122,6 +127,20 @@ export function UsersPage() {
             <ActionBtn icon={Ban} title="Yasakla" color="text-warning"
               onClick={() => setBanId(r.id)} />
           )}
+          <ActionBtn icon={QrCode} title="QR Kod" color="text-info"
+            onClick={async () => {
+              setQrUserId(r.id);
+              setQrLoading(true);
+              try {
+                const res = await api.get<{ success: boolean; data: { qrCodeImage: string; serverUrl: string; username: string } }>(`/users/${r.id}/qr`);
+                setQrData(res.data.data);
+              } catch {
+                toast.error('QR kod alınamadı');
+                setQrUserId(null);
+              } finally {
+                setQrLoading(false);
+              }
+            }} />
           <ActionBtn icon={Trash2} title="Sil" color="text-danger"
             onClick={() => setDeleteId(r.id)} />
         </div>
@@ -306,6 +325,43 @@ export function UsersPage() {
         confirmLabel="Sil"
         loading={deleteUser.isPending}
       />
+
+      {/* QR Code Modal */}
+      <Modal open={!!qrUserId} onClose={() => { setQrUserId(null); setQrData(null); }} title="Kullanıcı QR Kodu" size="sm">
+        <div className="space-y-4 py-2">
+          {qrLoading && <p className="text-muted text-sm text-center">Yükleniyor…</p>}
+          {qrData && (
+            <>
+              <div className="flex flex-col items-center gap-3">
+                <img src={qrData.qrCodeImage} alt="QR Kod" className="w-52 h-52 rounded-xl border border-border" />
+                <p className="text-xs text-muted text-center">IPTV Smarters ile tarayın</p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted">Kullanıcı adı</span>
+                  <span className="text-slate-200 font-mono">{qrData.username}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Sunucu URL</span>
+                  <span className="text-slate-200 font-mono text-xs">{qrData.serverUrl}</span>
+                </div>
+                <p className="text-xs text-yellow-400">Şifreyi IPTV Smarters'a manuel girin.</p>
+              </div>
+              <button
+                className="btn-secondary w-full flex items-center justify-center gap-2 text-sm"
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = qrData.qrCodeImage;
+                  a.download = `qr-${qrData.username}.png`;
+                  a.click();
+                }}
+              >
+                <Download className="w-4 h-4" /> PNG İndir
+              </button>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

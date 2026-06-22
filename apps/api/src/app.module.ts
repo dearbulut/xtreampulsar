@@ -27,6 +27,7 @@ import { AuditModule } from './audit/audit.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { BackupModule } from './backup/backup.module';
 import { NotificationModule } from './notification/notification.module';
+import { SecurityModule } from './security/security.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { NotificationModule } from './notification/notification.module';
     GatewayModule,
     BackupModule,
     NotificationModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [

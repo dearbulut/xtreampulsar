@@ -47,10 +47,61 @@ export class NotificationService {
     return status === 'SENT';
   }
 
+  async sendDiscordAlert(title: string, message: string, color = 15158332): Promise<boolean> {
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    if (!settings?.discordAlerts || !settings.discordWebhookUrl) return false;
+
+    try {
+      const res = await fetch(settings.discordWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [
+            {
+              title,
+              description: message,
+              color,
+              timestamp: new Date().toISOString(),
+              footer: { text: 'XtreamPulsar' },
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+      return res.ok;
+    } catch (err) {
+      this.logger.error(`Discord alert error: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
+  async sendTelegramAlert(message: string): Promise<boolean> {
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    if (!settings?.telegramAlerts || !settings.telegramBotToken || !settings.telegramChatId) return false;
+
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${settings.telegramBotToken}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: settings.telegramChatId,
+            text: message,
+            parse_mode: 'HTML',
+          }),
+          signal: AbortSignal.timeout(5000),
+        },
+      );
+      return res.ok;
+    } catch (err) {
+      this.logger.error(`Telegram alert error: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
   async notifyStreamDown(streamId: string, streamName: string): Promise<void> {
     const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
-    if (!settings?.streamDownAlert || !settings.adminEmail) return;
-
     const subject = `[XtreamPulsar] Stream Çevrimdışı: ${streamName}`;
     const html = `
       <h2>Stream Çevrimdışı</h2>
@@ -59,15 +110,27 @@ export class NotificationService {
     `;
 
     try {
-      const sent = await this.sendEmail(settings.adminEmail, subject, html);
-      await this.prisma.notificationLog.create({
-        data: {
-          type: 'STREAM_DOWN',
-          recipient: settings.adminEmail,
-          subject,
-          status: sent ? 'SENT' : 'FAILED',
-        },
-      });
+      if (settings?.streamDownAlert && settings.adminEmail) {
+        const sent = await this.sendEmail(settings.adminEmail, subject, html);
+        await this.prisma.notificationLog.create({
+          data: {
+            type: 'STREAM_DOWN',
+            recipient: settings.adminEmail,
+            subject,
+            status: sent ? 'SENT' : 'FAILED',
+          },
+        });
+      }
+
+      await this.sendDiscordAlert(
+        '🔴 Stream Çevrimdışı',
+        `**${streamName}** yeniden başlatılamadı ve çevrimdışı oldu.\nID: \`${streamId}\``,
+        15158332,
+      );
+
+      await this.sendTelegramAlert(
+        `🔴 <b>Stream Çevrimdışı</b>\n<b>${streamName}</b> yeniden başlatılamadı ve çevrimdışı oldu.\nID: <code>${streamId}</code>`,
+      );
     } catch (err) {
       this.logger.error(`notifyStreamDown error: ${(err as Error).message}`);
     }
@@ -113,6 +176,22 @@ export class NotificationService {
       '<h2>Bu bir test bildirimidir.</h2><p>XtreamPulsar bildirim sistemi çalışıyor.</p>',
     );
     return { sent, adminEmail };
+  }
+
+  async testDiscord(): Promise<{ sent: boolean }> {
+    const sent = await this.sendDiscordAlert(
+      '✅ Test Bildirimi',
+      'XtreamPulsar Discord entegrasyonu başarıyla çalışıyor.',
+      3066993,
+    );
+    return { sent };
+  }
+
+  async testTelegram(): Promise<{ sent: boolean }> {
+    const sent = await this.sendTelegramAlert(
+      '✅ <b>Test Bildirimi</b>\nXtreamPulsar Telegram entegrasyonu başarıyla çalışıyor.',
+    );
+    return { sent };
   }
 
   @Cron('0 9 * * *')

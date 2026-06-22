@@ -23,6 +23,7 @@ import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SecurityService } from '../security/security.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { EventsGateway } from '../gateway/events.gateway';
 
@@ -54,6 +55,7 @@ export class XtreamController {
     private readonly streamService: StreamService,
     private readonly userService: UserService,
     private readonly prisma: PrismaService,
+    private readonly securityService: SecurityService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Optional() private readonly gateway?: EventsGateway,
   ) {}
@@ -263,6 +265,18 @@ export class XtreamController {
       return;
     }
 
+    // IP geo/ban check
+    const clientIpRaw =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.ip ?? '';
+    try {
+      const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw);
+      if (!ipCheck.allowed) {
+        res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden');
+        return;
+      }
+    } catch { /* non-fatal: continue on lookup error */ }
+
     // Strip extension to get the clean numeric external ID
     const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
     const externalId = parseInt(cleanId, 10);
@@ -302,9 +316,7 @@ export class XtreamController {
     }
 
     // ── Track connection ────────────────────────────────────────────────────
-    const clientIp =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.ip ?? '';
+    const clientIp = clientIpRaw;
     const hlsToken = randomUUID();
     let connectionId: string | null = null;
     try {
@@ -418,6 +430,14 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.ip ?? '';
+    try {
+      const ipCheck = await this.securityService.checkIpAllowed(ip);
+      if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
+    } catch { /* non-fatal */ }
+
     const url = await this.authorizeAndGetUrl(
       username, password, streamId, res, 'mp4|mkv|avi',
     );
@@ -435,6 +455,14 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.ip ?? '';
+    try {
+      const ipCheck = await this.securityService.checkIpAllowed(ip);
+      if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
+    } catch { /* non-fatal */ }
+
     const url = await this.authorizeAndGetUrl(
       username, password, streamId, res, 'mkv|mp4|avi',
     );

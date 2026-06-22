@@ -4,6 +4,8 @@ import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, formatBytes } from '@/hooks/useBackup';
+import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
+import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
 const SETTINGS_TABS: TabItem[] = [
@@ -42,6 +44,95 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
+  );
+}
+
+function TwoFactorSection() {
+  const [showSetup, setShowSetup] = useState(false);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [enabled, setEnabled] = useState(false);
+
+  const setup = use2FASetup(showSetup);
+  const enableMut = use2FAEnable();
+  const disableMut = use2FADisable();
+
+  const handleEnable = async () => {
+    await enableMut.mutateAsync(code);
+    setEnabled(true);
+    setShowSetup(false);
+    setCode('');
+  };
+
+  const handleDisable = async () => {
+    await disableMut.mutateAsync(password);
+    setEnabled(false);
+    setPassword('');
+  };
+
+  return (
+    <div className="mt-2">
+      <SectionTitle>İki Faktörlü Doğrulama (2FA)</SectionTitle>
+      <div className="space-y-4">
+        {!enabled ? (
+          <>
+            {!showSetup ? (
+              <button className="btn-secondary text-sm" onClick={() => setShowSetup(true)}>
+                2FA Kurulumunu Başlat
+              </button>
+            ) : (
+              <div className="space-y-4 p-4 rounded-xl bg-surface border border-border">
+                {setup.isLoading && <p className="text-muted text-sm">QR kodu yükleniyor…</p>}
+                {setup.data && (
+                  <>
+                    <p className="text-sm text-slate-300">Authenticator uygulamanızla QR kodu tarayın:</p>
+                    <img src={setup.data.qrCodeImage} alt="2FA QR" className="w-44 h-44 rounded-lg" />
+                    <p className="text-xs text-muted font-mono break-all">{setup.data.secret}</p>
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1"
+                        placeholder="6 haneli kod"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        maxLength={6}
+                      />
+                      <button
+                        className="btn-primary text-sm px-4"
+                        disabled={enableMut.isPending || code.length !== 6}
+                        onClick={() => void handleEnable()}
+                      >
+                        Onayla
+                      </button>
+                    </div>
+                  </>
+                )}
+                <button className="text-sm text-muted hover:text-slate-300" onClick={() => setShowSetup(false)}>İptal</button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-3 p-4 rounded-xl bg-surface border border-border">
+            <p className="text-sm text-green-400">2FA etkin</p>
+            <div className="flex gap-2">
+              <input
+                className="input flex-1"
+                type="password"
+                placeholder="Şifrenizi girin"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                className="btn-danger text-sm px-4"
+                disabled={disableMut.isPending}
+                onClick={() => void handleDisable()}
+              >
+                Devre Dışı Bırak
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -124,6 +215,49 @@ export function SettingsPage() {
                 <Toggle checked={settings.general.resellerNotifyExpiry}
                   onChange={(v) => updateSettings('general', { resellerNotifyExpiry: v })} />
               </Field>
+            </div>
+            <SectionTitle>Discord Bildirimleri</SectionTitle>
+            <div className="space-y-5">
+              <Field label="Discord Webhook URL">
+                <input className="input" value={settings.general.discordWebhookUrl}
+                  onChange={(e) => updateSettings('general', { discordWebhookUrl: e.target.value })}
+                  placeholder="https://discord.com/api/webhooks/..." />
+              </Field>
+              <Field label="Discord Alarmları Aktif">
+                <Toggle checked={settings.general.discordAlerts}
+                  onChange={(v) => updateSettings('general', { discordAlerts: v })} />
+              </Field>
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => api.post('/notifications/test-discord').then(() => toast.success('Discord test gönderildi')).catch(() => toast.error('Discord test başarısız'))}
+              >
+                Discord Test Gönder
+              </button>
+            </div>
+            <SectionTitle>Telegram Bildirimleri</SectionTitle>
+            <div className="space-y-5">
+              <Field label="Telegram Bot Token">
+                <input className="input" value={settings.general.telegramBotToken}
+                  onChange={(e) => updateSettings('general', { telegramBotToken: e.target.value })}
+                  placeholder="123456789:ABC..." />
+              </Field>
+              <Field label="Telegram Chat ID">
+                <input className="input" value={settings.general.telegramChatId}
+                  onChange={(e) => updateSettings('general', { telegramChatId: e.target.value })}
+                  placeholder="-1001234567890" />
+              </Field>
+              <Field label="Telegram Alarmları Aktif">
+                <Toggle checked={settings.general.telegramAlerts}
+                  onChange={(v) => updateSettings('general', { telegramAlerts: v })} />
+              </Field>
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => api.post('/notifications/test-telegram').then(() => toast.success('Telegram test gönderildi')).catch(() => toast.error('Telegram test başarısız'))}
+              >
+                Telegram Test Gönder
+              </button>
             </div>
           </>
         )}
@@ -298,6 +432,7 @@ export function SettingsPage() {
                   placeholder="192.168.1.1, 10.0.0.0/8" />
               </Field>
             </div>
+            <TwoFactorSection />
           </>
         )}
 

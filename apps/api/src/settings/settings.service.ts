@@ -41,6 +41,11 @@ export class SettingsService {
     backupsToKeep: number;
     enableRemoteBackup: boolean;
     dropboxApiKey: string;
+    discordWebhookUrl?: string | null;
+    telegramBotToken?: string | null;
+    telegramChatId?: string | null;
+    discordAlerts?: boolean;
+    telegramAlerts?: boolean;
   }>) {
     return this.prisma.settings.upsert({
       where: { id: 'singleton' },

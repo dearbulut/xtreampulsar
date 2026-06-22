@@ -169,6 +169,7 @@ model ServerGuard {
   blockDurationMinutes Int      @default(10)
   denyInvalidStreamIds Boolean  @default(true)
   blockVpnProxy        Boolean  @default(false)
+  geoBlockedCountries  String[] @default([])
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -182,13 +183,15 @@ model BlockedIp {
   id        String   @id @default(cuid())
   ip        String
   reason    String
+  bannedBy  String?
   blockedAt DateTime @default(now())
   expiresAt DateTime
 
-  serverId String
-  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId String?
+  server   Server?  @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
   @@index([serverId, ip])
+  @@index([ip])
   @@map("blocked_ips")
 }
 
@@ -384,17 +387,19 @@ model ResellerCreditLog {
 }
 
 model User {
-  id             String     @id @default(cuid())
-  username       String     @unique
-  password       String
-  role           UserRole   @default(USER)
-  maxConnections Int        @default(1)
-  status         UserStatus @default(ACTIVE)
-  expiresAt      DateTime
-  notes          String?
-  deletedAt      DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  username         String     @unique
+  password         String
+  role             UserRole   @default(USER)
+  maxConnections   Int        @default(1)
+  status           UserStatus @default(ACTIVE)
+  expiresAt        DateTime
+  notes            String?
+  deletedAt        DateTime?
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   resellerId String?
   reseller   Reseller? @relation(fields: [resellerId], references: [id])
@@ -516,6 +521,11 @@ model Settings {
   backupsToKeep           Int      @default(5)
   enableRemoteBackup      Boolean  @default(false)
   dropboxApiKey           String   @default("")
+  discordWebhookUrl       String?
+  telegramBotToken        String?
+  telegramChatId          String?
+  discordAlerts           Boolean  @default(false)
+  telegramAlerts          Boolean  @default(false)
   updatedAt               DateTime @updatedAt
 
   @@map("settings")

@@ -4,6 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import * as qrcode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -260,6 +261,29 @@ export class UserService {
       data: { deletedAt: new Date(), status: 'DISABLED' },
     });
     return { deleted: result.count };
+  }
+
+  async generateQrCode(id: string): Promise<{ qrCodeImage: string; serverUrl: string; username: string }> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, username: true },
+    });
+    if (!user) throw new NotFoundException(`User ${id} not found`);
+
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const baseUrl = settings?.serverUrl
+      ? `${settings.serverUrl}:${settings.serverPort ?? 25461}`
+      : `http://localhost:${settings?.serverPort ?? 25461}`;
+
+    const payload = JSON.stringify({
+      dns: baseUrl,
+      username: user.username,
+      password: '',
+      type: 'm3u_plus',
+    });
+
+    const qrCodeImage = await qrcode.toDataURL(payload);
+    return { qrCodeImage, serverUrl: baseUrl, username: user.username };
   }
 
   private async assertExists(id: string) {

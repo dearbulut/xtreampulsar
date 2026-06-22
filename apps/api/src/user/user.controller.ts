@@ -119,4 +119,10 @@ export class UserController {
   kick(@Param('id') id: string) {
     return this.userService.kickAll(id);
   }
+
+  @Get(':id/qr')
+  @Roles('ADMIN', 'RESELLER')
+  generateQr(@Param('id') id: string) {
+    return this.userService.generateQrCode(id);
+  }
 }
