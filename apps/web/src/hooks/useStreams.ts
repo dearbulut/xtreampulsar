@@ -51,6 +51,18 @@ export function useStartStream() {
   });
 }
 
+export function useStopStream() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/streams/${id}/stop`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+      toast.success('Stream durduruldu');
+    },
+    onError: () => toast.error('Durdurma başarısız'),
+  });
+}
+
 export function useRestartStream() {
   const qc = useQueryClient();
   return useMutation({

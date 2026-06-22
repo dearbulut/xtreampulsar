@@ -286,6 +286,27 @@ export class XtreamController {
       return;
     }
 
+    // ── Track connection ────────────────────────────────────────────────────
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.ip ?? '';
+    let connectionId: string | null = null;
+    try {
+      const conn = await this.userService.createConnection(
+        user.id, streamRecord.id, clientIp, req.headers['user-agent'],
+      );
+      connectionId = conn.id;
+    } catch { /* non-fatal: don't block streaming on connection tracking */ }
+
+    const closeConn = (): void => {
+      if (!connectionId) return;
+      const id = connectionId;
+      connectionId = null;
+      void this.userService.closeConnection(id);
+    };
+    res.on('close', closeConn);
+    res.on('finish', closeConn);
+
     // ── Local HLS mode: serve pre-transcoded segments ───────────────────────
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
     const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');

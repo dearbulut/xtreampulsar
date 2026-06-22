@@ -81,6 +81,13 @@ export class StreamController {
     return { status: 'started', pid: stream?.ffmpegPid ?? null };
   }
 
+  @Post(':id/stop')
+  @Roles('ADMIN', 'RESELLER')
+  async stop(@Param('id') id: string) {
+    await this.workerService.stopWorker(id);
+    return { status: 'stopped' };
+  }
+
   @Post(':id/restart')
   @Roles('ADMIN', 'RESELLER')
   async restart(@Param('id') id: string) {

@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
-import { useStreams, useStartStream, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
+import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
 import type { Stream } from '@/types';
@@ -32,10 +32,10 @@ const TYPE_TITLES: Record<StreamType, string> = {
 };
 
 const WORKER_CFG = {
-  RUNNING: { dot: 'bg-emerald-400', label: 'Çalışıyor', text: 'text-emerald-400' },
-  CRASHED: { dot: 'bg-red-500',     label: 'Hata',       text: 'text-red-400' },
-  STOPPED: { dot: 'bg-amber-400',   label: 'Durdu',      text: 'text-amber-400' },
-  IDLE:    { dot: 'bg-gray-500',    label: 'Bekliyor',   text: 'text-gray-400' },
+  RUNNING: { dot: 'bg-emerald-400 animate-pulse', label: 'Çalışıyor', text: 'text-emerald-400' },
+  CRASHED: { dot: 'bg-red-500',                   label: 'Hata',       text: 'text-red-400' },
+  STOPPED: { dot: 'bg-amber-400',                 label: 'Durdu',      text: 'text-amber-400' },
+  IDLE:    { dot: 'bg-gray-500',                  label: 'Bekliyor',   text: 'text-gray-400' },
 } as const;
 
 function formatUptime(since: string): string {
@@ -128,6 +128,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const { data: categories } = useCategories(type);
   const { data: servers } = useServers();
   const startStream = useStartStream();
+  const stopStream = useStopStream();
   const restart = useRestartStream();
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
@@ -233,11 +234,18 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       className: 'w-36',
       render: (r) => (
         <div className="flex items-center gap-0.5">
-          {(r.workerStatus === 'IDLE' || r.workerStatus === 'STOPPED') && (
+          {r.workerStatus !== 'RUNNING' && (
             <ActionBtn
               icon={Play} title="Başlat" color="text-green-400"
               onClick={() => startStream.mutate(r.id)}
               loading={startStream.isPending && startStream.variables === r.id}
+            />
+          )}
+          {r.workerStatus === 'RUNNING' && (
+            <ActionBtn
+              icon={Square} title="Durdur" color="text-amber-400"
+              onClick={() => stopStream.mutate(r.id)}
+              loading={stopStream.isPending && stopStream.variables === r.id}
             />
           )}
           <ActionBtn
@@ -246,7 +254,6 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             loading={restart.isPending && restart.variables === r.id}
           />
           <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => {}} />
-          <ActionBtn icon={Square} title="Durdur" color="text-amber-400" onClick={() => {}} />
           <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
           <ActionBtn icon={Eye} title="Önizle" color="text-muted" onClick={() => setPreviewUrl(r.primaryUrl)} />
         </div>
