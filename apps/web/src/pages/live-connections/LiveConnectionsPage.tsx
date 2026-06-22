@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { RefreshCw, Wifi, ToggleLeft, Globe } from 'lucide-react';
+import { RefreshCw, Wifi, ToggleRight, ToggleLeft } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { useLiveConnections } from '@/hooks/useConnections';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { Connection } from '@/types';
-import { formatDuration, formatBytes, cn } from '@/lib/utils';
+import { formatDuration, cn } from '@/lib/utils';
+
+const TYPE_BADGE: Record<string, string> = {
+  LIVE:   'bg-emerald-500/15 text-emerald-400',
+  VOD:    'bg-blue-500/15 text-blue-400',
+  SERIES: 'bg-purple-500/15 text-purple-400',
+};
+
+function fmtDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}s ${m}d ${s}s`;
+  if (m > 0) return `${m}d ${s}s`;
+  return `${s}s`;
+}
 
 export function LiveConnectionsPage() {
   const [page, setPage] = useState(1);
@@ -27,42 +42,49 @@ export function LiveConnectionsPage() {
       header: '',
       className: 'w-8',
       render: () => (
-        <span className="w-2 h-2 rounded-full bg-success animate-pulse-slow inline-block" />
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
       ),
     },
     {
-      key: 'user',
+      key: 'username',
       header: 'Kullanıcı',
       render: (r) => (
         <div>
-          <div className="text-sm font-medium text-slate-200 font-mono">{r.user?.username ?? r.userId}</div>
+          <div className="text-sm font-medium text-slate-200 font-mono">{r.username}</div>
           <div className="text-xs text-muted">{r.ip}</div>
         </div>
       ),
     },
     {
-      key: 'stream',
+      key: 'streamName',
       header: 'Stream',
       render: (r) => (
         <div>
-          <div className="text-sm text-slate-300 truncate max-w-40">{r.stream?.name ?? r.streamId}</div>
-          {r.stream && <span className="badge bg-surface-2 text-muted text-[10px]">{r.stream.status}</span>}
+          <div className="text-sm text-slate-300 truncate max-w-40" title={r.streamName}>
+            {r.streamName}
+          </div>
+          <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', TYPE_BADGE[r.streamType] ?? TYPE_BADGE.LIVE)}>
+            {r.streamType}
+          </span>
         </div>
       ),
     },
     {
-      key: 'server',
-      header: 'Sunucu',
+      key: 'ip',
+      header: 'IP',
       render: (r) => (
-        <span className="text-sm text-muted">{r.server?.name ?? r.server?.ip ?? '—'}</span>
+        <span className="text-xs font-mono text-slate-300">{r.ip}</span>
       ),
     },
     {
       key: 'userAgent',
       header: 'User Agent',
       render: (r) => (
-        <span className="text-xs text-muted truncate max-w-36 block" title={r.userAgent}>
-          {r.userAgent ? r.userAgent.slice(0, 30) + (r.userAgent.length > 30 ? '…' : '') : '—'}
+        <span
+          className="text-xs text-muted truncate max-w-36 block"
+          title={r.userAgent}
+        >
+          {r.userAgent ? r.userAgent.slice(0, 32) + (r.userAgent.length > 32 ? '…' : '') : '—'}
         </span>
       ),
     },
@@ -70,27 +92,9 @@ export function LiveConnectionsPage() {
       key: 'duration',
       header: 'Süre',
       render: (r) => (
-        <span className="text-sm text-muted tabular-nums">{formatDuration(r.startedAt)}</span>
-      ),
-    },
-    {
-      key: 'bandwidth',
-      header: 'Bant Genişliği',
-      render: (r) => (
-        <div className="text-xs text-muted tabular-nums">
-          <div>↓ {formatBytes(r.bytesIn)}</div>
-          <div>↑ {formatBytes(r.bytesOut)}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'ip',
-      header: 'IP / Ülke',
-      render: (r) => (
-        <div className="flex items-center gap-1.5">
-          <Globe className="w-3 h-3 text-muted" />
-          <span className="text-xs font-mono text-slate-300">{r.ip}</span>
-        </div>
+        <span className="text-sm text-muted tabular-nums">
+          {r.duration ? fmtDuration(r.duration) : formatDuration(r.startedAt)}
+        </span>
       ),
     },
     {
@@ -99,9 +103,9 @@ export function LiveConnectionsPage() {
       className: 'w-20',
       render: (r) => (
         <button
-          onClick={() => r.userId && kickUser.mutate(r.userId)}
+          onClick={() => kickUser.mutate(r.userId)}
           disabled={kickUser.isPending}
-          className="flex items-center gap-1 text-xs text-danger hover:bg-danger/10 px-2 py-1 rounded-lg transition-colors"
+          className="flex items-center gap-1 text-xs text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors"
         >
           <Wifi className="w-3 h-3" />
           Kes
@@ -119,10 +123,10 @@ export function LiveConnectionsPage() {
           <>
             <button
               onClick={() => setAutoRefresh((v) => !v)}
-              className={cn('btn-ghost flex items-center gap-1.5 text-sm', autoRefresh && 'text-success')}
+              className={cn('btn-ghost flex items-center gap-1.5 text-xs', autoRefresh && 'text-emerald-400')}
             >
-              <ToggleLeft className="w-4 h-4" />
-              Auto {autoRefresh ? 'ON' : 'OFF'}
+              {autoRefresh ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+              Auto-Refresh
             </button>
             <button
               onClick={() => void refetch()}
@@ -136,8 +140,8 @@ export function LiveConnectionsPage() {
       />
 
       {autoRefresh && (
-        <div className="flex items-center gap-2 text-xs text-success mb-4 px-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-slow" />
+        <div className="flex items-center gap-2 text-xs text-emerald-400 mb-4 px-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           3 saniyede bir otomatik yenileniyor
         </div>
       )}

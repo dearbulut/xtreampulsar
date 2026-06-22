@@ -58,8 +58,8 @@ export function DashboardPage() {
           value={dash?.connections.active ?? 0}
           subtitle={`Bugün: ${dash?.connections.today ?? 0}`}
           icon={Activity}
-          variant="warning"
-          live
+          variant={(dash?.connections.active ?? 0) > 0 ? 'success' : 'default'}
+          live={(dash?.connections.active ?? 0) > 0}
         />
         <StatCard
           title="Online Kullanıcılar"
@@ -71,10 +71,10 @@ export function DashboardPage() {
         <StatCard
           title="Online Stream"
           value={`${dash?.streams.online ?? 0} / ${dash?.streams.total ?? 0}`}
-          subtitle="Aktif / Toplam"
+          subtitle="Çalışıyor / Toplam"
           icon={Tv}
           variant={
-            (dash?.streams.online ?? 0) === (dash?.streams.total ?? 0) ? 'success' : 'danger'
+            (dash?.streams.online ?? 0) > 0 ? 'success' : 'danger'
           }
         />
         <StatCard

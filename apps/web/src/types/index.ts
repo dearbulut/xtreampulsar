@@ -83,18 +83,18 @@ export interface Reseller {
 
 export interface Connection {
   id: string;
+  userId: string;
+  streamId: string;
+  username: string;
+  streamName: string;
+  streamType: 'LIVE' | 'VOD' | 'SERIES';
   ip: string;
   userAgent?: string;
   startedAt: string;
-  endedAt?: string;
+  updatedAt: string;
   bytesIn: string;
   bytesOut: string;
-  userId: string;
-  user?: { id: string; username: string };
-  streamId: string;
-  stream?: { id: string; name: string; status: StreamStatus };
-  serverId?: string;
-  server?: { id: string; name: string; ip: string };
+  duration: number;
 }
 
 // ─── Server ───────────────────────────────────────────────────────────────

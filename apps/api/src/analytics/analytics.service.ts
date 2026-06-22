@@ -40,7 +40,7 @@ export class AnalyticsService {
       safe('totalUsers',        () => this.prisma.user.count({ where: { deletedAt: null } }), 0),
       safe('activeUsers',       () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }), 0),
       safe('totalStreams',      () => this.prisma.stream.count({ where: { isActive: true } }), 0),
-      safe('onlineStreams',     () => this.prisma.stream.count({ where: { isActive: true, status: 'ONLINE' } }), 0),
+      safe('onlineStreams',     () => this.prisma.stream.count({ where: { workerStatus: 'RUNNING' } }), 0),
       safe('totalServers',      () => this.prisma.server.count(), 0),
       safe('onlineServers',     () => this.prisma.server.count({ where: { isOnline: true } }), 0),
       safe('activeConnections', () => this.prisma.connection.count({
@@ -60,13 +60,12 @@ export class AnalyticsService {
   async getLiveConnections(page = 1, limit = 50) {
     const activeThreshold = new Date(Date.now() - 30_000);
     try {
-      const [items, total] = await Promise.all([
+      const [raw, total] = await Promise.all([
         this.prisma.connection.findMany({
           where: { updatedAt: { gte: activeThreshold } },
           include: {
-            user: { select: { id: true, username: true } },
-            stream: { select: { id: true, name: true, status: true } },
-            server: { select: { id: true, name: true, ip: true } },
+            user: { select: { username: true } },
+            stream: { select: { name: true, category: { select: { type: true } } } },
           },
           orderBy: { startedAt: 'desc' },
           skip: (page - 1) * limit,
@@ -74,10 +73,27 @@ export class AnalyticsService {
         }),
         this.prisma.connection.count({ where: { updatedAt: { gte: activeThreshold } } }),
       ]);
-      return { items, total, page, limit };
+
+      const items = raw.map((c) => ({
+        id: c.id,
+        userId: c.userId,
+        streamId: c.streamId,
+        username: c.user?.username ?? c.userId,
+        streamName: c.stream?.name ?? c.streamId,
+        streamType: c.stream?.category?.type ?? 'LIVE',
+        ip: c.ip,
+        userAgent: c.userAgent,
+        startedAt: c.startedAt,
+        updatedAt: c.updatedAt,
+        bytesIn: c.bytesIn.toString(),
+        bytesOut: c.bytesOut.toString(),
+        duration: Math.floor((Date.now() - c.startedAt.getTime()) / 1000),
+      }));
+
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
     } catch (err) {
       this.logger.error(`getLiveConnections: ${(err as Error).message}`);
-      return { items: [], total: 0, page, limit };
+      return { items: [], total: 0, page, limit, totalPages: 0 };
     }
   }
 
