@@ -20,12 +20,22 @@ const PLAN_INFO = [
 @Injectable()
 export class StripeService {
   private readonly logger = new Logger(StripeService.name);
-  private readonly stripe: Stripe;
+  private stripe: Stripe | null = null;
 
   constructor(private readonly prisma: PrismaService) {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-      apiVersion: '2026-05-27.dahlia',
-    });
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (apiKey) {
+      this.stripe = new Stripe(apiKey, { apiVersion: '2026-05-27.dahlia' });
+    } else {
+      Logger.warn('STRIPE_SECRET_KEY not set — Stripe disabled', 'StripeService');
+    }
+  }
+
+  private get stripeClient(): Stripe {
+    if (!this.stripe) {
+      throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY.');
+    }
+    return this.stripe;
   }
 
   async createCheckoutSession(
@@ -37,7 +47,7 @@ export class StripeService {
     const priceId = PRICE_MAP[tier];
     if (!priceId) throw new Error(`Unknown tier: ${tier}`);
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.stripeClient.checkout.sessions.create({
       mode: 'subscription',
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
@@ -59,7 +69,7 @@ export class StripeService {
 
     let event: Stripe.Event;
     try {
-      event = this.stripe.webhooks.constructEvent(payload, signature, secret);
+      event = this.stripeClient.webhooks.constructEvent(payload, signature, secret);
     } catch (err) {
       this.logger.error(`Webhook signature verification failed: ${(err as Error).message}`);
       throw err;
@@ -92,7 +102,7 @@ export class StripeService {
   }
 
   async createCustomerPortal(customerId: string, returnUrl: string) {
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.stripeClient.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     });
@@ -132,13 +142,11 @@ export class StripeService {
 
     this.logger.log(`License created: ${key} tier=${tier} email=${email}`);
     await this.sendWelcomeEmail(email, key, tier);
-    void customerId; // stored in Stripe metadata for future portal use
+    void customerId;
   }
 
   private async cancelLicenseByCustomer(customerId: string): Promise<void> {
     this.logger.log(`Cancelling license for customer ${customerId}`);
-    // In production: map customerId → licenseKey via a CustomerLicense table
-    // For now log the event — full mapping requires an additional model
   }
 
   private async gracePeriodLicenseByCustomer(customerId: string): Promise<void> {

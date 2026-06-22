@@ -67,7 +67,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-xtreampulsar}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xtreampulsar}
-      ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-changeme}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       NODE_ENV: production
       PORT: 3001
     restart: always
