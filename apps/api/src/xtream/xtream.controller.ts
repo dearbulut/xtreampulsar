@@ -10,6 +10,8 @@ import {
 import { Request, Response } from 'express';
 import * as http from 'http';
 import * as https from 'https';
+import * as fs from 'fs';
+import * as path from 'path';
 import { URL } from 'url';
 import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
@@ -240,11 +242,104 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const url = await this.authorizeAndGetUrl(
-      username, password, streamId, res, 'm3u8|ts',
-    );
-    if (!url) return;
-    this.proxyToUpstream(url, req, res);
+    const user = await this.xtream.authenticate(username, password);
+    if (!user) {
+      res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized');
+      return;
+    }
+
+    // Strip extension to get the clean numeric external ID
+    const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
+    const externalId = parseInt(cleanId, 10);
+    if (isNaN(externalId)) {
+      res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID');
+      return;
+    }
+
+    // Validate connection limits
+    try {
+      const validation = await this.userService.validateConnection(
+        user.id,
+        (req as Request).ip ?? '',
+        req.headers['user-agent'],
+      );
+      if (!validation.allowed) {
+        res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
+        return;
+      }
+    } catch {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Connection validation error');
+      return;
+    }
+
+    // Find the stream record to get its internal ID
+    let streamRecord: { id: string; primaryUrl: string };
+    try {
+      const found = await this.streamService.findByExternalId(externalId);
+      if (!found) {
+        res.status(HttpStatus.NOT_FOUND).send('Stream not found');
+        return;
+      }
+      streamRecord = found;
+    } catch {
+      res.status(HttpStatus.NOT_FOUND).send('Stream not found');
+      return;
+    }
+
+    // ── Local HLS mode: serve pre-transcoded segments ───────────────────────
+    const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
+    const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');
+
+    if (fs.existsSync(hlsFile)) {
+      const serverUrl = (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+      const raw = fs.readFileSync(hlsFile, 'utf-8');
+
+      // Rewrite relative .ts segment names to absolute URLs
+      const fixed = raw.replace(
+        /^([\w-]+\.ts)$/gm,
+        `${serverUrl}/hls/${streamRecord.id}/$1`,
+      );
+
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Cache-Control', 'no-cache, no-store');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.send(fixed);
+      return;
+    }
+
+    // ── Fallback: proxy to upstream source URL ──────────────────────────────
+    let sourceUrl: string;
+    try {
+      sourceUrl = await this.streamService.getStreamUrl(externalId);
+    } catch {
+      res.status(HttpStatus.NOT_FOUND).send('Stream not found');
+      return;
+    }
+    this.proxyToUpstream(sourceUrl, req, res);
+  }
+
+  // ─── HLS segment serve ─────────────────────────────────────────────────────
+
+  @Get('hls/:streamId/:segment')
+  serveHlsSegment(
+    @Param('streamId') streamId: string,
+    @Param('segment') segment: string,
+    @Res() res: Response,
+  ): void {
+    // Guard against path traversal
+    const safeSegment = path.basename(segment);
+    const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
+    const segmentFile = path.join(hlsBase, streamId, safeSegment);
+
+    if (!fs.existsSync(segmentFile)) {
+      res.status(HttpStatus.NOT_FOUND).send('Segment not found');
+      return;
+    }
+
+    res.setHeader('Content-Type', 'video/MP2T');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(segmentFile);
   }
 
   // ─── VOD ───────────────────────────────────────────────────────────────────
