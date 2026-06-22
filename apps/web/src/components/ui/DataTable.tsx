@@ -129,7 +129,7 @@ export function DataTable<T>({
             <button
               onClick={() => onPageChange(page - 1)}
               disabled={page <= 1}
-              className="p-1.5 rounded-lg text-muted hover:text-slate-200 hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -143,7 +143,7 @@ export function DataTable<T>({
                     'w-7 h-7 rounded-lg text-xs transition-colors',
                     page === p
                       ? 'bg-primary text-white font-medium'
-                      : 'text-muted hover:text-slate-200 hover:bg-surface-2',
+                      : 'text-muted hover:text-fg hover:bg-surface-2',
                   )}
                 >
                   {p}
@@ -153,7 +153,7 @@ export function DataTable<T>({
             <button
               onClick={() => onPageChange(page + 1)}
               disabled={page >= totalPages}
-              className="p-1.5 rounded-lg text-muted hover:text-slate-200 hover:bg-surface-2 disabled:opacity-30 transition-colors"
+              className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

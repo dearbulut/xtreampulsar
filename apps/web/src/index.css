@@ -1,5 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* ── CSS custom properties ────────────────────────────────────────────────
+   Light mode = default (:root). Dark mode overrides .dark class on <html>.
+   The Tailwind config references these vars so semantic tokens auto-adapt.
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  --color-bg:       #f4f6fb;
+  --color-surface:  #ffffff;
+  --color-surface2: #f0f2f8;
+  --color-sidebar:  #ffffff;
+  --color-border:   #e2e6f0;
+  --color-fg:       #1a1d2e;
+  --muted:          100 116 139;   /* #64748b  rgb channels for opacity support */
+}
+
+.dark {
+  --color-bg:       #111318;
+  --color-surface:  #1c1f2e;
+  --color-surface2: #232638;
+  --color-sidebar:  #13151f;
+  --color-border:   #2e3347;
+  --color-fg:       #e2e8f0;
+  --muted:          139 149 168;   /* #8b95a8 */
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,122 +31,123 @@
 @layer base {
   body {
     @apply bg-background font-sans antialiased;
-    color: #e2e8f0;
+    color: var(--color-fg);
   }
 
-  * {
-    box-sizing: border-box;
+  * { box-sizing: border-box; }
+
+  /* ── Light-mode compatibility ──────────────────────────────────────────
+     The UI was built dark-first. text-slate-100/200/300 are used as
+     "primary text" throughout. In light mode we convert them to fg colour
+     so they remain readable on white backgrounds.
+     ──────────────────────────────────────────────────────────────────── */
+  html:not(.dark) .text-slate-50,
+  html:not(.dark) .text-slate-100,
+  html:not(.dark) .text-slate-200,
+  html:not(.dark) .text-slate-300 {
+    color: var(--color-fg);
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  html:not(.dark) .hover\:text-slate-200:hover,
+  html:not(.dark) .hover\:text-slate-300:hover {
+    color: var(--color-fg);
   }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-surface;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted;
-  }
+  /* ── Scrollbar ─────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted)); }
 }
 
 @layer components {
+  /* ── Card ───────────────────────────────────────────────────────────── */
   .card {
     @apply bg-surface rounded-xl;
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+  .dark .card {
+    border-color: rgba(99, 102, 241, 0.15);
+    box-shadow: none;
   }
 
+  /* ── Buttons ────────────────────────────────────────────────────────── */
   .btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply text-muted hover:text-slate-200 hover:bg-surface-2 px-3 py-2 rounded-lg text-sm transition-colors;
+    @apply text-muted hover:bg-surface-2 px-3 py-2 rounded-lg text-sm transition-colors;
   }
+  .btn-ghost:hover { color: var(--color-fg); }
 
   .btn-danger {
     @apply bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm transition-colors;
   }
 
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* ── Input ──────────────────────────────────────────────────────────── */
   .input {
-    @apply rounded-lg px-3 py-2 text-sm
-           focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors w-full;
-    background-color: #1c1f2e;
-    border: 1px solid #2e3347;
-    color: #e2e8f0;
+    @apply bg-surface rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1
+           focus:ring-primary focus:border-primary transition-colors w-full;
+    border: 1px solid var(--color-border);
+    color: var(--color-fg);
   }
-  .input::placeholder {
-    color: #8b95a8;
-  }
+  .input::placeholder { color: rgb(var(--muted)); }
+  .input:focus { border-color: #6366f1; }
 
   .label {
-    @apply text-sm font-medium text-slate-300 mb-1 block;
+    @apply text-sm font-medium mb-1 block;
+    color: var(--color-fg);
   }
 
-  .btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
-  }
+  /* ── Badges ─────────────────────────────────────────────────────────── */
+  .badge         { @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium; }
+  .badge-success { @apply bg-success/10 text-success; }
+  .badge-danger  { @apply bg-danger/10 text-danger; }
+  .badge-warning { @apply bg-warning/10 text-warning; }
+  .badge-blue    { @apply bg-blue-500/10 text-blue-400; }
+  .badge-purple  { @apply bg-purple-500/10 text-purple-400; }
+  .badge-gray    { @apply bg-surface-2 text-muted; }
 
-  .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium;
-  }
-
-  .badge-success {
-    @apply bg-success/10 text-success;
-  }
-
-  .badge-danger {
-    @apply bg-danger/10 text-danger;
-  }
-
-  .badge-warning {
-    @apply bg-warning/10 text-warning;
-  }
-
-  .badge-blue {
-    @apply bg-blue-500/10 text-blue-400;
-  }
-
-  .badge-purple {
-    @apply bg-purple-500/10 text-purple-400;
-  }
-
-  .badge-gray {
-    @apply bg-surface-2 text-muted;
-  }
-
+  /* ── Navigation ─────────────────────────────────────────────────────── */
   .nav-item {
     @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted transition-all cursor-pointer;
   }
   .nav-item:hover {
-    background-color: #232638;
-    color: #e2e8f0;
+    background-color: var(--color-surface2);
+    color: var(--color-fg);
   }
+
+  /* Active: light mode = indigo-50/100 bg + indigo-600 text */
   .nav-item.active {
+    background-color: #eef2ff;
+    color: #4f46e5;
+    font-weight: 500;
+  }
+  /* Active: dark mode = translucent indigo + indigo-400 */
+  .dark .nav-item.active {
     background-color: rgba(99, 102, 241, 0.18);
     color: #818cf8;
   }
 
+  /* ── Table ──────────────────────────────────────────────────────────── */
   .table-th {
     @apply text-xs font-semibold text-muted uppercase tracking-wider px-4 py-3 text-left bg-surface;
   }
-
   .table-td {
-    @apply px-4 py-3 text-sm text-slate-300;
+    @apply px-4 py-3 text-sm;
+    color: var(--color-fg);
   }
-
-  .table-row {
-    @apply border-b border-border transition-colors;
-  }
-  .table-row:hover {
-    background-color: #1e2130;
-  }
+  .table-row { @apply border-b border-border transition-colors; }
+  .table-row:hover       { background-color: #f8f9fc; }
+  .dark .table-row:hover { background-color: #1e2130; }
 }
 
 @layer utilities {

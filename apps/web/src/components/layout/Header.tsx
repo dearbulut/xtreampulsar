@@ -1,6 +1,7 @@
-import { Bell, ChevronDown, User, Settings, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useAuthStore } from '@/store/auth.store';
+import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +14,8 @@ export function Header({ title, breadcrumb }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const router = useRouter();
+  const theme = useUiStore((s) => s.theme);
+  const toggleTheme = useUiStore((s) => s.toggleTheme);
 
   const handleLogout = () => {
     logout();
@@ -27,20 +30,38 @@ export function Header({ title, breadcrumb }: Props) {
           breadcrumb.map((crumb, i) => (
             <span key={i} className="flex items-center gap-2">
               {i > 0 && <span className="text-muted">/</span>}
-              <span className={i === breadcrumb.length - 1 ? 'text-slate-200 font-medium' : 'text-muted'}>
+              <span
+                className={cn(
+                  i === breadcrumb.length - 1 ? 'font-medium' : 'text-muted',
+                )}
+                style={i === breadcrumb.length - 1 ? { color: 'var(--color-fg)' } : undefined}
+              >
                 {crumb}
               </span>
             </span>
           ))
         ) : (
-          <span className="text-slate-200 font-medium">{title}</span>
+          <span className="font-medium" style={{ color: 'var(--color-fg)' }}>{title}</span>
         )}
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          title={theme === 'light' ? 'Karanlık moda geç' : 'Aydınlık moda geç'}
+          className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200"
+        >
+          {theme === 'light' ? (
+            <Moon className="w-4 h-4 transition-transform duration-200" />
+          ) : (
+            <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 rotate-12" />
+          )}
+        </button>
+
         {/* Notification bell */}
-        <button className="relative p-2 text-muted hover:text-slate-200 hover:bg-surface-2 rounded-lg transition-colors">
+        <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
         </button>
@@ -54,7 +75,9 @@ export function Header({ title, breadcrumb }: Props) {
                   {user?.username?.[0]?.toUpperCase() ?? 'A'}
                 </span>
               </div>
-              <span className="text-slate-200 font-medium hidden sm:block">{user?.username}</span>
+              <span className="font-medium hidden sm:block" style={{ color: 'var(--color-fg)' }}>
+                {user?.username}
+              </span>
               <ChevronDown className="w-3 h-3 text-muted" />
             </button>
           </DropdownMenu.Trigger>
@@ -66,7 +89,9 @@ export function Header({ title, breadcrumb }: Props) {
               sideOffset={6}
             >
               <div className="px-3 py-2 border-b border-border mb-1">
-                <div className="text-xs font-medium text-slate-200">{user?.username}</div>
+                <div className="text-xs font-medium" style={{ color: 'var(--color-fg)' }}>
+                  {user?.username}
+                </div>
                 <div className="text-[11px] text-muted">{user?.role}</div>
               </div>
 
@@ -98,9 +123,7 @@ function DropdownItem({
       onClick={onClick}
       className={cn(
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer outline-none transition-colors',
-        danger
-          ? 'text-danger hover:bg-danger/10'
-          : 'text-muted hover:text-slate-200 hover:bg-surface-2',
+        danger ? 'text-danger hover:bg-danger/10' : 'text-muted hover:text-fg hover:bg-surface-2',
       )}
     >
       <Icon className="w-3.5 h-3.5" />

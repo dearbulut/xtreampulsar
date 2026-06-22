@@ -11,16 +11,16 @@ export default {
           light: '#818cf8',
           50: '#eef2ff',
         },
-        background: '#111318',
-        surface: '#1c1f2e',
-        'surface-2': '#232638',
-        sidebar: '#13151f',
-        border: '#2e3347',
-        muted: '#8b95a8',
-        text: {
-          primary: '#e2e8f0',
-          secondary: '#8b95a8',
-        },
+        // Semantic tokens — resolved via CSS custom properties at runtime
+        background: 'var(--color-bg)',
+        surface: 'var(--color-surface)',
+        'surface-2': 'var(--color-surface2)',
+        sidebar: 'var(--color-sidebar)',
+        border: 'var(--color-border)',
+        // muted uses rgb-channel form so opacity modifiers (text-muted/60) work
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        // fg = primary text colour (dark in light-mode, light in dark-mode)
+        fg: 'var(--color-fg)',
         success: {
           DEFAULT: '#10b981',
           bg: 'rgba(16,185,129,0.12)',

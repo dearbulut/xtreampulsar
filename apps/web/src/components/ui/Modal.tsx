@@ -33,7 +33,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
         >
           <div className="flex items-start justify-between mb-5">
             <div>
-              <Dialog.Title className="text-base font-semibold text-slate-100">
+              <Dialog.Title className="text-base font-semibold text-fg">
                 {title}
               </Dialog.Title>
               {description && (
@@ -44,7 +44,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
             </div>
             <button
               onClick={onClose}
-              className="text-muted hover:text-slate-200 transition-colors ml-4 flex-shrink-0"
+              className="text-muted hover:text-fg transition-colors ml-4 flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
