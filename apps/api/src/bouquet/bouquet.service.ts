@@ -72,6 +72,45 @@ export class BouquetService {
     return { added: toAdd.length, removed: toRemove.length };
   }
 
+  async getBouquetStreams(bouquetId: string) {
+    await this.findById(bouquetId);
+    const rows = await this.prisma.bouquetStream.findMany({
+      where: { bouquetId },
+      include: {
+        stream: {
+          select: {
+            id: true,
+            name: true,
+            externalId: true,
+            status: true,
+            tvgLogo: true,
+            isActive: true,
+            category: { select: { id: true, name: true, type: true } },
+          },
+        },
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return rows.map((r) => r.stream);
+  }
+
+  async replaceStreams(
+    bouquetId: string,
+    streamIds: string[],
+  ): Promise<{ count: number }> {
+    await this.findById(bouquetId);
+
+    await this.prisma.$transaction([
+      this.prisma.bouquetStream.deleteMany({ where: { bouquetId } }),
+      this.prisma.bouquetStream.createMany({
+        data: streamIds.map((streamId, i) => ({ bouquetId, streamId, sortOrder: i })),
+        skipDuplicates: true,
+      }),
+    ]);
+
+    return { count: streamIds.length };
+  }
+
   async resign(bouquetId: string): Promise<{ usersUpdated: number }> {
     await this.findById(bouquetId);
 

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon } from 'lucide-react';
 import { useResellers } from '@/hooks/useResellers';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -10,16 +10,41 @@ import { Modal } from '@/components/ui/Modal';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
-  useKickUser, useDeleteUser,
+  useKickUser, useDeleteUser, useUpdateUser,
 } from '@/hooks/useUsers';
 import { useBulkRenew } from '@/hooks/useBulkRenew';
 import { usePackages } from '@/hooks/usePackages';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useBouquets } from '@/hooks/useBouquets';
 import type { User } from '@/types';
 import { daysLeft, formatDate, cn } from '@/lib/utils';
+
+interface UserStats {
+  totalWatchSeconds: number;
+  thisMonthConnections: number;
+  lastMonthConnections: number;
+  topChannels: { streamId: string; name: string; tvgLogo: string | null; count: number }[];
+}
+
+function useUserStats(userId: string | null) {
+  return useQuery({
+    queryKey: ['user-stats', userId],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: UserStats }>(`/users/${userId}/stats`);
+      return res.data.data;
+    },
+    enabled: !!userId,
+  });
+}
+
+function formatWatchTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}s ${m}dk`;
+  return `${m}dk`;
+}
 
 function getParam(key: string) {
   return new URLSearchParams(window.location.search).get(key) ?? '';
@@ -51,6 +76,7 @@ export function UsersPage() {
   const [extendDays, setExtendDays] = useState(30);
   const [showCreate, setShowCreate] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [qrUserId, setQrUserId] = useState<string | null>(null);
   const [qrData, setQrData] = useState<{ qrCodeImage: string; serverUrl: string; username: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -75,6 +101,7 @@ export function UsersPage() {
   const unbanUser = useUnbanUser();
   const kickUser = useKickUser();
   const deleteUser = useDeleteUser();
+  const updateUser = useUpdateUser();
 
   const copyCredentials = (text: string, id: string) => {
     void navigator.clipboard.writeText(text);
@@ -340,6 +367,7 @@ export function UsersPage() {
           totalPages={data?.totalPages}
           total={data?.total}
           onPageChange={setPage}
+          onRowClick={(r) => setDetailUserId(r.id)}
           emptyTitle="Kullanıcı bulunamadı"
           emptyDescription="Arama kriterlerinize uygun kullanıcı yok."
         />
@@ -546,7 +574,207 @@ export function UsersPage() {
       {activityUserId && (
         <ActivityModal userId={activityUserId} onClose={() => setActivityUserId(null)} />
       )}
+
+      {/* Kullanıcı Detay Modal */}
+      {detailUserId && (
+        <UserDetailModal
+          userId={detailUserId}
+          user={data?.items.find((u) => u.id === detailUserId) ?? null}
+          onClose={() => setDetailUserId(null)}
+          packages={packages}
+          onUpdate={(id, updateData) => updateUser.mutate({ id, data: updateData })}
+        />
+      )}
     </div>
+  );
+}
+
+interface UserDetailModalProps {
+  userId: string;
+  user: User | null;
+  onClose: () => void;
+  packages: { id: string; name: string; durationDays: number; creditCost: number }[];
+  onUpdate: (id: string, data: Record<string, unknown>) => void;
+}
+
+function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDetailModalProps) {
+  const [tab, setTab] = useState<'general' | 'activity' | 'stats'>('general');
+  const [editPassword, setEditPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const { data: activityData, isLoading: activityLoading } = useUserActivity(userId);
+  const { data: stats, isLoading: statsLoading } = useUserStats(userId);
+
+  if (!user) return null;
+
+  const days = daysLeft(user.expiresAt);
+
+  return (
+    <Modal open onClose={onClose} title={`Kullanıcı: ${user.username}`} size="lg">
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        {([
+          { key: 'general', label: 'Genel', icon: UserIcon },
+          { key: 'activity', label: 'Bağlantı Geçmişi', icon: Activity },
+          { key: 'stats', label: 'İstatistikler', icon: BarChart2 },
+        ] as { key: 'general' | 'activity' | 'stats'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+              tab === key ? 'border-primary text-primary-light' : 'border-transparent text-muted hover:text-fg',
+            )}
+          >
+            <Icon className="w-3.5 h-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: General */}
+      {tab === 'general' && (
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted mb-1">Kullanıcı Adı</div>
+              <div className="font-mono text-sm text-slate-200">{user.username}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted mb-1">Durum</div>
+              <StatusBadge status={user.status} />
+            </div>
+            <div>
+              <div className="text-xs text-muted mb-1">Rol</div>
+              <span className="badge bg-primary/10 text-primary-light">{user.role}</span>
+            </div>
+            <div>
+              <div className="text-xs text-muted mb-1">Maks Bağlantı</div>
+              <div className="text-sm text-slate-200 font-semibold">{user.maxConnections}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted mb-1">Başlangıç</div>
+              <div className="text-sm text-slate-300">{formatDate(user.createdAt)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted mb-1">Bitiş</div>
+              <div className="text-sm text-slate-300">{formatDate(user.expiresAt)}</div>
+              <div className={cn('text-xs mt-0.5', days < 7 ? 'text-danger' : days < 30 ? 'text-warning' : 'text-muted')}>
+                {days < 0 ? 'Süresi doldu' : `${days} gün kaldı`}
+              </div>
+            </div>
+          </div>
+
+          {user.notes && (
+            <div>
+              <div className="text-xs text-muted mb-1">Notlar</div>
+              <div className="text-sm text-slate-300 bg-surface-2 rounded-lg p-2">{user.notes}</div>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-4">
+            <div className="text-xs text-muted mb-2">Şifre</div>
+            {!editPassword ? (
+              <button onClick={() => setEditPassword(true)} className="btn-secondary text-sm flex items-center gap-2">
+                <Pencil className="w-3.5 h-3.5" /> Şifre Değiştir
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  className="input flex-1"
+                  placeholder="Yeni şifre"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  className="btn-primary text-sm"
+                  onClick={() => {
+                    if (newPassword.length >= 4) {
+                      onUpdate(userId, { password: newPassword });
+                      setEditPassword(false);
+                      setNewPassword('');
+                    } else {
+                      toast.error('Şifre en az 4 karakter olmalı');
+                    }
+                  }}
+                >
+                  Kaydet
+                </button>
+                <button className="btn-ghost text-sm" onClick={() => { setEditPassword(false); setNewPassword(''); }}>
+                  İptal
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Activity */}
+      {tab === 'activity' && (
+        <div className="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
+          {activityLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
+          {!activityLoading && (!activityData?.items || activityData.items.length === 0) && (
+            <p className="text-muted text-sm text-center py-6">Aktivite kaydı yok</p>
+          )}
+          {activityData?.items.map((log) => (
+            <div key={log.id} className="flex items-start gap-3 text-sm py-2 border-b border-border/30">
+              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', ACTION_BADGE[log.action] ?? 'bg-surface-2 text-muted')}>
+                {log.action}
+              </span>
+              <div className="flex-1 min-w-0">
+                {log.ip && <span className="font-mono text-xs text-muted mr-2">{log.ip}</span>}
+                {log.userAgent && <span className="text-xs text-muted truncate block max-w-xs">{log.userAgent}</span>}
+                {log.streamId && <span className="text-xs text-muted">Stream: {log.streamId.slice(0, 8)}…</span>}
+              </div>
+              <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString('tr-TR')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tab: Stats */}
+      {tab === 'stats' && (
+        <div className="p-5">
+          {statsLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
+          {stats && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="card p-4 text-center">
+                  <div className="text-2xl font-bold text-primary">{formatWatchTime(stats.totalWatchSeconds)}</div>
+                  <div className="text-xs text-muted mt-1">Toplam İzleme</div>
+                </div>
+                <div className="card p-4 text-center">
+                  <div className="text-2xl font-bold text-success">{stats.thisMonthConnections}</div>
+                  <div className="text-xs text-muted mt-1">Bu Ay</div>
+                </div>
+                <div className="card p-4 text-center">
+                  <div className="text-2xl font-bold text-slate-400">{stats.lastMonthConnections}</div>
+                  <div className="text-xs text-muted mt-1">Geçen Ay</div>
+                </div>
+              </div>
+
+              {stats.topChannels.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-slate-300 mb-3">En Çok İzlenen 5 Kanal</div>
+                  <div className="space-y-2">
+                    {stats.topChannels.map((ch, i) => (
+                      <div key={ch.streamId} className="flex items-center gap-3 py-2 border-b border-border/30">
+                        <span className="text-xs text-muted w-4 text-center">{i + 1}</span>
+                        {ch.tvgLogo && (
+                          <img src={ch.tvgLogo} alt="" className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        )}
+                        <span className="flex-1 text-sm text-slate-300 truncate">{ch.name}</span>
+                        <span className="text-xs text-muted font-mono">{ch.count}x</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
   );
 }
 

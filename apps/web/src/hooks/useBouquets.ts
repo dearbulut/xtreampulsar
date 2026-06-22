@@ -84,3 +84,38 @@ export function useSetBouquetStreams() {
     onError: () => toast.error('Güncelleme başarısız'),
   });
 }
+
+export interface BouquetStream {
+  id: string;
+  name: string;
+  externalId: number;
+  status: string;
+  tvgLogo?: string;
+  isActive: boolean;
+  category?: { id: string; name: string; type: string };
+}
+
+export function useBouquetStreams(bouquetId: string | null) {
+  return useQuery({
+    queryKey: ['bouquet-streams', bouquetId],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: BouquetStream[] }>(`/bouquets/${bouquetId}/streams`);
+      return res.data.data;
+    },
+    enabled: !!bouquetId,
+  });
+}
+
+export function useReplaceBouquetStreams() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, streamIds }: { id: string; streamIds: string[] }) =>
+      api.put(`/bouquets/${id}/streams`, { streamIds }),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['bouquets'] });
+      void qc.invalidateQueries({ queryKey: ['bouquet-streams', vars.id] });
+      toast.success('Bouquet stream listesi güncellendi');
+    },
+    onError: () => toast.error('Güncelleme başarısız'),
+  });
+}

@@ -144,6 +144,12 @@ export class UserController {
     return this.userService.getUserReport();
   }
 
+  @Get(':id/stats')
+  @Roles('ADMIN', 'RESELLER')
+  getStats(@Param('id') id: string) {
+    return this.userService.getUserStats(id);
+  }
+
   @Get(':id/activity')
   @Roles('ADMIN', 'RESELLER')
   getActivity(

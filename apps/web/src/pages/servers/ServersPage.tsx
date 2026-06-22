@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   Server, Plus, Wifi, WifiOff, Trash2, RefreshCw, MapPin,
-  Users, Activity, Edit2, MoreVertical, Shield, Lock,
+  Activity, Edit2, MoreVertical, Shield, Lock, Cpu, MemoryStick, Clock,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { MiniSparkline } from '@/components/ui/MiniSparkline';
-import { useServers, useCreateServer, useDeleteServer, useServerHealth, useUpdateServer } from '@/hooks/useServers';
+import { useServers, useCreateServer, useDeleteServer, useServerHealth, useUpdateServer, useServerMetrics } from '@/hooks/useServers';
 import { useServerGuard, useUpdateServerGuard, useBlockedIps, useUnblockIp, type ServerGuard } from '@/hooks/useServerGuard';
 import { useServerLoad } from '@/hooks/useUserActivity';
 import { TagInput } from '@/components/ui/TagInput';
@@ -13,6 +13,40 @@ import { cn } from '@/lib/utils';
 
 const sparkSeed = (base: number) =>
   Array.from({ length: 12 }, (_, i) => Math.max(0, base + Math.sin(i * 0.7) * base * 0.4));
+
+function GaugeBar({ value, label }: { value: number; label: string }) {
+  const color = value > 90 ? 'bg-danger' : value > 70 ? 'bg-warning' : 'bg-success';
+  const textColor = value > 90 ? 'text-danger' : value > 70 ? 'text-warning' : 'text-success';
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[10px]">
+        <span className="text-muted">{label}</span>
+        <span className={cn('font-semibold tabular-nums', textColor)}>{Math.round(value)}%</span>
+      </div>
+      <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+        <div className={cn('h-full rounded-full transition-all duration-700', color)} style={{ width: `${Math.min(value, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ServerMetricsPanel({ serverId, isOnline }: { serverId: string; isOnline: boolean }) {
+  const { data: metrics } = useServerMetrics(serverId, isOnline);
+  if (!metrics || !isOnline) return null;
+
+  return (
+    <div className="border-t border-border/50 pt-3 mt-1 space-y-2">
+      <GaugeBar value={metrics.cpu} label="CPU" />
+      <GaugeBar value={metrics.memory} label="RAM" />
+      <div className="flex justify-between text-[10px] mt-1">
+        <span className="text-muted flex items-center gap-1"><Clock className="w-3 h-3" /> Ping</span>
+        <span className={cn('font-mono font-semibold', metrics.responseTime > 300 ? 'text-danger' : metrics.responseTime > 100 ? 'text-warning' : 'text-success')}>
+          {metrics.responseTime}ms
+        </span>
+      </div>
+    </div>
+  );
+}
 
 const roleLabelMap: Record<string, string> = {
   MAIN: 'Ana Sunucu',
@@ -408,6 +442,9 @@ export function ServersPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Real-time Metrics */}
+                  <ServerMetricsPanel serverId={srv.id} isOnline={isOnline} />
                 </div>
               </div>
             );

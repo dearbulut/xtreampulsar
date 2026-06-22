@@ -512,6 +512,55 @@ export class UserService {
     };
   }
 
+  async getUserStats(userId: string) {
+    await this.assertExists(userId);
+
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const [thisMonthConns, lastMonthConns, topStreamsRaw, totalDurationRaw] = await Promise.all([
+      this.prisma.connection.count({
+        where: { userId, startedAt: { gte: startOfThisMonth } },
+      }),
+      this.prisma.connection.count({
+        where: { userId, startedAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+      }),
+      this.prisma.connection.groupBy({
+        by: ['streamId'],
+        where: { userId, endedAt: { not: null } },
+        _count: { _all: true },
+        orderBy: { _count: { streamId: 'desc' } },
+        take: 5,
+      }),
+      this.prisma.$queryRaw<Array<{ total_seconds: number }>>`
+        SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("ended_at", NOW()) - "started_at"))), 0)::int AS total_seconds
+        FROM connections
+        WHERE "user_id" = ${userId}
+      `,
+    ]);
+
+    const streamIds = topStreamsRaw.map((r) => r.streamId);
+    const streams = await this.prisma.stream.findMany({
+      where: { id: { in: streamIds } },
+      select: { id: true, name: true, tvgLogo: true },
+    });
+    const streamMap = Object.fromEntries(streams.map((s) => [s.id, s]));
+
+    return {
+      totalWatchSeconds: totalDurationRaw[0]?.total_seconds ?? 0,
+      thisMonthConnections: thisMonthConns,
+      lastMonthConnections: lastMonthConns,
+      topChannels: topStreamsRaw.map((r) => ({
+        streamId: r.streamId,
+        name: streamMap[r.streamId]?.name ?? 'Bilinmeyen',
+        tvgLogo: streamMap[r.streamId]?.tvgLogo ?? null,
+        count: r._count._all,
+      })),
+    };
+  }
+
   private async assertExists(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },

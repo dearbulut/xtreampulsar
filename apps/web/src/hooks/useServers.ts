@@ -66,3 +66,26 @@ export function useServerHealth() {
       ),
   });
 }
+
+export interface ServerMetrics {
+  cpu: number;
+  memory: number;
+  connections: number;
+  maxClients: number;
+  responseTime: number;
+  uptime: number;
+  isOnline: boolean;
+  lastCheckedAt: string | null;
+}
+
+export function useServerMetrics(serverId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['server-metrics', serverId],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: ServerMetrics }>(`/servers/${serverId}/metrics`);
+      return res.data.data;
+    },
+    enabled,
+    refetchInterval: 15_000,
+  });
+}

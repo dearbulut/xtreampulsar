@@ -3,16 +3,22 @@ import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @Controller('settings')
-@UseGuards(JwtAuthGuard)
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
+  @Get('public')
+  getPublicConfig() {
+    return this.settingsService.getPublicConfig();
+  }
+
   @Get()
+  @UseGuards(JwtAuthGuard)
   getSettings() {
     return this.settingsService.getSettings();
   }
 
   @Patch()
+  @UseGuards(JwtAuthGuard)
   updateSettings(@Body() body: Record<string, unknown>) {
     return this.settingsService.updateSettings(body as Parameters<SettingsService['updateSettings']>[0]);
   }

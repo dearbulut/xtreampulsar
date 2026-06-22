@@ -1,12 +1,13 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
 import { useUpdateCheck, useApplyUpdate } from '@/hooks/useUpdate';
 import { cn } from '@/lib/utils';
 import { THEMES, THEME_LABELS, type ThemeName } from '@/styles/themes';
+import api from '@/lib/axios';
 
 interface Props {
   title?: string;
@@ -14,6 +15,191 @@ interface Props {
 }
 
 const THEME_ORDER: ThemeName[] = ['dark', 'light', 'midnight', 'ocean', 'forest', 'sunset'];
+
+interface SearchResults {
+  users: { id: string; username: string; status: string; role: string }[];
+  streams: { id: string; name: string; status: string; tvgLogo?: string; externalId: number; category?: { name: string; type: string } }[];
+  resellers: { id: string; username: string; email: string; tier: string }[];
+  categories: { id: string; name: string; type: string; _count?: { streams: number } }[];
+}
+
+function GlobalSearch({ onClose }: { onClose: () => void }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<SearchResults | null>(null);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q.trim()) { setResults(null); return; }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await api.get<{ success: boolean; data: SearchResults }>(
+          `/search?q=${encodeURIComponent(q)}&types=users,streams,resellers,categories`,
+        );
+        setResults(res.data.data);
+      } catch {
+        setResults(null);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  }, [q]);
+
+  const navigate = useCallback((to: string) => {
+    void router.navigate({ to: to as Parameters<typeof router.navigate>[0]['to'] });
+    onClose();
+  }, [router, onClose]);
+
+  const hasResults = results && (
+    results.users.length + results.streams.length +
+    results.resellers.length + results.categories.length
+  ) > 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Search input */}
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
+          <Search className="w-4 h-4 text-muted flex-shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
+            placeholder="Kullanıcı, kanal, reseller ara… (Esc ile kapat)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+          />
+          {loading && <div className="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin flex-shrink-0" />}
+          <button onClick={onClose} className="text-muted hover:text-fg flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Results */}
+        <div className="max-h-96 overflow-y-auto">
+          {!q.trim() && (
+            <div className="p-6 text-center text-muted text-sm">
+              Aramak için yazmaya başlayın
+            </div>
+          )}
+
+          {q.trim() && !loading && !hasResults && (
+            <div className="p-6 text-center text-muted text-sm">
+              "{q}" için sonuç bulunamadı
+            </div>
+          )}
+
+          {results?.users && results.users.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kullanıcılar</div>
+              {results.users.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => navigate('/users')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2 transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-primary">{u.username[0]?.toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-200 font-mono">{u.username}</div>
+                    <div className="text-xs text-muted">{u.role} · {u.status}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {results?.streams && results.streams.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kanallar</div>
+              {results.streams.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => navigate('/streams')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2 transition-colors text-left"
+                >
+                  {s.tvgLogo ? (
+                    <img src={s.tvgLogo} alt="" className="w-7 h-7 object-contain rounded flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div className="w-7 h-7 rounded bg-surface-2 flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-200 truncate">{s.name}</div>
+                    <div className="text-xs text-muted">{s.category?.name} · #{s.externalId}</div>
+                  </div>
+                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded flex-shrink-0', s.status === 'ONLINE' ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger')}>
+                    {s.status}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {results?.resellers && results.resellers.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Resellerlar</div>
+              {results.resellers.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => navigate('/resellers')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2 transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded-full bg-warning/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-warning">{r.username[0]?.toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-200">{r.username}</div>
+                    <div className="text-xs text-muted">{r.email} · {r.tier}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {results?.categories && results.categories.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kategoriler</div>
+              {results.categories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate('/categories')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2 transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-semibold text-purple-400">{c.type[0]}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-200">{c.name}</div>
+                    <div className="text-xs text-muted">{c.type} · {c._count?.streams ?? 0} kanal</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-2 border-t border-border flex items-center justify-between text-[10px] text-muted">
+          <span>Enter ile seç</span>
+          <span>Esc ile kapat</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Header({ title, breadcrumb }: Props) {
   const user = useAuthStore((s) => s.user);
@@ -24,6 +210,7 @@ export function Header({ title, breadcrumb }: Props) {
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const { data: updateInfo } = useUpdateCheck();
   const applyUpdate = useApplyUpdate();
@@ -34,6 +221,17 @@ export function Header({ title, breadcrumb }: Props) {
     logout();
     void router.navigate({ to: '/login' });
   };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="flex-shrink-0">
@@ -103,6 +301,17 @@ export function Header({ title, breadcrumb }: Props) {
 
         {/* Right side */}
         <div className="flex items-center gap-1.5">
+          {/* Global search button */}
+          <button
+            onClick={() => setShowSearch(true)}
+            title="Ara (Cmd+K)"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-muted hover:bg-surface-2 transition-colors text-sm"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden md:inline text-xs">Ara</span>
+            <kbd className="hidden md:inline text-[10px] bg-surface-2 border border-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+          </button>
+
           {/* Theme picker dropdown */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -206,6 +415,9 @@ export function Header({ title, breadcrumb }: Props) {
           </div>
         </div>
       )}
+
+      {/* Global search overlay */}
+      {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
     </div>
   );
 }

@@ -1,10 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { Zap, Shield, Tv, Users, Activity, Eye, EyeOff, SmartphoneNfc } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { use2FAVerify } from '@/hooks/useTwoFactor';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+
+interface PublicConfig {
+  panelName: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+}
 
 const FEATURES = [
   { icon: Tv, text: 'Sınırsız stream yönetimi' },
@@ -18,6 +24,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [publicConfig, setPublicConfig] = useState<PublicConfig>({ panelName: 'XtreamPulsar', logoUrl: null, primaryColor: null });
 
   // 2FA state
   const [requires2FA, setRequires2FA] = useState(false);
@@ -26,6 +33,18 @@ export function LoginPage() {
 
   const router = useRouter();
   const verify2FA = use2FAVerify();
+
+  useEffect(() => {
+    void api.get<{ success: boolean; data: PublicConfig }>('/settings/public')
+      .then((res) => {
+        const cfg = res.data.data;
+        setPublicConfig(cfg);
+        if (cfg.primaryColor) {
+          document.documentElement.style.setProperty('--color-primary', cfg.primaryColor);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -105,10 +124,12 @@ export function LoginPage() {
         <div className="relative">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-primary">
-              <Zap className="w-6 h-6 text-white" />
+              {publicConfig.logoUrl
+                ? <img src={publicConfig.logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
+                : <Zap className="w-6 h-6 text-white" />}
             </div>
             <div>
-              <div className="font-bold text-xl text-gradient">XtreamPulsar</div>
+              <div className="font-bold text-xl text-gradient">{publicConfig.panelName}</div>
               <div className="text-xs text-muted">IPTV Middleware</div>
             </div>
           </div>
@@ -144,9 +165,11 @@ export function LoginPage() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-10 justify-center">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" />
+              {publicConfig.logoUrl
+                ? <img src={publicConfig.logoUrl} alt="Logo" className="w-7 h-7 object-contain" />
+                : <Zap className="w-5 h-5 text-white" />}
             </div>
-            <span className="font-bold text-xl text-gradient">XtreamPulsar</span>
+            <span className="font-bold text-xl text-gradient">{publicConfig.panelName}</span>
           </div>
 
           {!requires2FA ? (
@@ -260,7 +283,7 @@ export function LoginPage() {
 
           <div className="mt-8 p-4 rounded-xl bg-surface border border-border">
             <p className="text-xs text-muted text-center">
-              XtreamPulsar Admin Panel v1.0 •{' '}
+              {publicConfig.panelName} Admin Panel v1.0 •{' '}
               <span className="text-primary">API v1</span>
             </p>
           </div>

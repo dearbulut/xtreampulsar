@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Param,
@@ -50,6 +51,17 @@ export class BouquetController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.bouquetService.remove(id);
+  }
+
+  @Get(':id/streams')
+  getBouquetStreams(@Param('id') id: string) {
+    return this.bouquetService.getBouquetStreams(id);
+  }
+
+  @Put(':id/streams')
+  @Roles('ADMIN', 'RESELLER')
+  replaceStreams(@Param('id') id: string, @Body() dto: ManageStreamsDto) {
+    return this.bouquetService.replaceStreams(id, dto.streamIds);
   }
 
   @Post(':id/streams')

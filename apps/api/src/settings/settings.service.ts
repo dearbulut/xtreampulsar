@@ -5,6 +5,27 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getPublicConfig() {
+    const [settings, whiteLabel] = await Promise.all([
+      this.prisma.settings.upsert({
+        where: { id: 'singleton' },
+        update: {},
+        create: { id: 'singleton' },
+        select: { panelName: true },
+      }),
+      this.prisma.whiteLabel.findFirst({
+        where: { isActive: true },
+        select: { panelName: true, logoUrl: true, primaryColor: true },
+      }),
+    ]);
+
+    return {
+      panelName: whiteLabel?.panelName ?? settings.panelName,
+      logoUrl: whiteLabel?.logoUrl ?? null,
+      primaryColor: whiteLabel?.primaryColor ?? null,
+    };
+  }
+
   async getSettings() {
     return this.prisma.settings.upsert({
       where: { id: 'singleton' },
