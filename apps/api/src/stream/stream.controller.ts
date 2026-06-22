@@ -60,6 +60,16 @@ export class StreamController {
     await this.streamService.remove(id);
   }
 
+  @Post('reset-crashed')
+  @Roles('ADMIN')
+  async resetCrashed() {
+    const result = await this.prisma.stream.updateMany({
+      where: { workerStatus: 'CRASHED' },
+      data: { workerStatus: 'IDLE', ffmpegPid: null },
+    });
+    return { reset: result.count };
+  }
+
   @Post(':id/start')
   @Roles('ADMIN', 'RESELLER')
   async start(@Param('id') id: string) {

@@ -294,9 +294,10 @@ export class XtreamController {
       const serverUrl = (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
       const raw = fs.readFileSync(hlsFile, 'utf-8');
 
-      // Rewrite relative .ts segment names to absolute URLs
+      // Rewrite relative .ts segment names to absolute URLs.
+      // Matches any non-comment line ending in .ts (handles seg00165.ts, etc.)
       const fixed = raw.replace(
-        /^([\w-]+\.ts)$/gm,
+        /^([^#\r\n][^\r\n]*\.ts)$/gm,
         `${serverUrl}/hls/${streamRecord.id}/$1`,
       );
 

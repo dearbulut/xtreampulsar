@@ -43,13 +43,15 @@ export class StreamWorkerService implements OnModuleDestroy {
     fs.mkdirSync(outputDir, { recursive: true });
 
     const outputFile = path.join(outputDir, 'index.m3u8');
+    const segmentPattern = path.join(outputDir, 'seg%05d.ts');
     const args = [
       '-i', stream.primaryUrl,
       '-c', 'copy',
       '-f', 'hls',
-      '-hls_time', '2',
-      '-hls_list_size', '5',
-      '-hls_flags', 'delete_segments',
+      '-hls_time', '4',
+      '-hls_list_size', '10',
+      '-hls_flags', 'append_list',
+      '-hls_segment_filename', segmentPattern,
       outputFile,
     ];
 
