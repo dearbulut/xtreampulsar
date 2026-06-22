@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-xtreampulsar}
+      POSTGRES_USER: ${POSTGRES_USER:-xtreampulsar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xtreampulsar}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xtreampulsar}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xtreampulsar}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://license:3001}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      SERVER_URL: ${SERVER_URL:-http://localhost}
+      SERVER_PORT: ${SERVER_PORT:-25461}
+      FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
+      HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}
+      NODE_ENV: production
+    volumes:
+      - hls_data:/tmp/xtreampulsar/hls
+    restart: always
+    expose:
+      - "3000"
+    networks:
+      - internal
+
+  license:
+    build:
+      context: .
+      dockerfile: apps/license/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xtreampulsar}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xtreampulsar}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
+      NODE_ENV: production
+      PORT: 3001
+    restart: always
+    expose:
+      - "3001"
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - api
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - api
+      - web
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - hls_data:/var/www/hls:ro
+      - certbot_data:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      - "25461:25461"
+    restart: always
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+  redis_data:
+  hls_data:
+  certbot_data:
+
+networks:
+  internal:
+    driver: bridge

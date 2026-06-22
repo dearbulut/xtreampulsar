@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { AppConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
+import { LicenseModule } from './license/license.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { ResellerModule } from './reseller/reseller.module';
@@ -23,6 +25,8 @@ import { XtreamModule } from './xtream/xtream.module';
     ScheduleModule.forRoot(),
     AppConfigModule,
     PrismaModule,
+    RedisModule,
+    LicenseModule,
     HealthModule,
     AuthModule,
     UserModule,

@@ -1,0 +1,58 @@
+version: '3.8'
+
+# Load balancer node — deploy on a separate server
+# This node syncs HLS segments from the main server via rsync
+# and serves them via nginx.
+
+services:
+  hls-sync:
+    image: alpine:3.19
+    restart: always
+    environment:
+      MAIN_SERVER_HOST: ${MAIN_SERVER_HOST:?MAIN_SERVER_HOST is required}
+      MAIN_SERVER_USER: ${MAIN_SERVER_USER:-root}
+      HLS_REMOTE_PATH: ${HLS_REMOTE_PATH:-/tmp/xtreampulsar/hls}
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-5}
+    volumes:
+      - hls_data:/hls
+      - ./scripts/hls-sync.sh:/hls-sync.sh:ro
+      - ${SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
+    entrypoint: >
+      sh -c "
+        apk add --no-cache rsync openssh-client &&
+        chmod 600 /root/.ssh/id_rsa &&
+        while true; do
+          rsync -az --delete
+            -e 'ssh -o StrictHostKeyChecking=no'
+            $${MAIN_SERVER_USER}@$${MAIN_SERVER_HOST}:$${HLS_REMOTE_PATH}/
+            /hls/ 2>/dev/null || true;
+          sleep $${SYNC_INTERVAL};
+        done
+      "
+    networks:
+      - lb
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.lb.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - hls_data:/var/www/hls:ro
+      - certbot_data:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      - "25461:25461"
+    restart: always
+    depends_on:
+      - hls-sync
+    networks:
+      - lb
+
+volumes:
+  hls_data:
+  certbot_data:
+
+networks:
+  lb:
+    driver: bridge

@@ -18,8 +18,9 @@ enum LicenseStatus {
 
 enum LicenseTier {
   STARTER
-  PROFESSIONAL
-  ENTERPRISE
+  PRO
+  BUSINESS
+  WHITE_LABEL
 }
 
 enum ServerRole {
@@ -101,16 +102,34 @@ enum AuditAction {
 // ─── License ─────────────────────────────────────────────────────────────────
 
 model License {
-  id        String        @id @default(cuid())
-  key       String        @unique
-  serverIp  String
-  tier      LicenseTier   @default(STARTER)
-  status    LicenseStatus @default(PENDING)
-  expiresAt DateTime
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  key            String        @unique
+  serverIp       String?
+  tier           LicenseTier   @default(STARTER)
+  status         LicenseStatus @default(PENDING)
+  expiresAt      DateTime
+  lastVerifiedAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  verificationLogs LicenseVerificationLog[]
 
   @@map("licenses")
+}
+
+model LicenseVerificationLog {
+  id         String   @id @default(cuid())
+  licenseKey String
+  serverIp   String
+  version    String
+  isValid    Boolean
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  license License @relation(fields: [licenseKey], references: [key], onDelete: Cascade)
+
+  @@index([licenseKey, createdAt])
+  @@map("license_verification_logs")
 }
 
 // ─── Server ──────────────────────────────────────────────────────────────────
