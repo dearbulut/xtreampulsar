@@ -138,6 +138,12 @@ export class UserController {
     return this.userService.countExpiringSoon(days ? parseInt(days, 10) : 7);
   }
 
+  @Get('report')
+  @Roles('ADMIN')
+  getReport() {
+    return this.userService.getUserReport();
+  }
+
   @Get(':id/activity')
   @Roles('ADMIN', 'RESELLER')
   getActivity(

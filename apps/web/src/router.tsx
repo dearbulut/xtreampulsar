@@ -31,6 +31,8 @@ import { ResellerDashboardPage } from '@/pages/reseller/ResellerDashboardPage';
 import { ResellerUsersPage } from '@/pages/reseller/ResellerUsersPage';
 import { ResellerCreateUserPage } from '@/pages/reseller/ResellerCreateUserPage';
 import { RevenuePage } from '@/pages/analytics/RevenuePage';
+import { EpgGuidePage } from '@/pages/epg/EpgGuidePage';
+import { UserReportPage } from '@/pages/users/UserReportPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -178,6 +180,18 @@ const revenueRoute = createRoute({
   component: RevenuePage,
 });
 
+const epgGuideRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/epg/guide',
+  component: EpgGuidePage,
+});
+
+const userReportRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/users/report',
+  component: UserReportPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -241,12 +255,14 @@ const routeTree = rootRoute.addChildren([
     bouquetsRoute,
     epgRoute,
     epgMassAssignRoute,
+    epgGuideRoute,
     packagesRoute,
     migrationRoute,
     securityRoute,
     settingsRoute,
     advancedToolsRoute,
     revenueRoute,
+    userReportRoute,
   ]),
 ]);
 

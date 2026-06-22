@@ -9,6 +9,8 @@ export interface Column<T> {
   render?: (row: T) => React.ReactNode;
   className?: string;
   headerClassName?: string;
+  mobileHide?: boolean; // hide in mobile card view
+  mobileLabel?: string; // override label in card
 }
 
 interface Props<T> {
@@ -28,34 +30,28 @@ interface Props<T> {
   emptyDescription?: string;
   emptyMessage?: string;
   stickyHeader?: boolean;
+  /** When true, renders a card list on mobile (<md) instead of a table */
+  mobileCards?: boolean;
 }
 
-/** Returns the page numbers (or '...') to render in the pagination bar. */
 function getPageNumbers(current: number, total: number): (number | '...')[] {
   if (total <= 1) return [1];
-
   const pageSet = new Set<number>();
   pageSet.add(1);
   pageSet.add(total);
   for (let i = current - 2; i <= current + 2; i++) {
     if (i >= 1 && i <= total) pageSet.add(i);
   }
-
   const sorted = [...pageSet].sort((a, b) => a - b);
   const result: (number | '...')[] = [];
-
   for (let i = 0; i < sorted.length; i++) {
     if (i > 0) {
       const gap = sorted[i] - sorted[i - 1];
-      if (gap === 2) {
-        result.push(sorted[i] - 1); // insert the single missing page instead of '...'
-      } else if (gap > 2) {
-        result.push('...');
-      }
+      if (gap === 2) result.push(sorted[i] - 1);
+      else if (gap > 2) result.push('...');
     }
     result.push(sorted[i]);
   }
-
   return result;
 }
 
@@ -76,6 +72,7 @@ export function DataTable<T>({
   emptyDescription,
   emptyMessage,
   stickyHeader,
+  mobileCards,
 }: Props<T>) {
   const getKey = keyExtractor ?? ((row: T) => String((row as Record<string, unknown>).id ?? Math.random()));
   const allSelected = selectedIds && data.length > 0 && data.every((r) => selectedIds.has(getKey(r)));
@@ -94,21 +91,83 @@ export function DataTable<T>({
 
   const pageNumbers = getPageNumbers(page, totalPages);
 
+  const visibleColumns = columns.filter((c) => !c.mobileHide);
+
+  const pagination = onPageChange && (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface flex-wrap gap-2">
+      <div className="flex items-center gap-3 text-xs text-muted">
+        {total !== undefined && <span>Toplam {total.toLocaleString()} kayıt</span>}
+        {totalPages > 1 && <span className="font-medium">Sayfa {page} / {totalPages}</span>}
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-0.5">
+          <button onClick={() => onPageChange(1)} disabled={page <= 1} title="İlk sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+            <ChevronsLeft className="w-4 h-4" />
+          </button>
+          <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} title="Önceki sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          {pageNumbers.map((p, i) =>
+            p === '...' ? (
+              <span key={`e-${i}`} className="px-1 text-xs text-muted">…</span>
+            ) : (
+              <button key={p} onClick={() => onPageChange(p)} className={cn('min-w-[28px] h-7 px-1.5 rounded-lg text-xs transition-colors', page === p ? 'bg-primary text-white font-medium' : 'text-muted hover:text-fg hover:bg-surface-2')}>
+                {p}
+              </button>
+            ),
+          )}
+          <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} title="Sonraki sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} title="Son sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+            <ChevronsRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col">
-      <div className="overflow-x-auto">
+      {/* Mobile card view */}
+      {mobileCards && (
+        <div className="md:hidden space-y-2 p-2">
+          {data.map((row) => {
+            const id = getKey(row);
+            const selected = selectedIds?.has(id);
+            return (
+              <div
+                key={id}
+                onClick={() => onRowClick?.(row)}
+                className={cn('card p-4 space-y-2 text-sm', onRowClick && 'cursor-pointer', selected && 'ring-1 ring-primary/40 bg-primary/5')}
+              >
+                {onSelectId && (
+                  <div className="flex items-center gap-2 mb-1" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={!!selected} onChange={() => onSelectId(id)} className="accent-primary w-3.5 h-3.5" />
+                    <span className="text-xs text-muted">Seç</span>
+                  </div>
+                )}
+                {visibleColumns.map((col) => (
+                  <div key={col.key} className="flex items-start justify-between gap-2">
+                    <span className="text-xs text-muted flex-shrink-0">{col.mobileLabel ?? col.header}</span>
+                    <span className="text-right">{col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '')}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Desktop table (always shown; hidden on mobile if mobileCards) */}
+      <div className={cn('overflow-x-auto', mobileCards && 'hidden md:block')}>
         <table className="w-full border-collapse">
           <thead className={cn(stickyHeader && 'sticky top-0 z-10')}>
             <tr className="border-b border-border">
               {(onSelectId || onSelectAll) && (
                 <th className="table-th w-10">
                   {onSelectAll && (
-                    <input
-                      type="checkbox"
-                      checked={!!allSelected}
-                      onChange={onSelectAll}
-                      className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                    />
+                    <input type="checkbox" checked={!!allSelected} onChange={onSelectAll} className="accent-primary w-3.5 h-3.5 cursor-pointer" />
                   )}
                 </th>
               )}
@@ -124,19 +183,10 @@ export function DataTable<T>({
               const id = getKey(row);
               const selected = selectedIds?.has(id);
               return (
-                <tr
-                  key={id}
-                  className={cn('table-row', onRowClick && 'cursor-pointer', selected && 'bg-primary/5')}
-                  onClick={() => onRowClick?.(row)}
-                >
+                <tr key={id} className={cn('table-row', onRowClick && 'cursor-pointer', selected && 'bg-primary/5')} onClick={() => onRowClick?.(row)}>
                   {onSelectId && (
                     <td className="table-td w-10" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={!!selected}
-                        onChange={() => onSelectId(id)}
-                        className="accent-primary w-3.5 h-3.5 cursor-pointer"
-                      />
+                      <input type="checkbox" checked={!!selected} onChange={() => onSelectId(id)} className="accent-primary w-3.5 h-3.5 cursor-pointer" />
                     </td>
                   )}
                   {columns.map((col) => (
@@ -151,89 +201,7 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {onPageChange && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface flex-wrap gap-2">
-          {/* Left: record count + page info */}
-          <div className="flex items-center gap-3 text-xs text-muted">
-            {total !== undefined && <span>Toplam {total.toLocaleString()} kayıt</span>}
-            {totalPages > 1 && (
-              <span className="font-medium" style={{ color: 'var(--color-fg)' }}>
-                Sayfa {page} / {totalPages}
-              </span>
-            )}
-          </div>
-
-          {/* Right: pagination controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center gap-0.5">
-              {/* İlk */}
-              <button
-                onClick={() => onPageChange(1)}
-                disabled={page <= 1}
-                title="İlk sayfa"
-                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </button>
-
-              {/* Önceki */}
-              <button
-                onClick={() => onPageChange(page - 1)}
-                disabled={page <= 1}
-                title="Önceki sayfa"
-                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Page numbers with ellipsis */}
-              {pageNumbers.map((p, i) =>
-                p === '...' ? (
-                  <span
-                    key={`ellipsis-${i}`}
-                    className="px-1 text-xs text-muted select-none"
-                  >
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => onPageChange(p)}
-                    className={cn(
-                      'min-w-[28px] h-7 px-1.5 rounded-lg text-xs transition-colors',
-                      page === p
-                        ? 'bg-primary text-white font-medium'
-                        : 'text-muted hover:text-fg hover:bg-surface-2',
-                    )}
-                  >
-                    {p}
-                  </button>
-                ),
-              )}
-
-              {/* Sonraki */}
-              <button
-                onClick={() => onPageChange(page + 1)}
-                disabled={page >= totalPages}
-                title="Sonraki sayfa"
-                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              {/* Son */}
-              <button
-                onClick={() => onPageChange(totalPages)}
-                disabled={page >= totalPages}
-                title="Son sayfa"
-                className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors"
-              >
-                <ChevronsRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {pagination}
     </div>
   );
 }

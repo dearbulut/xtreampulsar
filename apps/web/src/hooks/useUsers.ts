@@ -9,6 +9,7 @@ interface UserFilter {
   search?: string;
   status?: string;
   resellerId?: string;
+  packageId?: string;
 }
 
 export function useUsers(filter: UserFilter = {}) {
@@ -18,6 +19,7 @@ export function useUsers(filter: UserFilter = {}) {
   if (filter.search) params.set('search', filter.search);
   if (filter.status) params.set('status', filter.status);
   if (filter.resellerId) params.set('resellerId', filter.resellerId);
+  if (filter.packageId) params.set('packageId', filter.packageId);
 
   return useQuery({
     queryKey: ['users', filter],

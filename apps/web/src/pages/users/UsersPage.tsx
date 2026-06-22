@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { useResellers } from '@/hooks/useResellers';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -20,10 +21,30 @@ import { useBouquets } from '@/hooks/useBouquets';
 import type { User } from '@/types';
 import { daysLeft, formatDate, cn } from '@/lib/utils';
 
+function getParam(key: string) {
+  return new URLSearchParams(window.location.search).get(key) ?? '';
+}
+
+function setParam(key: string, value: string) {
+  const params = new URLSearchParams(window.location.search);
+  if (value) params.set(key, value); else params.delete(key);
+  window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+}
+
 export function UsersPage() {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState(() => getParam('search'));
+  const [status, setStatus] = useState(() => getParam('status'));
+  const [resellerId, setResellerId] = useState(() => getParam('resellerId'));
+  const [packageId, setPackageId] = useState(() => getParam('packageId'));
+  const [expiresInDays, setExpiresInDays] = useState(() => getParam('expiresInDays'));
+  const [showFilters, setShowFilters] = useState(false);
+
+  const updateFilter = useCallback(<T extends string>(setter: (v: T) => void, key: string) => (value: T) => {
+    setter(value);
+    setParam(key, value);
+    setPage(1);
+  }, []);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [banId, setBanId] = useState<string | null>(null);
   const [extendId, setExtendId] = useState<string | null>(null);
@@ -42,9 +63,10 @@ export function UsersPage() {
   const [bulkPackageId, setBulkPackageId] = useState('');
   const [activityUserId, setActivityUserId] = useState<string | null>(null);
 
-  const { data, isLoading } = useUsers({ page, limit: 25, search, status });
+  const { data, isLoading } = useUsers({ page, limit: 25, search, status, resellerId: resellerId || undefined, packageId: packageId || undefined });
   const { data: bouquets = [] } = useBouquets();
   const { data: packages = [] } = usePackages();
+  const { data: resellers = [] } = useResellers();
   const qc = useQueryClient();
   const bulkRenew = useBulkRenew();
   const createUser = useCreateUser();
@@ -58,6 +80,28 @@ export function UsersPage() {
     void navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const exportCsv = () => {
+    const rows = data?.items ?? [];
+    if (!rows.length) { toast.error('Dışa aktarılacak veri yok'); return; }
+    const header = ['Kullanıcı Adı', 'Durum', 'Paket', 'Bitiş Tarihi', 'Maks Bağlantı', 'Oluşturulma'];
+    const lines = rows.map((u: User) => [
+      u.username,
+      u.status,
+      (u as User & { package?: { name: string } }).package?.name ?? '',
+      u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('tr-TR') : '',
+      u.maxConnections,
+      new Date(u.createdAt).toLocaleDateString('tr-TR'),
+    ].join(','));
+    const csv = [header.join(','), ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kullanicilar-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const columns: Column<User>[] = [
@@ -190,6 +234,10 @@ export function UsersPage() {
                 {selectedIds.size} Seçili Yenile
               </button>
             )}
+            <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title="CSV İndir">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Rapor İndir</span>
+            </button>
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Kullanıcı Ekle</span>
@@ -199,27 +247,86 @@ export function UsersPage() {
       />
 
       {/* Filters */}
-      <div className="card p-4 mb-4 flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
-          <input
-            className="input pl-9"
-            placeholder="Kullanıcı adı ara…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
+      <div className="card mb-4">
+        {/* Always-visible row */}
+        <div className="p-3 flex flex-wrap gap-2.5 items-center">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+            <input
+              className="input pl-9 h-9"
+              placeholder="Kullanıcı adı ara…"
+              value={search}
+              onChange={(e) => updateFilter(setSearch, 'search')(e.target.value)}
+            />
+          </div>
+          <select
+            className="input h-9 w-auto min-w-36"
+            value={status}
+            onChange={(e) => updateFilter(setStatus, 'status')(e.target.value)}
+          >
+            <option value="">Tüm Durumlar</option>
+            <option value="ACTIVE">Aktif</option>
+            <option value="EXPIRED">Süresi Doldu</option>
+            <option value="BANNED">Yasaklı</option>
+            <option value="DISABLED">Devre Dışı</option>
+          </select>
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={cn('btn-ghost h-9 flex items-center gap-1.5 text-sm', showFilters && 'text-primary')}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Gelişmiş Filtre
+            {showFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         </div>
-        <select
-          className="input w-auto min-w-40"
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-        >
-          <option value="">Tüm Durumlar</option>
-          <option value="ACTIVE">Aktif</option>
-          <option value="EXPIRED">Süresi Doldu</option>
-          <option value="BANNED">Yasaklı</option>
-          <option value="DISABLED">Devre Dışı</option>
-        </select>
+
+        {/* Collapsible advanced filters */}
+        {showFilters && (
+          <div className="border-t border-border p-3 flex flex-wrap gap-2.5 bg-surface-2/30">
+            <select
+              className="input h-9 w-auto min-w-40"
+              value={resellerId}
+              onChange={(e) => updateFilter(setResellerId, 'resellerId')(e.target.value)}
+            >
+              <option value="">Tüm Resellerlar</option>
+              {resellers.map((r: { id: string; username: string }) => (
+                <option key={r.id} value={r.id}>{r.username}</option>
+              ))}
+            </select>
+            <select
+              className="input h-9 w-auto min-w-40"
+              value={packageId}
+              onChange={(e) => updateFilter(setPackageId, 'packageId')(e.target.value)}
+            >
+              <option value="">Tüm Paketler</option>
+              {packages.map((p: { id: string; name: string }) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <select
+              className="input h-9 w-auto min-w-44"
+              value={expiresInDays}
+              onChange={(e) => updateFilter(setExpiresInDays, 'expiresInDays')(e.target.value)}
+            >
+              <option value="">Bitiş — Tümü</option>
+              <option value="7">7 gün içinde bitiyor</option>
+              <option value="14">14 gün içinde bitiyor</option>
+              <option value="30">30 gün içinde bitiyor</option>
+            </select>
+            {(resellerId || packageId || expiresInDays) && (
+              <button
+                onClick={() => {
+                  updateFilter(setResellerId, 'resellerId')('');
+                  updateFilter(setPackageId, 'packageId')('');
+                  updateFilter(setExpiresInDays, 'expiresInDays')('');
+                }}
+                className="btn-ghost h-9 text-sm text-red-400"
+              >
+                Temizle
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table */}

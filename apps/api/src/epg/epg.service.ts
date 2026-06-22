@@ -154,4 +154,38 @@ export class EpgService {
     const dist = dp[m][n];
     return 1 - dist / Math.max(m, n);
   }
+
+  async getGuide(channelIds: string[], date: string) {
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+
+    const where = channelIds.length > 0
+      ? { id: { in: channelIds } }
+      : {};
+
+    const channels = await this.prisma.ePGChannel.findMany({
+      where,
+      include: {
+        programmes: {
+          where: { start: { gte: dayStart }, stop: { lte: dayEnd } },
+          orderBy: { start: 'asc' },
+        },
+      },
+      take: 100,
+    });
+
+    return channels.map((ch) => ({
+      channelId: ch.id,
+      channelName: ch.displayName,
+      tvgId: ch.channelId,
+      programmes: ch.programmes.map((p) => ({
+        id: p.id,
+        start: p.start.toISOString(),
+        stop: p.stop.toISOString(),
+        title: p.title,
+        description: p.description ?? '',
+        durationMin: Math.round((p.stop.getTime() - p.start.getTime()) / 60000),
+      })),
+    }));
+  }
 }

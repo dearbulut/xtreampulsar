@@ -136,4 +136,17 @@ export class StreamController {
   cloneStream(@Param('id') id: string, @Body() body?: { name?: string; primaryUrl?: string }) {
     return this.streamService.cloneStream(id, body);
   }
+
+  @Patch('reorder')
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reorderStreams(@Body() body: { streamIds: string[] }): Promise<void> {
+    await this.streamService.reorderStreams(body.streamIds);
+  }
+
+  @Patch('bulk-move')
+  @Roles('ADMIN')
+  bulkMoveCategory(@Body() body: { streamIds: string[]; categoryId: string }) {
+    return this.streamService.bulkMoveCategory(body.streamIds, body.categoryId);
+  }
 }

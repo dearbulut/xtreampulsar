@@ -1,31 +1,30 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-type Theme = 'light' | 'dark';
+import { type ThemeName, applyTheme } from '@/styles/themes';
 
 interface UiState {
   sidebarCollapsed: boolean;
-  theme: Theme;
+  sidebarOpen: boolean;
+  theme: ThemeName;
   toggleSidebar: () => void;
   setSidebarCollapsed: (v: boolean) => void;
+  setSidebarOpen: (v: boolean) => void;
   toggleTheme: () => void;
-  setTheme: (t: Theme) => void;
-}
-
-function applyTheme(t: Theme) {
-  document.documentElement.classList.toggle('dark', t === 'dark');
+  setTheme: (t: ThemeName) => void;
 }
 
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
-      theme: 'light',
+      sidebarOpen: false,
+      theme: 'dark',
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
+      setSidebarOpen: (v) => set({ sidebarOpen: v }),
       toggleTheme: () =>
         set((s) => {
-          const next: Theme = s.theme === 'light' ? 'dark' : 'light';
+          const next: ThemeName = s.theme === 'light' ? 'dark' : 'light';
           applyTheme(next);
           return { theme: next };
         }),

@@ -259,6 +259,15 @@ model Stream {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
+  // TMDB metadata
+  tmdbId      Int?
+  overview    String?
+  posterUrl   String?
+  backdropUrl String?
+  releaseYear Int?
+  tmdbRating  Float?
+  tmdbGenres  String[]
+
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
@@ -535,6 +544,8 @@ model Settings {
   telegramChatId          String?
   discordAlerts           Boolean  @default(false)
   telegramAlerts          Boolean  @default(false)
+  tmdbApiKey              String?
+  autoEnrichMetadata      Boolean  @default(false)
   updatedAt               DateTime @updatedAt
 
   @@map("settings")

@@ -166,6 +166,22 @@ export class StreamService {
     await this.prisma.stream.delete({ where: { id } });
   }
 
+  async reorderStreams(streamIds: string[]): Promise<void> {
+    await this.prisma.$transaction(
+      streamIds.map((id, index) =>
+        this.prisma.stream.update({ where: { id }, data: { sortOrder: index } }),
+      ),
+    );
+  }
+
+  async bulkMoveCategory(streamIds: string[], targetCategoryId: string): Promise<number> {
+    const result = await this.prisma.stream.updateMany({
+      where: { id: { in: streamIds } },
+      data: { categoryId: targetCategoryId },
+    });
+    return result.count;
+  }
+
   async cloneStream(id: string, overrides?: Partial<{ name: string; primaryUrl: string }>) {
     const original = await this.findById(id);
 

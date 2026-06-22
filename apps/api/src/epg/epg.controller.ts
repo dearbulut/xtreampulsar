@@ -88,4 +88,15 @@ export class EpgController {
   async deleteMapping(@Param('id') id: string): Promise<void> {
     await this.epgService.deleteMapping(id);
   }
+
+  @Get('guide')
+  getGuide(
+    @Query('channelIds') channelIds?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.epgService.getGuide(
+      channelIds ? channelIds.split(',').filter(Boolean) : [],
+      date ?? new Date().toISOString().slice(0, 10),
+    );
+  }
 }

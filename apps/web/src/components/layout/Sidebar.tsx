@@ -21,6 +21,9 @@ import {
   LogOut,
   Activity,
   TrendingUp,
+  BarChart2,
+  CalendarDays,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUiStore } from '@/store/ui.store';
@@ -67,6 +70,7 @@ const NAV: NavGroup[] = [
     label: 'KULLANICILAR',
     items: [
       { label: 'Kullanıcılar', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
+      { label: 'Kullanıcı Raporları', to: '/users/report', icon: BarChart2 },
       { label: "Reseller'lar", to: '/resellers', icon: UserCircle },
     ],
   },
@@ -74,6 +78,7 @@ const NAV: NavGroup[] = [
     label: 'EPG',
     items: [
       { label: 'EPG Kaynakları', to: '/epg', icon: Radio },
+      { label: 'Program Rehberi', to: '/epg/guide', icon: CalendarDays },
     ],
   },
   {
@@ -94,11 +99,10 @@ const NAV: NavGroup[] = [
   },
 ];
 
-export function Sidebar() {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
-  const toggle = useUiStore((s) => s.toggleSidebar);
+function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: () => void }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const toggle = useUiStore((s) => s.toggleSidebar);
 
   return (
     <aside
@@ -110,7 +114,7 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center h-14 px-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 glow-primary">
             <Zap className="w-4 h-4 text-white animate-pulse-slow" />
           </div>
@@ -118,15 +122,23 @@ export function Sidebar() {
             <span className="font-bold text-sm text-gradient truncate">XtreamPulsar</span>
           )}
         </div>
+        {/* Mobile close button */}
+        {onClose && (
+          <button onClick={onClose} className="text-muted hover:text-fg p-1 ml-2">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={toggle}
-        className="absolute -right-3 top-[4.25rem] w-6 h-6 rounded-full bg-sidebar border border-border flex items-center justify-center text-muted hover:text-fg z-10 transition-colors"
-      >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </button>
+      {/* Collapse toggle (desktop only) */}
+      {!onClose && (
+        <button
+          onClick={toggle}
+          className="absolute -right-3 top-[4.25rem] w-6 h-6 rounded-full bg-sidebar border border-border flex items-center justify-center text-muted hover:text-fg z-10 transition-colors"
+        >
+          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        </button>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
@@ -139,7 +151,7 @@ export function Sidebar() {
             )}
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <NavLink key={item.to} item={item} collapsed={collapsed} />
+                <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
               ))}
             </div>
           </div>
@@ -157,7 +169,7 @@ export function Sidebar() {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate" style={{ color: 'var(--color-fg)' }}>{user?.username}</div>
+                <div className="text-xs font-medium truncate">{user?.username}</div>
                 <div className="text-[10px] text-muted">{user?.role}</div>
               </div>
               <button
@@ -175,13 +187,42 @@ export function Sidebar() {
   );
 }
 
-function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+export function Sidebar() {
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:block">
+        <SidebarContent collapsed={collapsed} />
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full z-50">
+            <SidebarContent collapsed={false} onClose={() => setSidebarOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
       to={item.to}
       className="nav-item"
       activeProps={{ className: 'nav-item active' }}
+      onClick={onNavigate}
     >
       <Icon className="w-4 h-4 flex-shrink-0" />
       {!collapsed && (

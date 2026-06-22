@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -14,7 +14,28 @@ import {
   Play,
   Microscope,
   Copy,
+  Sparkles,
+  FolderInput,
+  GripVertical,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useEnrichStream, useReorderStreams, useBulkMoveCategory } from '@/hooks/useMetadata';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -111,6 +132,21 @@ function getUrlPage(): number {
   return Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') ?? '1', 10));
 }
 
+function SortHandle({ id }: { id: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <span
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn('inline-flex cursor-grab text-muted hover:text-slate-300', isDragging && 'opacity-50 cursor-grabbing')}
+    >
+      <GripVertical className="w-3.5 h-3.5" />
+    </span>
+  );
+}
+
 export function StreamsPage({ type }: { type?: StreamType }) {
   const [page, setPageState] = useState(getUrlPage);
 
@@ -130,6 +166,20 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
+  const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
+  const [showBulkMove, setShowBulkMove] = useState(false);
+  const [bulkMoveCatId, setBulkMoveCatId] = useState('');
+  const [sortedItems, setSortedItems] = useState<Stream[]>([]);
+  const reorderDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const enrichStream = useEnrichStream();
+  const reorderStreams = useReorderStreams();
+  const bulkMoveCategory = useBulkMoveCategory();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const { data, isLoading, refetch } = useStreams({
     page, limit: 25, search, status, serverId, categoryId, type,
@@ -146,6 +196,26 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
   const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
 
+  // Sync sorted items when data changes
+  useEffect(() => {
+    if (data?.items) setSortedItems(data.items);
+  }, [data?.items]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setSortedItems((items) => {
+      const oldIdx = items.findIndex((i) => i.id === active.id);
+      const newIdx = items.findIndex((i) => i.id === over.id);
+      const reordered = arrayMove(items, oldIdx, newIdx);
+      if (reorderDebounce.current) clearTimeout(reorderDebounce.current);
+      reorderDebounce.current = setTimeout(() => {
+        reorderStreams.mutate(reordered.map((i) => i.id));
+      }, 500);
+      return reordered;
+    });
+  };
+
   const columns: Column<Stream>[] = [
     {
       key: 'externalId',
@@ -157,19 +227,43 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       key: 'tvgLogo',
       header: 'İkon',
       className: 'w-14',
-      render: (r) =>
-        r.tvgLogo ? (
-          <img
-            src={r.tvgLogo}
-            alt=""
-            className="w-8 h-8 rounded-md object-cover border border-border bg-surface-2"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-md bg-surface-2 border border-border flex items-center justify-center">
-            <Tv className="w-4 h-4 text-muted" />
+      render: (r) => {
+        const poster = (r as Stream & { posterUrl?: string }).posterUrl;
+        const imgSrc = poster ?? r.tvgLogo;
+        const hasBackdrop = !!(r as Stream & { backdropUrl?: string }).backdropUrl;
+        const overview = (r as Stream & { overview?: string }).overview;
+        return (
+          <div className="relative group">
+            {imgSrc ? (
+              <img
+                src={imgSrc}
+                alt=""
+                className="w-8 h-10 rounded-md object-cover border border-border bg-surface-2"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-8 h-10 rounded-md bg-surface-2 border border-border flex items-center justify-center">
+                <Tv className="w-4 h-4 text-muted" />
+              </div>
+            )}
+            {/* Backdrop + overview tooltip on hover */}
+            {(hasBackdrop || overview) && (
+              <div className="absolute left-10 top-0 z-20 w-56 hidden group-hover:block pointer-events-none">
+                <div className="bg-surface border border-border rounded-xl shadow-2xl overflow-hidden text-xs">
+                  {hasBackdrop && (
+                    <img
+                      src={(r as Stream & { backdropUrl?: string }).backdropUrl!}
+                      alt=""
+                      className="w-full h-28 object-cover"
+                    />
+                  )}
+                  {overview && <div className="p-2 text-muted line-clamp-3">{overview}</div>}
+                </div>
+              </div>
+            )}
           </div>
-        ),
+        );
+      },
     },
     {
       key: 'workerStatus',
@@ -313,6 +407,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 .catch(() => toast.error('Klonlama başarısız'));
             }}
           />
+          {(type === 'VOD' || type === 'SERIES') && (
+            <ActionBtn
+              icon={Sparkles}
+              title="Meta Veri Çek"
+              color="text-yellow-400"
+              loading={enrichStream.isPending && (enrichStream.variables as { id: string } | undefined)?.id === r.id}
+              onClick={() => enrichStream.mutate({ id: r.id, type })}
+            />
+          )}
         </div>
       ),
     },
@@ -339,6 +442,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             <button onClick={handleRefresh} className="btn-ghost" title="Yenile">
               <RefreshCw className="w-4 h-4" />
             </button>
+            {selectedStreamIds.size > 0 && (
+              <button
+                onClick={() => setShowBulkMove(true)}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                <FolderInput className="w-4 h-4" />
+                {selectedStreamIds.size} Seçili Taşı
+              </button>
+            )}
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Kanal Ekle</span>
@@ -391,21 +503,63 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Table with drag-drop */}
       <div className="card overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={data?.items ?? []}
-          keyExtractor={(r) => r.id}
-          isLoading={isLoading}
-          page={page}
-          totalPages={data?.totalPages}
-          total={data?.total}
-          onPageChange={setPage}
-          emptyTitle="Kayıt bulunamadı"
-          emptyDescription="Arama kriterlerinize uygun kayıt yok."
-        />
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sortedItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <DataTable
+              columns={[
+                {
+                  key: '_drag',
+                  header: '',
+                  className: 'w-8',
+                  render: (r) => <SortHandle id={r.id} />,
+                },
+                ...columns,
+              ]}
+              data={sortedItems.length > 0 ? sortedItems : (data?.items ?? [])}
+              keyExtractor={(r) => r.id}
+              isLoading={isLoading}
+              page={page}
+              totalPages={data?.totalPages}
+              total={data?.total}
+              onPageChange={setPage}
+              emptyTitle="Kayıt bulunamadı"
+              emptyDescription="Arama kriterlerinize uygun kayıt yok."
+              mobileCards
+            />
+          </SortableContext>
+        </DndContext>
       </div>
+
+      {/* Bulk move modal */}
+      <Modal open={showBulkMove} onClose={() => setShowBulkMove(false)} title={`${selectedStreamIds.size} Stream Taşı`} size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-muted">Hedef kategori seç:</p>
+          <select
+            className="input w-full"
+            value={bulkMoveCatId}
+            onChange={(e) => setBulkMoveCatId(e.target.value)}
+          >
+            <option value="">— Kategori seç —</option>
+            {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <div className="flex gap-2 justify-end">
+            <button className="btn btn-secondary" onClick={() => setShowBulkMove(false)}>İptal</button>
+            <button
+              className="btn btn-primary"
+              disabled={!bulkMoveCatId || bulkMoveCategory.isPending}
+              onClick={async () => {
+                await bulkMoveCategory.mutateAsync({ streamIds: [...selectedStreamIds], categoryId: bulkMoveCatId });
+                setShowBulkMove(false);
+                setSelectedStreamIds(new Set());
+              }}
+            >
+              Taşı
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Preview modal */}
       <Modal open={!!previewUrl} onClose={() => setPreviewUrl(null)} title="Stream URL" size="md">

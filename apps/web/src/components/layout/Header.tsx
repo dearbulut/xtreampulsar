@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Sun, Moon, Download, X, ExternalLink } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
@@ -6,18 +6,22 @@ import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
 import { useUpdateCheck, useApplyUpdate } from '@/hooks/useUpdate';
 import { cn } from '@/lib/utils';
+import { THEMES, THEME_LABELS, type ThemeName } from '@/styles/themes';
 
 interface Props {
   title?: string;
   breadcrumb?: string[];
 }
 
+const THEME_ORDER: ThemeName[] = ['dark', 'light', 'midnight', 'ocean', 'forest', 'sunset'];
+
 export function Header({ title, breadcrumb }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const router = useRouter();
   const theme = useUiStore((s) => s.theme);
-  const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const setTheme = useUiStore((s) => s.setTheme);
+  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
@@ -73,41 +77,73 @@ export function Header({ title, breadcrumb }: Props) {
       )}
 
       <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-5">
-        {/* Breadcrumb / Title */}
-        <div className="flex items-center gap-2 text-sm">
-          {breadcrumb ? (
-            breadcrumb.map((crumb, i) => (
-              <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-muted">/</span>}
-                <span
-                  className={cn(
-                    i === breadcrumb.length - 1 ? 'font-medium' : 'text-muted',
-                  )}
-                  style={i === breadcrumb.length - 1 ? { color: 'var(--color-fg)' } : undefined}
-                >
-                  {crumb}
+        {/* Mobile hamburger + Breadcrumb */}
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            className="md:hidden p-2 rounded-lg text-muted hover:bg-surface-2 transition-colors"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-2">
+            {breadcrumb ? (
+              breadcrumb.map((crumb, i) => (
+                <span key={i} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-muted">/</span>}
+                  <span className={cn(i === breadcrumb.length - 1 ? 'font-medium' : 'text-muted')}>
+                    {crumb}
+                  </span>
                 </span>
-              </span>
-            ))
-          ) : (
-            <span className="font-medium" style={{ color: 'var(--color-fg)' }}>{title}</span>
-          )}
+              ))
+            ) : (
+              <span className="font-medium">{title}</span>
+            )}
+          </div>
         </div>
 
         {/* Right side */}
         <div className="flex items-center gap-1.5">
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            title={theme === 'light' ? 'Karanlık moda geç' : 'Aydınlık moda geç'}
-            className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200"
-          >
-            {theme === 'light' ? (
-              <Moon className="w-4 h-4 transition-transform duration-200" />
-            ) : (
-              <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200 rotate-12" />
-            )}
-          </button>
+          {/* Theme picker dropdown */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                title="Tema seç"
+                className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200 flex items-center gap-1.5"
+              >
+                <Palette className="w-4 h-4" />
+                <span
+                  className="w-3 h-3 rounded-full border border-border hidden sm:block"
+                  style={{ background: THEMES[theme].primary }}
+                />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="bg-surface border border-border rounded-xl shadow-2xl p-2 min-w-44 z-50 animate-fade-in"
+                align="end"
+                sideOffset={6}
+              >
+                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">Tema</div>
+                {THEME_ORDER.map((t) => (
+                  <DropdownMenu.Item
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className={cn(
+                      'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm cursor-pointer outline-none transition-colors',
+                      t === theme ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-surface-2 hover:text-fg',
+                    )}
+                  >
+                    <span
+                      className="w-4 h-4 rounded-full border border-border flex-shrink-0"
+                      style={{ background: THEMES[t].primary }}
+                    />
+                    {THEME_LABELS[t]}
+                    {t === theme && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
 
           {/* Notification bell */}
           <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
@@ -124,9 +160,7 @@ export function Header({ title, breadcrumb }: Props) {
                     {user?.username?.[0]?.toUpperCase() ?? 'A'}
                   </span>
                 </div>
-                <span className="font-medium hidden sm:block" style={{ color: 'var(--color-fg)' }}>
-                  {user?.username}
-                </span>
+                <span className="font-medium hidden sm:block">{user?.username}</span>
                 <ChevronDown className="w-3 h-3 text-muted" />
               </button>
             </DropdownMenu.Trigger>
@@ -138,12 +172,9 @@ export function Header({ title, breadcrumb }: Props) {
                 sideOffset={6}
               >
                 <div className="px-3 py-2 border-b border-border mb-1">
-                  <div className="text-xs font-medium" style={{ color: 'var(--color-fg)' }}>
-                    {user?.username}
-                  </div>
+                  <div className="text-xs font-medium">{user?.username}</div>
                   <div className="text-[11px] text-muted">{user?.role}</div>
                 </div>
-
                 <DropdownItem icon={User} label="Profilim" />
                 <DropdownItem icon={Settings} label="Ayarlar" />
                 <DropdownMenu.Separator className="h-px bg-border my-1" />
@@ -159,9 +190,7 @@ export function Header({ title, breadcrumb }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowNotes(false)}>
           <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold" style={{ color: 'var(--color-fg)' }}>
-                v{updateInfo.latestVersion} — Sürüm Notları
-              </h2>
+              <h2 className="font-semibold">v{updateInfo.latestVersion} — Sürüm Notları</h2>
               <button onClick={() => setShowNotes(false)} className="text-muted hover:text-fg">
                 <X className="w-4 h-4" />
               </button>
@@ -170,12 +199,7 @@ export function Header({ title, breadcrumb }: Props) {
               {updateInfo.releaseNotes || 'Sürüm notu yok.'}
             </pre>
             <div className="mt-4 flex justify-end gap-2">
-              <a
-                href={updateInfo.releaseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
+              <a href={updateInfo.releaseUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
                 GitHub'da Gör <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -186,17 +210,7 @@ export function Header({ title, breadcrumb }: Props) {
   );
 }
 
-function DropdownItem({
-  icon: Icon,
-  label,
-  danger,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  danger?: boolean;
-  onClick?: () => void;
-}) {
+function DropdownItem({ icon: Icon, label, danger, onClick }: { icon: React.ElementType; label: string; danger?: boolean; onClick?: () => void }) {
   return (
     <DropdownMenu.Item
       onClick={onClick}

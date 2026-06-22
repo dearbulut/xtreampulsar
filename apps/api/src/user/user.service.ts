@@ -459,6 +459,59 @@ export class UserService {
     return { items, total, page, totalPages: Math.ceil(total / limit) };
   }
 
+  async getUserReport() {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [statusCounts, resellerBreakdown, trendRaw] = await Promise.all([
+      this.prisma.user.groupBy({
+        by: ['status'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+      this.prisma.user.groupBy({
+        by: ['resellerId'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 20,
+      }),
+      this.prisma.$queryRaw<Array<{ day: Date; count: bigint }>>`
+        SELECT DATE_TRUNC('day', "created_at") AS day, COUNT(*)::bigint AS count
+        FROM users
+        WHERE created_at >= ${thirtyDaysAgo} AND deleted_at IS NULL
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `,
+    ]);
+
+    const resellerIds = resellerBreakdown
+      .filter((r) => r.resellerId)
+      .map((r) => r.resellerId as string);
+
+    const resellers = await this.prisma.reseller.findMany({
+      where: { id: { in: resellerIds } },
+      select: { id: true, username: true },
+    });
+
+    const resellerMap = Object.fromEntries(resellers.map((r) => [r.id, r.username]));
+
+    return {
+      statusBreakdown: Object.fromEntries(
+        statusCounts.map((s) => [s.status, s._count._all]),
+      ),
+      resellerBreakdown: resellerBreakdown.map((r) => ({
+        resellerId: r.resellerId,
+        resellerName: r.resellerId ? (resellerMap[r.resellerId] ?? 'Bilinmeyen') : 'Direkt',
+        count: r._count._all,
+      })),
+      trend: trendRaw.map((t) => ({
+        day: t.day.toISOString().slice(0, 10),
+        count: Number(t.count),
+      })),
+    };
+  }
+
   private async assertExists(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
