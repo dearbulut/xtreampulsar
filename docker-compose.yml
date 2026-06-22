@@ -90,6 +90,14 @@ services:
     networks:
       - internal
 
+  website:
+    build:
+      context: .
+      dockerfile: apps/website/Dockerfile
+    restart: always
+    networks:
+      - internal
+
   nginx:
     image: nginx:alpine
     depends_on:
