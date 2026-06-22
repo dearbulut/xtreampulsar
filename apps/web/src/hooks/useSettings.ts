@@ -139,6 +139,18 @@ interface DbSettings {
   telegramChatId?: string | null;
   discordAlerts?: boolean;
   telegramAlerts?: boolean;
+  // Reseller
+  registrationOpen?: boolean;
+  // Security
+  enableGuard?: boolean;
+  maxConnsPerIp?: number;
+  maxHitsNormal?: number;
+  maxHitsRestreamer?: number;
+  blockDuration?: number;
+  denyInvalidStreamIds?: boolean;
+  sensitivePorts?: string[];
+  whitelistIPs?: string[];
+  openPorts?: string[];
 }
 
 function mapDbToStore(db: DbSettings): AllSettings {
@@ -163,6 +175,10 @@ function mapDbToStore(db: DbSettings): AllSettings {
       port: db.serverPort,
       trialUserLimit: db.trialUserLimit,
     },
+    reseller: {
+      ...DEFAULTS.reseller,
+      registrationOpen: db.registrationOpen ?? false,
+    },
     streaming: {
       ...DEFAULTS.streaming,
       vodDownloadSpeed: db.vodDownloadSpeed,
@@ -179,6 +195,18 @@ function mapDbToStore(db: DbSettings): AllSettings {
       countryLockVideo: db.countryLockVideo ?? '',
       maxConxExceedVideo: db.maxConxExceedVideo ?? '',
     },
+    security: {
+      ...DEFAULTS.security,
+      enableGuard: db.enableGuard ?? false,
+      maxConnsPerIp: db.maxConnsPerIp ?? 10,
+      maxHitsNormal: db.maxHitsNormal ?? 100,
+      maxHitsRestreamer: db.maxHitsRestreamer ?? 50,
+      blockDuration: db.blockDuration ?? 60,
+      denyInvalidStreamIds: db.denyInvalidStreamIds ?? true,
+      sensitivePorts: db.sensitivePorts ?? ['22', '3306', '5432'],
+      whitelistIPs: db.whitelistIPs ?? [],
+      openPorts: db.openPorts ?? ['80', '443', '25461'],
+    },
     database: {
       ...DEFAULTS.database,
       enableLocalBackups: db.enableLocalBackups ?? false,
@@ -193,6 +221,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
 
 function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
   return {
+    // General
     panelName: settings.general.panelName,
     serverUrl: settings.general.serverUrl,
     timezone: settings.general.timezone,
@@ -204,8 +233,12 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     telegramChatId: settings.general.telegramChatId || null,
     discordAlerts: settings.general.discordAlerts,
     telegramAlerts: settings.general.telegramAlerts,
+    // Xtream
     serverPort: settings.xtream.port,
     trialUserLimit: settings.xtream.trialUserLimit,
+    // Reseller
+    registrationOpen: settings.reseller.registrationOpen,
+    // Streaming
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
     vodDownloadLimit: settings.streaming.vodDownloadLimit,
     bufferSize: settings.streaming.bufferSize,
@@ -219,6 +252,17 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     expiredVideo: settings.streaming.expiredUserUrl || null,
     countryLockVideo: settings.streaming.countryLockVideo || null,
     maxConxExceedVideo: settings.streaming.maxConxExceedVideo || null,
+    // Security
+    enableGuard: settings.security.enableGuard,
+    maxConnsPerIp: settings.security.maxConnsPerIp,
+    maxHitsNormal: settings.security.maxHitsNormal,
+    maxHitsRestreamer: settings.security.maxHitsRestreamer,
+    blockDuration: settings.security.blockDuration,
+    denyInvalidStreamIds: settings.security.denyInvalidStreamIds,
+    sensitivePorts: settings.security.sensitivePorts,
+    whitelistIPs: settings.security.whitelistIPs,
+    openPorts: settings.security.openPorts,
+    // Database / Backup
     enableLocalBackups: settings.database.enableLocalBackups,
     localBackupDir: settings.database.localBackupDir,
     autoBackupIntervalHours: settings.database.autoBackupIntervalHours,

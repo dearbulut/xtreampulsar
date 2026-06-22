@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { execSync } from 'child_process';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
@@ -7,6 +8,27 @@ import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 
 const execAsync = promisify(exec);
+
+function parseDatabaseUrl(): { host: string; port: string; user: string; password: string; dbname: string } {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) throw new Error('DATABASE_URL is not set');
+  const url = new URL(raw);
+  return {
+    host: url.hostname,
+    port: url.port || '5432',
+    user: url.username,
+    password: decodeURIComponent(url.password),
+    dbname: url.pathname.replace(/^\//, ''),
+  };
+}
+
+function checkPgDump(): void {
+  try {
+    execSync('which pg_dump', { stdio: 'ignore' });
+  } catch {
+    throw new Error('pg_dump not found — install postgresql-client');
+  }
+}
 
 @Injectable()
 export class BackupService {
@@ -20,6 +42,7 @@ export class BackupService {
   }
 
   async createLocalBackup(): Promise<{ filename: string; size: number; createdAt: Date }> {
+    checkPgDump();
     const backupDir = await this.getBackupDir();
     fs.mkdirSync(backupDir, { recursive: true });
 
@@ -29,11 +52,12 @@ export class BackupService {
 
     this.logger.log(`Creating backup: ${filePath}`);
 
+    const db = parseDatabaseUrl();
+    const cmd = `pg_dump -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}" | gzip > "${filePath}"`;
+    const env = { ...process.env, PGPASSWORD: db.password };
+
     try {
-      await execAsync(`pg_dump "$DATABASE_URL" | gzip > "${filePath}"`, {
-        shell: '/bin/bash',
-        env: { ...process.env },
-      });
+      await execAsync(cmd, { shell: '/bin/sh', env });
     } catch (err) {
       await this.prisma.backupLog.create({
         data: { filename, size: 0, type: 'LOCAL', status: 'FAILED' },
@@ -77,10 +101,12 @@ export class BackupService {
     if (!fs.existsSync(filePath)) throw new NotFoundException(`Backup not found: ${filename}`);
 
     this.logger.warn(`RESTORING database from ${filename}`);
-    await execAsync(`gunzip -c "${filePath}" | psql "$DATABASE_URL"`, {
-      shell: '/bin/bash',
-      env: { ...process.env },
-    });
+    const db = parseDatabaseUrl();
+    const env = { ...process.env, PGPASSWORD: db.password };
+    await execAsync(
+      `gunzip -c "${filePath}" | psql -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}"`,
+      { shell: '/bin/sh', env },
+    );
     return { message: `Database restored from ${filename}` };
   }
 

@@ -1,0 +1,12 @@
+-- AlterTable: add reseller and security fields to settings
+ALTER TABLE "settings"
+  ADD COLUMN IF NOT EXISTS "registrationOpen"     BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "enableGuard"          BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "maxConnsPerIp"        INTEGER NOT NULL DEFAULT 10,
+  ADD COLUMN IF NOT EXISTS "maxHitsNormal"        INTEGER NOT NULL DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS "maxHitsRestreamer"    INTEGER NOT NULL DEFAULT 50,
+  ADD COLUMN IF NOT EXISTS "blockDuration"        INTEGER NOT NULL DEFAULT 60,
+  ADD COLUMN IF NOT EXISTS "denyInvalidStreamIds" BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS "sensitivePorts"       TEXT[]  NOT NULL DEFAULT ARRAY[]::TEXT[],
+  ADD COLUMN IF NOT EXISTS "whitelistIPs"         TEXT[]  NOT NULL DEFAULT ARRAY[]::TEXT[],
+  ADD COLUMN IF NOT EXISTS "openPorts"            TEXT[]  NOT NULL DEFAULT ARRAY[]::TEXT[];

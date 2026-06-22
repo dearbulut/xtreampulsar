@@ -546,6 +546,18 @@ model Settings {
   telegramAlerts          Boolean  @default(false)
   tmdbApiKey              String?
   autoEnrichMetadata      Boolean  @default(false)
+  // Reseller
+  registrationOpen        Boolean  @default(false)
+  // Security / Server Guard
+  enableGuard             Boolean  @default(false)
+  maxConnsPerIp           Int      @default(10)
+  maxHitsNormal           Int      @default(100)
+  maxHitsRestreamer       Int      @default(50)
+  blockDuration           Int      @default(60)
+  denyInvalidStreamIds    Boolean  @default(true)
+  sensitivePorts          String[] @default([])
+  whitelistIPs            String[] @default([])
+  openPorts               String[] @default([])
   updatedAt               DateTime @updatedAt
 
   @@map("settings")

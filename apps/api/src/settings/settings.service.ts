@@ -67,6 +67,18 @@ export class SettingsService {
     telegramChatId?: string | null;
     discordAlerts?: boolean;
     telegramAlerts?: boolean;
+    // Reseller
+    registrationOpen?: boolean;
+    // Security
+    enableGuard?: boolean;
+    maxConnsPerIp?: number;
+    maxHitsNormal?: number;
+    maxHitsRestreamer?: number;
+    blockDuration?: number;
+    denyInvalidStreamIds?: boolean;
+    sensitivePorts?: string[];
+    whitelistIPs?: string[];
+    openPorts?: string[];
   }>) {
     return this.prisma.settings.upsert({
       where: { id: 'singleton' },
