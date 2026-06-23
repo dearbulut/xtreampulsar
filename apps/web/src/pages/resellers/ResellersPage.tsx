@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useResellers, useCreateReseller, useAddCredits, useDeleteReseller } from '@/hooks/useResellers';
 import type { Reseller } from '@/types';
 import { formatDate, cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 const TIER_COLORS: Record<string, string> = {
   BASIC: 'text-muted bg-muted/10',
@@ -22,7 +23,7 @@ export function ResellersPage() {
   const [creditAmount, setCreditAmount] = useState(100);
   const [creditReason, setCreditReason] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', credits: 0 });
+  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', credits: 0, tier: 'BASIC', notes: '' });
 
   const { data: resellers, isLoading } = useResellers();
   const createReseller = useCreateReseller();
@@ -193,7 +194,7 @@ export function ResellersPage() {
                 onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} />
             </div>
             <div>
-              <label className="label">E-posta</label>
+              <label className="label">E-posta (isteğe bağlı)</label>
               <input className="input" type="email" placeholder="mail@example.com"
                 value={createForm.email}
                 onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} />
@@ -213,13 +214,36 @@ export function ResellersPage() {
                 onChange={(e) => setCreateForm((f) => ({ ...f, credits: parseInt(e.target.value) || 0 }))} />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Tier</label>
+              <select className="input" value={createForm.tier}
+                onChange={(e) => setCreateForm((f) => ({ ...f, tier: e.target.value }))}>
+                <option value="BASIC">BASIC</option>
+                <option value="SILVER">SILVER</option>
+                <option value="GOLD">GOLD</option>
+                <option value="PLATINUM">PLATINUM</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Not (isteğe bağlı)</label>
+            <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
+              value={createForm.notes}
+              onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
+          </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
             <button
               disabled={createReseller.isPending}
               onClick={() => {
-                if (createForm.username && createForm.email && createForm.password) {
-                  createReseller.mutate(createForm, { onSuccess: () => setShowCreate(false) });
+                if (createForm.username && createForm.password) {
+                  createReseller.mutate(
+                    { ...createForm, email: createForm.email || undefined } as Parameters<typeof createReseller.mutate>[0],
+                    { onSuccess: () => { setShowCreate(false); setCreateForm({ username: '', email: '', password: '', credits: 0, tier: 'BASIC', notes: '' }); } },
+                  );
+                } else {
+                  toast.error('Kullanıcı adı ve şifre zorunludur');
                 }
               }}
               className="btn-primary"

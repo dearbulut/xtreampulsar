@@ -419,6 +419,9 @@ model User {
   resellerId String?
   reseller   Reseller? @relation(fields: [resellerId], references: [id])
 
+  packageId String?
+  package   Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
   connections    Connection[]
   refreshTokens  RefreshToken[]
   userBouquets   UserBouquet[]
@@ -426,6 +429,7 @@ model User {
   apiKeys        ApiKey[]
   activityLogs   UserActivityLog[]
 
+  @@index([packageId])
   @@map("users")
 }
 
@@ -457,6 +461,8 @@ model Package {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  users User[]
 
   @@map("packages")
 }

@@ -35,15 +35,23 @@ export class ResellerService {
   }
 
   async create(dto: CreateResellerDto) {
+    const orConditions: { username?: string; email?: string }[] = [{ username: dto.username }];
+    if (dto.email) orConditions.push({ email: dto.email });
     const existing = await this.prisma.reseller.findFirst({
-      where: { OR: [{ username: dto.username }, { email: dto.email }], deletedAt: null },
+      where: { OR: orConditions, deletedAt: null },
     });
     if (existing) throw new ConflictException('Username or email already in use');
 
     const hashed = await bcrypt.hash(dto.password, 12);
-    const { password: _, ...rest } = dto;
     return this.prisma.reseller.create({
-      data: { ...rest, password: hashed, tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM' },
+      data: {
+        username: dto.username,
+        email: dto.email,
+        password: hashed,
+        credits: dto.credits ?? 0,
+        tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
+        ...(dto.parentId ? { parent: { connect: { id: dto.parentId } } } : {}),
+      },
       select: { id: true, username: true, email: true, credits: true, tier: true, createdAt: true },
     });
   }

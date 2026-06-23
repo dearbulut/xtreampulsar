@@ -110,18 +110,50 @@ export class UserService {
     if (existing) throw new ConflictException(`Username "${dto.username}" already taken`);
 
     const hashed = await bcrypt.hash(dto.password, 12);
-    const { password: _, packageId: __, bouquetIds, ...rest } = dto;
+    const { password: _, packageId, bouquetIds, ...rest } = dto;
+
+    // Resolve package defaults (expiresAt, maxConnections)
+    let resolvedExpiresAt = dto.expiresAt ? new Date(dto.expiresAt) : undefined;
+    let resolvedMaxConnections = dto.maxConnections ?? 1;
+
+    if (packageId) {
+      const pkg = await this.prisma.package.findUnique({ where: { id: packageId } });
+      if (pkg) {
+        if (!dto.expiresAt) {
+          const now = new Date();
+          resolvedExpiresAt = new Date(now.getTime() + pkg.durationDays * 86_400_000);
+        }
+        if (!dto.maxConnections) {
+          resolvedMaxConnections = pkg.maxConnections;
+        }
+        // Deduct credits from reseller if applicable
+        if (dto.resellerId) {
+          await this.prisma.reseller.update({
+            where: { id: dto.resellerId },
+            data: { credits: { decrement: pkg.creditCost } },
+          }).catch(() => { /* non-fatal — reseller might not exist */ });
+        }
+      }
+    }
+
+    if (!resolvedExpiresAt) {
+      // Default: 30 days if nothing provided
+      const now = new Date();
+      resolvedExpiresAt = new Date(now.getTime() + 30 * 86_400_000);
+    }
 
     const user = await this.prisma.user.create({
       data: {
         ...rest,
         password: hashed,
-        expiresAt: new Date(dto.expiresAt),
+        expiresAt: resolvedExpiresAt,
+        maxConnections: resolvedMaxConnections,
         role: (dto.role ?? 'USER') as 'ADMIN' | 'RESELLER' | 'USER',
+        ...(packageId ? { packageId } : {}),
       },
       select: {
         id: true, username: true, role: true, status: true,
-        maxConnections: true, expiresAt: true, createdAt: true,
+        maxConnections: true, expiresAt: true, createdAt: true, packageId: true,
       },
     });
 

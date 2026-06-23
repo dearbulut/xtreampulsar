@@ -155,6 +155,7 @@ export interface Package {
   description?: string;
   isActive: boolean;
   createdAt: string;
+  _count?: { users: number };
 }
 
 // ─── EPG ─────────────────────────────────────────────────────────────────

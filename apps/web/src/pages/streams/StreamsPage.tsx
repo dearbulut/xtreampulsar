@@ -293,12 +293,38 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     {
       key: 'name',
       header: 'İsim',
-      render: (r) => (
-        <div>
-          <div className="text-sm font-medium text-slate-100">{r.name}</div>
-          {r.category && <div className="text-xs text-muted mt-0.5">{r.category.name}</div>}
-        </div>
-      ),
+      render: (r) => {
+        const sr = r as Stream & { todayViews?: number; totalViews?: number; lastViewedAt?: string | null };
+        const hasStats = (sr.todayViews ?? 0) > 0 || (sr.totalViews ?? 0) > 0;
+        return (
+          <div className="relative group">
+            <div>
+              <div className="text-sm font-medium text-slate-100">{r.name}</div>
+              {r.category && <div className="text-xs text-muted mt-0.5">{r.category.name}</div>}
+            </div>
+            {hasStats && (
+              <div className="absolute left-0 top-full mt-1 z-30 w-52 hidden group-hover:block pointer-events-none">
+                <div className="bg-surface border border-border rounded-xl shadow-2xl p-3 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Bugün</span>
+                    <span className="font-semibold text-slate-200">{sr.todayViews ?? 0} izlenme</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">Toplam</span>
+                    <span className="font-semibold text-slate-200">{sr.totalViews ?? 0} izlenme</span>
+                  </div>
+                  {sr.lastViewedAt && (
+                    <div className="flex items-center justify-between border-t border-border pt-1.5 mt-1.5">
+                      <span className="text-muted">Son izleme</span>
+                      <span className="text-slate-400">{new Date(sr.lastViewedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'primaryUrl',

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Trash2, Edit2, FolderOpen } from 'lucide-react';
+import { Plus, Trash2, Edit2, FolderOpen, Square, CheckSquare } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, type Category } from '@/hooks/useCategories';
 import { useBouquets } from '@/hooks/useBouquets';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 const TYPE_TABS: TabItem[] = [
   { id: '', label: 'Tümü' },
@@ -34,12 +35,36 @@ export function CategoriesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(FORM_DEFAULT);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: categories = [], isLoading } = useCategories(activeTab || undefined);
   const { data: bouquets = [] } = useBouquets();
   const createCat = useCreateCategory();
   const updateCat = useUpdateCategory();
   const deleteCat = useDeleteCategory();
+
+  const toggleSelect = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const toggleAll = () => {
+    if (selected.size === categories.length) setSelected(new Set());
+    else setSelected(new Set(categories.map((c) => c.id)));
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size) return;
+    if (!confirm(`${selected.size} kategori silinsin mi?`)) return;
+    let failed = 0;
+    for (const id of selected) {
+      try { await deleteCat.mutateAsync(id); } catch { failed++; }
+    }
+    setSelected(new Set());
+    if (failed > 0) toast.error(`${failed} kategori silinemedi`);
+    else toast.success('Seçili kategoriler silindi');
+  };
 
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value as FormState[typeof k] }));
@@ -73,6 +98,24 @@ export function CategoriesPage() {
 
   const columns: Column<Category>[] = [
     {
+      key: 'select',
+      header: (
+        <button onClick={toggleAll} className="p-0.5">
+          {selected.size === categories.length && categories.length > 0
+            ? <CheckSquare className="w-4 h-4 text-primary" />
+            : <Square className="w-4 h-4 text-muted" />}
+        </button>
+      ) as unknown as string,
+      className: 'w-10',
+      render: (row) => (
+        <button onClick={() => toggleSelect(row.id)} className="p-0.5">
+          {selected.has(row.id)
+            ? <CheckSquare className="w-4 h-4 text-primary" />
+            : <Square className="w-4 h-4 text-muted" />}
+        </button>
+      ),
+    },
+    {
       key: 'name',
       header: 'Kategori',
       render: (row) => (
@@ -96,8 +139,10 @@ export function CategoriesPage() {
     },
     {
       key: 'streams',
-      header: 'Akış',
-      render: (row) => <span className="text-sm">{row._count?.streams ?? 0}</span>,
+      header: 'Stream',
+      render: (row) => (
+        <span className="text-sm font-medium text-slate-300">{row._count?.streams ?? 0} kanal</span>
+      ),
     },
     {
       key: 'isActive',
@@ -132,9 +177,16 @@ export function CategoriesPage() {
           <h1 className="text-2xl font-bold text-slate-100">Kategoriler</h1>
           <p className="text-sm text-muted mt-0.5">{categories.length} kategori</p>
         </div>
-        <button onClick={openAdd} className="btn btn-primary">
-          <Plus className="w-4 h-4" /> Kategori Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button onClick={() => void bulkDelete()} className="btn btn-ghost text-danger border-danger/30 hover:bg-danger/10 text-sm">
+              <Trash2 className="w-4 h-4" /> {selected.size} Sil
+            </button>
+          )}
+          <button onClick={openAdd} className="btn btn-primary">
+            <Plus className="w-4 h-4" /> Kategori Ekle
+          </button>
+        </div>
       </div>
 
       <Tabs tabs={tabsWithCount} active={activeTab} onChange={setActiveTab} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins } from 'lucide-react';
+import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '@/hooks/usePackages';
 import type { Package } from '@/types';
@@ -89,12 +89,12 @@ export function PackagesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {packages.map((pkg) => (
-            <div key={pkg.id} className="card p-5 flex flex-col gap-4 hover:border-primary/30 transition-colors">
+            <div key={pkg.id} className={cn('card p-5 flex flex-col gap-4 hover:border-primary/30 transition-colors', !pkg.isActive && 'opacity-60')}>
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <PackageIcon className="w-5 h-5 text-primary-light" />
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', pkg.isActive ? 'bg-primary/10' : 'bg-surface-2')}>
+                    <PackageIcon className={cn('w-5 h-5', pkg.isActive ? 'text-primary-light' : 'text-muted')} />
                   </div>
                   <div>
                     <div className="font-semibold text-slate-200">{pkg.name}</div>
@@ -104,6 +104,15 @@ export function PackagesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  <button
+                    className="btn btn-ghost p-1.5"
+                    title={pkg.isActive ? 'Pasif yap' : 'Aktif yap'}
+                    onClick={() => updatePkg.mutate({ id: pkg.id, data: { isActive: !pkg.isActive } })}
+                  >
+                    {pkg.isActive
+                      ? <ToggleRight className="w-4 h-4 text-emerald-400" />
+                      : <ToggleLeft className="w-4 h-4 text-muted" />}
+                  </button>
                   <button className="btn btn-ghost p-1.5" onClick={() => openEdit(pkg)}>
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
@@ -117,8 +126,8 @@ export function PackagesPage() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className={cn('rounded-xl p-3 text-center', 'bg-surface-2')}>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-surface-2 rounded-xl p-3 text-center">
                   <Clock className="w-3.5 h-3.5 text-muted mx-auto mb-1" />
                   <div className="text-sm font-bold text-slate-200">{pkg.durationDays}g</div>
                   <div className="text-[10px] text-muted">Süre</div>
@@ -132,6 +141,11 @@ export function PackagesPage() {
                   <Coins className="w-3.5 h-3.5 text-primary-light mx-auto mb-1" />
                   <div className="text-sm font-bold text-primary-light">{pkg.creditCost}</div>
                   <div className="text-[10px] text-muted">Kredi</div>
+                </div>
+                <div className="bg-blue-500/10 rounded-xl p-3 text-center">
+                  <Users className="w-3.5 h-3.5 text-blue-400 mx-auto mb-1" />
+                  <div className="text-sm font-bold text-blue-400">{pkg._count?.users ?? 0}</div>
+                  <div className="text-[10px] text-muted">Kullanıcı</div>
                 </div>
               </div>
 

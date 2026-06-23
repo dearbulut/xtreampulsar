@@ -112,10 +112,17 @@ export class StreamService {
     };
 
     try {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
       const [items, total] = await Promise.all([
         this.prisma.stream.findMany({
           where,
-          include: { category: true, server: true },
+          include: {
+            category: true,
+            server: true,
+            _count: { select: { connections: true } },
+          },
           orderBy: { sortOrder: 'asc' },
           skip: (page - 1) * limit,
           take: limit,
@@ -123,8 +130,38 @@ export class StreamService {
         this.prisma.stream.count({ where }),
       ]);
 
+      const streamIds = items.map((s) => s.id);
+
+      // Fetch today's view counts and lastViewedAt in parallel
+      const [todayGroups, lastViewedGroups] = await Promise.all([
+        streamIds.length > 0
+          ? this.prisma.connection.groupBy({
+              by: ['streamId'],
+              where: { streamId: { in: streamIds }, startedAt: { gte: startOfToday } },
+              _count: { streamId: true },
+            })
+          : Promise.resolve([]),
+        streamIds.length > 0
+          ? this.prisma.connection.groupBy({
+              by: ['streamId'],
+              where: { streamId: { in: streamIds } },
+              _max: { startedAt: true },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const todayMap = new Map(todayGroups.map((g) => [g.streamId, g._count.streamId]));
+      const lastMap = new Map(lastViewedGroups.map((g) => [g.streamId, g._max.startedAt]));
+
+      const enriched = items.map((s) => ({
+        ...s,
+        todayViews: todayMap.get(s.id) ?? 0,
+        totalViews: s._count.connections,
+        lastViewedAt: lastMap.get(s.id) ?? null,
+      }));
+
       return {
-        items,
+        items: enriched,
         total,
         page,
         limit,

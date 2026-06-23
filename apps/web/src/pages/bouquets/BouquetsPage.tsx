@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, RefreshCw, Layers, List, Search, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { Plus, Trash2, Edit2, RefreshCw, Layers, List, Search, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Copy } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -8,6 +8,7 @@ import {
   useUpdateBouquet,
   useDeleteBouquet,
   useResignBouquet,
+  useCloneBouquet,
   useBouquetStreams,
   useReplaceBouquetStreams,
   type Bouquet,
@@ -206,6 +207,7 @@ export function BouquetsPage() {
   const updateBouquet = useUpdateBouquet();
   const deleteBouquet = useDeleteBouquet();
   const resignBouquet = useResignBouquet();
+  const cloneBouquet = useCloneBouquet();
 
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -279,6 +281,13 @@ export function BouquetsPage() {
       ),
     },
     {
+      key: 'users',
+      header: 'Kullanıcılar',
+      render: (row) => (
+        <span className="text-sm font-semibold text-blue-400">{row._count?.userBouquets ?? 0}</span>
+      ),
+    },
+    {
       key: 'isActive',
       header: 'Durum',
       render: (row) => (
@@ -307,6 +316,14 @@ export function BouquetsPage() {
             disabled={resigningId === row.id}
           >
             <RefreshCw className={cn('w-3.5 h-3.5', resigningId === row.id && 'animate-spin')} />
+          </button>
+          <button
+            className="btn btn-ghost p-1.5 text-xs"
+            title="Klonla"
+            onClick={(e) => { e.stopPropagation(); cloneBouquet.mutate(row.id); }}
+            disabled={cloneBouquet.isPending}
+          >
+            <Copy className="w-3.5 h-3.5 text-emerald-400" />
           </button>
           <button className="btn btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
             <Edit2 className="w-3.5 h-3.5" />

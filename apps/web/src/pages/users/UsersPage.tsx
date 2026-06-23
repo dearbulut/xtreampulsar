@@ -81,7 +81,7 @@ export function UsersPage() {
   const [qrData, setQrData] = useState<{ qrCodeImage: string; serverUrl: string; username: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [createForm, setCreateForm] = useState({
-    username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[],
+    username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[], packageId: '',
   });
   // Bulk renew state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -376,6 +376,46 @@ export function UsersPage() {
       {/* Create modal */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Yeni Kullanıcı" size="md">
         <div className="space-y-4">
+          {/* Package selector */}
+          {packages.length > 0 && (
+            <div>
+              <label className="label">Paket</label>
+              <select
+                className="input"
+                value={createForm.packageId}
+                onChange={(e) => {
+                  const pkg = packages.find((p) => p.id === e.target.value);
+                  if (pkg) {
+                    const expDate = new Date();
+                    expDate.setDate(expDate.getDate() + pkg.durationDays);
+                    const local = new Date(expDate.getTime() - expDate.getTimezoneOffset() * 60000)
+                      .toISOString().slice(0, 16);
+                    setCreateForm((f) => ({
+                      ...f,
+                      packageId: pkg.id,
+                      maxConnections: pkg.maxConnections,
+                      expiresAt: local,
+                    }));
+                  } else {
+                    setCreateForm((f) => ({ ...f, packageId: '' }));
+                  }
+                }}
+              >
+                <option value="">Paket seçin (isteğe bağlı)…</option>
+                {packages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {p.durationDays}g / {p.maxConnections} bağlantı / {p.creditCost} kredi
+                  </option>
+                ))}
+              </select>
+              {createForm.packageId && (() => {
+                const pkg = packages.find((p) => p.id === createForm.packageId);
+                return pkg ? (
+                  <p className="text-xs text-warning mt-1">Bu kullanıcı {pkg.creditCost} kredi harcayacak</p>
+                ) : null;
+              })()}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Kullanıcı Adı</label>
@@ -393,7 +433,7 @@ export function UsersPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Maks. Bağlantı</label>
-              <input className="input" type="number" min={1} max={10}
+              <input className="input" type="number" min={1} max={100}
                 value={createForm.maxConnections}
                 onChange={(e) => setCreateForm((f) => ({ ...f, maxConnections: parseInt(e.target.value) || 1 }))} />
             </div>
@@ -406,7 +446,7 @@ export function UsersPage() {
           </div>
           <div>
             <label className="label">Notlar (isteğe bağlı)</label>
-            <input className="input" placeholder="Not ekle…"
+            <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
               value={createForm.notes}
               onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
@@ -426,12 +466,22 @@ export function UsersPage() {
             <button
               disabled={createUser.isPending}
               onClick={() => {
-                if (createForm.username && createForm.password && createForm.expiresAt) {
-                  const { bouquetIds, ...rest } = createForm;
+                if (createForm.username && createForm.password) {
+                  const { bouquetIds, packageId: pkgId, ...rest } = createForm;
+                  const expiresAt = createForm.expiresAt
+                    ? new Date(createForm.expiresAt).toISOString()
+                    : undefined;
                   createUser.mutate(
-                    { ...rest, expiresAt: new Date(createForm.expiresAt).toISOString(), ...(bouquetIds.length > 0 ? { bouquetIds } : {}) },
-                    { onSuccess: () => setShowCreate(false) },
+                    {
+                      ...rest,
+                      ...(expiresAt ? { expiresAt } : {}),
+                      ...(pkgId ? { packageId: pkgId } : {}),
+                      ...(bouquetIds.length > 0 ? { bouquetIds } : {}),
+                    } as Parameters<typeof createUser.mutate>[0],
+                    { onSuccess: () => { setShowCreate(false); setCreateForm({ username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [], packageId: '' }); } },
                   );
+                } else {
+                  toast.error('Kullanıcı adı ve şifre zorunludur');
                 }
               }}
               className="btn-primary"

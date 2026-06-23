@@ -10,7 +10,7 @@ export class BouquetService {
   findAll() {
     return this.prisma.bouquet.findMany({
       include: {
-        _count: { select: { categories: true, bouquetStreams: true } },
+        _count: { select: { categories: true, bouquetStreams: true, userBouquets: true } },
       },
       orderBy: { sortOrder: 'asc' },
     });
@@ -21,7 +21,7 @@ export class BouquetService {
       where: { id },
       include: {
         categories: { include: { _count: { select: { streams: true } } } },
-        _count: { select: { bouquetStreams: true } },
+        _count: { select: { bouquetStreams: true, userBouquets: true } },
       },
     });
     if (!bouquet) throw new NotFoundException(`Bouquet ${id} not found`);
@@ -40,6 +40,35 @@ export class BouquetService {
   async remove(id: string): Promise<void> {
     await this.findById(id);
     await this.prisma.bouquet.delete({ where: { id } });
+  }
+
+  async clone(bouquetId: string) {
+    const source = await this.prisma.bouquet.findUnique({
+      where: { id: bouquetId },
+      include: { bouquetStreams: { select: { streamId: true, sortOrder: true } } },
+    });
+    if (!source) throw new NotFoundException(`Bouquet ${bouquetId} not found`);
+
+    const cloned = await this.prisma.bouquet.create({
+      data: {
+        name: `${source.name} (Kopya)`,
+        description: source.description ?? undefined,
+        isActive: source.isActive,
+      },
+    });
+
+    if (source.bouquetStreams.length > 0) {
+      await this.prisma.bouquetStream.createMany({
+        data: source.bouquetStreams.map((bs) => ({
+          bouquetId: cloned.id,
+          streamId: bs.streamId,
+          sortOrder: bs.sortOrder,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return cloned;
   }
 
   async setStreams(
@@ -113,17 +142,7 @@ export class BouquetService {
 
   async resign(bouquetId: string): Promise<{ usersUpdated: number }> {
     await this.findById(bouquetId);
-
-    // Mark all users with access to this bouquet for playlist refresh
-    // In a full implementation, this would trigger cache invalidation via Redis
-    // and rebuild Xtream-compatible playlists for affected users.
-    // For now, we return a stub with the affected user count.
-    const streamCount = await this.prisma.bouquetStream.count({
-      where: { bouquetId },
-    });
-
-    return {
-      usersUpdated: 0, // TODO: resolve users by bouquet assignment when UserBouquet model is added
-    };
+    const count = await this.prisma.userBouquet.count({ where: { bouquetId } });
+    return { usersUpdated: count };
   }
 }

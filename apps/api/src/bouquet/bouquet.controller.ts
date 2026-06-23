@@ -75,4 +75,10 @@ export class BouquetController {
   resign(@Param('id') id: string) {
     return this.bouquetService.resign(id);
   }
+
+  @Post(':id/clone')
+  @Roles('ADMIN')
+  clone(@Param('id') id: string) {
+    return this.bouquetService.clone(id);
+  }
 }

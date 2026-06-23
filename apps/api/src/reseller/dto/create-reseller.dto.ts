@@ -13,8 +13,9 @@ export class CreateResellerDto {
   @IsString()
   username!: string;
 
+  @IsOptional()
   @IsEmail()
-  email!: string;
+  email?: string;
 
   @IsString()
   @MinLength(6)

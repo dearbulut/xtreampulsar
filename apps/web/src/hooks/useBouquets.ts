@@ -9,7 +9,7 @@ export interface Bouquet {
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
-  _count?: { categories: number; bouquetStreams: number };
+  _count?: { categories: number; bouquetStreams: number; userBouquets: number };
 }
 
 export function useBouquets() {
@@ -117,5 +117,17 @@ export function useReplaceBouquetStreams() {
       toast.success('Bouquet stream listesi güncellendi');
     },
     onError: () => toast.error('Güncelleme başarısız'),
+  });
+}
+
+export function useCloneBouquet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/bouquets/${id}/clone`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['bouquets'] });
+      toast.success('Bouquet kopyalandı');
+    },
+    onError: () => toast.error('Kopyalama başarısız'),
   });
 }

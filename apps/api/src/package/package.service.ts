@@ -10,11 +10,15 @@ export class PackageService {
   findAll() {
     return this.prisma.package.findMany({
       orderBy: { creditCost: 'asc' },
+      include: { _count: { select: { users: true } } },
     });
   }
 
   async findById(id: string) {
-    const pkg = await this.prisma.package.findUnique({ where: { id } });
+    const pkg = await this.prisma.package.findUnique({
+      where: { id },
+      include: { _count: { select: { users: true } } },
+    });
     if (!pkg) throw new NotFoundException(`Package ${id} not found`);
     return pkg;
   }
