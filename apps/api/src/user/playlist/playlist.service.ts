@@ -110,30 +110,34 @@ export class PlaylistService {
     const filters = playlist.filters as PlaylistFilters | null;
     const streamType = filters?.onlyLive ? 'live' : filters?.onlyVod ? 'vod' : 'all';
     const ext = playlist.type === 'ts' ? 'ts' : 'm3u8';
+    const isM3uPlus = playlist.type === 'm3u_plus';
     const baseUrl = this.buildBaseUrl();
     const { username } = playlist.user;
     // The playlist token acts as "password" in stream URLs — findByCredentials also validates tokens
     const pwd = token;
 
-    const lines: string[] = ['#EXTM3U'];
+    const epgUrl = `${baseUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(pwd)}`;
+    const lines: string[] = [
+      `#EXTM3U url-tvg="${epgUrl}" tvg-shift=0 x-tvg-url="${epgUrl}"`,
+    ];
 
     if (streamType === 'all' || streamType === 'live') {
       const streams = await this.streamService.findAllLive(playlist.userId);
       for (const s of streams) {
-        lines.push(
-          `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`,
-          `${baseUrl}/live/${username}/${pwd}/${s.externalId}.${ext}`,
-        );
+        const extinf = isM3uPlus
+          ? `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`
+          : `#EXTINF:-1,${s.name}`;
+        lines.push(extinf, `${baseUrl}/live/${username}/${pwd}/${s.externalId}.${ext}`);
       }
     }
 
     if (streamType === 'all' || streamType === 'vod') {
       const streams = await this.streamService.findAllVod(playlist.userId);
       for (const s of streams) {
-        lines.push(
-          `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`,
-          `${baseUrl}/movie/${username}/${pwd}/${s.externalId}.mp4`,
-        );
+        const extinf = isM3uPlus
+          ? `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`
+          : `#EXTINF:-1,${s.name}`;
+        lines.push(extinf, `${baseUrl}/movie/${username}/${pwd}/${s.externalId}.mp4`);
       }
     }
 
