@@ -80,8 +80,10 @@ export function UsersPage() {
   const [qrUserId, setQrUserId] = useState<string | null>(null);
   const [qrData, setQrData] = useState<{ qrCodeImage: string; serverUrl: string; username: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [] as string[], packageId: '',
+  const [createForm, setCreateForm] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return { username: '', password: '', maxConnections: 1, expiresAt: d.toISOString().split('T')[0], notes: '', bouquetIds: [] as string[], packageId: '' };
   });
   // Bulk renew state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -388,8 +390,7 @@ export function UsersPage() {
                   if (pkg) {
                     const expDate = new Date();
                     expDate.setDate(expDate.getDate() + pkg.durationDays);
-                    const local = new Date(expDate.getTime() - expDate.getTimezoneOffset() * 60000)
-                      .toISOString().slice(0, 16);
+                    const local = expDate.toISOString().split('T')[0];
                     setCreateForm((f) => ({
                       ...f,
                       packageId: pkg.id,
@@ -439,7 +440,7 @@ export function UsersPage() {
             </div>
             <div>
               <label className="label">Son Tarih</label>
-              <input className="input" type="datetime-local"
+              <input className="input" type="date"
                 value={createForm.expiresAt}
                 onChange={(e) => setCreateForm((f) => ({ ...f, expiresAt: e.target.value }))} />
             </div>
@@ -478,7 +479,7 @@ export function UsersPage() {
                       ...(pkgId ? { packageId: pkgId } : {}),
                       ...(bouquetIds.length > 0 ? { bouquetIds } : {}),
                     } as Parameters<typeof createUser.mutate>[0],
-                    { onSuccess: () => { setShowCreate(false); setCreateForm({ username: '', password: '', maxConnections: 1, expiresAt: '', notes: '', bouquetIds: [], packageId: '' }); } },
+                    { onSuccess: () => { setShowCreate(false); const d2 = new Date(); d2.setDate(d2.getDate() + 30); setCreateForm({ username: '', password: '', maxConnections: 1, expiresAt: d2.toISOString().split('T')[0], notes: '', bouquetIds: [], packageId: '' }); } },
                   );
                 } else {
                   toast.error('Kullanıcı adı ve şifre zorunludur');
