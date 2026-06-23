@@ -18,7 +18,6 @@ ENV HOSTNAME=0.0.0.0
 
 COPY --from=builder /app/apps/website/.next/standalone ./
 COPY --from=builder /app/apps/website/.next/static ./apps/website/.next/static
-COPY --from=builder /app/apps/website/public ./apps/website/public
 
 EXPOSE 3002
 CMD ["node", "apps/website/server.js"]
