@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { ActivityFilters } from '@/hooks/useUserActivity';
 import { useResellers } from '@/hooks/useResellers';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -22,10 +23,11 @@ import type { User } from '@/types';
 import { daysLeft, formatDate, cn } from '@/lib/utils';
 
 interface UserStats {
-  totalWatchSeconds: number;
-  thisMonthConnections: number;
-  lastMonthConnections: number;
-  topChannels: { streamId: string; name: string; tvgLogo: string | null; count: number }[];
+  totalDurationSeconds: number;
+  totalBytesTransferred: string;
+  lastActivity: { createdAt: string; action: string; streamId: string | null; country: string | null; deviceType: string | null } | null;
+  deviceBreakdown: Record<string, number>;
+  actionBreakdown: Record<string, number>;
 }
 
 function useUserStats(userId: string | null) {
@@ -45,6 +47,28 @@ function formatWatchTime(seconds: number): string {
   if (h > 0) return `${h}s ${m}dk`;
   return `${m}dk`;
 }
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+  if (bytes >= 1_048_576)     return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return '-';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m >= 60) return `${Math.floor(m / 60)}s ${m % 60}dk`;
+  return m > 0 ? `${m}dk ${s}s` : `${s}s`;
+}
+
+const DEVICE_ICON: Record<string, React.ElementType> = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tv: Tv,
+  unknown: Monitor,
+};
 
 function getParam(key: string) {
   return new URLSearchParams(window.location.search).get(key) ?? '';
@@ -652,7 +676,11 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const [tab, setTab] = useState<'general' | 'activity' | 'stats'>('general');
   const [editPassword, setEditPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
-  const { data: activityData, isLoading: activityLoading } = useUserActivity(userId);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityFilters, setActivityFilters] = useState<ActivityFilters>({});
+  const [filterDraft, setFilterDraft] = useState({ startDate: '', endDate: '', action: '' });
+
+  const { data: activityData, isLoading: activityLoading } = useUserActivity(userId, activityPage, 50, activityFilters);
   const { data: stats, isLoading: statsLoading } = useUserStats(userId);
 
   if (!user) return null;
@@ -665,7 +693,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
       <div className="flex border-b border-border">
         {([
           { key: 'general', label: 'Genel', icon: UserIcon },
-          { key: 'activity', label: 'Bağlantı Geçmişi', icon: Activity },
+          { key: 'activity', label: 'Aktivite', icon: Activity },
           { key: 'stats', label: 'İstatistikler', icon: BarChart2 },
         ] as { key: 'general' | 'activity' | 'stats'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button
@@ -762,66 +790,249 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
 
       {/* Tab: Activity */}
       {tab === 'activity' && (
-        <div className="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
-          {activityLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
-          {!activityLoading && (!activityData?.items || activityData.items.length === 0) && (
-            <p className="text-muted text-sm text-center py-6">Aktivite kaydı yok</p>
-          )}
-          {activityData?.items.map((log) => (
-            <div key={log.id} className="flex items-start gap-3 text-sm py-2 border-b border-border/30">
-              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', ACTION_BADGE[log.action] ?? 'bg-surface-2 text-muted')}>
-                {log.action}
-              </span>
-              <div className="flex-1 min-w-0">
-                {log.ip && <span className="font-mono text-xs text-muted mr-2">{log.ip}</span>}
-                {log.userAgent && <span className="text-xs text-muted truncate block max-w-xs">{log.userAgent}</span>}
-                {log.streamId && <span className="text-xs text-muted">Stream: {log.streamId.slice(0, 8)}…</span>}
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Stat cards */}
+          {statsLoading && <div className="grid grid-cols-4 gap-3"><div className="card p-4 col-span-4 text-center text-muted text-sm">Yükleniyor…</div></div>}
+          {stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="card p-3 flex flex-col items-center gap-1 text-center">
+                <Timer className="w-4 h-4 text-primary mb-0.5" />
+                <div className="text-lg font-bold text-slate-100">{formatWatchTime(stats.totalDurationSeconds)}</div>
+                <div className="text-[11px] text-muted">Toplam İzleme</div>
               </div>
-              <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString('tr-TR')}</span>
+              <div className="card p-3 flex flex-col items-center gap-1 text-center">
+                <Database className="w-4 h-4 text-success mb-0.5" />
+                <div className="text-lg font-bold text-slate-100">{formatBytes(Number(stats.totalBytesTransferred))}</div>
+                <div className="text-[11px] text-muted">Toplam Veri</div>
+              </div>
+              <div className="card p-3 flex flex-col items-center gap-1 text-center">
+                <Clock className="w-4 h-4 text-warning mb-0.5" />
+                <div className="text-sm font-semibold text-slate-100 leading-tight">
+                  {stats.lastActivity ? new Date(stats.lastActivity.createdAt).toLocaleDateString('tr-TR') : '-'}
+                </div>
+                <div className="text-[11px] text-muted">Son Aktivite</div>
+              </div>
+              <div className="card p-3 flex flex-col items-center gap-1 text-center">
+                {(() => {
+                  const topDevice = Object.entries(stats.deviceBreakdown).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'unknown';
+                  const Icon = DEVICE_ICON[topDevice] ?? Monitor;
+                  return (
+                    <>
+                      <Icon className="w-4 h-4 text-slate-400 mb-0.5" />
+                      <div className="text-sm font-semibold text-slate-100 capitalize">{topDevice}</div>
+                      <div className="text-[11px] text-muted">Ana Cihaz</div>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-end">
+            <div>
+              <div className="text-[11px] text-muted mb-1">Başlangıç</div>
+              <input
+                type="date"
+                className="input text-xs py-1.5 px-2 h-8"
+                value={filterDraft.startDate}
+                onChange={(e) => setFilterDraft((f) => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div className="text-[11px] text-muted mb-1">Bitiş</div>
+              <input
+                type="date"
+                className="input text-xs py-1.5 px-2 h-8"
+                value={filterDraft.endDate}
+                onChange={(e) => setFilterDraft((f) => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div className="text-[11px] text-muted mb-1">Aksiyon</div>
+              <select
+                className="input text-xs py-1.5 px-2 h-8"
+                value={filterDraft.action}
+                onChange={(e) => setFilterDraft((f) => ({ ...f, action: e.target.value }))}
+              >
+                <option value="">Tümü</option>
+                {['LOGIN', 'STREAM_START', 'STREAM_STOP', 'PASSWORD_CHANGE'].map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              className="btn-primary text-xs px-3 h-8"
+              onClick={() => {
+                setActivityPage(1);
+                setActivityFilters({
+                  startDate: filterDraft.startDate || undefined,
+                  endDate: filterDraft.endDate || undefined,
+                  action: filterDraft.action || undefined,
+                });
+              }}
+            >
+              Filtrele
+            </button>
+            {(activityFilters.startDate || activityFilters.endDate || activityFilters.action) && (
+              <button
+                className="btn-ghost text-xs px-3 h-8"
+                onClick={() => { setFilterDraft({ startDate: '', endDate: '', action: '' }); setActivityFilters({}); setActivityPage(1); }}
+              >
+                Temizle
+              </button>
+            )}
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted border-b border-border">
+                  <th className="text-left py-2 px-2 font-medium">Tarih/Saat</th>
+                  <th className="text-left py-2 px-2 font-medium">Aksiyon</th>
+                  <th className="text-left py-2 px-2 font-medium">IP</th>
+                  <th className="text-left py-2 px-2 font-medium">Ülke</th>
+                  <th className="text-left py-2 px-2 font-medium">Cihaz</th>
+                  <th className="text-left py-2 px-2 font-medium">Süre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityLoading && (
+                  <tr><td colSpan={6} className="text-center text-muted py-8">Yükleniyor…</td></tr>
+                )}
+                {!activityLoading && (!activityData?.items || activityData.items.length === 0) && (
+                  <tr><td colSpan={6} className="text-center text-muted py-8">Kayıt bulunamadı</td></tr>
+                )}
+                {activityData?.items.map((log) => {
+                  const DeviceIcon = DEVICE_ICON[log.deviceType ?? 'unknown'] ?? Monitor;
+                  return (
+                    <tr key={log.id} className="border-b border-border/20 hover:bg-surface-2/40 transition-colors">
+                      <td className="py-2 px-2 text-muted font-mono whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleString('tr-TR')}
+                      </td>
+                      <td className="py-2 px-2">
+                        <span className={cn('px-1.5 py-0.5 rounded font-medium', ACTION_BADGE[log.action] ?? 'bg-surface-2 text-muted')}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 font-mono text-muted">{log.ip ?? '-'}</td>
+                      <td className="py-2 px-2 text-slate-300">{log.country ?? '-'}</td>
+                      <td className="py-2 px-2">
+                        <span className="flex items-center gap-1 text-slate-400">
+                          <DeviceIcon className="w-3 h-3" />
+                          <span className="capitalize">{log.deviceType ?? '-'}</span>
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-muted">{formatDuration(log.duration)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {activityData && activityData.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-muted">
+                {activityData.total} kayıt — Sayfa {activityData.page}/{activityData.totalPages}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  className="btn-ghost p-1.5 disabled:opacity-30"
+                  disabled={activityPage === 1}
+                  onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  className="btn-ghost p-1.5 disabled:opacity-30"
+                  disabled={activityPage >= activityData.totalPages}
+                  onClick={() => setActivityPage((p) => p + 1)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Tab: Stats */}
       {tab === 'stats' && (
-        <div className="p-5">
+        <div className="p-5 space-y-5">
           {statsLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
           {stats && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
+            <>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{formatWatchTime(stats.totalWatchSeconds)}</div>
+                  <div className="text-xl font-bold text-primary">{formatWatchTime(stats.totalDurationSeconds)}</div>
                   <div className="text-xs text-muted mt-1">Toplam İzleme</div>
                 </div>
                 <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-success">{stats.thisMonthConnections}</div>
-                  <div className="text-xs text-muted mt-1">Bu Ay</div>
-                </div>
-                <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-slate-400">{stats.lastMonthConnections}</div>
-                  <div className="text-xs text-muted mt-1">Geçen Ay</div>
+                  <div className="text-xl font-bold text-success">{formatBytes(Number(stats.totalBytesTransferred))}</div>
+                  <div className="text-xs text-muted mt-1">Toplam Veri</div>
                 </div>
               </div>
 
-              {stats.topChannels.length > 0 && (
+              {Object.keys(stats.actionBreakdown).length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-slate-300 mb-3">En Çok İzlenen 5 Kanal</div>
-                  <div className="space-y-2">
-                    {stats.topChannels.map((ch, i) => (
-                      <div key={ch.streamId} className="flex items-center gap-3 py-2 border-b border-border/30">
-                        <span className="text-xs text-muted w-4 text-center">{i + 1}</span>
-                        {ch.tvgLogo && (
-                          <img src={ch.tvgLogo} alt="" className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        )}
-                        <span className="flex-1 text-sm text-slate-300 truncate">{ch.name}</span>
-                        <span className="text-xs text-muted font-mono">{ch.count}x</span>
+                  <div className="text-sm font-medium text-slate-300 mb-2">Aksiyon Dağılımı</div>
+                  <div className="space-y-1.5">
+                    {Object.entries(stats.actionBreakdown).map(([action, count]) => (
+                      <div key={action} className="flex items-center gap-2">
+                        <span className={cn('text-xs px-2 py-0.5 rounded font-medium w-36 text-center', ACTION_BADGE[action] ?? 'bg-surface-2 text-muted')}>
+                          {action}
+                        </span>
+                        <div className="flex-1 bg-surface-2 rounded-full h-1.5">
+                          <div
+                            className="bg-primary/60 h-1.5 rounded-full"
+                            style={{ width: `${Math.min(100, (count / Math.max(...Object.values(stats.actionBreakdown))) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted font-mono w-8 text-right">{count}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
+
+              {Object.keys(stats.deviceBreakdown).length > 0 && (
+                <div>
+                  <div className="text-sm font-medium text-slate-300 mb-2">Cihaz Dağılımı</div>
+                  <div className="flex gap-3 flex-wrap">
+                    {Object.entries(stats.deviceBreakdown).map(([device, count]) => {
+                      const Icon = DEVICE_ICON[device] ?? Monitor;
+                      return (
+                        <div key={device} className="card px-3 py-2 flex items-center gap-2">
+                          <Icon className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-xs capitalize text-slate-300">{device}</span>
+                          <span className="text-xs font-bold text-primary">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {stats.lastActivity && (
+                <div className="card p-3">
+                  <div className="text-xs text-muted mb-1">Son Aktivite</div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-xs px-2 py-0.5 rounded font-medium', ACTION_BADGE[stats.lastActivity.action] ?? 'bg-surface-2 text-muted')}>
+                      {stats.lastActivity.action}
+                    </span>
+                    <span className="text-xs text-muted">{new Date(stats.lastActivity.createdAt).toLocaleString('tr-TR')}</span>
+                    {stats.lastActivity.country && (
+                      <span className="flex items-center gap-1 text-xs text-muted ml-auto">
+                        <Globe className="w-3 h-3" />{stats.lastActivity.country}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

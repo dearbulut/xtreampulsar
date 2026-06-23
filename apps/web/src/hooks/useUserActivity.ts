@@ -1,29 +1,48 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 
-interface ActivityItem {
+export interface ActivityItem {
   id: string;
   userId: string;
   action: string;
   streamId: string | null;
   ip: string | null;
   userAgent: string | null;
+  country: string | null;
+  deviceType: string | null;
+  duration: number | null;
+  endedAt: string | null;
   createdAt: string;
 }
 
-interface ActivityResponse {
+export interface ActivityResponse {
   items: ActivityItem[];
   total: number;
   page: number;
   totalPages: number;
 }
 
-export function useUserActivity(userId: string, page = 1, limit = 50) {
+export interface ActivityFilters {
+  action?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export function useUserActivity(
+  userId: string,
+  page = 1,
+  limit = 50,
+  filters: ActivityFilters = {},
+) {
   return useQuery<ActivityResponse>({
-    queryKey: ['user-activity', userId, page],
+    queryKey: ['user-activity', userId, page, filters],
     queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (filters.action)    params.set('action',    filters.action);
+      if (filters.startDate) params.set('startDate', filters.startDate);
+      if (filters.endDate)   params.set('endDate',   filters.endDate);
       const res = await api.get<{ data: ActivityResponse }>(
-        `/users/${userId}/activity?page=${page}&limit=${limit}`,
+        `/users/${userId}/activity?${params.toString()}`,
       );
       return res.data.data;
     },
