@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   Controller,
   Get,
@@ -10,7 +11,11 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Inject,
+  NotFoundException,
 } from '@nestjs/common';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.module';
 import { StreamService } from './stream.service';
 import { StreamWorkerService } from './stream-worker.service';
 import { StreamHealthService } from './stream-health.service';
@@ -33,11 +38,34 @@ export class StreamController {
     private readonly healthService: StreamHealthService,
     private readonly qualityService: StreamQualityService,
     private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   @Get()
   findAll(@Query() query: QueryStreamDto, @CurrentUser() user: JwtUser) {
     return this.streamService.findAllWithFilters(user.id, query);
+  }
+
+  @Get(':id/preview-url')
+  @Roles('ADMIN')
+  async getPreviewUrl(@Param('id') id: string) {
+    const stream = await this.prisma.stream.findUnique({
+      where: { id },
+      select: { id: true, primaryUrl: true, name: true, streamMode: true, externalId: true },
+    });
+    if (!stream) throw new NotFoundException('Stream not found');
+
+    const token = randomUUID();
+    await this.redis.setex(`preview:${token}`, 300, JSON.stringify({ primaryUrl: stream.primaryUrl, streamId: stream.id }));
+
+    return {
+      token,
+      previewProxyUrl: `/api/v1/streams/preview/${token}`,
+      hlsUrl: stream.primaryUrl,
+      name: stream.name,
+      streamMode: stream.streamMode,
+      externalId: stream.externalId,
+    };
   }
 
   @Get(':id')

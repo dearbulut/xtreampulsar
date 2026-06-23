@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type RefObject } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -18,6 +18,8 @@ import {
   FolderInput,
   GripVertical,
   Filter,
+  Clapperboard,
+  X,
 } from 'lucide-react';
 import {
   DndContext,
@@ -116,6 +118,15 @@ function ActionBtn({
   );
 }
 
+interface PreviewInfo {
+  token: string;
+  previewProxyUrl: string;
+  hlsUrl: string;
+  name: string;
+  streamMode: string;
+  externalId: number;
+}
+
 interface CreateForm {
   name: string;
   categoryId: string;
@@ -132,6 +143,44 @@ const EMPTY_FORM: CreateForm = {
 
 function getUrlPage(): number {
   return Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') ?? '1', 10));
+}
+
+function useHlsPlayer(videoRef: RefObject<HTMLVideoElement | null>, src: string | null) {
+  useEffect(() => {
+    if (!src || !videoRef.current) return;
+    const video = videoRef.current;
+
+    const loadHls = (Hls: { isSupported: () => boolean; new(): { loadSource: (s: string) => void; attachMedia: (v: HTMLVideoElement) => void; on: (e: string, cb: () => void) => void; destroy: () => void }; Events: { MANIFEST_PARSED: string } }) => {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { void video.play(); });
+        return () => hls.destroy();
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src;
+        void video.play();
+      }
+      return undefined;
+    };
+
+    if ((window as unknown as Record<string, unknown>).Hls) {
+      const cleanup = loadHls((window as unknown as Record<string, unknown>).Hls as Parameters<typeof loadHls>[0]);
+      return cleanup;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+    let cleanupFn: (() => void) | undefined;
+    script.onload = () => {
+      cleanupFn = loadHls((window as unknown as Record<string, unknown>).Hls as Parameters<typeof loadHls>[0]);
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      cleanupFn?.();
+    };
+  }, [src, videoRef]);
 }
 
 function SortHandle({ id }: { id: string }) {
@@ -171,8 +220,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [showAdvFilters, setShowAdvFilters] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewInfo, setPreviewInfo] = useState<PreviewInfo | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
@@ -205,6 +256,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const restart = useRestartStream();
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
+
+  useHlsPlayer(previewVideoRef, previewInfo ? previewInfo.previewProxyUrl : null);
 
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
   const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
@@ -425,7 +478,22 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           />
           <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => {}} />
           <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
-          <ActionBtn icon={Eye} title="Önizle" color="text-muted" onClick={() => setPreviewUrl(r.primaryUrl)} />
+          <ActionBtn icon={Eye} title="URL Göster" color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
+          {(!type || type === 'LIVE') && (
+            <ActionBtn
+              icon={Clapperboard}
+              title="Stream Önizle"
+              color="text-cyan-400"
+              loading={previewLoading === r.id}
+              onClick={() => {
+                setPreviewLoading(r.id);
+                api.get<{ success: boolean; data: PreviewInfo }>(`/streams/${r.id}/preview-url`)
+                  .then((res) => { setPreviewInfo(res.data.data); })
+                  .catch(() => toast.error('Önizleme başlatılamadı'))
+                  .finally(() => setPreviewLoading(null));
+              }}
+            />
+          )}
           <ActionBtn
             icon={Microscope}
             title="Kalite Analiz Et"
@@ -642,22 +710,66 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       </Modal>
 
       {/* Preview modal */}
-      <Modal open={!!previewUrl} onClose={() => setPreviewUrl(null)} title="Stream URL" size="md">
-        <div
-          className="rounded-lg p-4 font-mono text-xs break-all text-slate-200"
-          style={{ backgroundColor: '#1c1f2e', border: '1px solid #2e3347' }}
-        >
-          {previewUrl}
-        </div>
-        <div className="flex justify-end mt-4 gap-2">
-          <button onClick={() => setPreviewUrl(null)} className="btn-ghost text-xs">Kapat</button>
-          <button
-            onClick={() => { void navigator.clipboard.writeText(previewUrl ?? ''); }}
-            className="btn-ghost text-xs text-blue-400"
-          >
-            Kopyala
-          </button>
-        </div>
+      <Modal
+        open={!!previewInfo}
+        onClose={() => setPreviewInfo(null)}
+        title={previewInfo?.name ?? 'Stream Önizle'}
+        size="lg"
+      >
+        {previewInfo && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'text-xs font-semibold px-2 py-0.5 rounded-full',
+                previewInfo.streamMode === 'PROXY'
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-violet-500/20 text-violet-400',
+              )}>
+                {previewInfo.streamMode || 'DIRECT'}
+              </span>
+              {previewInfo.externalId ? (
+                <span className="text-xs text-muted font-mono">#{previewInfo.externalId}</span>
+              ) : null}
+            </div>
+
+            {/* Video player — only shown when previewProxyUrl is set (HLS preview) */}
+            {previewInfo.previewProxyUrl ? (
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <video
+                  ref={previewVideoRef}
+                  className="absolute inset-0 w-full h-full rounded-lg bg-black"
+                  controls
+                  muted
+                />
+              </div>
+            ) : null}
+
+            {/* URL display */}
+            <div>
+              <p className="text-xs text-muted mb-1">Kaynak URL</p>
+              <div
+                className="rounded-lg p-3 font-mono text-xs break-all text-slate-200"
+                style={{ backgroundColor: '#1c1f2e', border: '1px solid #2e3347' }}
+              >
+                {previewInfo.hlsUrl}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => { void navigator.clipboard.writeText(previewInfo.hlsUrl); toast.success('Kopyalandı'); }}
+                className="btn-ghost text-xs text-blue-400 flex items-center gap-1"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                URL Kopyala
+              </button>
+              <button onClick={() => setPreviewInfo(null)} className="btn-ghost text-xs flex items-center gap-1">
+                <X className="w-3.5 h-3.5" />
+                Kapat
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Create modal */}
