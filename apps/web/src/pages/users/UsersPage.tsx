@@ -1266,7 +1266,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
 
       {/* Tab: Playlists */}
       {tab === 'playlists' && (
-        <PlaylistTab userId={userId} />
+        <PlaylistTab userId={userId} username={user.username} />
       )}
     </Modal>
   );
@@ -1338,19 +1338,31 @@ function getServerUrl(): string {
   return window.location.origin;
 }
 
-function PlaylistTab({ userId }: { userId: string }) {
+function getXtreamBaseUrl(): string {
+  return `http://${window.location.hostname}:25461`;
+}
+
+function PlaylistTab({ userId, username }: { userId: string; username: string }) {
   const qc = useQueryClient();
   const { data: playlists = [], isLoading } = useUserPlaylists(userId);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const copyUrl = (token: string) => {
     const url = `${getServerUrl()}/playlist/${token}`;
     void navigator.clipboard.writeText(url);
-    setCopiedToken(token);
-    setTimeout(() => setCopiedToken(null), 1500);
+    setCopiedKey(`token:${token}`);
+    setTimeout(() => setCopiedKey(null), 1500);
     toast.success('Playlist URL kopyalandı');
+  };
+
+  const copyStdUrl = (token: string) => {
+    const url = `${getXtreamBaseUrl()}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(token)}&type=m3u_plus`;
+    void navigator.clipboard.writeText(url);
+    setCopiedKey(`std:${token}`);
+    setTimeout(() => setCopiedKey(null), 1500);
+    toast.success('Standart URL kopyalandı');
   };
 
   const toggleActive = async (pl: UserPlaylist) => {
@@ -1395,15 +1407,31 @@ function PlaylistTab({ userId }: { userId: string }) {
                 </span>
               </div>
 
-              {/* URL */}
-              <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
-                <span className="text-xs text-muted font-mono truncate flex-1">{url}</span>
-                <button onClick={() => copyUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Kopyala">
-                  {copiedToken === pl.token ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-                <a href={url} target="_blank" rel="noreferrer" className="text-muted hover:text-fg shrink-0 transition-colors" title="Aç">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+              {/* Token URL */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Token URL</span>
+                <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
+                  <span className="text-xs text-muted font-mono truncate flex-1">{url}</span>
+                  <button onClick={() => copyUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Kopyala">
+                    {copiedKey === `token:${pl.token}` ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  <a href={url} target="_blank" rel="noreferrer" className="text-muted hover:text-fg shrink-0 transition-colors" title="Aç">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Standard Xtream URL */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Standart</span>
+                <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
+                  <span className="text-xs text-muted font-mono truncate flex-1">
+                    {`${getXtreamBaseUrl()}/get.php?username=${encodeURIComponent(username)}&password=***&type=m3u_plus`}
+                  </span>
+                  <button onClick={() => copyStdUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Standart URL Kopyala">
+                    {copiedKey === `std:${pl.token}` ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               {/* Filters summary */}

@@ -24,6 +24,8 @@ async function bootstrap() {
       { path: 'stalker/server/load.php', method: RequestMethod.GET },
       { path: 'stalker/portal.php', method: RequestMethod.ALL },
       { path: 'stalker/server/api', method: RequestMethod.GET },
+      { path: 'playlist/:token', method: RequestMethod.GET },
+      { path: 'playlist/:token/info', method: RequestMethod.GET },
     ],
   });
 
