@@ -13,10 +13,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from './user.service';
+import { UserActivityService } from './user-activity.service';
 import { ResellerService } from '../reseller/reseller.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
+import { ActivityQueryDto } from './dto/activity-query.dto';
 import { BulkExtendDto, BulkDeleteDto, ExtendDto } from './dto/bulk-user.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -28,6 +30,7 @@ import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorato
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly userActivityService: UserActivityService,
     private readonly resellerService: ResellerService,
     private readonly prisma: PrismaService,
   ) {}
@@ -147,20 +150,12 @@ export class UserController {
   @Get(':id/stats')
   @Roles('ADMIN', 'RESELLER')
   getStats(@Param('id') id: string) {
-    return this.userService.getUserStats(id);
+    return this.userActivityService.getUserStats(id);
   }
 
   @Get(':id/activity')
   @Roles('ADMIN', 'RESELLER')
-  getActivity(
-    @Param('id') id: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.userService.getActivityLog(
-      id,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 50,
-    );
+  getActivity(@Param('id') id: string, @Query() query: ActivityQueryDto) {
+    return this.userActivityService.getActivityByUser(id, query);
   }
 }
