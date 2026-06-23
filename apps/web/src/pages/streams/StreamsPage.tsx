@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type RefObject } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus,
   RefreshCw,
@@ -145,42 +145,57 @@ function getUrlPage(): number {
   return Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') ?? '1', 10));
 }
 
-function useHlsPlayer(videoRef: RefObject<HTMLVideoElement | null>, src: string | null) {
-  useEffect(() => {
-    if (!src || !videoRef.current) return;
-    const video = videoRef.current;
+type HlsCtor = {
+  isSupported(): boolean;
+  new(): { loadSource(s: string): void; attachMedia(v: HTMLVideoElement): void; on(e: string, cb: () => void): void; destroy(): void };
+  Events: { MANIFEST_PARSED: string };
+};
 
-    const loadHls = (Hls: { isSupported: () => boolean; new(): { loadSource: (s: string) => void; attachMedia: (v: HTMLVideoElement) => void; on: (e: string, cb: () => void) => void; destroy: () => void }; Events: { MANIFEST_PARSED: string } }) => {
+function HlsPlayer({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const init = (Hls: HlsCtor) => {
       if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(src);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => { void video.play(); });
         return () => hls.destroy();
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      }
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src;
         void video.play();
       }
       return undefined;
     };
 
-    if ((window as unknown as Record<string, unknown>).Hls) {
-      const cleanup = loadHls((window as unknown as Record<string, unknown>).Hls as Parameters<typeof loadHls>[0]);
-      return cleanup;
+    const win = window as unknown as Record<string, unknown>;
+    if (win.Hls) {
+      return init(win.Hls as HlsCtor);
     }
 
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
     let cleanupFn: (() => void) | undefined;
-    script.onload = () => {
-      cleanupFn = loadHls((window as unknown as Record<string, unknown>).Hls as Parameters<typeof loadHls>[0]);
-    };
+    script.onload = () => { cleanupFn = init(win.Hls as HlsCtor); };
     document.head.appendChild(script);
+    return () => { cleanupFn?.(); };
+  }, [src]);
 
-    return () => {
-      cleanupFn?.();
-    };
-  }, [src, videoRef]);
+  return (
+    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full rounded-lg bg-black"
+        controls
+        muted
+      />
+    </div>
+  );
 }
 
 function SortHandle({ id }: { id: string }) {
@@ -223,7 +238,6 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [previewInfo, setPreviewInfo] = useState<PreviewInfo | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
@@ -256,13 +270,6 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const restart = useRestartStream();
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
-
-  useHlsPlayer(
-    previewVideoRef,
-    previewInfo?.previewProxyUrl
-      ? window.location.origin + previewInfo.previewProxyUrl
-      : null,
-  );
 
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
   const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
@@ -737,27 +744,17 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               ) : null}
             </div>
 
-            {/* Video player — only shown when previewProxyUrl is set (HLS preview) */}
-            {previewInfo.previewProxyUrl ? (
-              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                <video
-                  ref={previewVideoRef}
-                  className="absolute inset-0 w-full h-full rounded-lg bg-black"
-                  controls
-                  muted
-                />
-              </div>
-            ) : null}
+            {/* HLS video player — mounts only when proxy URL is available */}
+            {previewInfo.previewProxyUrl && (
+              <HlsPlayer src={window.location.origin + previewInfo.previewProxyUrl} />
+            )}
 
-            {/* URL display */}
+            {/* Upstream URL — info only */}
             <div>
               <p className="text-xs text-muted mb-1">Kaynak URL</p>
-              <div
-                className="rounded-lg p-3 font-mono text-xs break-all text-slate-200"
-                style={{ backgroundColor: '#1c1f2e', border: '1px solid #2e3347' }}
-              >
+              <p className="rounded-lg px-3 py-2.5 font-mono text-xs break-all bg-surface-2 text-fg border border-border">
                 {previewInfo.hlsUrl}
-              </div>
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
