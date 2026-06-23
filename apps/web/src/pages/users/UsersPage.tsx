@@ -15,6 +15,7 @@ import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser,
 } from '@/hooks/useUsers';
+import { useSettings } from '@/hooks/useSettings';
 import type { QuickCreateResult } from '@/hooks/useUsers';
 import { useBulkRenew } from '@/hooks/useBulkRenew';
 import { usePackages } from '@/hooks/usePackages';
@@ -1338,13 +1339,20 @@ function getServerUrl(): string {
   return window.location.origin;
 }
 
-function getXtreamBaseUrl(): string {
-  return `http://${window.location.hostname}:25461`;
-}
-
 function PlaylistTab({ userId, username }: { userId: string; username: string }) {
   const qc = useQueryClient();
   const { data: playlists = [], isLoading } = useUserPlaylists(userId);
+  const settings = useSettings();
+  const xtreamBaseUrl = (() => {
+    const rawUrl = settings?.general?.serverUrl?.trim();
+    const port = settings?.xtream?.port ?? 25461;
+    if (rawUrl) {
+      // strip any trailing slash and protocol, always use http for Xtream port
+      const host = rawUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').split(':')[0];
+      return `http://${host}:${port}`;
+    }
+    return `http://${window.location.hostname}:${port}`;
+  })();
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -1358,7 +1366,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
   };
 
   const copyStdUrl = (token: string) => {
-    const url = `${getXtreamBaseUrl()}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(token)}&type=m3u_plus`;
+    const url = `${xtreamBaseUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(token)}&type=m3u_plus`;
     void navigator.clipboard.writeText(url);
     setCopiedKey(`std:${token}`);
     setTimeout(() => setCopiedKey(null), 1500);
@@ -1426,7 +1434,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Standart</span>
                 <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
                   <span className="text-xs text-muted font-mono truncate flex-1">
-                    {`${getXtreamBaseUrl()}/get.php?username=${encodeURIComponent(username)}&password=***&type=m3u_plus`}
+                    {`${xtreamBaseUrl}/get.php?username=${encodeURIComponent(username)}&password=***&type=m3u_plus`}
                   </span>
                   <button onClick={() => copyStdUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Standart URL Kopyala">
                     {copiedKey === `std:${pl.token}` ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
