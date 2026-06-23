@@ -20,6 +20,10 @@ resellerApi.interceptors.response.use(
     if (status === 401) {
       useAuthStore.getState().resellerLogout();
       window.location.href = '/reseller/login';
+    } else if (status === 503) {
+      toast.error('Sunucu geçici olarak kullanılamıyor, lütfen bekleyin.');
+    } else if (status === 429) {
+      toast.error('Çok fazla istek gönderildi, lütfen bekleyin.');
     }
     return Promise.reject(err as Error);
   },
@@ -71,8 +75,10 @@ export interface QuickCreateResult {
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
 export function useResellerMe() {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'me'],
+    enabled: !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{ success: boolean; data: ResellerInfo }>('/resellers/me');
       return res.data.data;
@@ -81,8 +87,10 @@ export function useResellerMe() {
 }
 
 export function useResellerDashboard() {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'dashboard'],
+    enabled: !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{ success: boolean; data: ResellerDashboard }>('/resellers/me/dashboard');
       return res.data.data;
@@ -92,8 +100,10 @@ export function useResellerDashboard() {
 }
 
 export function useResellerStats() {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'stats'],
+    enabled: !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{ success: boolean; data: ResellerStats }>('/resellers/me/stats');
       return res.data.data;
@@ -103,8 +113,10 @@ export function useResellerStats() {
 }
 
 export function useResellerExpiring() {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'expiring'],
+    enabled: !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{ success: boolean; data: ResellerUserRow[] }>('/resellers/me/expiring');
       return res.data.data;
@@ -121,8 +133,10 @@ export function useResellerUsers(
   sortDir?: string,
   expiryFilter?: string,
 ) {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'users', page, limit, search, status, sortBy, sortDir, expiryFilter],
+    enabled: !!token,
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set('search', search);
@@ -139,8 +153,10 @@ export function useResellerUsers(
 }
 
 export function useResellerPackages() {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'packages'],
+    enabled: !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{ success: boolean; data: Package[] }>('/resellers/me/packages');
       return res.data.data;
@@ -287,9 +303,10 @@ export function useResellerResetPassword() {
 }
 
 export function useResellerUserPlaylists(userId: string | null) {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'user-playlists', userId],
-    enabled: !!userId,
+    enabled: !!userId && !!token,
     queryFn: async () => {
       const res = await resellerApi.get<{
         success: boolean;
@@ -323,8 +340,10 @@ export interface CreditHistoryResponse {
 }
 
 export function useResellerCreditHistory(page = 1, limit = 30, startDate?: string) {
+  const token = useAuthStore((s) => s.resellerToken);
   return useQuery({
     queryKey: ['reseller-panel', 'credits', page, limit, startDate],
+    enabled: !!token,
     retry: false,
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
