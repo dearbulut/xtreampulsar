@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from '@tanstack/react-router';
-import { Tv2, LayoutDashboard, Users, LogOut } from 'lucide-react';
+import { Tv2, LayoutDashboard, Users, LogOut, CreditCard } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
 import { useLocation } from '@tanstack/react-router';
@@ -7,6 +7,7 @@ import { useLocation } from '@tanstack/react-router';
 const NAV = [
   { to: '/reseller/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/reseller/users', label: 'Kullanıcılar', icon: Users },
+  { to: '/reseller/credits', label: 'Kredi Hareketleri', icon: CreditCard },
 ];
 
 export function ResellerLayout() {

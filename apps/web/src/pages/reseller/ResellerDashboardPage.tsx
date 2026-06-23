@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   CreditCard, Users, UserCheck, UserPlus, AlertTriangle, Clock,
-  Search, X, Check, Copy, Zap, Shuffle, Trash2, Ban, CalendarPlus,
+  Search, X, Check, Copy, Zap, Shuffle,
   ChevronLeft, ChevronRight, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -10,11 +10,10 @@ import {
   useResellerUsers,
   useResellerQuickCreate,
   useResellerBulkAction,
-  useResellerUpdateUser,
-  useResellerDeleteUser,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow, QuickCreateResult } from '@/hooks/useResellerPanel';
 import { Modal } from '@/components/ui/Modal';
+import { ResellerUserDrawer } from './ResellerUserDrawer';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -368,129 +367,6 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
   );
 }
 
-// ─── User Detail Modal ────────────────────────────────────────────────────────
-
-function UserDetailModal({
-  user, onClose, onUpdated,
-}: {
-  user: ResellerUserRow;
-  onClose: () => void;
-  onUpdated: () => void;
-}) {
-  const updateUser = useResellerUpdateUser();
-  const deleteUser = useResellerDeleteUser();
-  const [extendDays, setExtendDays] = useState(30);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const days = daysLeft(user.expiresAt);
-  const isActive = user.status === 'ACTIVE';
-
-  const handleExtend = async () => {
-    const baseDate = new Date(Math.max(new Date(user.expiresAt).getTime(), Date.now()));
-    const newExpiry = new Date(baseDate.getTime() + extendDays * 86_400_000);
-    await updateUser.mutateAsync({ id: user.id, expiresAt: newExpiry.toISOString() });
-    onUpdated();
-  };
-
-  const handleToggleStatus = async () => {
-    await updateUser.mutateAsync({ id: user.id, status: isActive ? 'DISABLED' : 'ACTIVE' });
-    onUpdated();
-  };
-
-  const handleDelete = async () => {
-    await deleteUser.mutateAsync(user.id);
-    onClose();
-    onUpdated();
-  };
-
-  return (
-    <Modal open onClose={onClose} title={`Kullanıcı: ${user.username}`} size="sm">
-      <div className="space-y-4">
-        {/* Info */}
-        <div className="space-y-2">
-          {[
-            { label: 'Durum', value: <StatusBadge status={user.status} /> },
-            { label: 'Bitiş', value: <span className={cn('text-sm', days < 7 ? 'text-danger' : days < 30 ? 'text-warning' : 'text-muted')}>{formatDate(user.expiresAt)} ({days}g)</span> },
-            { label: 'Max Bağlantı', value: <span className="text-sm text-slate-300">{user.maxConnections}</span> },
-            { label: 'Online', value: <span className="text-sm text-slate-300">{user._count?.connections ?? 0}</span> },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-xs text-muted">{label}</span>
-              {value}
-            </div>
-          ))}
-        </div>
-
-        <hr className="border-border" />
-
-        {/* Extend */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted">Süre Uzat</label>
-          <div className="flex gap-2">
-            <div className="flex gap-1.5 flex-wrap flex-1">
-              {[7, 30, 90, 365].map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setExtendDays(d)}
-                  className={cn('text-xs px-2 py-1 rounded-lg border transition-colors',
-                    extendDays === d ? 'bg-primary/20 border-primary text-primary' : 'border-border text-muted')}
-                >
-                  {d}g
-                </button>
-              ))}
-            </div>
-            <input
-              type="number" min={1} max={3650} value={extendDays}
-              onChange={(e) => setExtendDays(+e.target.value)}
-              className="input w-16 text-sm"
-            />
-          </div>
-          <button
-            onClick={() => void handleExtend()}
-            disabled={updateUser.isPending}
-            className="btn-primary w-full text-sm flex items-center justify-center gap-2"
-          >
-            <CalendarPlus className="w-4 h-4" /> Uzat
-          </button>
-        </div>
-
-        <hr className="border-border" />
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => void handleToggleStatus()}
-            disabled={updateUser.isPending}
-            className={cn('flex-1 text-sm py-2 rounded-lg border transition-colors flex items-center justify-center gap-1.5',
-              isActive
-                ? 'border-amber-500/40 text-amber-400 hover:bg-amber-500/10'
-                : 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10')}
-          >
-            <Ban className="w-3.5 h-3.5" />
-            {isActive ? 'Askıya Al' : 'Aktifleştir'}
-          </button>
-
-          {!confirmDelete ? (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex-1 text-sm py-2 rounded-lg border border-danger/40 text-danger hover:bg-danger/10 transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Sil
-            </button>
-          ) : (
-            <button
-              onClick={() => void handleDelete()}
-              disabled={deleteUser.isPending}
-              className="flex-1 text-sm py-2 rounded-lg bg-danger/20 border border-danger text-danger font-semibold transition-colors"
-            >
-              Onayla
-            </button>
-          )}
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -772,9 +648,9 @@ export function ResellerDashboardPage() {
         <QuickCreateModal onClose={() => setShowQuickCreate(false)} credits={credits} />
       )}
 
-      {/* User Detail Modal */}
+      {/* User Detail Drawer */}
       {detailUser && (
-        <UserDetailModal
+        <ResellerUserDrawer
           user={detailUser}
           onClose={() => setDetailUser(null)}
           onUpdated={() => setDetailUser(null)}

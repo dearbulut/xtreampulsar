@@ -125,18 +125,25 @@ export class ResellerService {
     ]);
   }
 
-  async getCreditHistory(id: string, page = 1, limit = 20) {
+  async getCreditHistory(id: string, page = 1, limit = 20, startDate?: Date) {
     await this.findById(id);
-    const [items, total] = await Promise.all([
+    const where = {
+      resellerId: id,
+      ...(startDate ? { createdAt: { gte: startDate } } : {}),
+    };
+    const [items, total, allInPeriod] = await Promise.all([
       this.prisma.resellerCreditLog.findMany({
-        where: { resellerId: id },
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.resellerCreditLog.count({ where: { resellerId: id } }),
+      this.prisma.resellerCreditLog.count({ where }),
+      this.prisma.resellerCreditLog.findMany({ where, select: { amount: true, type: true } }),
     ]);
-    return { items, total, page, limit };
+    const added = allInPeriod.filter((i) => i.type === 'ADD').reduce((s, i) => s + i.amount, 0);
+    const spent = allInPeriod.filter((i) => i.type === 'DEDUCT').reduce((s, i) => s + i.amount, 0);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit), summary: { added, spent } };
   }
 
   async getUsers(id: string, page = 1, limit = 20) {
@@ -199,13 +206,35 @@ export class ResellerService {
     };
   }
 
-  async getMyUsers(resellerId: string, page: number, limit: number, search?: string, status?: string) {
+  async getMyUsers(
+    resellerId: string,
+    page: number,
+    limit: number,
+    search?: string,
+    status?: string,
+    sortBy = 'createdAt',
+    sortDir: 'asc' | 'desc' = 'desc',
+    expiryFilter?: string,
+  ) {
+    const now = new Date();
+    const expiryWhere: Prisma.UserWhereInput =
+      expiryFilter === 'expired' ? { expiresAt: { lt: now } } :
+      expiryFilter === 'thisWeek' ? { expiresAt: { gte: now, lte: new Date(now.getTime() + 7 * 86_400_000) } } :
+      expiryFilter === 'thisMonth' ? { expiresAt: { gte: now, lte: new Date(now.getTime() + 30 * 86_400_000) } } :
+      expiryFilter === 'active' ? { expiresAt: { gte: now }, status: 'ACTIVE' as const } :
+      {};
+
     const where: Prisma.UserWhereInput = {
       resellerId,
       deletedAt: null,
       ...(search ? { username: { contains: search, mode: Prisma.QueryMode.insensitive } } : {}),
       ...(status ? { status: status as 'ACTIVE' | 'DISABLED' | 'BANNED' } : {}),
+      ...expiryWhere,
     };
+
+    const validSort = ['username', 'expiresAt', 'createdAt'].includes(sortBy) ? sortBy : 'createdAt';
+    const orderBy: Prisma.UserOrderByWithRelationInput = { [validSort]: sortDir };
+
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
@@ -214,7 +243,7 @@ export class ResellerService {
           expiresAt: true, maxConnections: true, createdAt: true,
           _count: { select: { connections: { where: { endedAt: null } } } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -382,6 +411,28 @@ export class ResellerService {
       where: { isActive: true },
       select: { id: true, name: true, durationDays: true, maxConnections: true, creditCost: true },
       orderBy: { creditCost: 'asc' },
+    });
+  }
+
+  async resetUserPassword(resellerId: string, userId: string) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    const rawPassword = randomBytes(4).toString('hex');
+    const hashed = await bcrypt.hash(rawPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+    return { password: rawPassword };
+  }
+
+  async getUserPlaylists(resellerId: string, userId: string) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    return this.prisma.userPlaylist.findMany({
+      where: { userId },
+      select: {
+        id: true, name: true, type: true, isActive: true,
+        expiresAt: true, accessCount: true, lastAccessed: true, token: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

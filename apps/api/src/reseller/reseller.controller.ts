@@ -70,9 +70,14 @@ export class ResellerController {
 
   @Get('me/credits')
   @Roles('RESELLER')
-  async getMyCreditHistory(@CurrentUser() user: JwtUser, @Query() pagination: PaginationDto) {
+  async getMyCreditHistory(
+    @CurrentUser() user: JwtUser,
+    @Query() pagination: PaginationDto,
+    @Query('startDate') startDate?: string,
+  ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
-    return this.resellerService.getCreditHistory(user.id, pagination.page, pagination.limit);
+    const start = startDate ? new Date(startDate) : undefined;
+    return this.resellerService.getCreditHistory(user.id, pagination.page, pagination.limit, start);
   }
 
   @Get('me/dashboard')
@@ -98,9 +103,15 @@ export class ResellerController {
     @Query('limit') limit = '20',
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('expiryFilter') expiryFilter?: string,
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
-    return this.resellerService.getMyUsers(user.id, +page, +limit, search, status);
+    return this.resellerService.getMyUsers(
+      user.id, +page, +limit, search, status,
+      sortBy, (sortDir === 'asc' ? 'asc' : 'desc'), expiryFilter,
+    );
   }
 
   @Post('me/users/quick-create')
@@ -128,6 +139,20 @@ export class ResellerController {
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.bulkAction(user.id, body.action, body.userIds, body.days);
+  }
+
+  @Post('me/users/:userId/reset-password')
+  @Roles('RESELLER')
+  async resetUserPassword(@CurrentUser() user: JwtUser, @Param('userId') userId: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.resetUserPassword(user.id, userId);
+  }
+
+  @Get('me/users/:userId/playlists')
+  @Roles('RESELLER')
+  async getUserPlaylists(@CurrentUser() user: JwtUser, @Param('userId') userId: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getUserPlaylists(user.id, userId);
   }
 
   @Get('me/users/:userId')

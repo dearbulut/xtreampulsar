@@ -100,13 +100,24 @@ export function useResellerExpiring() {
   });
 }
 
-export function useResellerUsers(page = 1, limit = 20, search?: string, status?: string) {
+export function useResellerUsers(
+  page = 1,
+  limit = 20,
+  search?: string,
+  status?: string,
+  sortBy?: string,
+  sortDir?: string,
+  expiryFilter?: string,
+) {
   return useQuery({
-    queryKey: ['reseller-panel', 'users', page, limit, search, status],
+    queryKey: ['reseller-panel', 'users', page, limit, search, status, sortBy, sortDir, expiryFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set('search', search);
       if (status) params.set('status', status);
+      if (sortBy) params.set('sortBy', sortBy);
+      if (sortDir) params.set('sortDir', sortDir);
+      if (expiryFilter) params.set('expiryFilter', expiryFilter);
       const res = await resellerApi.get<{ success: boolean; data: PaginatedResponse<ResellerUserRow> }>(
         `/resellers/me/users?${params.toString()}`,
       );
@@ -248,5 +259,67 @@ export function useResellerKickUser() {
       toast.success('Kullanıcı bağlantısı kesildi');
     },
     onError: () => toast.error('İşlem başarısız'),
+  });
+}
+
+export function useResellerResetPassword() {
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await resellerApi.post<{ success: boolean; data: { password: string } }>(
+        `/resellers/me/users/${userId}/reset-password`,
+      );
+      return res.data.data;
+    },
+    onError: () => toast.error('Şifre sıfırlanamadı'),
+  });
+}
+
+export function useResellerUserPlaylists(userId: string | null) {
+  return useQuery({
+    queryKey: ['reseller-panel', 'user-playlists', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const res = await resellerApi.get<{
+        success: boolean;
+        data: Array<{
+          id: string; name: string; type: string; isActive: boolean;
+          accessCount: number; lastAccessed: string | null;
+          expiresAt: string | null; token: string;
+        }>;
+      }>(`/resellers/me/users/${userId}/playlists`);
+      return res.data.data;
+    },
+  });
+}
+
+export interface CreditLogEntry {
+  id: string;
+  amount: number;
+  type: 'ADD' | 'DEDUCT';
+  reason: string | null;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface CreditHistoryResponse {
+  items: CreditLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: { added: number; spent: number };
+}
+
+export function useResellerCreditHistory(page = 1, limit = 30, startDate?: string) {
+  return useQuery({
+    queryKey: ['reseller-panel', 'credits', page, limit, startDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (startDate) params.set('startDate', startDate);
+      const res = await resellerApi.get<{ success: boolean; data: CreditHistoryResponse }>(
+        `/resellers/me/credits?${params.toString()}`,
+      );
+      return res.data.data;
+    },
   });
 }

@@ -30,6 +30,7 @@ import { ResellerLoginPage } from '@/pages/reseller/ResellerLoginPage';
 import { ResellerDashboardPage } from '@/pages/reseller/ResellerDashboardPage';
 import { ResellerUsersPage } from '@/pages/reseller/ResellerUsersPage';
 import { ResellerCreateUserPage } from '@/pages/reseller/ResellerCreateUserPage';
+import { ResellerCreditsPage } from '@/pages/reseller/ResellerCreditsPage';
 import { RevenuePage } from '@/pages/analytics/RevenuePage';
 import { EpgGuidePage } from '@/pages/epg/EpgGuidePage';
 import { UserReportPage } from '@/pages/users/UserReportPage';
@@ -239,6 +240,12 @@ const resellerCreateUserRoute = createRoute({
   component: ResellerCreateUserPage,
 });
 
+const resellerCreditsRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/credits',
+  component: ResellerCreditsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -247,6 +254,7 @@ const routeTree = rootRoute.addChildren([
     resellerDashboardRoute,
     resellerUsersRoute,
     resellerCreateUserRoute,
+    resellerCreditsRoute,
   ]),
   layoutRoute.addChildren([
     dashboardRoute,
