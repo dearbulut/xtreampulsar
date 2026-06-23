@@ -441,4 +441,113 @@ export class AnalyticsService {
     const r = rows[0] ?? { bytes_in: BigInt(0), bytes_out: BigInt(0) };
     return { bytesIn: Number(r.bytes_in), bytesOut: Number(r.bytes_out) };
   }
+
+  async getConnectionsByHour(): Promise<{ hour: string; label: string; connections: number }[]> {
+    try {
+      const cutoff = new Date();
+      cutoff.setHours(cutoff.getHours() - 24);
+
+      const rows = await this.prisma.$queryRaw<{ hour: Date; count: bigint }[]>`
+        SELECT
+          date_trunc('hour', "startedAt") AS hour,
+          COUNT(*)::bigint               AS count
+        FROM connections
+        WHERE "startedAt" >= ${cutoff}
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `;
+
+      const resultMap = new Map<string, number>();
+      for (const r of rows) {
+        resultMap.set(r.hour.toISOString().slice(0, 13), Number(r.count));
+      }
+
+      // Fill all 24 hours (even zeros)
+      const result = [];
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(d.getHours() - i, 0, 0, 0);
+        const key = d.toISOString().slice(0, 13);
+        result.push({ hour: key, label: `${d.getHours()}:00`, connections: resultMap.get(key) ?? 0 });
+      }
+      return result;
+    } catch (err) {
+      this.logger.error(`getConnectionsByHour: ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  async getTopCategories(limit = 10): Promise<{ categoryId: string; name: string; type: string; connections: number }[]> {
+    try {
+      const rows = await this.prisma.connection.groupBy({
+        by: ['streamId'],
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: limit * 5,
+      });
+
+      const streamIds = rows.map((r) => r.streamId);
+      const streams = await this.prisma.stream.findMany({
+        where: { id: { in: streamIds } },
+        select: { id: true, categoryId: true, category: { select: { name: true, type: true } } },
+      });
+      const streamCatMap = new Map(streams.map((s) => [s.id, s]));
+
+      const catMap = new Map<string, { categoryId: string; name: string; type: string; connections: number }>();
+      for (const r of rows) {
+        const s = streamCatMap.get(r.streamId);
+        if (!s?.category) continue;
+        const existing = catMap.get(s.categoryId);
+        if (existing) {
+          existing.connections += r._count.id;
+        } else {
+          catMap.set(s.categoryId, { categoryId: s.categoryId, name: s.category.name, type: s.category.type, connections: r._count.id });
+        }
+      }
+
+      return [...catMap.values()].sort((a, b) => b.connections - a.connections).slice(0, limit);
+    } catch (err) {
+      this.logger.error(`getTopCategories: ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  async getUserGrowth(days = 30): Promise<{ date: string; newUsers: number; cumulative: number }[]> {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      cutoff.setHours(0, 0, 0, 0);
+
+      const rows = await this.prisma.$queryRaw<{ day: Date; count: bigint }[]>`
+        SELECT
+          date_trunc('day', "createdAt") AS day,
+          COUNT(*)::bigint              AS count
+        FROM users
+        WHERE "createdAt" >= ${cutoff}
+          AND "deletedAt" IS NULL
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `;
+
+      const dayMap = new Map<string, number>();
+      for (const r of rows) {
+        dayMap.set(r.day.toISOString().slice(0, 10), Number(r.count));
+      }
+
+      const result = [];
+      let cumulative = 0;
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        const newUsers = dayMap.get(key) ?? 0;
+        cumulative += newUsers;
+        result.push({ date: key, newUsers, cumulative });
+      }
+      return result;
+    } catch (err) {
+      this.logger.error(`getUserGrowth: ${(err as Error).message}`);
+      return [];
+    }
+  }
 }

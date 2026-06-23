@@ -1,4 +1,6 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, Radio, UserCircle, Cpu } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, Radio, UserCircle, Cpu, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { LANGUAGES } from '@/i18n/i18n';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -292,6 +294,13 @@ export function Header({ title, breadcrumb }: Props) {
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
+  const { i18n } = useTranslation();
+
+  const changeLanguage = (code: string) => {
+    void i18n.changeLanguage(code);
+    localStorage.setItem('xp-lang', code);
+    document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
+  };
 
   const { data: updateInfo } = useUpdateCheck();
   const applyUpdate = useApplyUpdate();
@@ -429,6 +438,35 @@ export function Header({ title, breadcrumb }: Props) {
                     />
                     {THEME_LABELS[t]}
                     {t === theme && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+
+          {/* Language picker */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button title="Dil seç" className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200 flex items-center gap-1">
+                <Globe className="w-4 h-4" />
+                <span className="text-xs hidden sm:inline">{LANGUAGES.find((l) => l.code === i18n.language)?.flag ?? '🌐'}</span>
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content className="bg-surface border border-border rounded-xl shadow-2xl p-2 min-w-36 z-50 animate-fade-in" align="end" sideOffset={6}>
+                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">Dil / Language</div>
+                {LANGUAGES.map((lang) => (
+                  <DropdownMenu.Item
+                    key={lang.code}
+                    onClick={() => changeLanguage(lang.code)}
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer outline-none transition-colors',
+                      i18n.language === lang.code ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-surface-2 hover:text-fg',
+                    )}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                    {i18n.language === lang.code && <span className="ml-auto text-[10px] text-primary">✓</span>}
                   </DropdownMenu.Item>
                 ))}
               </DropdownMenu.Content>

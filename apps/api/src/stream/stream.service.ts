@@ -13,10 +13,24 @@ export class StreamService {
 
   // ─── Xtream-facing queries (no auth, type-based) ───────────────────────────
 
-  async findAllLive(_userId: string) {
+  private async getUserBouquetIds(userId: string): Promise<string[] | null> {
+    const userBouquets = await this.prisma.userBouquet.findMany({
+      where: { userId },
+      select: { bouquetId: true },
+    });
+    if (!userBouquets.length) return null;
+    return userBouquets.map((ub) => ub.bouquetId);
+  }
+
+  async findAllLive(userId: string) {
     try {
+      const bouquetIds = await this.getUserBouquetIds(userId);
       return await this.prisma.stream.findMany({
-        where: { isActive: true, category: { type: 'LIVE' } },
+        where: {
+          isActive: true,
+          category: { type: 'LIVE' },
+          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+        },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
       });
@@ -26,10 +40,15 @@ export class StreamService {
     }
   }
 
-  async findAllVod(_userId: string) {
+  async findAllVod(userId: string) {
     try {
+      const bouquetIds = await this.getUserBouquetIds(userId);
       return await this.prisma.stream.findMany({
-        where: { isActive: true, category: { type: 'VOD' } },
+        where: {
+          isActive: true,
+          category: { type: 'VOD' },
+          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+        },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
       });
@@ -39,10 +58,15 @@ export class StreamService {
     }
   }
 
-  async findAllSeries(_userId: string) {
+  async findAllSeries(userId: string) {
     try {
+      const bouquetIds = await this.getUserBouquetIds(userId);
       return await this.prisma.stream.findMany({
-        where: { isActive: true, category: { type: 'SERIES' } },
+        where: {
+          isActive: true,
+          category: { type: 'SERIES' },
+          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+        },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
       });
@@ -101,7 +125,7 @@ export class StreamService {
   // ─── Admin CRUD ────────────────────────────────────────────────────────────
 
   async findAllWithFilters(_userId: string, query: QueryStreamDto) {
-    const { page = 1, limit = 20, search, categoryId, serverId, status, type } = query;
+    const { page = 1, limit = 20, search, categoryId, serverId, status, type, resolution, qualityScore, healthStatus, videoCodec, updatedAfter } = query;
 
     const where = {
       ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
@@ -109,6 +133,11 @@ export class StreamService {
       ...(serverId ? { serverId } : {}),
       ...(status ? { status: status as 'ONLINE' | 'OFFLINE' | 'BUFFERING' | 'ERROR' } : {}),
       ...(type ? { category: { type: type as 'LIVE' | 'VOD' | 'SERIES' } } : {}),
+      ...(resolution ? { resolution: { contains: resolution, mode: 'insensitive' as const } } : {}),
+      ...(qualityScore ? { qualityScore } : {}),
+      ...(healthStatus ? { healthStatus } : {}),
+      ...(videoCodec ? { videoCodec: { contains: videoCodec, mode: 'insensitive' as const } } : {}),
+      ...(updatedAfter ? { updatedAt: { gte: new Date(updatedAfter) } } : {}),
     };
 
     try {

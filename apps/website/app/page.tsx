@@ -6,6 +6,8 @@ import { FeaturesSection } from '@/components/sections/FeaturesSection';
 import { ComparisonSection } from '@/components/sections/ComparisonSection';
 import { MigrationSection } from '@/components/sections/MigrationSection';
 import { PricingSection } from '@/components/sections/PricingSection';
+import { TestimonialsSection } from '@/components/sections/TestimonialsSection';
+import { FAQSection } from '@/components/sections/FAQSection';
 import { CTASection } from '@/components/sections/CTASection';
 
 export default function HomePage() {
@@ -19,6 +21,8 @@ export default function HomePage() {
         <ComparisonSection />
         <MigrationSection />
         <PricingSection />
+        <TestimonialsSection />
+        <FAQSection />
         <CTASection />
       </main>
       <Footer />

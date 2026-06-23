@@ -64,3 +64,42 @@ export function useGeoConnections() {
     refetchInterval: 30_000,
   });
 }
+
+export function useConnectionsByHour() {
+  return useQuery<{ hour: string; label: string; connections: number }[]>({
+    queryKey: ['analytics', 'connections-by-hour'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { hour: string; label: string; connections: number }[] }>(
+        '/analytics/connections-by-hour',
+      );
+      return res.data.data;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useTopCategories(limit = 8) {
+  return useQuery<{ categoryId: string; name: string; type: string; connections: number }[]>({
+    queryKey: ['analytics', 'top-categories', limit],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { categoryId: string; name: string; type: string; connections: number }[] }>(
+        `/analytics/top-categories?limit=${limit}`,
+      );
+      return res.data.data;
+    },
+    refetchInterval: 120_000,
+  });
+}
+
+export function useUserGrowth(days = 30) {
+  return useQuery<{ date: string; newUsers: number; cumulative: number }[]>({
+    queryKey: ['analytics', 'user-growth', days],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { date: string; newUsers: number; cumulative: number }[] }>(
+        `/analytics/user-growth?days=${days}`,
+      );
+      return res.data.data;
+    },
+    refetchInterval: 300_000,
+  });
+}

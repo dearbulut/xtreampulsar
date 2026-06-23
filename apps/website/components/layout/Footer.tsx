@@ -3,11 +3,11 @@ import { Zap, Twitter, Github, Youtube } from 'lucide-react';
 const FOOTER_LINKS = {
   Ürün: [
     { label: 'Özellikler', href: '#features' },
-    { label: 'Fiyatlandırma', href: '#pricing' },
+    { label: 'Fiyatlandırma', href: '/pricing' },
     { label: 'Karşılaştırma', href: '#comparison' },
     { label: 'Migration', href: '#migration' },
-    { label: 'Güvenlik', href: '#' },
-    { label: "Değişiklik Günlüğü", href: '#' },
+    { label: 'Referanslar', href: '#testimonials' },
+    { label: 'SSS', href: '#faq' },
   ],
   Kaynaklar: [
     { label: 'Dokümantasyon', href: 'https://docs.xtreampulsar.io' },
@@ -34,9 +34,9 @@ const FOOTER_LINKS = {
 };
 
 const SOCIAL_LINKS = [
-  { icon: Twitter, label: 'Twitter', href: '#' },
-  { icon: Github, label: 'GitHub', href: '#' },
-  { icon: Youtube, label: 'YouTube', href: '#' },
+  { icon: Twitter, label: 'Twitter', href: 'https://twitter.com/xtreampulsar' },
+  { icon: Github, label: 'GitHub', href: 'https://github.com/xtreampulsar' },
+  { icon: Youtube, label: 'YouTube', href: 'https://youtube.com/@xtreampulsar' },
 ];
 
 export function Footer() {

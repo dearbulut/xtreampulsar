@@ -25,10 +25,16 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from 'recharts';
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections } from '@/hooks/useDashboard';
+import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections, useConnectionsByHour, useTopCategories, useUserGrowth } from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
 import { useExpiringCount } from '@/hooks/useBulkRenew';
 import { useNotificationLogs } from '@/hooks/useUserActivity';
@@ -177,6 +183,9 @@ export function DashboardPage() {
   const { data: servers } = useServerStats();
   const { data: topStreams } = useTopStreams(5);
   const { data: geoData } = useGeoConnections();
+  const { data: connectionsByHour = [] } = useConnectionsByHour();
+  const { data: topCategories = [] } = useTopCategories(8);
+  const { data: userGrowth = [] } = useUserGrowth(30);
   const { data: expiringCount } = useExpiringCount(7);
   const { data: alarmLogs = [] } = useNotificationLogs(5);
   const { data: uptimeStreams = [] } = useUptimeStreams(5);
@@ -506,6 +515,81 @@ export function DashboardPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ─── Analytics Charts ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
+
+        {/* Saatlik Bağlantı Grafiği */}
+        <div className="card p-5 xl:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold text-slate-200">Saatlik Bağlantılar (Son 24 Saat)</h2>
+          </div>
+          {connectionsByHour.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={connectionsByHour} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="connGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} interval={3} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                <Area type="monotone" dataKey="connections" stroke="var(--color-primary)" strokeWidth={2} fill="url(#connGrad)" name="Bağlantı" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-muted text-sm">Veri yok</div>
+          )}
+        </div>
+
+        {/* En Çok İzlenen Kategoriler */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart2 className="w-4 h-4 text-warning" />
+            <h2 className="text-sm font-semibold text-slate-200">En Çok İzlenen Kategoriler</h2>
+          </div>
+          {topCategories.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={topCategories} dataKey="connections" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
+                  {topCategories.map((_, i) => (
+                    <Cell key={i} fill={['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6'][i % 8]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-muted text-sm">Veri yok</div>
+          )}
+        </div>
+
+        {/* Kullanıcı Büyüme Trendi */}
+        <div className="card p-5 xl:col-span-3">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4 h-4 text-success" />
+            <h2 className="text-sm font-semibold text-slate-200">Kullanıcı Büyümesi (Son 30 Gün)</h2>
+          </div>
+          {userGrowth.length > 0 ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={userGrowth} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} interval={4} tickFormatter={(v: string) => v.slice(5)} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                <Line type="monotone" dataKey="newUsers" stroke="#10b981" strokeWidth={2} dot={false} name="Yeni Kullanıcı" />
+                <Line type="monotone" dataKey="cumulative" stroke="#6366f1" strokeWidth={2} dot={false} name="Toplam" strokeDasharray="4 2" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center text-muted text-sm">Veri yok</div>
+          )}
+        </div>
+
       </div>
     </div>
   );

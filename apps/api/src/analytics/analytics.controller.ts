@@ -78,4 +78,19 @@ export class AnalyticsController {
   getTodayBandwidthTotal() {
     return this.analyticsService.getTodayBandwidthTotal();
   }
+
+  @Get('connections-by-hour')
+  getConnectionsByHour() {
+    return this.analyticsService.getConnectionsByHour();
+  }
+
+  @Get('top-categories')
+  getTopCategories(@Query('limit') limit?: string) {
+    return this.analyticsService.getTopCategories(limit ? parseInt(limit, 10) : 10);
+  }
+
+  @Get('user-growth')
+  getUserGrowth(@Query('days') days?: string) {
+    return this.analyticsService.getUserGrowth(days ? parseInt(days, 10) : 30);
+  }
 }

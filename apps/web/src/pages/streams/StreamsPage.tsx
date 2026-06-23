@@ -17,6 +17,7 @@ import {
   Sparkles,
   FolderInput,
   GripVertical,
+  Filter,
 } from 'lucide-react';
 import {
   DndContext,
@@ -161,6 +162,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [status, setStatus] = useState('');
   const [serverId, setServerId] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [resolution, setResolution] = useState('');
+  const [qualityScore, setQualityScore] = useState('');
+  const [healthStatus, setHealthStatus] = useState('');
+  const [videoCodec, setVideoCodec] = useState('');
+  const [updatedAfter, setUpdatedAfter] = useState('');
+  const [showAdvFilters, setShowAdvFilters] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -181,8 +188,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const hasAdvFilters = !!(resolution || qualityScore || healthStatus || videoCodec || updatedAfter);
+  const clearAdvFilters = () => { setResolution(''); setQualityScore(''); setHealthStatus(''); setVideoCodec(''); setUpdatedAfter(''); setPage(1); };
+
   const { data, isLoading, refetch } = useStreams({
     page, limit: 25, search, status, serverId, categoryId, type,
+    resolution, qualityScore, healthStatus, videoCodec,
+    updatedAfter: updatedAfter ? new Date(updatedAfter).toISOString() : undefined,
     refetchInterval: autoRefresh ? 5000 : false,
   });
   const { data: categories } = useCategories(type);
@@ -486,47 +498,88 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       />
 
       {/* Filters */}
-      <div className="card p-3 mb-4 flex flex-wrap gap-2.5 items-center">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-          <input
-            className="input pl-9 h-9"
-            placeholder="İsim veya URL ara…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
+      <div className="card p-3 mb-4 space-y-2.5">
+        <div className="flex flex-wrap gap-2.5 items-center">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+            <input
+              className="input pl-9 h-9"
+              placeholder="İsim veya URL ara…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <select className="input h-9 w-auto min-w-36" value={serverId} onChange={(e) => { setServerId(e.target.value); setPage(1); }}>
+            <option value="">Tüm Sunucular</option>
+            {servers?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select className="input h-9 w-auto min-w-36" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
+            <option value="">Tüm Kategoriler</option>
+            {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="input h-9 w-auto min-w-36" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <option value="">Tüm Durumlar</option>
+            <option value="RUNNING">Çalışıyor</option>
+            <option value="IDLE">Bekliyor</option>
+            <option value="CRASHED">Hata</option>
+            <option value="STOPPED">Durdu</option>
+          </select>
+          <button
+            onClick={() => setShowAdvFilters((v) => !v)}
+            className={cn('btn btn-ghost h-9 text-sm gap-1.5', (showAdvFilters || hasAdvFilters) && 'text-primary')}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            Gelişmiş
+            {hasAdvFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+          </button>
+          {hasAdvFilters && (
+            <button onClick={clearAdvFilters} className="btn btn-ghost h-9 text-xs text-muted hover:text-danger">
+              Temizle
+            </button>
+          )}
         </div>
-        <select
-          className="input h-9 w-auto min-w-36"
-          value={serverId}
-          onChange={(e) => { setServerId(e.target.value); setPage(1); }}
-        >
-          <option value="">Tüm Sunucular</option>
-          {servers?.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-        <select
-          className="input h-9 w-auto min-w-36"
-          value={categoryId}
-          onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}
-        >
-          <option value="">Tüm Kategoriler</option>
-          {categories?.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <select
-          className="input h-9 w-auto min-w-36"
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-        >
-          <option value="">Tüm Durumlar</option>
-          <option value="RUNNING">Çalışıyor</option>
-          <option value="IDLE">Bekliyor</option>
-          <option value="CRASHED">Hata</option>
-          <option value="STOPPED">Durdu</option>
-        </select>
+
+        {showAdvFilters && (
+          <div className="flex flex-wrap gap-2.5 items-center border-t border-border pt-2.5">
+            <select className="input h-9 w-auto min-w-32" value={resolution} onChange={(e) => { setResolution(e.target.value); setPage(1); }}>
+              <option value="">Tüm Çözünürlükler</option>
+              <option value="1080">1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p</option>
+              <option value="360">360p</option>
+            </select>
+            <select className="input h-9 w-auto min-w-32" value={qualityScore} onChange={(e) => { setQualityScore(e.target.value); setPage(1); }}>
+              <option value="">Tüm Kaliteler</option>
+              <option value="A">A — Mükemmel</option>
+              <option value="B">B — İyi</option>
+              <option value="C">C — Orta</option>
+              <option value="D">D — Düşük</option>
+              <option value="F">F — Kötü</option>
+            </select>
+            <select className="input h-9 w-auto min-w-36" value={healthStatus} onChange={(e) => { setHealthStatus(e.target.value); setPage(1); }}>
+              <option value="">Tüm Sağlık</option>
+              <option value="HEALTHY">Sağlıklı</option>
+              <option value="UNHEALTHY">Sorunlu</option>
+              <option value="UNKNOWN">Bilinmiyor</option>
+            </select>
+            <select className="input h-9 w-auto min-w-28" value={videoCodec} onChange={(e) => { setVideoCodec(e.target.value); setPage(1); }}>
+              <option value="">Tüm Codec</option>
+              <option value="h264">H.264</option>
+              <option value="h265">H.265 / HEVC</option>
+              <option value="av1">AV1</option>
+              <option value="vp9">VP9</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted whitespace-nowrap">Son güncelleme ≥</label>
+              <select className="input h-9 w-auto" value={updatedAfter} onChange={(e) => { setUpdatedAfter(e.target.value); setPage(1); }}>
+                <option value="">Her zaman</option>
+                <option value={new Date(Date.now() - 86400000).toISOString()}>Bugün</option>
+                <option value={new Date(Date.now() - 7 * 86400000).toISOString()}>Bu hafta</option>
+                <option value={new Date(Date.now() - 30 * 86400000).toISOString()}>Bu ay</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table with drag-drop */}

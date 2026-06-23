@@ -2,15 +2,22 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import type { Reseller } from '@xtreampulsar/database';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
+import { REDIS_CLIENT } from '../redis/redis.module';
+
+const BRUTE_MAX_ATTEMPTS = 5;
+const BRUTE_WINDOW_SEC = 15 * 60;
 
 @Injectable()
 export class AuthService {
@@ -19,6 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly twoFactorService: TwoFactorService,
+    @Optional() @Inject(REDIS_CLIENT) private readonly redis: Redis | null,
   ) {}
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -31,14 +39,43 @@ export class AuthService {
     return { success: true };
   }
 
-  async login(dto: LoginDto) {
+  private bruteKey(ip: string) { return `login_attempts:${ip}`; }
+  private blockKey(ip: string)  { return `login_blocked:${ip}`; }
+
+  async checkBrute(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    const blocked = await this.redis.get(this.blockKey(ip)).catch(() => null);
+    if (blocked) throw new ForbiddenException('Too many login attempts. Try again in 15 minutes.');
+  }
+
+  async recordFailedAttempt(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    const key = this.bruteKey(ip);
+    const attempts = await this.redis.incr(key).catch(() => 0);
+    await this.redis.expire(key, BRUTE_WINDOW_SEC).catch(() => {});
+    if (attempts >= BRUTE_MAX_ATTEMPTS) {
+      await this.redis.setex(this.blockKey(ip), BRUTE_WINDOW_SEC, '1').catch(() => {});
+    }
+  }
+
+  async clearBruteAttempts(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    await this.redis.del(this.bruteKey(ip)).catch(() => {});
+  }
+
+  async login(dto: LoginDto, ip = '') {
+    await this.checkBrute(ip);
+
     const user = await this.prisma.user.findUnique({
       where: { username: dto.username },
     });
 
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+      await this.recordFailedAttempt(ip);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    await this.clearBruteAttempts(ip);
 
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException(`Account is ${user.status.toLowerCase()}`);

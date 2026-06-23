@@ -11,6 +11,11 @@ interface StreamFilter {
   categoryId?: string;
   serverId?: string;
   type?: string;
+  resolution?: string;
+  qualityScore?: string;
+  healthStatus?: string;
+  videoCodec?: string;
+  updatedAfter?: string;
   refetchInterval?: number | false;
 }
 
@@ -24,6 +29,11 @@ export function useStreams(filter: StreamFilter = {}) {
   if (apiFilter.categoryId) params.set('categoryId', apiFilter.categoryId);
   if (apiFilter.serverId) params.set('serverId', apiFilter.serverId);
   if (apiFilter.type) params.set('type', apiFilter.type);
+  if (apiFilter.resolution) params.set('resolution', apiFilter.resolution);
+  if (apiFilter.qualityScore) params.set('qualityScore', apiFilter.qualityScore);
+  if (apiFilter.healthStatus) params.set('healthStatus', apiFilter.healthStatus);
+  if (apiFilter.videoCodec) params.set('videoCodec', apiFilter.videoCodec);
+  if (apiFilter.updatedAfter) params.set('updatedAfter', apiFilter.updatedAfter);
 
   return useQuery({
     queryKey: ['streams', apiFilter],
