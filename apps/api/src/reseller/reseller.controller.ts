@@ -72,12 +72,13 @@ export class ResellerController {
   @Roles('RESELLER')
   async getMyCreditHistory(
     @CurrentUser() user: JwtUser,
-    @Query() pagination: PaginationDto,
+    @Query('page') page = '1',
+    @Query('limit') limit = '30',
     @Query('startDate') startDate?: string,
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     const start = startDate ? new Date(startDate) : undefined;
-    return this.resellerService.getCreditHistory(user.id, pagination.page, pagination.limit, start);
+    return this.resellerService.getCreditHistory(user.id, +page, +limit, start);
   }
 
   @Get('me/dashboard')

@@ -26,7 +26,7 @@ export function ResellerCreditsPage() {
   const startDate = getStartDate(activePeriod.days);
 
   const { data: dashboard } = useResellerDashboard();
-  const { data, isLoading } = useResellerCreditHistory(page, 30, startDate);
+  const { data, isLoading, isError } = useResellerCreditHistory(page, 30, startDate);
 
   const credits = dashboard?.credits ?? 0;
 
@@ -96,6 +96,11 @@ export function ResellerCreditsPage() {
       <div className="card overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-10 text-muted text-sm">Yükleniyor…</div>
+        ) : isError ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-muted">
+            <CreditCard className="w-8 h-8 opacity-30" />
+            <p className="text-sm text-danger">Veriler yüklenirken hata oluştu</p>
+          </div>
         ) : !data?.items.length ? (
           <div className="flex flex-col items-center gap-2 py-10 text-muted">
             <CreditCard className="w-8 h-8 opacity-30" />
