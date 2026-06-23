@@ -141,6 +141,14 @@ export class UserController {
     return this.userService.bulkRenew(body.userIds, body.packageId);
   }
 
+  @Post('quick-create')
+  @Roles('ADMIN')
+  quickCreate(
+    @Body() body: { username?: string; password?: string; durationDays: number; maxConnections: number; notes?: string },
+  ) {
+    return this.userService.quickCreate(body);
+  }
+
   @Get('expiring-count')
   @Roles('ADMIN')
   getExpiringCount(@Query('days') days?: string) {

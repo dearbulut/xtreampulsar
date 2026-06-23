@@ -53,6 +53,24 @@ export function useCreateUser() {
   });
 }
 
+export interface QuickCreateResult {
+  user: { id: string; username: string; password: string; expiresAt: string };
+  m3uUrl: string;
+  playerApiUrl: string;
+}
+
+export function useQuickCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { username?: string; password?: string; durationDays: number; maxConnections: number; notes?: string }) =>
+      api.post<{ success: boolean; data: QuickCreateResult }>('/users/quick-create', data).then((r) => r.data.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: () => toast.error('Kullanıcı oluşturulamadı'),
+  });
+}
+
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({

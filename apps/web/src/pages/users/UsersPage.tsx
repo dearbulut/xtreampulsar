@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X, Zap, Shuffle, Link } from 'lucide-react';
 import type { ActivityFilters } from '@/hooks/useUserActivity';
 import { useBulkAction } from '@/hooks/useBulkAction';
 import type { BulkActionResult } from '@/hooks/useBulkAction';
@@ -13,8 +13,9 @@ import { Modal } from '@/components/ui/Modal';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
-  useKickUser, useDeleteUser, useUpdateUser,
+  useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser,
 } from '@/hooks/useUsers';
+import type { QuickCreateResult } from '@/hooks/useUsers';
 import { useBulkRenew } from '@/hooks/useBulkRenew';
 import { usePackages } from '@/hooks/usePackages';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -122,6 +123,7 @@ export function UsersPage() {
   const [bulkPasswordResults, setBulkPasswordResults] = useState<BulkActionResult['results']>(undefined);
 
   const [activityUserId, setActivityUserId] = useState<string | null>(null);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
 
   const { data, isLoading } = useUsers({ page, limit: 25, search, status, resellerId: resellerId || undefined, packageId: packageId || undefined });
   const { data: bouquets = [] } = useBouquets();
@@ -131,6 +133,7 @@ export function UsersPage() {
   const bulkRenew = useBulkRenew();
   const bulkActionMut = useBulkAction();
   const createUser = useCreateUser();
+  const quickCreateUser = useQuickCreateUser();
   const extendUser = useExtendUser();
   const banUser = useBanUser();
   const unbanUser = useUnbanUser();
@@ -308,6 +311,10 @@ export function UsersPage() {
             <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title="CSV İndir">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Rapor İndir</span>
+            </button>
+            <button onClick={() => setShowQuickCreate(true)} className="btn-secondary flex items-center gap-1.5 text-sm text-amber-400 border-amber-400/30 hover:border-amber-400/60">
+              <Zap className="w-4 h-4" />
+              <span className="hidden sm:inline">Hızlı Ekle</span>
             </button>
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
@@ -856,6 +863,14 @@ export function UsersPage() {
         )}
       </Modal>
 
+      {/* Hızlı Ekle Modal */}
+      {showQuickCreate && (
+        <QuickCreateModal
+          onClose={() => setShowQuickCreate(false)}
+          mutation={quickCreateUser}
+        />
+      )}
+
       {/* Aktivite Modal */}
       {activityUserId && (
         <ActivityModal userId={activityUserId} onClose={() => setActivityUserId(null)} />
@@ -1281,6 +1296,286 @@ function ActivityModal({ userId, onClose }: { userId: string; onClose: () => voi
           </div>
         ))}
       </div>
+    </Modal>
+  );
+}
+
+// ─── Hızlı Ekle Modal ────────────────────────────────────────────────────────
+
+function randomStr(len = 8): string {
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+const DURATION_PRESETS = [
+  { label: '1 Ay',  days: 30 },
+  { label: '3 Ay',  days: 90 },
+  { label: '6 Ay',  days: 180 },
+  { label: '1 Yıl', days: 365 },
+] as const;
+
+const CONN_PRESETS = [1, 2, 3, 5] as const;
+
+interface QuickCreateModalProps {
+  onClose: () => void;
+  mutation: ReturnType<typeof useQuickCreateUser>;
+}
+
+function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [durationDays, setDurationDays] = useState(30);
+  const [customDays, setCustomDays] = useState('');
+  const [durationPreset, setDurationPreset] = useState<number | 'custom'>(30);
+  const [maxConns, setMaxConns] = useState(1);
+  const [customConns, setCustomConns] = useState('');
+  const [connsPreset, setConnsPreset] = useState<number | 'custom'>(1);
+  const [notes, setNotes] = useState('');
+  const [result, setResult] = useState<QuickCreateResult | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const effectiveDays = durationPreset === 'custom' ? (parseInt(customDays) || 30) : durationPreset;
+  const effectiveConns = connsPreset === 'custom' ? (parseInt(customConns) || 1) : connsPreset;
+
+  const expiresLabel = new Date(Date.now() + effectiveDays * 86_400_000).toLocaleDateString('tr-TR');
+
+  async function handleCreate() {
+    const data = await mutation.mutateAsync({
+      username: username.trim() || undefined,
+      password: password.trim() || undefined,
+      durationDays: effectiveDays,
+      maxConnections: effectiveConns,
+      notes: notes.trim() || undefined,
+    });
+    setResult(data);
+  }
+
+  function handleCopy() {
+    if (!result) return;
+    const text = [
+      `Kullanıcı Adı: ${result.user.username}`,
+      `Şifre: ${result.user.password}`,
+      `Bitiş: ${new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}`,
+      `M3U URL: ${result.m3uUrl}`,
+    ].join('\n');
+    void navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Bilgiler panoya kopyalandı');
+  }
+
+  function handleReset() {
+    setUsername('');
+    setPassword('');
+    setDurationDays(30);
+    setCustomDays('');
+    setDurationPreset(30);
+    setMaxConns(1);
+    setCustomConns('');
+    setConnsPreset(1);
+    setNotes('');
+    setResult(null);
+    setCopied(false);
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Hızlı Kullanıcı Oluştur" size="sm">
+      {!result ? (
+        <div className="space-y-4">
+          {/* Kullanıcı adı */}
+          <div>
+            <label className="label">Kullanıcı Adı <span className="text-muted font-normal">(boş bırakılırsa otomatik)</span></label>
+            <div className="flex gap-2">
+              <input
+                className="input flex-1"
+                placeholder="user123"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-ghost px-2.5 text-muted hover:text-fg"
+                title="Rastgele üret"
+                onClick={() => setUsername(randomStr(8))}
+              >
+                <Shuffle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Şifre */}
+          <div>
+            <label className="label">Şifre <span className="text-muted font-normal">(boş bırakılırsa otomatik)</span></label>
+            <div className="flex gap-2">
+              <input
+                className="input flex-1 font-mono"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-ghost px-2.5 text-muted hover:text-fg"
+                title="Rastgele üret"
+                onClick={() => setPassword(randomStr(8))}
+              >
+                <Shuffle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Süre */}
+          <div>
+            <label className="label">Süre</label>
+            <div className="flex flex-wrap gap-1.5">
+              {DURATION_PRESETS.map(({ label, days }) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => { setDurationPreset(days); setDurationDays(days); }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    durationPreset === days ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDurationPreset('custom')}
+                className={cn(
+                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                  durationPreset === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                )}
+              >
+                Özel
+              </button>
+            </div>
+            {durationPreset === 'custom' && (
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                className="input mt-2 w-32 text-sm"
+                placeholder="Gün"
+                value={customDays}
+                onChange={(e) => setCustomDays(e.target.value)}
+                autoFocus
+              />
+            )}
+            <p className="text-xs text-muted mt-1">Bitiş: {expiresLabel}</p>
+          </div>
+
+          {/* Max Bağlantı */}
+          <div>
+            <label className="label">Maks. Bağlantı</label>
+            <div className="flex flex-wrap gap-1.5">
+              {CONN_PRESETS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => { setConnsPreset(n); setMaxConns(n); }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors min-w-[36px]',
+                    connsPreset === n ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setConnsPreset('custom')}
+                className={cn(
+                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                  connsPreset === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                )}
+              >
+                Özel
+              </button>
+            </div>
+            {connsPreset === 'custom' && (
+              <input
+                type="number"
+                min={1}
+                max={100}
+                className="input mt-2 w-24 text-sm"
+                placeholder="Adet"
+                value={customConns}
+                onChange={(e) => setCustomConns(e.target.value)}
+              />
+            )}
+          </div>
+
+          {/* Notlar */}
+          <div>
+            <label className="label">Notlar <span className="text-muted font-normal">(isteğe bağlı)</span></label>
+            <input
+              className="input"
+              placeholder="Müşteri adı, not vb."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end pt-1">
+            <button type="button" onClick={onClose} className="btn-ghost">İptal</button>
+            <button
+              type="button"
+              disabled={mutation.isPending}
+              onClick={() => void handleCreate()}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              {mutation.isPending ? 'Oluşturuluyor…' : 'Oluştur ve Kopyala'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ─── Başarı kartı ─── */
+        <div className="space-y-4">
+          <div className="rounded-xl bg-success/10 border border-success/20 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-success font-semibold text-sm">
+              <Check className="w-4 h-4" /> Kullanıcı oluşturuldu
+            </div>
+            <div className="grid grid-cols-2 gap-y-2 text-sm">
+              <span className="text-muted">Kullanıcı Adı</span>
+              <span className="font-mono text-slate-200 font-medium">{result.user.username}</span>
+              <span className="text-muted">Şifre</span>
+              <span className="font-mono text-slate-200 font-medium">{result.user.password}</span>
+              <span className="text-muted">Bitiş</span>
+              <span className="text-slate-200">{new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-surface-2 border border-border p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted mb-1">
+              <Link className="w-3.5 h-3.5" /> M3U URL
+            </div>
+            <p className="font-mono text-xs text-primary break-all leading-relaxed">{result.m3uUrl}</p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Kopyalandı!' : 'Kopyala'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Zap className="w-4 h-4" /> Yeni Hat
+            </button>
+            <button type="button" onClick={onClose} className="btn-ghost text-sm">Kapat</button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

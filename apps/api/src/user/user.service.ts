@@ -428,6 +428,50 @@ export class UserService {
     return Array.from(bytes, (b) => chars[b % chars.length]).join('');
   }
 
+  async quickCreate(dto: {
+    username?: string;
+    password?: string;
+    durationDays: number;
+    maxConnections: number;
+    notes?: string;
+  }): Promise<{ user: { id: string; username: string; password: string; expiresAt: Date }; m3uUrl: string; playerApiUrl: string }> {
+    const username = dto.username?.trim() || this.makeRandomPassword(8).toLowerCase();
+    const rawPassword = dto.password?.trim() || this.makeRandomPassword(8);
+
+    // Ensure username is unique — append 3 random chars if taken
+    let finalUsername = username;
+    const existing = await this.prisma.user.findUnique({ where: { username } });
+    if (existing) {
+      finalUsername = `${username}${this.makeRandomPassword(3).toLowerCase()}`;
+    }
+
+    const hashed = await bcrypt.hash(rawPassword, 12);
+    const expiresAt = new Date(Date.now() + dto.durationDays * 86_400_000);
+
+    const user = await this.prisma.user.create({
+      data: {
+        username: finalUsername,
+        password: hashed,
+        maxConnections: dto.maxConnections,
+        expiresAt,
+        status: 'ACTIVE',
+        role: 'USER',
+        ...(dto.notes ? { notes: dto.notes } : {}),
+      },
+      select: { id: true, username: true, expiresAt: true },
+    });
+
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const baseUrl = settings?.serverUrl
+      ? `${settings.serverUrl}:${settings.serverPort ?? 25461}`
+      : `http://localhost:${settings?.serverPort ?? 25461}`;
+
+    const m3uUrl = `${baseUrl}/get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`;
+    const playerApiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(rawPassword)}`;
+
+    return { user: { ...user, password: rawPassword }, m3uUrl, playerApiUrl };
+  }
+
   async generateQrCode(id: string): Promise<{ qrCodeImage: string; serverUrl: string; username: string }> {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
