@@ -13,6 +13,18 @@ resellerApi.interceptors.request.use((config) => {
   return config;
 });
 
+resellerApi.interceptors.response.use(
+  (res) => res,
+  (err: unknown) => {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 401) {
+      useAuthStore.getState().resellerLogout();
+      window.location.href = '/reseller/login';
+    }
+    return Promise.reject(err as Error);
+  },
+);
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ResellerDashboard {
@@ -313,6 +325,7 @@ export interface CreditHistoryResponse {
 export function useResellerCreditHistory(page = 1, limit = 30, startDate?: string) {
   return useQuery({
     queryKey: ['reseller-panel', 'credits', page, limit, startDate],
+    retry: false,
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (startDate) params.set('startDate', startDate);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { CreditCard, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CreditCard, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useResellerCreditHistory, useResellerDashboard } from '@/hooks/useResellerPanel';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn, formatDate } from '@/lib/utils';
 
 type Period = '1w' | '1m' | '3m' | 'all';
@@ -25,6 +26,7 @@ export function ResellerCreditsPage() {
   const activePeriod = PERIODS.find((p) => p.key === period)!;
   const startDate = getStartDate(activePeriod.days);
 
+  const qc = useQueryClient();
   const { data: dashboard } = useResellerDashboard();
   const { data, isLoading, isError } = useResellerCreditHistory(page, 30, startDate);
 
@@ -33,6 +35,10 @@ export function ResellerCreditsPage() {
   const handlePeriod = (p: Period) => {
     setPeriod(p);
     setPage(1);
+  };
+
+  const handleRetry = () => {
+    void qc.invalidateQueries({ queryKey: ['reseller-panel', 'credits'] });
   };
 
   return (
@@ -95,11 +101,19 @@ export function ResellerCreditsPage() {
       {/* Transactions table */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="flex justify-center py-10 text-muted text-sm">Yükleniyor…</div>
+          <div className="flex items-center justify-center gap-2 py-10 text-muted text-sm">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Yükleniyor…
+          </div>
         ) : isError ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-muted">
-            <CreditCard className="w-8 h-8 opacity-30" />
-            <p className="text-sm text-danger">Veriler yüklenirken hata oluştu</p>
+          <div className="flex flex-col items-center gap-3 py-10">
+            <AlertTriangle className="w-8 h-8 text-amber-400 opacity-70" />
+            <p className="text-sm text-muted">Veriler yüklenemedi</p>
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Yeniden Dene
+            </button>
           </div>
         ) : !data?.items.length ? (
           <div className="flex flex-col items-center gap-2 py-10 text-muted">
