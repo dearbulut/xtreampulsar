@@ -20,7 +20,15 @@ import {
   Filter,
   Clapperboard,
   X,
+  Activity,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useStreamHealth, useManualHealthCheck } from '@/hooks/useStreamHealth';
 import {
   DndContext,
   closestCenter,
@@ -127,6 +135,17 @@ interface PreviewInfo {
   externalId: number;
 }
 
+function UptimeHealthBadge({ uptimePercent }: { uptimePercent?: number | null }) {
+  if (uptimePercent == null) return <span className="text-xs text-muted">—</span>;
+  const pct = uptimePercent;
+  const color = pct >= 95 ? 'bg-emerald-500/20 text-emerald-400' : pct >= 80 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400';
+  return (
+    <span className={cn('text-xs font-semibold px-1.5 py-0.5 rounded', color)}>
+      %{pct.toFixed(1)}
+    </span>
+  );
+}
+
 interface CreateForm {
   name: string;
   categoryId: string;
@@ -198,6 +217,141 @@ function HlsPlayer({ src }: { src: string }) {
   );
 }
 
+function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string; streamName: string; onClose: () => void }) {
+  const [hours, setHours] = useState(24);
+  const { data, isLoading } = useStreamHealth(streamId, hours);
+  const manualCheck = useManualHealthCheck();
+
+  const STATUS_CFG = {
+    up: { icon: CheckCircle2, color: 'text-emerald-400', label: 'Çevrimiçi' },
+    down: { icon: XCircle, color: 'text-red-400', label: 'Çevrimdışı' },
+    degraded: { icon: AlertTriangle, color: 'text-yellow-400', label: 'Yavaş' },
+  } as const;
+
+  return (
+    <Modal open onClose={onClose} title={`Sağlık: ${streamName}`} size="xl">
+      <div className="space-y-4">
+        {/* Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1">
+            {[6, 24, 48, 168].map((h) => (
+              <button
+                key={h}
+                onClick={() => setHours(h)}
+                className={cn('text-xs px-2.5 py-1 rounded-md transition-colors', hours === h ? 'bg-primary text-white' : 'btn-ghost')}
+              >
+                {h < 24 ? `${h}s` : h === 24 ? '24s' : h === 48 ? '2g' : '7g'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => manualCheck.mutate(streamId)}
+            disabled={manualCheck.isPending}
+            className="btn-ghost text-xs flex items-center gap-1.5"
+          >
+            <RefreshCw className={cn('w-3.5 h-3.5', manualCheck.isPending && 'animate-spin')} />
+            Şimdi Kontrol Et
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="text-center py-8 text-muted text-sm">Yükleniyor…</div>
+        ) : data ? (
+          <>
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: ShieldCheck, label: 'Uptime', value: `%${data.uptimePercent.toFixed(1)}`, color: data.uptimePercent >= 95 ? 'text-emerald-400' : data.uptimePercent >= 80 ? 'text-yellow-400' : 'text-red-400' },
+                { icon: Clock, label: 'Ort. Yanıt', value: data.avgResponseTime != null ? `${data.avgResponseTime} ms` : '—', color: 'text-blue-400' },
+                { icon: Activity, label: 'Toplam Kontrol', value: String(data.totalChecks), color: 'text-fg' },
+                { icon: XCircle, label: 'Çevrimdışı', value: String(data.downCount), color: data.downCount > 0 ? 'text-red-400' : 'text-muted' },
+              ].map(({ icon: Icon, label, value, color }) => (
+                <div key={label} className="bg-surface-2 rounded-xl p-3 flex items-start gap-2.5">
+                  <Icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', color)} />
+                  <div>
+                    <p className="text-xs text-muted">{label}</p>
+                    <p className={cn('text-sm font-bold', color)}>{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Chart */}
+            {data.chartData.length > 0 && (
+              <div className="bg-surface-2 rounded-xl p-3">
+                <p className="text-xs text-muted mb-2">Son {hours}s Uptime & Yanıt Süresi</p>
+                <ResponsiveContainer width="100%" height={120}>
+                  <LineChart data={data.chartData} margin={{ top: 2, right: 4, bottom: 2, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis
+                      dataKey="time"
+                      tick={{ fontSize: 9, fill: '#94a3b8' }}
+                      tickFormatter={(v: string) => new Date(v).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis yAxisId="pct" domain={[0, 100]} tick={{ fontSize: 9, fill: '#94a3b8' }} width={28} unit="%" />
+                    <YAxis yAxisId="rt" orientation="right" tick={{ fontSize: 9, fill: '#94a3b8' }} width={32} unit="ms" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1c1f2e', border: '1px solid #2e3347', borderRadius: 8, fontSize: 11 }}
+                      labelFormatter={(v: string) => new Date(v).toLocaleString('tr-TR')}
+                      formatter={(value: number, name: string) => [name === 'uptime' ? `%${value}` : `${value} ms`, name === 'uptime' ? 'Uptime' : 'Yanıt']}
+                    />
+                    <Line yAxisId="pct" type="monotone" dataKey="uptime" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
+                    <Line yAxisId="rt" type="monotone" dataKey="responseTime" stroke="#60a5fa" strokeWidth={1.5} dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Log table */}
+            {data.recentLogs.length > 0 && (
+              <div className="bg-surface-2 rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-3 py-2 text-muted font-medium">Zaman</th>
+                      <th className="text-left px-3 py-2 text-muted font-medium">Durum</th>
+                      <th className="text-right px-3 py-2 text-muted font-medium">Yanıt</th>
+                      <th className="text-left px-3 py-2 text-muted font-medium">Hata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentLogs.map((log) => {
+                      const cfg = STATUS_CFG[log.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.down;
+                      const Icon = cfg.icon;
+                      return (
+                        <tr key={log.id} className="border-b border-border/50 last:border-0 hover:bg-surface transition-colors">
+                          <td className="px-3 py-2 font-mono text-muted whitespace-nowrap">
+                            {new Date(log.checkedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={cn('flex items-center gap-1', cfg.color)}>
+                              <Icon className="w-3 h-3" />
+                              {cfg.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-fg">
+                            {log.responseTime != null ? `${log.responseTime} ms` : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-muted truncate max-w-32" title={log.errorMessage ?? ''}>
+                            {log.errorMessage ?? '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8 text-muted text-sm">Veri bulunamadı</div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function SortHandle({ id }: { id: string }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
@@ -237,6 +391,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewInfo, setPreviewInfo] = useState<PreviewInfo | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
+  const [healthStream, setHealthStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
@@ -442,6 +597,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         ),
     },
     {
+      key: 'healthUptime',
+      header: 'Sağlık',
+      className: 'w-20',
+      render: (r) => {
+        const up = (r as Stream & { uptimePercent?: number | null }).uptimePercent;
+        return <UptimeHealthBadge uptimePercent={up} />;
+      },
+    },
+    {
       key: 'resolution',
       header: 'Çözünürlük / Kalite',
       className: 'w-36',
@@ -489,6 +653,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             loading={restart.isPending && restart.variables === r.id}
           />
           <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => {}} />
+          <ActionBtn icon={Activity} title="Sağlık Raporu" color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
           <ActionBtn icon={Eye} title="URL Göster" color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
           {(!type || type === 'LIVE') && (
@@ -920,6 +1085,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         confirmLabel="Sil"
         loading={deleteStream.isPending}
       />
+
+      {/* Stream health modal */}
+      {healthStream && (
+        <StreamHealthModal
+          streamId={healthStream.id}
+          streamName={healthStream.name}
+          onClose={() => setHealthStream(null)}
+        />
+      )}
     </div>
   );
 }

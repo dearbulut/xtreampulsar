@@ -251,6 +251,7 @@ model Stream {
   lastHealthCheck DateTime?
   healthStatus    String?
   uptimePercent   Float?       @default(100)
+  lastError       String?
   qualityScore    String?
   resolution      String?
   videoBitrate    Int?
@@ -617,6 +618,7 @@ model StreamHealthLog {
   stream       Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
   status       String
   responseTime Int?
+  errorMessage String?
   checkedAt    DateTime @default(now())
 
   @@index([streamId, checkedAt])

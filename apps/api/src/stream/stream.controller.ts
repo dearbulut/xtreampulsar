@@ -132,14 +132,28 @@ export class StreamController {
     return this.workerService.getWorkerStats(id);
   }
 
+  // Must be before :id/health to avoid route shadowing
+  @Get('health/summary')
+  @Roles('ADMIN')
+  healthSummaryNew() {
+    return this.healthService.getHealthSummary();
+  }
+
   @Get('health-summary')
   healthSummary() {
     return this.healthService.getHealthSummary();
   }
 
   @Get(':id/health')
-  getHealth(@Param('id') id: string) {
-    return this.healthService.getStreamHealth(id);
+  @Roles('ADMIN')
+  getHealth(@Param('id') id: string, @Query('hours') hours?: string) {
+    return this.healthService.getStreamHealth(id, hours ? parseInt(hours, 10) : 24);
+  }
+
+  @Post(':id/health/check')
+  @Roles('ADMIN')
+  manualCheck(@Param('id') id: string) {
+    return this.healthService.checkStream(id);
   }
 
   @Post(':id/probe')
