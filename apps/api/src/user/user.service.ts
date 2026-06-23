@@ -26,9 +26,23 @@ export class UserService {
 
   async findByCredentials(username: string, password: string) {
     const user = await this.userRepo.findByUsername(username);
-    if (!user || user.deletedAt) return null;
+
+    if (!user) {
+      this.logger.debug(`[findByCredentials] user not found: "${username}"`);
+      return null;
+    }
+    if (user.deletedAt) {
+      this.logger.debug(`[findByCredentials] user "${username}" is soft-deleted (deletedAt=${user.deletedAt.toISOString()})`);
+      return null;
+    }
+
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return null;
+    if (!valid) {
+      this.logger.debug(`[findByCredentials] password mismatch for "${username}" — hash prefix: ${user.password.slice(0, 7)}`);
+      return null;
+    }
+
+    this.logger.debug(`[findByCredentials] OK: "${username}" id=${user.id} role=${user.role} status=${user.status}`);
     return user;
   }
 
@@ -42,7 +56,12 @@ export class UserService {
     if (user.status !== 'ACTIVE') {
       return { allowed: false, reason: `Account ${user.status.toLowerCase()}` };
     }
-    if (user.expiresAt < new Date()) {
+    // ADMIN and RESELLER roles are not bound by expiry or connection limits
+    if (user.role === 'ADMIN' || user.role === 'RESELLER') {
+      return { allowed: true };
+    }
+    // expiresAt may be null on legacy records; treat null as expired
+    if (!user.expiresAt || user.expiresAt < new Date()) {
       return { allowed: false, reason: 'Account expired' };
     }
     const active = await this.userRepo.countActiveConnections(userId);
