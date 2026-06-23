@@ -247,6 +247,16 @@ export class MigrationService {
         totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD');
       }
 
+      if (dto.importSeries) {
+        const [cats, series] = await Promise.all([
+          this.fetchJson<{ category_id: string; category_name: string }[]>(`${base}&action=get_series_categories`),
+          this.fetchJson<{ series_id: number; name: string; cover: string; category_id: string }[]>(`${base}&action=get_series`),
+        ]);
+
+        const catIdMap = await this.importXtreamCategories(cats, 'SERIES');
+        totalImported += await this.importXtreamSeriesItems(series, catIdMap, dto.serverUrl, dto.username, dto.password);
+      }
+
       await this.prisma.migrationJob.update({
         where: { id: jobId },
         data: {
@@ -342,6 +352,56 @@ export class MigrationService {
         count++;
       } catch {
         // skip duplicates
+      }
+    }
+
+    return count;
+  }
+
+  // Series have series_id (not stream_id) and a different response shape.
+  // We create one stream record per series (no episode drilling) to keep import fast.
+  // primaryUrl is used as the dedup key to avoid externalId collisions with LIVE/VOD.
+  private async importXtreamSeriesItems(
+    series: { series_id: number; name: string; cover: string; category_id: string }[],
+    catIdMap: Map<string, string>,
+    serverUrl: string,
+    username: string,
+    password: string,
+  ): Promise<number> {
+    let count = 0;
+    const baseUrl = serverUrl.replace(/\/$/, '');
+
+    for (const s of series) {
+      const categoryId = catIdMap.get(s.category_id);
+      if (!categoryId) continue;
+
+      const primaryUrl = `${baseUrl}/series/${username}/${password}/${s.series_id}.mkv`;
+
+      try {
+        const existing = await this.prisma.stream.findFirst({
+          where: { primaryUrl },
+          select: { id: true },
+        });
+
+        if (existing) {
+          await this.prisma.stream.update({
+            where: { id: existing.id },
+            data: { name: s.name, tvgLogo: s.cover || null, streamMode: 'PROXY', categoryId },
+          });
+        } else {
+          await this.prisma.stream.create({
+            data: {
+              name: s.name,
+              primaryUrl,
+              streamMode: 'PROXY',
+              tvgLogo: s.cover || null,
+              categoryId,
+            },
+          });
+        }
+        count++;
+      } catch {
+        // skip on error
       }
     }
 
