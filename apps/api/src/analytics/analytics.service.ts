@@ -708,20 +708,25 @@ export class AnalyticsService {
         include: { user: { select: { username: true } } },
       });
 
+      const ACTION_LABELS: Record<string, string> = {
+        LOGIN:            'Giriş yapıldı',
+        LOGOUT:           'Çıkış yapıldı',
+        STREAM_START:     'Stream izlemeye başladı',
+        STREAM_END:       'Stream izlemeyi bitirdi',
+        STREAM_STOP:      'Stream durduruldu',
+        CREATED:          'Hesap oluşturuldu',
+        PASSWORD_CHANGED: 'Şifre değiştirildi',
+        PASSWORD_CHANGE:  'Şifre değiştirildi',
+        SUSPENDED:        'Hesap askıya alındı',
+        REGISTER:         'Hesap oluşturuldu',
+      };
+
       return logs.map((log) => {
         const username = log.user?.username ?? 'Bilinmeyen';
-        const descriptions: Record<string, string> = {
-          LOGIN:          `${username} giriş yaptı`,
-          LOGOUT:         `${username} çıkış yaptı`,
-          STREAM_START:   `${username} stream izlemeye başladı`,
-          STREAM_END:     `${username} stream izlemeyi bitirdi`,
-          PASSWORD_CHANGE:`${username} şifresini değiştirdi`,
-          REGISTER:       `${username} kayıt oldu`,
-        };
         return {
           id: log.id,
           type: log.action,
-          description: descriptions[log.action] ?? `${username}: ${log.action}`,
+          description: ACTION_LABELS[log.action] ?? log.action,
           user: username,
           createdAt: log.createdAt,
         };

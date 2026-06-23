@@ -423,7 +423,11 @@ export function DashboardPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-fg truncate">{entry.description}</p>
-                      <p className="text-xs text-muted mt-0.5">{timeAgo(entry.createdAt)}</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        <span className="font-medium">{entry.user}</span>
+                        {' · '}
+                        {timeAgo(entry.createdAt)}
+                      </p>
                     </div>
                   </div>
                 );
