@@ -62,7 +62,7 @@ export interface QuickCreateResult {
 export function useQuickCreateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { username?: string; password?: string; durationDays: number; maxConnections: number; notes?: string }) =>
+    mutationFn: (data: { username?: string; password?: string; durationDays?: number; durationHours?: number; maxConnections: number; notes?: string }) =>
       api.post<{ success: boolean; data: QuickCreateResult }>('/users/quick-create', data).then((r) => r.data.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['users'] });

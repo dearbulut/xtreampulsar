@@ -1307,7 +1307,15 @@ function randomStr(len = 8): string {
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-const DURATION_PRESETS = [
+const TEST_PRESETS = [
+  { label: '1 Saat',  hours: 1 },
+  { label: '3 Saat',  hours: 3 },
+  { label: '6 Saat',  hours: 6 },
+  { label: '12 Saat', hours: 12 },
+  { label: '24 Saat', hours: 24 },
+] as const;
+
+const STANDARD_PRESETS = [
   { label: '1 Ay',  days: 30 },
   { label: '3 Ay',  days: 90 },
   { label: '6 Ay',  days: 180 },
@@ -1321,12 +1329,14 @@ interface QuickCreateModalProps {
   mutation: ReturnType<typeof useQuickCreateUser>;
 }
 
+// preset key: `h:N` for hours, `d:N` for days, `custom` for custom days
+type DurationKey = `h:${number}` | `d:${number}` | 'custom';
+
 function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [durationDays, setDurationDays] = useState(30);
+  const [durationKey, setDurationKey] = useState<DurationKey>('d:30');
   const [customDays, setCustomDays] = useState('');
-  const [durationPreset, setDurationPreset] = useState<number | 'custom'>(30);
   const [maxConns, setMaxConns] = useState(1);
   const [customConns, setCustomConns] = useState('');
   const [connsPreset, setConnsPreset] = useState<number | 'custom'>(1);
@@ -1334,16 +1344,31 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
   const [result, setResult] = useState<QuickCreateResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const effectiveDays = durationPreset === 'custom' ? (parseInt(customDays) || 30) : durationPreset;
   const effectiveConns = connsPreset === 'custom' ? (parseInt(customConns) || 1) : connsPreset;
 
-  const expiresLabel = new Date(Date.now() + effectiveDays * 86_400_000).toLocaleDateString('tr-TR');
+  const expiresLabel = (() => {
+    if (durationKey === 'custom') {
+      const days = parseInt(customDays) || 30;
+      return new Date(Date.now() + days * 86_400_000).toLocaleDateString('tr-TR');
+    }
+    const [type, val] = durationKey.split(':');
+    const ms = type === 'h' ? Number(val) * 3_600_000 : Number(val) * 86_400_000;
+    return new Date(Date.now() + ms).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+  })();
 
   async function handleCreate() {
+    let payload: { durationDays?: number; durationHours?: number } = {};
+    if (durationKey === 'custom') {
+      payload = { durationDays: parseInt(customDays) || 30 };
+    } else {
+      const [type, val] = durationKey.split(':');
+      if (type === 'h') payload = { durationHours: Number(val) };
+      else payload = { durationDays: Number(val) };
+    }
     const data = await mutation.mutateAsync({
       username: username.trim() || undefined,
       password: password.trim() || undefined,
-      durationDays: effectiveDays,
+      ...payload,
       maxConnections: effectiveConns,
       notes: notes.trim() || undefined,
     });
@@ -1367,9 +1392,8 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
   function handleReset() {
     setUsername('');
     setPassword('');
-    setDurationDays(30);
+    setDurationKey('d:30');
     setCustomDays('');
-    setDurationPreset(30);
     setMaxConns(1);
     setCustomConns('');
     setConnsPreset(1);
@@ -1425,46 +1449,78 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
           </div>
 
           {/* Süre */}
-          <div>
+          <div className="space-y-2">
             <label className="label">Süre</label>
-            <div className="flex flex-wrap gap-1.5">
-              {DURATION_PRESETS.map(({ label, days }) => (
+
+            {/* Test satırı */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Test</span>
+              <div className="flex flex-wrap gap-1.5">
+                {TEST_PRESETS.map(({ label, hours }) => {
+                  const key: DurationKey = `h:${hours}`;
+                  return (
+                    <button
+                      key={hours}
+                      type="button"
+                      onClick={() => setDurationKey(key)}
+                      className={cn(
+                        'px-2.5 py-1.5 text-xs rounded-lg transition-colors',
+                        durationKey === key ? 'bg-amber-500 text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Standart satırı */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Standart</span>
+              <div className="flex flex-wrap gap-1.5">
+                {STANDARD_PRESETS.map(({ label, days }) => {
+                  const key: DurationKey = `d:${days}`;
+                  return (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => setDurationKey(key)}
+                      className={cn(
+                        'px-2.5 py-1.5 text-xs rounded-lg transition-colors',
+                        durationKey === key ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
                 <button
-                  key={days}
                   type="button"
-                  onClick={() => { setDurationPreset(days); setDurationDays(days); }}
+                  onClick={() => setDurationKey('custom')}
                   className={cn(
-                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                    durationPreset === days ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
+                    'px-2.5 py-1.5 text-xs rounded-lg transition-colors',
+                    durationKey === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  {label}
+                  Özel
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setDurationPreset('custom')}
-                className={cn(
-                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                  durationPreset === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
-                )}
-              >
-                Özel
-              </button>
+              </div>
+              {durationKey === 'custom' && (
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  className="input mt-1 w-32 text-sm"
+                  placeholder="Gün sayısı"
+                  value={customDays}
+                  onChange={(e) => setCustomDays(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
-            {durationPreset === 'custom' && (
-              <input
-                type="number"
-                min={1}
-                max={3650}
-                className="input mt-2 w-32 text-sm"
-                placeholder="Gün"
-                value={customDays}
-                onChange={(e) => setCustomDays(e.target.value)}
-                autoFocus
-              />
-            )}
-            <p className="text-xs text-muted mt-1">Bitiş: {expiresLabel}</p>
+
+            <p className="text-xs text-muted">Bitiş: {expiresLabel}</p>
           </div>
 
           {/* Max Bağlantı */}

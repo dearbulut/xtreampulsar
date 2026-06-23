@@ -431,10 +431,15 @@ export class UserService {
   async quickCreate(dto: {
     username?: string;
     password?: string;
-    durationDays: number;
+    durationDays?: number;
+    durationHours?: number;
     maxConnections: number;
     notes?: string;
   }): Promise<{ user: { id: string; username: string; password: string; expiresAt: Date }; m3uUrl: string; playerApiUrl: string }> {
+    if (!dto.durationDays && !dto.durationHours) {
+      throw new BadRequestException('durationDays veya durationHours gerekli');
+    }
+
     const username = dto.username?.trim() || this.makeRandomPassword(8).toLowerCase();
     const rawPassword = dto.password?.trim() || this.makeRandomPassword(8);
 
@@ -446,7 +451,10 @@ export class UserService {
     }
 
     const hashed = await bcrypt.hash(rawPassword, 12);
-    const expiresAt = new Date(Date.now() + dto.durationDays * 86_400_000);
+    const msToAdd = dto.durationHours
+      ? dto.durationHours * 3_600_000
+      : (dto.durationDays ?? 30) * 86_400_000;
+    const expiresAt = new Date(Date.now() + msToAdd);
 
     const user = await this.prisma.user.create({
       data: {
