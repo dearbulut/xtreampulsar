@@ -1,7 +1,7 @@
-import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, Radio, UserCircle, Cpu } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useRouter } from '@tanstack/react-router';
@@ -16,6 +16,7 @@ interface NotificationLog {
   recipient: string;
   subject: string;
   status: 'SENT' | 'FAILED' | 'PENDING';
+  isRead: boolean;
   createdAt: string;
 }
 
@@ -29,6 +30,60 @@ function useNotificationLogs() {
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
+}
+
+function useUnreadCount() {
+  return useQuery<number>({
+    queryKey: ['notification-unread'],
+    queryFn: async () => {
+      const res = await api.get<{ count: number }>('/notifications/unread-count');
+      return res.data.count;
+    },
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  });
+}
+
+function useMarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/notifications/${id}/read`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['notification-unread'] });
+      void qc.invalidateQueries({ queryKey: ['notification-logs'] });
+    },
+  });
+}
+
+function useMarkAllRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/notifications/read-all'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['notification-unread'] });
+      void qc.invalidateQueries({ queryKey: ['notification-logs'] });
+    },
+  });
+}
+
+function relativeTime(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return 'Az önce';
+  if (mins < 60) return `${mins} dakika önce`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} saat önce`;
+  return `${Math.floor(hrs / 24)} gün önce`;
+}
+
+function notifIcon(type: string) {
+  if (type?.includes('STREAM') || type?.includes('STREAM_FAIL')) {
+    return <Radio className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />;
+  }
+  if (type?.includes('USER') || type?.includes('LOGIN') || type?.includes('EXPIR')) {
+    return <UserCircle className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />;
+  }
+  return <Cpu className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />;
 }
 
 interface Props {
@@ -234,6 +289,9 @@ export function Header({ title, breadcrumb }: Props) {
   const [showNotes, setShowNotes] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const { data: notifLogs = [] } = useNotificationLogs();
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
 
   const { data: updateInfo } = useUpdateCheck();
   const applyUpdate = useApplyUpdate();
@@ -378,12 +436,14 @@ export function Header({ title, breadcrumb }: Props) {
           </DropdownMenu.Root>
 
           {/* Notification bell */}
-          <DropdownMenu.Root>
+          <DropdownMenu.Root onOpenChange={(open) => { if (open && unreadCount > 0) markAllRead.mutate(); }}>
             <DropdownMenu.Trigger asChild>
               <button className="relative p-2 text-muted hover:bg-surface-2 rounded-lg transition-colors">
                 <Bell className="w-4 h-4" />
-                {notifLogs.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-danger" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
               </button>
             </DropdownMenu.Trigger>
@@ -394,29 +454,34 @@ export function Header({ title, breadcrumb }: Props) {
                 sideOffset={6}
               >
                 <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold flex items-center justify-between">
-                  <span>Bildirimler</span>
-                  <button onClick={() => void router.navigate({ to: '/settings' })} className="hover:text-primary transition-colors">Ayarlar</button>
+                  <span>Bildirimler {unreadCount > 0 && <span className="ml-1 text-danger">({unreadCount})</span>}</span>
+                  <button
+                    onClick={() => void router.navigate({ to: '/settings' })}
+                    className="hover:text-primary transition-colors normal-case text-[10px]"
+                  >
+                    Tümünü gör
+                  </button>
                 </div>
                 {notifLogs.length === 0 ? (
                   <div className="px-3 py-4 text-center text-xs text-muted">Bildirim yok</div>
                 ) : (
                   notifLogs.slice(0, 8).map((n) => (
-                    <div key={n.id} className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors">
-                      {n.status === 'SENT' ? (
-                        <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0 mt-0.5" />
-                      ) : n.status === 'FAILED' ? (
-                        <AlertCircle className="w-3.5 h-3.5 text-danger flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                    <button
+                      key={n.id}
+                      onClick={() => { if (!n.isRead) markRead.mutate(n.id); }}
+                      className={cn(
+                        'w-full flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors text-left',
+                        !n.isRead && 'bg-primary/5',
                       )}
+                    >
+                      {notifIcon(n.type)}
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-slate-200 truncate">{n.subject}</div>
+                        <div className={cn('text-xs truncate', n.isRead ? 'text-muted' : 'text-slate-200 font-medium')}>{n.subject}</div>
                         <div className="text-[11px] text-muted truncate">{n.recipient}</div>
-                        <div className="text-[10px] text-muted/60 mt-0.5">
-                          {new Date(n.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                        <div className="text-[10px] text-muted/60 mt-0.5">{relativeTime(n.createdAt)}</div>
                       </div>
-                    </div>
+                      {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
+                    </button>
                   ))
                 )}
               </DropdownMenu.Content>

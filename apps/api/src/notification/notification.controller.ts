@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -16,6 +16,21 @@ export class NotificationController {
       page ? parseInt(page, 10) : 1,
       limit ? Math.min(parseInt(limit, 10), 200) : 50,
     );
+  }
+
+  @Get('unread-count')
+  getUnreadCount() {
+    return this.notificationService.getUnreadCount();
+  }
+
+  @Post(':id/read')
+  markRead(@Param('id') id: string) {
+    return this.notificationService.markRead(id);
+  }
+
+  @Post('read-all')
+  markAllRead() {
+    return this.notificationService.markAllRead();
   }
 
   @Post('test')

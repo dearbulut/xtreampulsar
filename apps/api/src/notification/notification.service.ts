@@ -245,4 +245,22 @@ export class NotificationService {
     ]);
     return { items, total, page, totalPages: Math.ceil(total / limit) };
   }
+
+  async getUnreadCount(): Promise<{ count: number }> {
+    const count = await this.prisma.notificationLog.count({ where: { isRead: false } });
+    return { count };
+  }
+
+  async markRead(id: string): Promise<{ success: boolean }> {
+    await this.prisma.notificationLog.update({ where: { id }, data: { isRead: true } });
+    return { success: true };
+  }
+
+  async markAllRead(): Promise<{ updated: number }> {
+    const result = await this.prisma.notificationLog.updateMany({
+      where: { isRead: false },
+      data: { isRead: true },
+    });
+    return { updated: result.count };
+  }
 }

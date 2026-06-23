@@ -22,6 +22,7 @@ import type Redis from 'ioredis';
 import { XtreamService } from './xtream.service';
 import { StreamService } from '../stream/stream.service';
 import { StreamPrefetchService } from '../stream/stream-prefetch.service';
+import { StreamWorkerService } from '../stream/stream-worker.service';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
@@ -60,6 +61,7 @@ export class XtreamController {
     private readonly securityService: SecurityService,
     private readonly lbService: LoadBalancerService,
     @Optional() private readonly prefetchService: StreamPrefetchService,
+    @Optional() private readonly workerService: StreamWorkerService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Optional() private readonly gateway?: EventsGateway,
   ) {}
@@ -362,6 +364,39 @@ export class XtreamController {
     // ── Local HLS mode: serve pre-transcoded segments ───────────────────────
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
     const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');
+
+    // Auto-start: if worker is idle/stopped and HLS file is absent, start it and wait up to 5s
+    if (!fs.existsSync(hlsFile) && this.workerService) {
+      try {
+        const dbStream = await this.prisma.stream.findUnique({
+          where: { id: streamRecord.id },
+          select: { workerStatus: true },
+        });
+        if (dbStream?.workerStatus === 'IDLE' || dbStream?.workerStatus === 'STOPPED') {
+          this.logger.log(`Auto-starting worker for stream ${streamRecord.id}`);
+          await this.workerService.startWorker(streamRecord.id);
+          // Poll up to 5 seconds (10 × 500ms) for HLS file
+          for (let i = 0; i < 10; i++) {
+            await new Promise<void>((r) => setTimeout(r, 500));
+            if (fs.existsSync(hlsFile)) break;
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Auto-start failed for stream ${streamRecord.id}: ${(err as Error).message}`);
+      }
+    }
+
+    if (!fs.existsSync(hlsFile) && this.workerService) {
+      // Worker started but HLS still not ready — return 503 so player retries
+      const dbStream2 = await this.prisma.stream.findUnique({
+        where: { id: streamRecord.id },
+        select: { workerStatus: true },
+      }).catch(() => null);
+      if (dbStream2?.workerStatus === 'RUNNING') {
+        res.status(HttpStatus.SERVICE_UNAVAILABLE).json({ error: 'Stream is starting, please retry' });
+        return;
+      }
+    }
 
     if (fs.existsSync(hlsFile)) {
       // Use load-balanced server IP if available, otherwise default

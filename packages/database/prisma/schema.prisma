@@ -596,6 +596,7 @@ model NotificationLog {
   recipient String
   subject   String
   status    String   @default("SENT")
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@map("notification_logs")

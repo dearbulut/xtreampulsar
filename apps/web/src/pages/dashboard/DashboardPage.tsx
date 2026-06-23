@@ -11,6 +11,12 @@ import {
   BarChart2,
   Bell,
   Timer,
+  UserPlus,
+  Radio,
+  Upload,
+  Stethoscope,
+  RotateCcw,
+  FileBarChart,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -28,8 +34,9 @@ import { useExpiringCount } from '@/hooks/useBulkRenew';
 import { useNotificationLogs } from '@/hooks/useUserActivity';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '@/lib/axios';
+import toast from 'react-hot-toast';
 
 // Fetch top streams sorted by uptime (longest running)
 function useUptimeStreams(limit = 5) {
@@ -70,6 +77,97 @@ function alarmColor(type: string): string {
     if (type?.includes(k)) return v;
   }
   return ACTION_COLOR.DEFAULT;
+}
+
+function useRestartAllStreams() {
+  return useMutation({
+    mutationFn: () => api.post('/tools/restart-all-streams'),
+    onSuccess: (res) => {
+      const restarted = (res.data as { restarted?: number })?.restarted ?? 0;
+      toast.success(`${restarted} stream yeniden başlatıldı`);
+    },
+    onError: () => toast.error('Yeniden başlatma başarısız'),
+  });
+}
+
+function QuickActions() {
+  const navigate = useNavigate();
+  const restartAll = useRestartAllStreams();
+
+  const actions = [
+    {
+      label: 'Yeni Kullanıcı',
+      icon: UserPlus,
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/10 hover:bg-blue-500/20',
+      onClick: () => void navigate({ to: '/users' }),
+    },
+    {
+      label: 'Yeni Kanal',
+      icon: Radio,
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
+      onClick: () => void navigate({ to: '/streams' }),
+    },
+    {
+      label: 'M3U İçe Aktar',
+      icon: Upload,
+      color: 'text-purple-400',
+      bg: 'bg-purple-500/10 hover:bg-purple-500/20',
+      onClick: () => void navigate({ to: '/migration' }),
+    },
+    {
+      label: 'Sistem Sağlığı',
+      icon: Stethoscope,
+      color: 'text-yellow-400',
+      bg: 'bg-yellow-500/10 hover:bg-yellow-500/20',
+      onClick: () => void navigate({ to: '/tools/advanced' }),
+    },
+    {
+      label: 'Tümünü Yeniden Başlat',
+      icon: RotateCcw,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/10 hover:bg-orange-500/20',
+      onClick: () => {
+        if (window.confirm('Tüm stream workerları yeniden başlatılsın mı?')) {
+          restartAll.mutate();
+        }
+      },
+      loading: restartAll.isPending,
+    },
+    {
+      label: 'Raporlar',
+      icon: FileBarChart,
+      color: 'text-pink-400',
+      bg: 'bg-pink-500/10 hover:bg-pink-500/20',
+      onClick: () => void navigate({ to: '/users' }),
+    },
+  ];
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap className="w-4 h-4 text-primary" />
+        <h2 className="text-sm font-semibold text-slate-200">Hızlı Eylemler</h2>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            onClick={a.onClick}
+            disabled={a.loading}
+            className={cn(
+              'flex flex-col items-center gap-2 p-3 rounded-xl transition-colors text-center disabled:opacity-60',
+              a.bg,
+            )}
+          >
+            <a.icon className={cn('w-5 h-5', a.color)} />
+            <span className="text-[11px] font-medium text-slate-300 leading-tight">{a.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -194,6 +292,9 @@ export function DashboardPage() {
           </div>
         </button>
       )}
+
+      {/* ── Hızlı Eylemler ── */}
+      <QuickActions />
 
       {/* ── Bandwidth chart ── */}
       <div className="card p-5">
