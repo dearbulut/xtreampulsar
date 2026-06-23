@@ -9,6 +9,7 @@ import { randomBytes } from 'crypto';
 import { Cron } from '@nestjs/schedule';
 import * as bcrypt from 'bcryptjs';
 import * as qrcode from 'qrcode';
+import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository } from './user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -181,20 +182,28 @@ export class UserService {
       resolvedExpiresAt = new Date(now.getTime() + 30 * 86_400_000);
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        ...rest,
-        password: hashed,
-        expiresAt: resolvedExpiresAt,
-        maxConnections: resolvedMaxConnections,
-        role: (dto.role ?? 'USER') as 'ADMIN' | 'RESELLER' | 'USER',
-        ...(packageId ? { packageId } : {}),
-      },
-      select: {
-        id: true, username: true, role: true, status: true,
-        maxConnections: true, expiresAt: true, createdAt: true, packageId: true,
-      },
-    });
+    let user: { id: string; username: string; role: string; status: string; maxConnections: number; expiresAt: Date; createdAt: Date; packageId: string | null };
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          ...rest,
+          password: hashed,
+          expiresAt: resolvedExpiresAt,
+          maxConnections: resolvedMaxConnections,
+          role: (dto.role ?? 'USER') as 'ADMIN' | 'RESELLER' | 'USER',
+          ...(packageId ? { packageId } : {}),
+        },
+        select: {
+          id: true, username: true, role: true, status: true,
+          maxConnections: true, expiresAt: true, createdAt: true, packageId: true,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException(`Username "${dto.username}" already taken`);
+      }
+      throw err;
+    }
 
     if (bouquetIds && bouquetIds.length > 0) {
       await this.prisma.userBouquet.createMany({

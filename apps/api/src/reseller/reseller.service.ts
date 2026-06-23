@@ -50,17 +50,24 @@ export class ResellerService {
     if (existing) throw new ConflictException('Username or email already in use');
 
     const hashed = await bcrypt.hash(dto.password, 12);
-    return this.prisma.reseller.create({
-      data: {
-        username: dto.username,
-        email: dto.email ?? null,
-        password: hashed,
-        credits: dto.credits ?? 0,
-        tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
-        ...(dto.parentId ? { parent: { connect: { id: dto.parentId } } } : {}),
-      },
-      select: { id: true, username: true, email: true, credits: true, tier: true, createdAt: true },
-    });
+    try {
+      return await this.prisma.reseller.create({
+        data: {
+          username: dto.username,
+          email: dto.email ?? null,
+          password: hashed,
+          credits: dto.credits ?? 0,
+          tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
+          ...(dto.parentId ? { parent: { connect: { id: dto.parentId } } } : {}),
+        },
+        select: { id: true, username: true, email: true, credits: true, tier: true, createdAt: true },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('Bu kullanıcı adı zaten kullanılıyor');
+      }
+      throw err;
+    }
   }
 
   async update(id: string, dto: UpdateResellerDto) {
