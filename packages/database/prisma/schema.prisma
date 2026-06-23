@@ -368,7 +368,7 @@ model EPGProgramme {
 model Reseller {
   id        String       @id @default(cuid())
   username  String       @unique
-  email     String       @unique
+  email     String?      @unique
   password  String
   credits   Int          @default(0)
   tier      ResellerTier @default(BASIC)

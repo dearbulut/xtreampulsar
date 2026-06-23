@@ -53,7 +53,7 @@ export class ResellerService {
     return this.prisma.reseller.create({
       data: {
         username: dto.username,
-        email: dto.email,
+        email: dto.email ?? null,
         password: hashed,
         credits: dto.credits ?? 0,
         tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
