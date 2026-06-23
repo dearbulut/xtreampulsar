@@ -720,14 +720,19 @@ model BandwidthLog {
 // ─── UserActivityLog ─────────────────────────────────────────────────────────
 
 model UserActivityLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String
-  streamId  String?
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action           String
+  streamId         String?
+  ip               String?
+  userAgent        String?
+  duration         Int?
+  bytesTransferred BigInt?
+  country          String?
+  deviceType       String?
+  endedAt          DateTime?
+  createdAt        DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@map("user_activity_logs")
