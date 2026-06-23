@@ -39,7 +39,7 @@ export function useTopStreams(limit = 5) {
   return useQuery({
     queryKey: ['analytics', 'top-streams', limit],
     queryFn: async () => {
-      const res = await api.get<{ success: boolean; data: { stream: { id: string; name: string }; connections: number }[] }>(
+      const res = await api.get<{ success: boolean; data: { stream: { id: string; name: string; category?: { name: string } | null }; connections: number }[] }>(
         `/analytics/top-streams?limit=${limit}`,
       );
       return res.data.data;
@@ -101,5 +101,72 @@ export function useUserGrowth(days = 30) {
       return res.data.data;
     },
     refetchInterval: 300_000,
+  });
+}
+
+export interface DashboardStats {
+  activeConnections: number;
+  activeStreams: number;
+  bandwidthMbps: number;
+  totalUsers: number;
+  activeUsers: number;
+  expiredUsers: number;
+  totalStreams: number;
+  healthyStreams: number;
+  newUsersToday: number;
+  connectionsToday: number;
+  streamsUp: number;
+  streamsDown: number;
+  streamsDegraded: number;
+}
+
+export function useDashboardStats() {
+  return useQuery<DashboardStats>({
+    queryKey: ['analytics', 'dashboard-stats'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: DashboardStats }>('/analytics/dashboard-stats');
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
+  });
+}
+
+export interface ConnectionChartPoint {
+  hour: string;
+  connections: number;
+  bandwidth: number;
+}
+
+export function useConnectionsChart(hours: 24 | 48 | 168 = 24) {
+  return useQuery<ConnectionChartPoint[]>({
+    queryKey: ['analytics', 'connections-chart', hours],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: ConnectionChartPoint[] }>(
+        `/analytics/connections-chart?hours=${hours}`,
+      );
+      return res.data.data;
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export interface ActivityEntry {
+  id: string;
+  type: string;
+  description: string;
+  user: string;
+  createdAt: string;
+}
+
+export function useRecentActivity(limit = 20) {
+  return useQuery<ActivityEntry[]>({
+    queryKey: ['analytics', 'recent-activity', limit],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: ActivityEntry[] }>(
+        `/analytics/recent-activity?limit=${limit}`,
+      );
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
   });
 }

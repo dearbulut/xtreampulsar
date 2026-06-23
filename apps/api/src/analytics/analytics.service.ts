@@ -61,11 +61,36 @@ export class AnalyticsService {
       safe('connectionsToday',  () => this.prisma.connection.count({ where: { startedAt: { gte: todayStart } } }), 0),
     ]);
 
+    // unique streams being actively watched
+    let activeStreams = 0;
+    try {
+      const rows = await this.prisma.connection.groupBy({
+        by: ['streamId'],
+        where: { updatedAt: { gte: new Date(Date.now() - 30_000) } },
+      });
+      activeStreams = rows.length;
+    } catch {}
+
+    // current-hour bandwidth estimate from Redis
+    let bandwidthMbps = 0;
+    try {
+      const hourStr = new Date().toISOString().slice(0, 13);
+      const keys = await this.redis.keys(`bw:${hourStr}:*`).catch(() => [] as string[]);
+      if (keys.length > 0) {
+        const vals = await this.redis.mget(...keys);
+        const totalBytes = vals.reduce((s, v) => s + (v ? parseInt(v, 10) : 0), 0);
+        const elapsedSec = Math.max(1, new Date().getMinutes() * 60 + new Date().getSeconds());
+        bandwidthMbps = Math.round((totalBytes / elapsedSec) * 8 / 1_000_000 * 10) / 10;
+      }
+    } catch {}
+
     return {
       users: { total: totalUsers, active: activeUsers },
       streams: { total: totalStreams, online: onlineStreams, offline: offlineStreams, idle: idleStreams },
       servers: { total: totalServers, online: onlineServers },
       connections: { active: activeConnections, today: connectionsToday },
+      activeStreams,
+      bandwidthMbps,
     };
   }
 
@@ -551,6 +576,158 @@ export class AnalyticsService {
       return result;
     } catch (err) {
       this.logger.error(`getUserGrowth: ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  async getDashboardStats() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const activeThreshold = new Date(Date.now() - 30_000);
+
+    const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try { return await fn(); }
+      catch (err) { this.logger.error(`getDashboardStats[${label}]: ${(err as Error).message}`); return fallback; }
+    };
+
+    const [
+      totalUsers,
+      activeUsers,
+      expiredUsers,
+      newUsersToday,
+      totalStreams,
+      healthyStreams,
+      activeConnections,
+      connectionsToday,
+      streamsUp,
+      streamsDown,
+      streamsDegraded,
+    ] = await Promise.all([
+      safe('totalUsers',      () => this.prisma.user.count({ where: { deletedAt: null } }), 0),
+      safe('activeUsers',     () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }), 0),
+      safe('expiredUsers',    () => this.prisma.user.count({ where: { deletedAt: null, expiresAt: { lt: now } } }), 0),
+      safe('newUsersToday',   () => this.prisma.user.count({ where: { deletedAt: null, createdAt: { gte: todayStart } } }), 0),
+      safe('totalStreams',    () => this.prisma.stream.count({ where: { isActive: true } }), 0),
+      safe('healthyStreams',  () => this.prisma.stream.count({ where: { isActive: true, uptimePercent: { gte: 95 } } }), 0),
+      safe('activeConns',    () => this.prisma.connection.count({ where: { updatedAt: { gte: activeThreshold } } }), 0),
+      safe('connsToday',     () => this.prisma.connection.count({ where: { startedAt: { gte: todayStart } } }), 0),
+      safe('streamsUp',      () => this.prisma.stream.count({ where: { isActive: true, healthStatus: 'HEALTHY' } }), 0),
+      safe('streamsDown',    () => this.prisma.stream.count({ where: { isActive: true, healthStatus: 'UNHEALTHY' } }), 0),
+      safe('streamsDeg',     () => this.prisma.streamHealthLog
+        .groupBy({ by: ['streamId'], where: { checkedAt: { gte: new Date(Date.now() - 10 * 60_000) }, status: 'degraded' } })
+        .then((r) => r.length), 0),
+    ]);
+
+    let activeStreams = 0;
+    try {
+      activeStreams = (await this.prisma.connection.groupBy({
+        by: ['streamId'],
+        where: { updatedAt: { gte: activeThreshold } },
+      })).length;
+    } catch {}
+
+    let bandwidthMbps = 0;
+    try {
+      const hourStr = new Date().toISOString().slice(0, 13);
+      const keys = await this.redis.keys(`bw:${hourStr}:*`).catch(() => [] as string[]);
+      if (keys.length > 0) {
+        const vals = await this.redis.mget(...keys);
+        const totalBytes = vals.reduce((s, v) => s + (v ? parseInt(v, 10) : 0), 0);
+        const elapsedSec = Math.max(1, new Date().getMinutes() * 60 + new Date().getSeconds());
+        bandwidthMbps = Math.round((totalBytes / elapsedSec) * 8 / 1_000_000 * 10) / 10;
+      }
+    } catch {}
+
+    return {
+      activeConnections,
+      activeStreams,
+      bandwidthMbps,
+      totalUsers,
+      activeUsers,
+      expiredUsers,
+      totalStreams,
+      healthyStreams,
+      newUsersToday,
+      connectionsToday,
+      streamsUp,
+      streamsDown,
+      streamsDegraded,
+    };
+  }
+
+  async getConnectionsChart(hours: number = 24): Promise<{ hour: string; connections: number; bandwidth: number }[]> {
+    try {
+      const cutoff = new Date(Date.now() - hours * 3600_000);
+
+      const [connRows, bwRows] = await Promise.all([
+        this.prisma.$queryRaw<{ hour: Date; count: bigint }[]>`
+          SELECT
+            date_trunc('hour', "startedAt") AS hour,
+            COUNT(*)::bigint AS count
+          FROM connections
+          WHERE "startedAt" >= ${cutoff}
+          GROUP BY 1
+          ORDER BY 1 ASC
+        `,
+        this.prisma.bandwidthLog.groupBy({
+          by: ['hour'],
+          where: { hour: { gte: cutoff } },
+          _sum: { bytesIn: true, bytesOut: true },
+        }),
+      ]);
+
+      const connMap = new Map<string, number>();
+      for (const r of connRows) connMap.set(r.hour.toISOString().slice(0, 13), Number(r.count));
+
+      const bwMap = new Map<string, number>();
+      for (const r of bwRows) {
+        const key = r.hour.toISOString().slice(0, 13);
+        const mb = (Number(r._sum.bytesIn ?? 0) + Number(r._sum.bytesOut ?? 0)) / 1_000_000;
+        bwMap.set(key, Math.round(mb * 10) / 10);
+      }
+
+      const result = [];
+      for (let i = hours - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 3600_000);
+        d.setMinutes(0, 0, 0);
+        const key = d.toISOString().slice(0, 13);
+        result.push({ hour: d.toISOString(), connections: connMap.get(key) ?? 0, bandwidth: bwMap.get(key) ?? 0 });
+      }
+      return result;
+    } catch (err) {
+      this.logger.error(`getConnectionsChart: ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  async getRecentActivity(limit = 20): Promise<{ id: string; type: string; description: string; user: string; createdAt: Date }[]> {
+    try {
+      const logs = await this.prisma.userActivityLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: { user: { select: { username: true } } },
+      });
+
+      return logs.map((log) => {
+        const username = log.user?.username ?? 'Bilinmeyen';
+        const descriptions: Record<string, string> = {
+          LOGIN:          `${username} giriş yaptı`,
+          LOGOUT:         `${username} çıkış yaptı`,
+          STREAM_START:   `${username} stream izlemeye başladı`,
+          STREAM_END:     `${username} stream izlemeyi bitirdi`,
+          PASSWORD_CHANGE:`${username} şifresini değiştirdi`,
+          REGISTER:       `${username} kayıt oldu`,
+        };
+        return {
+          id: log.id,
+          type: log.action,
+          description: descriptions[log.action] ?? `${username}: ${log.action}`,
+          user: username,
+          createdAt: log.createdAt,
+        };
+      });
+    } catch (err) {
+      this.logger.error(`getRecentActivity: ${(err as Error).message}`);
       return [];
     }
   }

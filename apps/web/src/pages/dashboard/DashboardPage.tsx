@@ -1,22 +1,18 @@
+import { useState } from 'react';
 import {
-  Activity,
   Users,
   Tv,
-  Server,
-  TrendingUp,
-  Zap,
-  WifiOff,
-  AlertTriangle,
-  Clock,
-  BarChart2,
-  Bell,
-  Timer,
+  Activity,
+  Database,
   UserPlus,
-  Radio,
-  Upload,
-  Stethoscope,
-  RotateCcw,
-  FileBarChart,
+  Link2,
+  UserX,
+  ShieldCheck,
+  Clock,
+  LogIn,
+  Play,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -25,8 +21,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  CartesianGrid,
   PieChart,
   Pie,
   Cell,
@@ -34,562 +29,445 @@ import {
 } from 'recharts';
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useDashboard, useBandwidth, useServerStats, useTopStreams, useGeoConnections, useConnectionsByHour, useTopCategories, useUserGrowth } from '@/hooks/useDashboard';
+import {
+  useDashboard,
+  useDashboardStats,
+  useConnectionsChart,
+  useRecentActivity,
+  useTopStreams,
+} from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
-import { useExpiringCount } from '@/hooks/useBulkRenew';
-import { useNotificationLogs } from '@/hooks/useUserActivity';
-import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import api from '@/lib/axios';
-import toast from 'react-hot-toast';
 
-// Fetch top streams sorted by uptime (longest running)
-function useUptimeStreams(limit = 5) {
-  return useQuery({
-    queryKey: ['streams-uptime', limit],
-    queryFn: async () => {
-      const res = await api.get<{ data: { items: Array<{ id: string; name: string; status: string; updatedAt: string }> } }>(
-        `/streams?status=ONLINE&limit=${limit}&sort=uptime`,
-      );
-      return res.data.data?.items ?? [];
-    },
-    refetchInterval: 30_000,
-    staleTime: 15_000,
-  });
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return 'şimdi';
+  if (m < 60) return `${m} dk önce`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} sa önce`;
+  return `${Math.floor(h / 24)} gün önce`;
 }
 
-function formatUptime(since: string): string {
-  const ms = Date.now() - new Date(since).getTime();
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+function fmtHour(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:00`;
 }
 
-const ACTION_COLOR: Record<string, string> = {
-  STREAM_FAIL: 'text-danger',
-  SERVER_DOWN: 'text-danger',
-  LOW_BANDWIDTH: 'text-warning',
-  NEW_CONNECTION: 'text-info',
-  USER_EXPIRY: 'text-warning',
-  LOGIN: 'text-primary',
-  DEFAULT: 'text-muted',
+function fmtMbps(v: number): string {
+  if (v >= 1000) return `${(v / 1000).toFixed(1)} Gbps`;
+  return `${v} Mbps`;
+}
+
+const ACTIVITY_ICON: Record<string, typeof LogIn> = {
+  LOGIN: LogIn,
+  LOGOUT: WifiOff,
+  STREAM_START: Play,
+  STREAM_END: Wifi,
 };
 
-function alarmColor(type: string): string {
-  for (const [k, v] of Object.entries(ACTION_COLOR)) {
-    if (type?.includes(k)) return v;
-  }
-  return ACTION_COLOR.DEFAULT;
-}
+const HEALTH_COLORS = ['#22c55e', '#ef4444', '#f59e0b'];
 
-function useRestartAllStreams() {
-  return useMutation({
-    mutationFn: () => api.post('/tools/restart-all-streams'),
-    onSuccess: (res) => {
-      const restarted = (res.data as { restarted?: number })?.restarted ?? 0;
-      toast.success(`${restarted} stream yeniden başlatıldı`);
-    },
-    onError: () => toast.error('Yeniden başlatma başarısız'),
-  });
-}
+const PERIODS: { label: string; value: 24 | 48 | 168 }[] = [
+  { label: '24s', value: 24 },
+  { label: '48s', value: 48 },
+  { label: '7g', value: 168 },
+];
 
-function QuickActions() {
-  const navigate = useNavigate();
-  const restartAll = useRestartAllStreams();
+// ─── Main ────────────────────────────────────────────────────────────────
 
-  const actions = [
-    {
-      label: 'Yeni Kullanıcı',
-      icon: UserPlus,
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10 hover:bg-blue-500/20',
-      onClick: () => void navigate({ to: '/users' }),
-    },
-    {
-      label: 'Yeni Kanal',
-      icon: Radio,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
-      onClick: () => void navigate({ to: '/streams' }),
-    },
-    {
-      label: 'M3U İçe Aktar',
-      icon: Upload,
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/10 hover:bg-purple-500/20',
-      onClick: () => void navigate({ to: '/migration' }),
-    },
-    {
-      label: 'Sistem Sağlığı',
-      icon: Stethoscope,
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-500/10 hover:bg-yellow-500/20',
-      onClick: () => void navigate({ to: '/tools/advanced' }),
-    },
-    {
-      label: 'Tümünü Yeniden Başlat',
-      icon: RotateCcw,
-      color: 'text-orange-400',
-      bg: 'bg-orange-500/10 hover:bg-orange-500/20',
-      onClick: () => {
-        if (window.confirm('Tüm stream workerları yeniden başlatılsın mı?')) {
-          restartAll.mutate();
-        }
-      },
-      loading: restartAll.isPending,
-    },
-    {
-      label: 'Raporlar',
-      icon: FileBarChart,
-      color: 'text-pink-400',
-      bg: 'bg-pink-500/10 hover:bg-pink-500/20',
-      onClick: () => void navigate({ to: '/users' }),
-    },
-  ];
+export function DashboardPage() {
+  const [chartHours, setChartHours] = useState<24 | 48 | 168>(24);
+
+  const { connected } = useSocket();
+  const { data: live } = useDashboard();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: chartData = [], isLoading: chartLoading } = useConnectionsChart(chartHours);
+  const { data: topStreams = [], isLoading: streamsLoading } = useTopStreams(10);
+  const { data: activity = [], isLoading: activityLoading } = useRecentActivity(20);
+
+  // Top 4 live cards — prefer WebSocket-pushed data, fall back to polled stats
+  const activeConns = live?.connections?.active ?? stats?.activeConnections ?? 0;
+  const activeStreams = live?.activeStreams ?? stats?.activeStreams ?? 0;
+  const bandwidthMbps = live?.bandwidthMbps ?? stats?.bandwidthMbps ?? 0;
+  const totalUsers = live?.users?.total ?? stats?.totalUsers ?? 0;
+
+  const healthPie = [
+    { name: 'Çalışıyor', value: stats?.streamsUp ?? 0 },
+    { name: 'Çökmüş', value: stats?.streamsDown ?? 0 },
+    { name: 'Yavaş', value: stats?.streamsDegraded ?? 0 },
+  ].filter((d) => d.value > 0);
+
+  const maxViewers = Math.max(...topStreams.map((s) => s.connections ?? 0), 1);
 
   return (
-    <div className="card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Zap className="w-4 h-4 text-primary" />
-        <h2 className="text-sm font-semibold text-slate-200">Hızlı Eylemler</h2>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-fg">Dashboard</h1>
+          <p className="text-sm text-muted mt-0.5">Gerçek zamanlı sistem izleme</p>
+        </div>
+        <div className={cn('flex items-center gap-2 text-sm', connected ? 'text-success' : 'text-danger')}>
+          <span className={cn('w-2 h-2 rounded-full', connected ? 'bg-success animate-pulse' : 'bg-danger')} />
+          {connected ? 'Canlı' : 'Bağlantı Yok'}
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {actions.map((a) => (
-          <button
-            key={a.label}
-            onClick={a.onClick}
-            disabled={a.loading}
-            className={cn(
-              'flex flex-col items-center gap-2 p-3 rounded-xl transition-colors text-center disabled:opacity-60',
-              a.bg,
-            )}
-          >
-            <a.icon className={cn('w-5 h-5', a.color)} />
-            <span className="text-[11px] font-medium text-slate-300 leading-tight">{a.label}</span>
-          </button>
-        ))}
+
+      {/* Row 1 — Big live stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Aktif Bağlantı"
+          value={activeConns.toLocaleString('tr')}
+          icon={Users}
+          variant="success"
+          live={connected}
+          subtitle="Son 30 saniye"
+        />
+        <StatCard
+          title="Canlı Stream"
+          value={activeStreams.toLocaleString('tr')}
+          icon={Tv}
+          variant="info"
+          live={connected}
+          subtitle="Şu an izlenen"
+        />
+        <StatCard
+          title="Anlık Bandwidth"
+          value={fmtMbps(bandwidthMbps)}
+          icon={Activity}
+          variant="primary"
+          live={connected}
+          subtitle="Bu saat tahmini"
+        />
+        <StatCard
+          title="Toplam Kullanıcı"
+          value={totalUsers.toLocaleString('tr')}
+          icon={Database}
+          variant="default"
+          subtitle={stats ? `${stats.activeUsers.toLocaleString('tr')} aktif` : undefined}
+        />
+      </div>
+
+      {/* Row 2 — Small info cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <SmallCard
+          icon={UserPlus}
+          label="Bugün Yeni Kullanıcı"
+          value={stats?.newUsersToday ?? '—'}
+          color="text-success"
+          loading={statsLoading}
+        />
+        <SmallCard
+          icon={Link2}
+          label="Bugün Bağlantı"
+          value={stats?.connectionsToday != null ? stats.connectionsToday.toLocaleString('tr') : '—'}
+          color="text-info"
+          loading={statsLoading}
+        />
+        <SmallCard
+          icon={UserX}
+          label="Süresi Dolmuş"
+          value={stats?.expiredUsers != null ? stats.expiredUsers.toLocaleString('tr') : '—'}
+          color="text-warning"
+          loading={statsLoading}
+        />
+        <SmallCard
+          icon={ShieldCheck}
+          label="Stream Sağlık"
+          value={stats ? `${stats.streamsUp}/${stats.totalStreams}` : '—'}
+          color={stats && stats.streamsDown > 0 ? 'text-danger' : 'text-success'}
+          loading={statsLoading}
+          sub={stats?.streamsDown ? `${stats.streamsDown} çökmüş` : 'Tümü iyi'}
+        />
+      </div>
+
+      {/* Row 3 — Connection chart + Health pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Chart (2/3) */}
+        <div className="lg:col-span-2 card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-fg">Bağlantı Grafiği</h2>
+              <p className="text-xs text-muted mt-0.5">Saatlik bağlantı ve bant genişliği</p>
+            </div>
+            <div className="flex gap-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setChartHours(p.value)}
+                  className={cn(
+                    'px-3 py-1 text-xs rounded-lg transition-colors',
+                    chartHours === p.value
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-2 text-muted hover:text-fg',
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {chartLoading ? (
+            <div className="h-52 flex items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="connGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis
+                  dataKey="hour"
+                  tickFormatter={fmtHour}
+                  tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                  interval={chartHours <= 24 ? 3 : chartHours <= 48 ? 6 : 23}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  yAxisId="left"
+                  tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `${v}MB`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: 'var(--fg)' }}
+                  labelFormatter={(v: string) => fmtHour(v)}
+                  formatter={(val: number, name: string) =>
+                    name === 'connections'
+                      ? [`${val} bağlantı`, 'Bağlantı']
+                      : [`${val} MB`, 'Bant Genişliği']
+                  }
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="connections"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  fill="url(#connGrad)"
+                  dot={false}
+                />
+                <Area
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="bandwidth"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  fill="url(#bwGrad)"
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Health pie (1/3) */}
+        <div className="card p-5">
+          <h2 className="font-semibold text-fg mb-1">Stream Sağlık</h2>
+          <p className="text-xs text-muted mb-4">Anlık durum dağılımı</p>
+
+          {statsLoading ? (
+            <div className="h-52 flex items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          ) : healthPie.length === 0 ? (
+            <div className="h-52 flex flex-col items-center justify-center gap-2 text-muted text-sm">
+              <ShieldCheck className="w-8 h-8 text-success opacity-60" />
+              <span>Tüm streamler normal</span>
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={healthPie}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {healthPie.map((_, i) => (
+                      <Cell key={i} fill={HEALTH_COLORS[i % HEALTH_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(v: string) => <span className="text-xs text-muted">{v}</span>}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                    }}
+                    formatter={(val: number) => [`${val} stream`, '']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+
+              <div className="mt-3 space-y-2">
+                {[
+                  { label: 'Çalışıyor', value: stats?.streamsUp ?? 0, color: 'text-success' },
+                  { label: 'Çökmüş', value: stats?.streamsDown ?? 0, color: 'text-danger' },
+                  { label: 'Yavaş', value: stats?.streamsDegraded ?? 0, color: 'text-warning' },
+                ].map((row) => (
+                  <div key={row.label} className="flex justify-between text-sm">
+                    <span className="text-muted">{row.label}</span>
+                    <span className={cn('font-semibold tabular-nums', row.color)}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Row 4 — Top streams + Recent activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Top streams */}
+        <div className="card p-5">
+          <h2 className="font-semibold text-fg mb-1">En Çok İzlenen Streamler</h2>
+          <p className="text-xs text-muted mb-4">Son 24 saat, bağlantı sayısına göre</p>
+
+          {streamsLoading ? (
+            <div className="h-40 flex items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          ) : topStreams.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted text-sm">Veri yok</div>
+          ) : (
+            <div className="space-y-3">
+              {topStreams.map((entry, i) => {
+                const name = entry.stream?.name ?? '—';
+                const viewers = entry.connections ?? 0;
+                const pct = Math.round((viewers / maxViewers) * 100);
+                return (
+                  <div key={entry.stream?.id ?? i}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs text-muted tabular-nums w-4 shrink-0">{i + 1}</span>
+                        <span className="text-sm text-fg truncate">{name}</span>
+                        {entry.stream?.category?.name && (
+                          <span className="text-xs text-muted shrink-0">
+                            {entry.stream.category.name}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-primary ml-2 shrink-0 tabular-nums">
+                        {viewers.toLocaleString('tr')}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent activity */}
+        <div className="card p-5">
+          <h2 className="font-semibold text-fg mb-1">Son Aktiviteler</h2>
+          <p className="text-xs text-muted mb-4">Kullanıcı işlem geçmişi</p>
+
+          {activityLoading ? (
+            <div className="h-40 flex items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          ) : activity.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-muted text-sm">Aktivite yok</div>
+          ) : (
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+              {activity.map((entry) => {
+                const Icon = ACTIVITY_ICON[entry.type] ?? Clock;
+                return (
+                  <div key={entry.id} className="flex items-start gap-3 py-1.5">
+                    <div className="w-7 h-7 rounded-lg bg-surface-2 flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon className="w-3.5 h-3.5 text-muted" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-fg truncate">{entry.description}</p>
+                      <p className="text-xs text-muted mt-0.5">{timeAgo(entry.createdAt)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export function DashboardPage() {
-  const { connected } = useSocket();
-  const { data: dash, isLoading: dashLoading } = useDashboard();
-  const { data: bandwidth } = useBandwidth();
-  const { data: servers } = useServerStats();
-  const { data: topStreams } = useTopStreams(5);
-  const { data: geoData } = useGeoConnections();
-  const { data: connectionsByHour = [] } = useConnectionsByHour();
-  const { data: topCategories = [] } = useTopCategories(8);
-  const { data: userGrowth = [] } = useUserGrowth(30);
-  const { data: expiringCount } = useExpiringCount(7);
-  const { data: alarmLogs = [] } = useNotificationLogs(5);
-  const { data: uptimeStreams = [] } = useUptimeStreams(5);
-  const navigate = useNavigate();
+// ─── Small info card ──────────────────────────────────────────────────────
 
-  const bwChartData = (bandwidth ?? []).map((b, i) => ({
-    time: new Date(b.hour).getHours() + ':00',
-    in: Math.round(parseFloat(b.bytesIn) / 1024 / 1024),
-    out: Math.round(parseFloat(b.bytesOut) / 1024 / 1024),
-    idx: i,
-  }));
-
-  const sparkSeed = (base: number) =>
-    Array.from({ length: 7 }, (_, i) => ({ v: Math.max(0, base + Math.sin(i) * (base * 0.3)) }));
-
-  if (dashLoading && !dash) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
+function SmallCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  loading,
+  sub,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  color: string;
+  loading?: boolean;
+  sub?: string;
+}) {
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* ── Live connection indicator ── */}
-      <div className="flex justify-end">
-        <div className={cn(
-          'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border',
-          connected
-            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-            : 'border-slate-700 bg-surface-1 text-muted',
-        )}>
-          <span className={cn(
-            'w-1.5 h-1.5 rounded-full',
-            connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
-          )} />
-          {connected ? 'Canlı' : 'Bağlantı kesildi'}
-        </div>
+    <div className="card p-4 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-muted" />
       </div>
-
-      {/* ── Top stat row ── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          title="Açık Bağlantılar"
-          value={dash?.connections.active ?? 0}
-          subtitle={`Bugün: ${dash?.connections.today ?? 0}`}
-          icon={Activity}
-          variant={(dash?.connections.active ?? 0) > 0 ? 'success' : 'default'}
-          live={(dash?.connections.active ?? 0) > 0}
-        />
-        <StatCard
-          title="Online Kullanıcılar"
-          value={dash?.users.active ?? 0}
-          subtitle={`Toplam: ${dash?.users.total ?? 0}`}
-          icon={Users}
-          variant="info"
-        />
-        <StatCard
-          title="Online Stream"
-          value={`${dash?.streams.online ?? 0} / ${dash?.streams.total ?? 0}`}
-          subtitle="Çalışıyor / Toplam"
-          icon={Tv}
-          variant={(dash?.streams.online ?? 0) > 0 ? 'success' : 'danger'}
-        />
-        <StatCard
-          title="Sunucular"
-          value={`${dash?.servers.online ?? 0} / ${dash?.servers.total ?? 0}`}
-          subtitle="Online / Toplam"
-          icon={Server}
-          variant={dash?.servers.online === dash?.servers.total ? 'success' : 'warning'}
-        />
-      </div>
-
-      {/* ── Second stat row ── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          title="Toplam Kullanıcı"
-          value={dash?.users.total ?? 0}
-          icon={TrendingUp}
-          variant="primary"
-        />
-        <StatCard
-          title="Offline Stream"
-          value={(dash?.streams.total ?? 0) - (dash?.streams.online ?? 0)}
-          icon={WifiOff}
-          variant="danger"
-        />
-        <StatCard
-          title="Offline Sunucu"
-          value={(dash?.servers.total ?? 0) - (dash?.servers.online ?? 0)}
-          icon={AlertTriangle}
-          variant="danger"
-        />
-        <StatCard
-          title="Bugünkü Bağlantı"
-          value={dash?.connections.today ?? 0}
-          icon={Clock}
-          variant="default"
-        />
-      </div>
-
-      {/* Expiring soon warning */}
-      {expiringCount !== undefined && expiringCount > 0 && (
-        <button
-          onClick={() => void navigate({ to: '/users' })}
-          className="w-full card p-4 flex items-center gap-3 border-warning/30 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
-        >
-          <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
-          <div>
-            <div className="text-sm font-medium text-warning">7 Gün İçinde Sona Erecek: {expiringCount} kullanıcı</div>
-            <div className="text-xs text-muted">Kullanıcı listesine gitmek için tıklayın</div>
-          </div>
-        </button>
-      )}
-
-      {/* ── Hızlı Eylemler ── */}
-      <QuickActions />
-
-      {/* ── Bandwidth chart ── */}
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-sm font-semibold text-slate-200">Bandwidth (24 Saat)</div>
-            <div className="text-xs text-muted mt-0.5">Megabit/s cinsinden gelen/giden trafik</div>
-          </div>
-          <BarChart2 className="w-4 h-4 text-muted" />
-        </div>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={bwChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="bwIn" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="bwOut" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#e2e8f0' }}
-              />
-              <Area type="monotone" dataKey="in" stroke="#6366f1" fill="url(#bwIn)" strokeWidth={2} name="Gelen (MB)" />
-              <Area type="monotone" dataKey="out" stroke="#10b981" fill="url(#bwOut)" strokeWidth={2} name="Giden (MB)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* ── Server cards + Top streams + Uptime + Alarms ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Server cards */}
-        <div className="xl:col-span-2 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-200">Sunucu Durumu</h2>
-          {(servers ?? []).map((srv) => {
-            const sparkData = sparkSeed(srv.activeConnections ?? 0);
-            const util = srv.utilization ?? 0;
-            return (
-              <div key={srv.id} className="card p-4 flex items-center gap-4">
-                <div
-                  className={cn(
-                    'w-2.5 h-2.5 rounded-full flex-shrink-0',
-                    srv.isOnline ? 'bg-success animate-pulse-slow' : 'bg-danger',
-                  )}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium text-slate-200">{srv.name}</span>
-                    <span className="text-xs font-mono text-muted">{srv.ip}:{srv.port}</span>
-                    {srv.location && (
-                      <span className="text-[10px] bg-surface-2 text-muted px-1.5 py-0.5 rounded">{srv.location}</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted">
-                    {srv.activeConnections ?? 0} / {srv.maxClients} bağlantı
-                    {srv.responseTime && ` • ${srv.responseTime}ms`}
-                    {srv.utilization !== undefined && ` • %${util.toFixed(0)} kullanım`}
-                  </div>
-                  {/* Utilization bar — color coded: green <70%, yellow 70-90%, red >90% */}
-                  <div className="mt-2 h-1 bg-surface-2 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-500',
-                        util > 90 ? 'bg-danger' : util > 70 ? 'bg-warning' : 'bg-success',
-                      )}
-                      style={{ width: `${Math.min(util, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                {/* Mini sparkline */}
-                <div className="w-24 h-10 flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={sparkData}>
-                      <defs>
-                        <linearGradient id={`spark-${srv.id}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        type="monotone"
-                        dataKey="v"
-                        stroke="#6366f1"
-                        fill={`url(#spark-${srv.id})`}
-                        strokeWidth={1.5}
-                        dot={false}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            );
-          })}
-          {(!servers || servers.length === 0) && (
-            <div className="card p-8 text-center text-muted text-sm">Sunucu bulunamadı</div>
-          )}
-        </div>
-
-        {/* Top streams */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold text-slate-200">En Çok İzlenen</h2>
-          </div>
-          <div className="space-y-3">
-            {(topStreams ?? []).map((item, i) => (
-              <div key={item.stream?.id ?? i} className="flex items-center gap-3">
-                <span className="w-5 text-xs text-muted font-mono">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-slate-300 truncate">{item.stream?.name ?? '—'}</div>
-                  <div className="text-xs text-muted">{item.connections} bağlantı</div>
-                </div>
-                <div className="w-20 h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{
-                      width: `${((item.connections / ((topStreams?.[0]?.connections ?? 1) || 1)) * 100).toFixed(0)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-            {(!topStreams || topStreams.length === 0) && (
-              <div className="text-center text-muted text-sm py-6">Veri yok</div>
-            )}
-          </div>
-        </div>
-
-        {/* Geo watch map */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold text-slate-200">İzleme Haritası</h2>
-          </div>
-          <div className="space-y-2">
-            {(geoData ?? []).slice(0, 10).map((entry) => {
-              const max = geoData?.[0]?.count ?? 1;
-              const pct = Math.round((entry.count / max) * 100);
-              const flag = entry.countryCode
-                .toUpperCase()
-                .split('')
-                .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
-                .join('');
-              return (
-                <div key={entry.countryCode} className="flex items-center gap-2 text-sm">
-                  <span className="w-6 text-base">{flag}</span>
-                  <span className="w-24 text-xs text-slate-300 truncate">{entry.country}</span>
-                  <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary/70 rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="w-8 text-xs text-muted text-right">{entry.count}</span>
-                </div>
-              );
-            })}
-            {(!geoData || geoData.length === 0) && (
-              <div className="text-center text-muted text-sm py-6">Aktif bağlantı yok</div>
-            )}
-          </div>
-        </div>
-
-        {/* En Uzun Çalışan Streamler */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Timer className="w-4 h-4 text-success" />
-            <h2 className="text-sm font-semibold text-slate-200">En Uzun Çalışan Streamler</h2>
-          </div>
-          <div className="space-y-3">
-            {uptimeStreams.map((s, i) => (
-              <div key={s.id ?? i} className="flex items-center gap-3">
-                <span className="w-5 text-xs text-muted font-mono">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-slate-300 truncate">{s.name}</div>
-                  <div className="font-mono text-xs text-success">{formatUptime(s.updatedAt)}</div>
-                </div>
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-              </div>
-            ))}
-            {uptimeStreams.length === 0 && (
-              <div className="text-center text-muted text-sm py-6">Online stream yok</div>
-            )}
-          </div>
-        </div>
-
-        {/* Alarm Merkezi */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-4 h-4 text-warning" />
-            <h2 className="text-sm font-semibold text-slate-200">Son Alarmlar</h2>
-          </div>
-          <div className="space-y-2">
-            {(alarmLogs as Array<{ id?: string; type?: string; subject?: string; recipient?: string; createdAt?: string }>).map((log, i) => (
-              <div key={log.id ?? i} className="flex items-start gap-2 text-xs">
-                <span className={cn('mt-0.5 flex-shrink-0 font-semibold', alarmColor(log.type ?? ''))}>●</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-slate-300 truncate">{log.subject ?? log.type ?? '—'}</div>
-                  <div className="text-muted">{log.createdAt ? new Date(log.createdAt).toLocaleString('tr-TR') : ''}</div>
-                </div>
-              </div>
-            ))}
-            {alarmLogs.length === 0 && (
-              <div className="text-center text-muted text-sm py-6">Alarm yok</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Analytics Charts ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
-
-        {/* Saatlik Bağlantı Grafiği */}
-        <div className="card p-5 xl:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold text-slate-200">Saatlik Bağlantılar (Son 24 Saat)</h2>
-          </div>
-          {connectionsByHour.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={connectionsByHour} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="connGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} interval={3} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                <Area type="monotone" dataKey="connections" stroke="var(--color-primary)" strokeWidth={2} fill="url(#connGrad)" name="Bağlantı" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[180px] flex items-center justify-center text-muted text-sm">Veri yok</div>
-          )}
-        </div>
-
-        {/* En Çok İzlenen Kategoriler */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-warning" />
-            <h2 className="text-sm font-semibold text-slate-200">En Çok İzlenen Kategoriler</h2>
-          </div>
-          {topCategories.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie data={topCategories} dataKey="connections" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
-                  {topCategories.map((_, i) => (
-                    <Cell key={i} fill={['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6'][i % 8]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[180px] flex items-center justify-center text-muted text-sm">Veri yok</div>
-          )}
-        </div>
-
-        {/* Kullanıcı Büyüme Trendi */}
-        <div className="card p-5 xl:col-span-3">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-success" />
-            <h2 className="text-sm font-semibold text-slate-200">Kullanıcı Büyümesi (Son 30 Gün)</h2>
-          </div>
-          {userGrowth.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={userGrowth} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} interval={4} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                <Line type="monotone" dataKey="newUsers" stroke="#10b981" strokeWidth={2} dot={false} name="Yeni Kullanıcı" />
-                <Line type="monotone" dataKey="cumulative" stroke="#6366f1" strokeWidth={2} dot={false} name="Toplam" strokeDasharray="4 2" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center text-muted text-sm">Veri yok</div>
-          )}
-        </div>
-
+      <div className="min-w-0">
+        <p className="text-xs text-muted truncate">{label}</p>
+        {loading ? (
+          <div className="h-5 w-12 bg-surface-2 rounded animate-pulse mt-1" />
+        ) : (
+          <>
+            <p className={cn('text-lg font-bold tabular-nums leading-tight', color)}>{value}</p>
+            {sub && <p className="text-xs text-muted">{sub}</p>}
+          </>
+        )}
       </div>
     </div>
   );

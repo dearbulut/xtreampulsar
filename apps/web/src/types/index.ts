@@ -133,9 +133,11 @@ export interface Server {
 
 export interface DashboardData {
   users: { total: number; active: number };
-  streams: { total: number; online: number };
+  streams: { total: number; online: number; offline: number; idle: number };
   servers: { total: number; online: number };
   connections: { active: number; today: number };
+  activeStreams?: number;
+  bandwidthMbps?: number;
 }
 
 export interface BandwidthPoint {

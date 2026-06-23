@@ -93,4 +93,21 @@ export class AnalyticsController {
   getUserGrowth(@Query('days') days?: string) {
     return this.analyticsService.getUserGrowth(days ? parseInt(days, 10) : 30);
   }
+
+  @Get('dashboard-stats')
+  getDashboardStats() {
+    return this.analyticsService.getDashboardStats();
+  }
+
+  @Get('connections-chart')
+  getConnectionsChart(@Query('hours') hours?: string) {
+    const h = hours ? parseInt(hours, 10) : 24;
+    const clamped = [24, 48, 168].includes(h) ? h : 24;
+    return this.analyticsService.getConnectionsChart(clamped);
+  }
+
+  @Get('recent-activity')
+  getRecentActivity(@Query('limit') limit?: string) {
+    return this.analyticsService.getRecentActivity(limit ? parseInt(limit, 10) : 20);
+  }
 }
