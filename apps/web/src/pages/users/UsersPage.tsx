@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X, Zap, Shuffle, Link } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X, Zap, Shuffle, Link, ListVideo, ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react';
 import type { ActivityFilters } from '@/hooks/useUserActivity';
 import { useBulkAction } from '@/hooks/useBulkAction';
 import type { BulkActionResult } from '@/hooks/useBulkAction';
@@ -899,7 +899,7 @@ interface UserDetailModalProps {
 }
 
 function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDetailModalProps) {
-  const [tab, setTab] = useState<'general' | 'activity' | 'stats'>('general');
+  const [tab, setTab] = useState<'general' | 'activity' | 'stats' | 'playlists'>('general');
   const [editPassword, setEditPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [activityPage, setActivityPage] = useState(1);
@@ -918,10 +918,11 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
       {/* Tabs */}
       <div className="flex border-b border-border">
         {([
-          { key: 'general', label: 'Genel', icon: UserIcon },
-          { key: 'activity', label: 'Aktivite', icon: Activity },
-          { key: 'stats', label: 'İstatistikler', icon: BarChart2 },
-        ] as { key: 'general' | 'activity' | 'stats'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
+          { key: 'general',   label: 'Genel',        icon: UserIcon },
+          { key: 'playlists', label: "Playlist'ler",  icon: ListVideo },
+          { key: 'activity',  label: 'Aktivite',      icon: Activity },
+          { key: 'stats',     label: 'İstatistikler', icon: BarChart2 },
+        ] as { key: 'general' | 'activity' | 'stats' | 'playlists'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -1262,6 +1263,11 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
           )}
         </div>
       )}
+
+      {/* Tab: Playlists */}
+      {tab === 'playlists' && (
+        <PlaylistTab userId={userId} />
+      )}
     </Modal>
   );
 }
@@ -1295,6 +1301,257 @@ function ActivityModal({ userId, onClose }: { userId: string; onClose: () => voi
             <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString('tr-TR')}</span>
           </div>
         ))}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Playlist Tab ────────────────────────────────────────────────────────────
+
+interface UserPlaylist {
+  id: string;
+  name: string;
+  token: string;
+  type: string;
+  filters: { onlyLive?: boolean; onlyVod?: boolean } | null;
+  isActive: boolean;
+  expiresAt: string | null;
+  lastAccessed: string | null;
+  accessCount: number;
+  createdAt: string;
+}
+
+function useUserPlaylists(userId: string) {
+  return useQuery<UserPlaylist[]>({
+    queryKey: ['user-playlists', userId],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: UserPlaylist[] }>(`/users/${userId}/playlists`);
+      return res.data.data;
+    },
+  });
+}
+
+const TYPE_LABELS: Record<string, string> = { m3u_plus: 'M3U+', m3u: 'M3U', ts: 'TS', rtmp: 'RTMP' };
+const TYPE_COLORS: Record<string, string> = { m3u_plus: 'bg-primary/20 text-primary', m3u: 'bg-info/20 text-info', ts: 'bg-warning/20 text-warning', rtmp: 'bg-success/20 text-success' };
+
+function getServerUrl(): string {
+  return window.location.origin;
+}
+
+function PlaylistTab({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const { data: playlists = [], isLoading } = useUserPlaylists(userId);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  const copyUrl = (token: string) => {
+    const url = `${getServerUrl()}/playlist/${token}`;
+    void navigator.clipboard.writeText(url);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 1500);
+    toast.success('Playlist URL kopyalandı');
+  };
+
+  const toggleActive = async (pl: UserPlaylist) => {
+    await api.put(`/users/playlists/${pl.id}`, { isActive: !pl.isActive });
+    void qc.invalidateQueries({ queryKey: ['user-playlists', userId] });
+  };
+
+  const deletePl = async (id: string) => {
+    await api.delete(`/users/playlists/${id}`);
+    void qc.invalidateQueries({ queryKey: ['user-playlists', userId] });
+    toast.success('Playlist silindi');
+  };
+
+  const editing = editingId ? playlists.find((p) => p.id === editingId) ?? null : null;
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted">{playlists.length} playlist</p>
+        <button onClick={() => setShowCreate(true)} className="btn-primary text-xs flex items-center gap-1.5">
+          <Plus className="w-3.5 h-3.5" /> Yeni Playlist
+        </button>
+      </div>
+
+      {isLoading && <p className="text-center text-muted text-sm py-6">Yükleniyor…</p>}
+      {!isLoading && playlists.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-8 text-muted">
+          <ListVideo className="w-10 h-10 opacity-30" />
+          <p className="text-sm">Henüz playlist yok</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1">
+        {playlists.map((pl) => {
+          const url = `${getServerUrl()}/playlist/${pl.token}`;
+          return (
+            <div key={pl.id} className={cn('card p-4 space-y-2.5', !pl.isActive && 'opacity-50')}>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-semibold text-fg truncate">{pl.name}</span>
+                <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0', TYPE_COLORS[pl.type] ?? 'bg-surface-2 text-muted')}>
+                  {TYPE_LABELS[pl.type] ?? pl.type}
+                </span>
+              </div>
+
+              {/* URL */}
+              <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
+                <span className="text-xs text-muted font-mono truncate flex-1">{url}</span>
+                <button onClick={() => copyUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Kopyala">
+                  {copiedToken === pl.token ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <a href={url} target="_blank" rel="noreferrer" className="text-muted hover:text-fg shrink-0 transition-colors" title="Aç">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              {/* Filters summary */}
+              {pl.filters && (pl.filters.onlyLive || pl.filters.onlyVod) && (
+                <p className="text-[11px] text-muted">
+                  Filtre: {pl.filters.onlyLive ? 'Sadece Canlı' : 'Sadece VOD'}
+                </p>
+              )}
+
+              {/* Meta */}
+              <div className="flex items-center gap-3 text-[11px] text-muted">
+                <span>{pl.accessCount} erişim</span>
+                {pl.lastAccessed && <span>Son: {new Date(pl.lastAccessed).toLocaleDateString('tr-TR')}</span>}
+                {pl.expiresAt && <span className="text-warning">Bitiş: {new Date(pl.expiresAt).toLocaleDateString('tr-TR')}</span>}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+                <button
+                  onClick={() => void toggleActive(pl)}
+                  className={cn('flex items-center gap-1 text-[11px] transition-colors', pl.isActive ? 'text-success' : 'text-muted')}
+                  title={pl.isActive ? 'Pasif yap' : 'Aktif yap'}
+                >
+                  {pl.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  {pl.isActive ? 'Aktif' : 'Pasif'}
+                </button>
+                <div className="ml-auto flex gap-1">
+                  <button onClick={() => setEditingId(pl.id)} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted hover:text-fg transition-colors" title="Düzenle">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => void deletePl(pl.id)} className="p-1.5 rounded-lg hover:bg-danger/10 text-muted hover:text-danger transition-colors" title="Sil">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Create / Edit modal */}
+      {(showCreate || editing) && (
+        <PlaylistFormModal
+          userId={userId}
+          existing={editing}
+          onClose={() => { setShowCreate(false); setEditingId(null); }}
+          onSaved={() => { setShowCreate(false); setEditingId(null); void qc.invalidateQueries({ queryKey: ['user-playlists', userId] }); }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface PlaylistFormModalProps {
+  userId: string;
+  existing: UserPlaylist | null;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormModalProps) {
+  const [name, setName]       = useState(existing?.name ?? '');
+  const [type, setType]       = useState(existing?.type ?? 'm3u_plus');
+  const [filter, setFilter]   = useState<'all' | 'live' | 'vod'>(
+    existing?.filters?.onlyLive ? 'live' : existing?.filters?.onlyVod ? 'vod' : 'all',
+  );
+  const [expiry, setExpiry]   = useState<'unlimited' | 'date'>('unlimited');
+  const [expiresAt, setExpiresAt] = useState(existing?.expiresAt?.slice(0, 10) ?? '');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) { toast.error('İsim zorunlu'); return; }
+    setLoading(true);
+    try {
+      const body = {
+        name: name.trim(),
+        type,
+        filters: filter === 'all' ? null : { onlyLive: filter === 'live', onlyVod: filter === 'vod' },
+        expiresAt: expiry === 'date' && expiresAt ? new Date(expiresAt).toISOString() : null,
+      };
+      if (existing) {
+        await api.put(`/users/playlists/${existing.id}`, body);
+        toast.success('Playlist güncellendi');
+      } else {
+        await api.post(`/users/${userId}/playlists`, body);
+        toast.success('Playlist oluşturuldu');
+      }
+      onSaved();
+    } catch {
+      toast.error('Kayıt başarısız');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={existing ? 'Playlist Düzenle' : 'Yeni Playlist'} size="sm">
+      <div className="space-y-4">
+        <div>
+          <label className="label">İsim</label>
+          <input className="input" placeholder="Ana Liste, TV vb." value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        </div>
+
+        <div>
+          <label className="label">Tip</label>
+          <div className="flex gap-1.5">
+            {[['m3u_plus', 'M3U+'], ['m3u', 'M3U'], ['ts', 'TS']] .map(([v, lbl]) => (
+              <button key={v} type="button" onClick={() => setType(v)}
+                className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', type === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">İçerik Filtresi</label>
+          <div className="flex gap-1.5">
+            {[['all', 'Tümü'], ['live', 'Sadece Canlı'], ['vod', 'Sadece VOD']] .map(([v, lbl]) => (
+              <button key={v} type="button" onClick={() => setFilter(v as 'all' | 'live' | 'vod')}
+                className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', filter === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Geçerlilik</label>
+          <div className="flex gap-1.5 mb-2">
+            {[['unlimited', 'Sınırsız'], ['date', 'Tarih Seç']] .map(([v, lbl]) => (
+              <button key={v} type="button" onClick={() => setExpiry(v as 'unlimited' | 'date')}
+                className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', expiry === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {expiry === 'date' && (
+            <input type="date" className="input text-sm" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button type="button" onClick={onClose} className="btn-ghost">İptal</button>
+          <button type="button" onClick={() => void handleSave()} disabled={loading} className="btn-primary">
+            {loading ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
       </div>
     </Modal>
   );

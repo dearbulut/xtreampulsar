@@ -41,8 +41,21 @@ export class UserService {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      this.logger.debug(`[findByCredentials] password mismatch for "${username}" — hash prefix: ${user.password.slice(0, 7)}`);
-      return null;
+      // Also accept an active playlist token as credential (for token-based stream access)
+      const tokenMatch = await this.prisma.userPlaylist.findFirst({
+        where: {
+          userId: user.id,
+          token: password,
+          isActive: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+        },
+        select: { id: true },
+      });
+      if (!tokenMatch) {
+        this.logger.debug(`[findByCredentials] password mismatch for "${username}" — hash prefix: ${user.password.slice(0, 7)}`);
+        return null;
+      }
+      this.logger.debug(`[findByCredentials] playlist token match for "${username}"`);
     }
 
     this.logger.debug(`[findByCredentials] OK: "${username}" id=${user.id} role=${user.role} status=${user.status}`);

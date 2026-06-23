@@ -430,9 +430,32 @@ model User {
   magDevices     MagDevice[]
   apiKeys        ApiKey[]
   activityLogs   UserActivityLog[]
+  playlists      UserPlaylist[]
 
   @@index([packageId])
   @@map("users")
+}
+
+// ─── UserPlaylist ─────────────────────────────────────────────────────────────
+
+model UserPlaylist {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  token        String    @unique @default(cuid())
+  type         String    @default("m3u_plus")
+  filters      Json?
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime?
+  lastAccessed DateTime?
+  accessCount  Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([token])
+  @@map("user_playlists")
 }
 
 model RefreshToken {
