@@ -311,15 +311,15 @@ export class XtreamController {
       return;
     }
 
-    // Find the stream record to get its internal ID
-    let streamRecord: { id: string; primaryUrl: string };
+    // Find the stream record to get its internal ID and mode
+    let streamRecord: { id: string; primaryUrl: string; streamMode: string };
     try {
       const found = await this.streamService.findByExternalId(externalId);
       if (!found) {
         res.status(HttpStatus.NOT_FOUND).send('Stream not found');
         return;
       }
-      streamRecord = found;
+      streamRecord = found as typeof streamRecord;
     } catch {
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return;
@@ -361,7 +361,13 @@ export class XtreamController {
     res.on('close', closeConn);
     res.on('finish', closeConn);
 
-    // ── Local HLS mode: serve pre-transcoded segments ───────────────────────
+    // ── PROXY mode: pass source URL directly, skip FFmpeg/HLS entirely ──────
+    if ((streamRecord.streamMode ?? 'PROXY') === 'PROXY') {
+      this.proxyToUpstream(streamRecord.primaryUrl, req, res);
+      return;
+    }
+
+    // ── TRANSCODE mode: serve pre-transcoded HLS segments ───────────────────
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
     const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');
 

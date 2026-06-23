@@ -30,6 +30,7 @@ export interface Stream {
   name: string;
   primaryUrl: string;
   backupUrl?: string;
+  streamMode: 'PROXY' | 'TRANSCODE';
   status: StreamStatus;
   workerStatus: WorkerStatus;
   restartCount: number;

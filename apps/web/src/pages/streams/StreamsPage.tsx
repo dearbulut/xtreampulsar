@@ -123,10 +123,11 @@ interface CreateForm {
   backupUrl: string;
   serverId: string;
   tvgLogo: string;
+  streamMode: 'PROXY' | 'TRANSCODE';
 }
 
 const EMPTY_FORM: CreateForm = {
-  name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '',
+  name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY',
 };
 
 function getUrlPage(): number {
@@ -729,6 +730,33 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onChange={(e) => setCreateForm((f) => ({ ...f, tvgLogo: e.target.value }))}
             />
           </div>
+          <div>
+            <label className="label">Yayın Modu</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['PROXY', 'TRANSCODE'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCreateForm((f) => ({ ...f, streamMode: mode }))}
+                  className={`flex flex-col items-start gap-1 rounded-lg border px-3 py-2.5 text-left text-xs transition-colors ${
+                    createForm.streamMode === mode
+                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
+                      : 'border-border bg-surface-2 text-muted hover:border-indigo-500/40'
+                  }`}
+                >
+                  <span className="font-semibold">
+                    {mode === 'PROXY' ? 'Direkt Proxy' : 'FFmpeg Transcode'}
+                    {mode === 'PROXY' && <span className="ml-1.5 text-emerald-400 text-[10px]">(önerilen)</span>}
+                  </span>
+                  <span className="text-[10px] leading-snug opacity-70">
+                    {mode === 'PROXY'
+                      ? 'Kaynak URL direkt iletilir — düşük kaynak tüketimi'
+                      : 'FFmpeg ile HLS\'e çevrilir — kalite optimizasyonu'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
             <button
               onClick={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
@@ -749,6 +777,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   primaryUrl: createForm.primaryUrl,
                   categoryId: createForm.categoryId,
                   type: type ?? 'LIVE',
+                  streamMode: createForm.streamMode,
                   ...(createForm.backupUrl && { backupUrl: createForm.backupUrl }),
                   ...(createForm.serverId && { serverId: createForm.serverId }),
                   ...(createForm.tvgLogo && { tvgLogo: createForm.tvgLogo }),

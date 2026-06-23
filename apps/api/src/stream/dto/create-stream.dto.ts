@@ -44,4 +44,8 @@ export class CreateStreamDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean = true;
+
+  @IsOptional()
+  @IsIn(['PROXY', 'TRANSCODE'])
+  streamMode?: string = 'PROXY';
 }
