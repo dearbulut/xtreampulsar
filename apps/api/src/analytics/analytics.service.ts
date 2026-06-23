@@ -736,4 +736,116 @@ export class AnalyticsService {
       return [];
     }
   }
+
+  async getUserReport(startDate: Date, endDate: Date, groupBy: 'day' | 'week' | 'month') {
+    const now = new Date();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600_000);
+    const thisWeekEnd = new Date(Date.now() + 7 * 24 * 3600_000);
+    const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try { return await fn(); }
+      catch (err) { this.logger.error(`getUserReport[${label}]: ${(err as Error).message}`); return fallback; }
+    };
+
+    const [
+      totalUsers,
+      newUsers,
+      expiredCount,
+      bannedUsers,
+      activeUsersRows,
+      totalConnections,
+      thisWeekExpiry,
+      thisMonthExpiry,
+      laterExpiry,
+    ] = await Promise.all([
+      safe('total',      () => this.prisma.user.count({ where: { deletedAt: null } }), 0),
+      safe('new',        () => this.prisma.user.count({ where: { deletedAt: null, createdAt: { gte: startDate, lte: endDate } } }), 0),
+      safe('expired',    () => this.prisma.user.count({ where: { deletedAt: null, expiresAt: { lt: now } } }), 0),
+      safe('banned',     () => this.prisma.user.count({ where: { deletedAt: null, status: { in: ['BANNED', 'DISABLED'] } } }), 0),
+      safe('active',     () => this.prisma.userActivityLog.groupBy({ by: ['userId'], where: { action: 'LOGIN', createdAt: { gte: sevenDaysAgo } } }), []),
+      safe('totalConn',  () => this.prisma.connection.count(), 0),
+      safe('expWk',      () => this.prisma.user.count({ where: { deletedAt: null, expiresAt: { gte: now, lte: thisWeekEnd } } }), 0),
+      safe('expMo',      () => this.prisma.user.count({ where: { deletedAt: null, expiresAt: { gt: thisWeekEnd, lte: thisMonthEnd } } }), 0),
+      safe('expLater',   () => this.prisma.user.count({ where: { deletedAt: null, expiresAt: { gt: thisMonthEnd } } }), 0),
+    ]);
+
+    const activeUsers = activeUsersRows.length;
+    const avgConnectionsPerUser = totalUsers > 0 ? Math.round((totalConnections / totalUsers) * 10) / 10 : 0;
+
+    // Growth chart — fill every bucket in [startDate, endDate]
+    const truncUnit = groupBy === 'week' ? 'week' : groupBy === 'month' ? 'month' : 'day';
+    const growthRaw = await safe('growth', () =>
+      this.prisma.$queryRaw<Array<{ bucket: Date; count: bigint }>>`
+        SELECT DATE_TRUNC(${truncUnit}, "created_at") AS bucket, COUNT(*)::bigint AS count
+        FROM users
+        WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND deleted_at IS NULL
+        GROUP BY 1 ORDER BY 1 ASC
+      `, []);
+
+    const usersBeforeStart = await safe('before', () =>
+      this.prisma.user.count({ where: { deletedAt: null, createdAt: { lt: startDate } } }), 0);
+
+    const growthMap = new Map(growthRaw.map((r) => [r.bucket.toISOString().slice(0, 10), Number(r.count)]));
+    let cumulative = usersBeforeStart;
+    const growth: { date: string; newUsers: number; totalUsers: number }[] = [];
+    for (const row of growthRaw) {
+      cumulative += Number(row.count);
+      growth.push({ date: row.bucket.toISOString().slice(0, 10), newUsers: Number(row.count), totalUsers: cumulative });
+    }
+    void growthMap; // unused after loop
+
+    // Reseller breakdown
+    const resellerGroups = await safe('resellerGroups', () =>
+      this.prisma.user.groupBy({ by: ['resellerId'], where: { deletedAt: null }, _count: { _all: true }, orderBy: { _count: { id: 'desc' } } }), []);
+
+    const resellerIds = resellerGroups.filter((r) => r.resellerId).map((r) => r.resellerId as string);
+    const [resellers, activeByReseller] = await Promise.all([
+      safe('resellers', () => this.prisma.reseller.findMany({ where: { id: { in: resellerIds } }, select: { id: true, username: true } }), []),
+      safe('activeRes', () => this.prisma.user.groupBy({ by: ['resellerId'], where: { deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } }, _count: { _all: true } }), []),
+    ]);
+
+    const resellerNameMap = new Map(resellers.map((r) => [r.id, r.username]));
+    const activeResMap = new Map(activeByReseller.map((r) => [r.resellerId, r._count._all]));
+    const byReseller = resellerGroups.map((r) => ({
+      resellerName: r.resellerId ? (resellerNameMap.get(r.resellerId) ?? 'Bilinmeyen') : 'Direkt',
+      userCount: r._count._all,
+      activeCount: r.resellerId ? (activeResMap.get(r.resellerId) ?? 0) : (activeResMap.get(null) ?? 0),
+    }));
+
+    // Top users by total connections + duration
+    const topConnRows = await safe('topConn', () =>
+      this.prisma.$queryRaw<Array<{ user_id: string; total_connections: bigint; total_duration: bigint; last_seen: Date }>>`
+        SELECT
+          user_id,
+          COUNT(*)::bigint AS total_connections,
+          SUM(EXTRACT(EPOCH FROM (COALESCE(ended_at, updated_at) - started_at)))::bigint AS total_duration,
+          MAX(updated_at) AS last_seen
+        FROM connections
+        GROUP BY user_id
+        ORDER BY total_connections DESC
+        LIMIT 10
+      `, []);
+
+    const topUserIds = topConnRows.map((r) => r.user_id);
+    const topUserRecords = await safe('topUsers', () =>
+      this.prisma.user.findMany({ where: { id: { in: topUserIds } }, select: { id: true, username: true } }), []);
+    const topUserMap = new Map(topUserRecords.map((u) => [u.id, u.username]));
+
+    const topUsers = topConnRows.map((r) => ({
+      userId: r.user_id,
+      username: topUserMap.get(r.user_id) ?? 'Bilinmeyen',
+      totalConnections: Number(r.total_connections),
+      totalDuration: Number(r.total_duration ?? 0),
+      lastSeen: r.last_seen,
+    }));
+
+    return {
+      summary: { totalUsers, newUsers, expiredUsers: expiredCount, bannedUsers, activeUsers, avgConnectionsPerUser },
+      growth,
+      byReseller,
+      expiryDistribution: { expired: expiredCount, thisWeek: thisWeekExpiry, thisMonth: thisMonthExpiry, later: laterExpiry },
+      topUsers,
+    };
+  }
 }
