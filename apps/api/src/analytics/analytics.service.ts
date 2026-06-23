@@ -40,6 +40,8 @@ export class AnalyticsService {
       activeUsers,
       totalStreams,
       onlineStreams,
+      offlineStreams,
+      idleStreams,
       totalServers,
       onlineServers,
       activeConnections,
@@ -49,6 +51,8 @@ export class AnalyticsService {
       safe('activeUsers',       () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }), 0),
       safe('totalStreams',      () => this.prisma.stream.count({ where: { isActive: true } }), 0),
       safe('onlineStreams',     () => this.prisma.stream.count({ where: { workerStatus: 'RUNNING' } }), 0),
+      safe('offlineStreams',    () => this.prisma.stream.count({ where: { workerStatus: { in: ['STOPPED', 'CRASHED'] } } }), 0),
+      safe('idleStreams',       () => this.prisma.stream.count({ where: { workerStatus: 'IDLE' } }), 0),
       safe('totalServers',      () => this.prisma.server.count(), 0),
       safe('onlineServers',     () => this.prisma.server.count({ where: { isOnline: true } }), 0),
       safe('activeConnections', () => this.prisma.connection.count({
@@ -59,7 +63,7 @@ export class AnalyticsService {
 
     return {
       users: { total: totalUsers, active: activeUsers },
-      streams: { total: totalStreams, online: onlineStreams },
+      streams: { total: totalStreams, online: onlineStreams, offline: offlineStreams, idle: idleStreams },
       servers: { total: totalServers, online: onlineServers },
       connections: { active: activeConnections, today: connectionsToday },
     };
