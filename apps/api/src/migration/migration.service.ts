@@ -234,7 +234,7 @@ export class MigrationService {
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'LIVE');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl);
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'LIVE');
       }
 
       if (dto.importVod) {
@@ -244,7 +244,7 @@ export class MigrationService {
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'VOD');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl);
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD');
       }
 
       await this.prisma.migrationJob.update({
@@ -299,15 +299,24 @@ export class MigrationService {
   private async importXtreamStreams(
     streams: { name: string; stream_id: number; category_id: string; stream_icon?: string; epg_channel_id?: string }[],
     catIdMap: Map<string, string>,
-    _serverUrl: string,
+    serverUrl: string,
+    username: string,
+    password: string,
+    type: 'LIVE' | 'VOD' | 'SERIES',
   ): Promise<number> {
     let count = 0;
+    const baseUrl = serverUrl.replace(/\/$/, '');
 
     for (const s of streams) {
       const categoryId = catIdMap.get(s.category_id);
       if (!categoryId) continue;
 
-      const primaryUrl = `stream_placeholder_${s.stream_id}`;
+      const primaryUrl =
+        type === 'VOD'
+          ? `${baseUrl}/movie/${username}/${password}/${s.stream_id}.mp4`
+          : type === 'SERIES'
+          ? `${baseUrl}/series/${username}/${password}/${s.stream_id}.mkv`
+          : `${baseUrl}/live/${username}/${password}/${s.stream_id}.m3u8`;
 
       try {
         await this.prisma.stream.upsert({
@@ -316,12 +325,15 @@ export class MigrationService {
             externalId: s.stream_id,
             name: s.name,
             primaryUrl,
+            streamMode: 'PROXY',
             tvgLogo: s.stream_icon || null,
             tvgId: s.epg_channel_id || null,
             categoryId,
           },
           update: {
             name: s.name,
+            primaryUrl,
+            streamMode: 'PROXY',
             tvgLogo: s.stream_icon || null,
             tvgId: s.epg_channel_id || null,
             categoryId,
