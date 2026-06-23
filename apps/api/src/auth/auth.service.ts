@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserActivityService } from '../user/user-activity.service';
 import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly userActivityService: UserActivityService,
     @Optional() @Inject(REDIS_CLIENT) private readonly redis: Redis | null,
   ) {}
 
@@ -63,7 +65,7 @@ export class AuthService {
     await this.redis.del(this.bruteKey(ip)).catch(() => {});
   }
 
-  async login(dto: LoginDto, ip = '') {
+  async login(dto: LoginDto, ip = '', userAgent = '') {
     await this.checkBrute(ip);
 
     const user = await this.prisma.user.findUnique({
@@ -80,6 +82,14 @@ export class AuthService {
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException(`Account is ${user.status.toLowerCase()}`);
     }
+
+    void this.userActivityService.logActivity({
+      userId: user.id,
+      action: 'LOGIN',
+      ip,
+      userAgent,
+      deviceType: this.userActivityService.detectDeviceType(userAgent),
+    });
 
     if (user.twoFactorEnabled) {
       const tempToken = this.jwtService.sign(

@@ -24,6 +24,7 @@ import { StreamService } from '../stream/stream.service';
 import { StreamPrefetchService } from '../stream/stream-prefetch.service';
 import { StreamWorkerService } from '../stream/stream-worker.service';
 import { UserService } from '../user/user.service';
+import { UserActivityService } from '../user/user-activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
 import { LoadBalancerService } from '../server/load-balancer.service';
@@ -57,6 +58,7 @@ export class XtreamController {
     private readonly xtream: XtreamService,
     private readonly streamService: StreamService,
     private readonly userService: UserService,
+    private readonly userActivityService: UserActivityService,
     private readonly prisma: PrismaService,
     private readonly securityService: SecurityService,
     private readonly lbService: LoadBalancerService,
@@ -90,8 +92,14 @@ export class XtreamController {
     }
 
     if (!action) {
-      void this.userService.logActivity(user.id, 'LOGIN', {
-        ip: (req as unknown as { ip?: string }).ip,
+      const loginIp = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip ?? '';
+      const loginUa = req.headers['user-agent'] ?? '';
+      void this.userActivityService.logActivity({
+        userId: user.id,
+        action: 'LOGIN',
+        ip: loginIp,
+        userAgent: loginUa,
+        deviceType: this.userActivityService.detectDeviceType(loginUa),
       });
       res.json(await this.xtream.buildAuthResponse(user, username, password));
       return;
@@ -181,7 +189,7 @@ export class XtreamController {
     rawStreamId: string,
     res: Response,
     extension: string,
-  ): Promise<string | null> {
+  ): Promise<{ url: string; userId: string } | null> {
     const user = await this.xtream.authenticate(username, password);
     if (!user) {
       res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized');
@@ -206,7 +214,8 @@ export class XtreamController {
         return null;
       }
 
-      return await this.streamService.getStreamUrl(externalId);
+      const url = await this.streamService.getStreamUrl(externalId);
+      return { url, userId: user.id };
     } catch {
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return null;
@@ -217,7 +226,11 @@ export class XtreamController {
     streamUrl: string,
     req: Request,
     res: Response,
+    onEnd?: (bytes: bigint, durationSeconds: number) => void,
   ): void {
+    const startMs = Date.now();
+    let bytes = BigInt(0);
+
     const target = new URL(streamUrl);
     const client = target.protocol === 'https:' ? https : http;
     const port = target.port
@@ -239,6 +252,9 @@ export class XtreamController {
         },
       },
       (proxyRes) => {
+        if (onEnd) {
+          proxyRes.on('data', (chunk: Buffer) => { bytes += BigInt(chunk.length); });
+        }
         const headers: Record<string, string | string[] | undefined> = {
           ...proxyRes.headers,
           'X-Proxied-By': 'XtreamPulsar',
@@ -247,6 +263,12 @@ export class XtreamController {
         proxyRes.pipe(res);
       },
     );
+
+    if (onEnd) {
+      res.once('close', () => {
+        onEnd(bytes, Math.round((Date.now() - startMs) / 1000));
+      });
+    }
 
     proxyReq.on('error', (err) => {
       if (!res.headersSent) {
@@ -328,12 +350,14 @@ export class XtreamController {
     // ── Track connection ────────────────────────────────────────────────────
     // findOrCreateConnection ensures one row per user+stream, not one per HLS request.
     const clientIp = clientIpRaw;
+    const clientUa = req.headers['user-agent'] ?? '';
+    const connStartedAt = Date.now();
     const hlsToken = randomUUID();
     let connectionId: string | null = null;
     let activeToken: string = hlsToken;
     try {
       const conn = await this.userService.findOrCreateConnection(
-        user.id, streamRecord.id, clientIp, req.headers['user-agent'], undefined, hlsToken,
+        user.id, streamRecord.id, clientIp, clientUa, undefined, hlsToken,
       );
       connectionId = conn.id;
       activeToken = conn.token ?? hlsToken;
@@ -345,10 +369,13 @@ export class XtreamController {
           ip: clientIp,
           startedAt: new Date().toISOString(),
         });
-        void this.userService.logActivity(user.id, 'STREAM_START', {
+        void this.userActivityService.logActivity({
+          userId: user.id,
+          action: 'STREAM_START',
           streamId: streamRecord.id,
           ip: clientIp,
-          userAgent: req.headers['user-agent'],
+          userAgent: clientUa,
+          deviceType: this.userActivityService.detectDeviceType(clientUa),
         });
       }
     } catch { /* non-fatal */ }
@@ -357,9 +384,17 @@ export class XtreamController {
       if (!connectionId) return;
       const id = connectionId;
       connectionId = null;
+      const durationSec = Math.round((Date.now() - connStartedAt) / 1000);
       this.gateway?.emitConnectionClose(id);
       void this.userService.closeConnection(id);
-      void this.userService.logActivity(user.id, 'STREAM_STOP', { streamId: streamRecord.id, ip: clientIp });
+      void this.userActivityService.logActivity({
+        userId: user.id,
+        action: 'STREAM_END',
+        streamId: streamRecord.id,
+        ip: clientIp,
+        duration: durationSec,
+        endedAt: new Date(),
+      });
     };
     res.on('close', closeConn);
     res.on('finish', closeConn);
@@ -506,11 +541,22 @@ export class XtreamController {
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
-    const url = await this.authorizeAndGetUrl(
+    const result = await this.authorizeAndGetUrl(
       username, password, streamId, res, 'mp4|mkv|avi',
     );
-    if (!url) return;
-    this.proxyToUpstream(url, req, res);
+    if (!result) return;
+
+    const ua = req.headers['user-agent'] ?? '';
+    void this.userActivityService.logActivity({
+      userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
+      deviceType: this.userActivityService.detectDeviceType(ua),
+    });
+    this.proxyToUpstream(result.url, req, res, (bytes, duration) => {
+      void this.userActivityService.logActivity({
+        userId: result.userId, action: 'STREAM_END', ip,
+        duration, bytesTransferred: bytes, endedAt: new Date(),
+      });
+    });
   }
 
   // ─── Series ────────────────────────────────────────────────────────────────
@@ -531,10 +577,21 @@ export class XtreamController {
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
-    const url = await this.authorizeAndGetUrl(
+    const result = await this.authorizeAndGetUrl(
       username, password, streamId, res, 'mkv|mp4|avi',
     );
-    if (!url) return;
-    this.proxyToUpstream(url, req, res);
+    if (!result) return;
+
+    const ua = req.headers['user-agent'] ?? '';
+    void this.userActivityService.logActivity({
+      userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
+      deviceType: this.userActivityService.detectDeviceType(ua),
+    });
+    this.proxyToUpstream(result.url, req, res, (bytes, duration) => {
+      void this.userActivityService.logActivity({
+        userId: result.userId, action: 'STREAM_END', ip,
+        duration, bytesTransferred: bytes, endedAt: new Date(),
+      });
+    });
   }
 }

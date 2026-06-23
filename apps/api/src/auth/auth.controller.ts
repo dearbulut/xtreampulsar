@@ -30,7 +30,8 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
-    return this.authService.login(dto, ip);
+    const ua = req.headers['user-agent'] ?? '';
+    return this.authService.login(dto, ip, ua);
   }
 
   @Post('2fa/verify')
