@@ -34,4 +34,8 @@ export class CreateResellerDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
