@@ -353,21 +353,21 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Row 4 — Top streams + Recent activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Row 4 — Top streams + Recent activity (equal height columns) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* Top streams */}
-        <div className="card p-5">
+        <div className="card p-5 flex flex-col">
           <h2 className="font-semibold text-fg mb-1">En Çok İzlenen Streamler</h2>
           <p className="text-xs text-muted mb-4">Son 24 saat, bağlantı sayısına göre</p>
 
           {streamsLoading ? (
-            <div className="h-40 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center">
               <LoadingSpinner />
             </div>
           ) : topStreams.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted text-sm">Veri yok</div>
+            <div className="flex-1 flex items-center justify-center text-muted text-sm">Veri yok</div>
           ) : (
-            <div className="space-y-3">
+            <div className="flex-1 space-y-3">
               {topStreams.map((entry, i) => {
                 const name = entry.stream?.name ?? '—';
                 const viewers = entry.connections ?? 0;
@@ -402,18 +402,18 @@ export function DashboardPage() {
         </div>
 
         {/* Recent activity */}
-        <div className="card p-5">
+        <div className="card p-5 flex flex-col">
           <h2 className="font-semibold text-fg mb-1">Son Aktiviteler</h2>
           <p className="text-xs text-muted mb-4">Kullanıcı işlem geçmişi</p>
 
           {activityLoading ? (
-            <div className="h-40 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center">
               <LoadingSpinner />
             </div>
           ) : activity.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted text-sm">Aktivite yok</div>
+            <div className="flex-1 flex items-center justify-center text-muted text-sm">Aktivite yok</div>
           ) : (
-            <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-1 pr-1">
               {activity.map((entry) => {
                 const Icon = ACTIVITY_ICON[entry.type] ?? Clock;
                 return (
