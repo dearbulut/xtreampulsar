@@ -257,7 +257,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
 
-  useHlsPlayer(previewVideoRef, previewInfo ? previewInfo.previewProxyUrl : null);
+  useHlsPlayer(
+    previewVideoRef,
+    previewInfo?.previewProxyUrl
+      ? window.location.origin + previewInfo.previewProxyUrl
+      : null,
+  );
 
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
   const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
