@@ -848,4 +848,126 @@ export class AnalyticsService {
       topUsers,
     };
   }
+
+  async getRevenueDashboard(startDate: Date, endDate: Date, groupBy: 'day' | 'week' | 'month') {
+    const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try { return await fn(); }
+      catch (err) { this.logger.error(`getRevenueDashboard[${label}]: ${(err as Error).message}`); return fallback; }
+    };
+
+    const [creditLogs, totalResellers, allResellers] = await Promise.all([
+      safe('creditLogs', () =>
+        this.prisma.resellerCreditLog.findMany({
+          where: { createdAt: { gte: startDate, lte: endDate } },
+          include: { reseller: { select: { username: true } } },
+          orderBy: { createdAt: 'desc' },
+        }), []),
+      safe('totalResellers', () => this.prisma.reseller.count({ where: { deletedAt: null } }), 0),
+      safe('allResellers', () =>
+        this.prisma.reseller.findMany({
+          where: { deletedAt: null },
+          select: { id: true, username: true, credits: true, _count: { select: { users: true } } },
+        }), []),
+    ]);
+
+    const totalCreditsAdded = creditLogs.filter((l) => l.type === 'ADD').reduce((s, l) => s + l.amount, 0);
+    const totalCreditsSpent = creditLogs.filter((l) => l.type === 'DEDUCT').reduce((s, l) => s + l.amount, 0);
+    const activeResellers = new Set(creditLogs.map((l) => l.resellerId)).size;
+    const avgCreditPerReseller = totalResellers > 0 ? Math.round(totalCreditsAdded / totalResellers) : 0;
+
+    const spendByReseller = new Map<string, number>();
+    for (const log of creditLogs.filter((l) => l.type === 'DEDUCT')) {
+      spendByReseller.set(log.resellerId, (spendByReseller.get(log.resellerId) ?? 0) + log.amount);
+    }
+    const topResellerRevenue = spendByReseller.size > 0 ? Math.max(...spendByReseller.values()) : 0;
+
+    // Trend — two raw queries (ADD vs DEDUCT), merged by bucket
+    const truncUnit = groupBy === 'week' ? 'week' : groupBy === 'month' ? 'month' : 'day';
+    const [trendAdded, trendSpent] = await Promise.all([
+      safe('trendAdd', () =>
+        this.prisma.$queryRaw<Array<{ bucket: Date; total: bigint }>>`
+          SELECT DATE_TRUNC(${truncUnit}, created_at) AS bucket, SUM(amount)::bigint AS total
+          FROM reseller_credit_logs
+          WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND type = 'ADD'
+          GROUP BY 1 ORDER BY 1 ASC
+        `, []),
+      safe('trendDed', () =>
+        this.prisma.$queryRaw<Array<{ bucket: Date; total: bigint }>>`
+          SELECT DATE_TRUNC(${truncUnit}, created_at) AS bucket, SUM(amount)::bigint AS total
+          FROM reseller_credit_logs
+          WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND type = 'DEDUCT'
+          GROUP BY 1 ORDER BY 1 ASC
+        `, []),
+    ]);
+
+    const trendMap = new Map<string, { creditsAdded: number; creditsSpent: number }>();
+    for (const r of trendAdded) {
+      const k = r.bucket.toISOString().slice(0, 10);
+      trendMap.set(k, { creditsAdded: Number(r.total), creditsSpent: trendMap.get(k)?.creditsSpent ?? 0 });
+    }
+    for (const r of trendSpent) {
+      const k = r.bucket.toISOString().slice(0, 10);
+      trendMap.set(k, { creditsAdded: trendMap.get(k)?.creditsAdded ?? 0, creditsSpent: Number(r.total) });
+    }
+    const trend = [...trendMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, ...v }));
+
+    // Per-reseller aggregation from in-memory credit logs
+    const addedMap = new Map<string, number>();
+    const spentMap = new Map<string, number>();
+    for (const log of creditLogs) {
+      if (log.type === 'ADD')    addedMap.set(log.resellerId, (addedMap.get(log.resellerId) ?? 0) + log.amount);
+      else                       spentMap.set(log.resellerId, (spentMap.get(log.resellerId) ?? 0) + log.amount);
+    }
+
+    const byReseller = allResellers
+      .map((r) => ({
+        resellerName: r.username,
+        creditsAdded: addedMap.get(r.id) ?? 0,
+        creditsSpent: spentMap.get(r.id) ?? 0,
+        balance: r.credits,
+        userCount: r._count.users,
+      }))
+      .sort((a, b) => b.creditsSpent - a.creditsSpent);
+
+    // Package distribution
+    const pkgGroups = await safe('pkgGroups', () =>
+      this.prisma.user.groupBy({
+        by: ['packageId'],
+        where: { deletedAt: null, packageId: { not: null } },
+        _count: { _all: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }), []);
+
+    const pkgIds = pkgGroups.map((p) => p.packageId as string);
+    const packages = await safe('packages', () =>
+      this.prisma.package.findMany({ where: { id: { in: pkgIds } }, select: { id: true, name: true } }), []);
+    const pkgMap = new Map(packages.map((p) => [p.id, p.name]));
+    const pkgTotal = pkgGroups.reduce((s, p) => s + p._count._all, 0);
+    const packageDistribution = pkgGroups.map((p) => ({
+      packageName: pkgMap.get(p.packageId as string) ?? 'Bilinmeyen',
+      userCount: p._count._all,
+      percentage: pkgTotal > 0 ? Math.round((p._count._all / pkgTotal) * 1000) / 10 : 0,
+    }));
+
+    // Recent transactions (first 20, already sorted desc)
+    const recentTransactions = creditLogs.slice(0, 20).map((log) => ({
+      id: log.id,
+      resellerName: log.reseller?.username ?? 'Bilinmeyen',
+      type: log.type === 'ADD' ? ('add' as const) : ('spend' as const),
+      amount: log.amount,
+      description: log.reason ?? (log.type === 'ADD' ? 'Kredi eklendi' : 'Kredi harcandı'),
+      createdAt: log.createdAt,
+    }));
+
+    return {
+      summary: { totalCreditsAdded, totalCreditsSpent, totalResellers, activeResellers, avgCreditPerReseller, topResellerRevenue },
+      trend,
+      byReseller,
+      packageDistribution,
+      recentTransactions,
+    };
+  }
 }

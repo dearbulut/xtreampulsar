@@ -111,6 +111,20 @@ export class AnalyticsController {
     return this.analyticsService.getRecentActivity(limit ? parseInt(limit, 10) : 20);
   }
 
+  @Get('revenue-report')
+  getRevenueDashboard(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('groupBy') groupBy?: string,
+  ) {
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 30 * 24 * 3600_000);
+    const group = (['day', 'week', 'month'] as const).includes(groupBy as 'day')
+      ? (groupBy as 'day' | 'week' | 'month')
+      : 'day';
+    return this.analyticsService.getRevenueDashboard(start, end, group);
+  }
+
   @Get('user-report')
   getUserReport(
     @Query('startDate') startDate?: string,
