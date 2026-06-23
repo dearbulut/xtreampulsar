@@ -32,6 +32,26 @@ export class UserRepository {
     return this.prisma.connection.create({ data });
   }
 
+  // Returns existing open connection for the same user+stream, or creates one.
+  // This prevents a new DB row for every HLS segment request.
+  async findOrCreateConnection(data: CreateConnectionData): Promise<{ id: string; token: string | null; isNew: boolean }> {
+    const existing = await this.prisma.connection.findFirst({
+      where: { userId: data.userId, streamId: data.streamId, endedAt: null },
+      select: { id: true, token: true },
+    });
+
+    if (existing) {
+      await this.prisma.connection.update({
+        where: { id: existing.id },
+        data: { updatedAt: new Date() },
+      });
+      return { id: existing.id, token: existing.token ?? null, isNew: false };
+    }
+
+    const conn = await this.prisma.connection.create({ data });
+    return { id: conn.id, token: conn.token ?? null, isNew: true };
+  }
+
   async closeConnection(connectionId: string): Promise<void> {
     await this.prisma.connection.update({
       where: { id: connectionId },

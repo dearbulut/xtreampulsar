@@ -326,29 +326,32 @@ export class XtreamController {
     }
 
     // ── Track connection ────────────────────────────────────────────────────
+    // findOrCreateConnection ensures one row per user+stream, not one per HLS request.
     const clientIp = clientIpRaw;
     const hlsToken = randomUUID();
     let connectionId: string | null = null;
+    let activeToken: string = hlsToken;
     try {
-      const conn = await this.userService.createConnection(
+      const conn = await this.userService.findOrCreateConnection(
         user.id, streamRecord.id, clientIp, req.headers['user-agent'], undefined, hlsToken,
       );
       connectionId = conn.id;
-      this.gateway?.emitConnectionUpdate({
-        id: conn.id,
-        userId: user.id,
-        streamId: streamRecord.id,
-        ip: clientIp,
-        startedAt: new Date().toISOString(),
-      });
+      activeToken = conn.token ?? hlsToken;
+      if (conn.isNew) {
+        this.gateway?.emitConnectionUpdate({
+          id: conn.id,
+          userId: user.id,
+          streamId: streamRecord.id,
+          ip: clientIp,
+          startedAt: new Date().toISOString(),
+        });
+        void this.userService.logActivity(user.id, 'STREAM_START', {
+          streamId: streamRecord.id,
+          ip: clientIp,
+          userAgent: req.headers['user-agent'],
+        });
+      }
     } catch { /* non-fatal */ }
-
-    // Log stream start
-    void this.userService.logActivity(user.id, 'STREAM_START', {
-      streamId: streamRecord.id,
-      ip: clientIp,
-      userAgent: req.headers['user-agent'],
-    });
 
     const closeConn = (): void => {
       if (!connectionId) return;
@@ -412,7 +415,7 @@ export class XtreamController {
         : (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
       const raw = fs.readFileSync(hlsFile, 'utf-8');
-      const tokenSuffix = connectionId ? `?token=${hlsToken}` : '';
+      const tokenSuffix = connectionId ? `?token=${activeToken}` : '';
       const fixed = raw.replace(
         /^([^#\r\n][^\r\n]*\.ts)$/gm,
         `${baseUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
