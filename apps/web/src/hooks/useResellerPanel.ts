@@ -15,6 +15,15 @@ resellerApi.interceptors.request.use((config) => {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface ResellerDashboard {
+  credits: number;
+  totalUsers: number;
+  activeUsers: number;
+  newThisWeek: number;
+  expiringSoonCount: number;
+  onlineConnections: number;
+}
+
 export interface ResellerStats {
   totalUsers: number;
   activeUsers: number;
@@ -37,6 +46,14 @@ export interface ResellerUserRow {
   status: string;
   expiresAt: string;
   maxConnections: number;
+  createdAt: string;
+  _count?: { connections: number };
+}
+
+export interface QuickCreateResult {
+  user: { id: string; username: string; password: string; expiresAt: string };
+  m3uUrl: string;
+  playerApiUrl: string;
 }
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
@@ -48,6 +65,17 @@ export function useResellerMe() {
       const res = await resellerApi.get<{ success: boolean; data: ResellerInfo }>('/resellers/me');
       return res.data.data;
     },
+  });
+}
+
+export function useResellerDashboard() {
+  return useQuery({
+    queryKey: ['reseller-panel', 'dashboard'],
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: ResellerDashboard }>('/resellers/me/dashboard');
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
   });
 }
 
@@ -72,12 +100,15 @@ export function useResellerExpiring() {
   });
 }
 
-export function useResellerUsers(page = 1, limit = 20) {
+export function useResellerUsers(page = 1, limit = 20, search?: string, status?: string) {
   return useQuery({
-    queryKey: ['reseller-panel', 'users', page, limit],
+    queryKey: ['reseller-panel', 'users', page, limit, search, status],
     queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search) params.set('search', search);
+      if (status) params.set('status', status);
       const res = await resellerApi.get<{ success: boolean; data: PaginatedResponse<ResellerUserRow> }>(
-        `/users?page=${page}&limit=${limit}`,
+        `/resellers/me/users?${params.toString()}`,
       );
       return res.data.data;
     },
@@ -88,7 +119,7 @@ export function useResellerPackages() {
   return useQuery({
     queryKey: ['reseller-panel', 'packages'],
     queryFn: async () => {
-      const res = await resellerApi.get<{ success: boolean; data: Package[] }>('/packages');
+      const res = await resellerApi.get<{ success: boolean; data: Package[] }>('/resellers/me/packages');
       return res.data.data;
     },
   });
@@ -112,6 +143,74 @@ export function useResellerCreateUser() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Kullanıcı oluşturulamadı');
     },
+  });
+}
+
+export function useResellerQuickCreate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      username?: string;
+      password?: string;
+      durationDays?: number;
+      durationHours?: number;
+      maxConnections: number;
+      notes?: string;
+    }) => {
+      const res = await resellerApi.post<{ success: boolean; data: QuickCreateResult }>(
+        '/resellers/me/users/quick-create',
+        data,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Kullanıcı oluşturulamadı');
+    },
+  });
+}
+
+export function useResellerBulkAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { action: 'extend' | 'suspend' | 'activate'; userIds: string[]; days?: number }) =>
+      resellerApi.post<{ success: boolean; data: { affected: number } }>('/resellers/me/users/bulk', data),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'users'] });
+      const label =
+        vars.action === 'extend' ? 'Süre uzatıldı' :
+        vars.action === 'suspend' ? 'Askıya alındı' : 'Aktifleştirildi';
+      toast.success(label);
+    },
+    onError: () => toast.error('İşlem başarısız'),
+  });
+}
+
+export function useResellerUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; maxConnections?: number; expiresAt?: string; notes?: string; status?: string }) =>
+      resellerApi.put(`/resellers/me/users/${id}`, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'users'] });
+      toast.success('Güncellendi');
+    },
+    onError: () => toast.error('Güncelleme başarısız'),
+  });
+}
+
+export function useResellerDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resellerApi.delete(`/resellers/me/users/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'users'] });
+      toast.success('Kullanıcı silindi');
+    },
+    onError: () => toast.error('Silme başarısız'),
   });
 }
 

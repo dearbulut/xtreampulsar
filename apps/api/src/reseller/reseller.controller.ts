@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Param,
@@ -72,6 +73,87 @@ export class ResellerController {
   async getMyCreditHistory(@CurrentUser() user: JwtUser, @Query() pagination: PaginationDto) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.getCreditHistory(user.id, pagination.page, pagination.limit);
+  }
+
+  @Get('me/dashboard')
+  @Roles('RESELLER')
+  async getMyDashboard(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getDashboard(user.id);
+  }
+
+  @Get('me/packages')
+  @Roles('RESELLER')
+  async getMyPackages(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getPackages();
+  }
+
+  // me/users — literal routes before :userId param
+  @Get('me/users')
+  @Roles('RESELLER')
+  async getMyUsers(
+    @CurrentUser() user: JwtUser,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getMyUsers(user.id, +page, +limit, search, status);
+  }
+
+  @Post('me/users/quick-create')
+  @Roles('RESELLER')
+  async quickCreateUser(
+    @CurrentUser() user: JwtUser,
+    @Body() body: {
+      username?: string;
+      password?: string;
+      durationDays?: number;
+      durationHours?: number;
+      maxConnections: number;
+      notes?: string;
+    },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.quickCreateUser(user.id, body);
+  }
+
+  @Post('me/users/bulk')
+  @Roles('RESELLER')
+  async bulkAction(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { action: 'extend' | 'suspend' | 'activate'; userIds: string[]; days?: number },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.bulkAction(user.id, body.action, body.userIds, body.days);
+  }
+
+  @Get('me/users/:userId')
+  @Roles('RESELLER')
+  async getMyUserDetail(@CurrentUser() user: JwtUser, @Param('userId') userId: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getMyUserDetail(user.id, userId);
+  }
+
+  @Put('me/users/:userId')
+  @Roles('RESELLER')
+  async updateMyUser(
+    @CurrentUser() user: JwtUser,
+    @Param('userId') userId: string,
+    @Body() body: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.updateMyUser(user.id, userId, body);
+  }
+
+  @Delete('me/users/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('RESELLER')
+  async deleteMyUser(@CurrentUser() user: JwtUser, @Param('userId') userId: string): Promise<void> {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    await this.resellerService.deleteMyUser(user.id, userId);
   }
 
   // ─── Admin endpoints ──────────────────────────────────────────────────────

@@ -2,8 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@xtreampulsar/database';
 import { PaymentRequiredException } from '../common/exceptions/payment-required.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateResellerDto } from './dto/create-reseller.dto';
@@ -11,7 +15,10 @@ import { UpdateResellerDto } from './dto/update-reseller.dto';
 
 @Injectable()
 export class ResellerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   findAll() {
     return this.prisma.reseller.findMany({
@@ -157,5 +164,217 @@ export class ResellerService {
     ]);
 
     return { totalUsers: total, activeUsers: active, expiredUsers: expired, onlineConnections: online };
+  }
+
+  // ─── Reseller self-service methods ───────────────────────────────────────────
+
+  async getDashboard(resellerId: string) {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+    const in7Days = new Date(now.getTime() + 7 * 86_400_000);
+
+    const [reseller, total, active, newThisWeek, expiringSoon, online] = await Promise.all([
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: weekAgo } } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null, expiresAt: { gte: now, lte: in7Days } } }),
+      this.prisma.connection.count({ where: { endedAt: null, user: { resellerId } } }),
+    ]);
+
+    return {
+      credits: reseller?.credits ?? 0,
+      totalUsers: total,
+      activeUsers: active,
+      newThisWeek,
+      expiringSoonCount: expiringSoon,
+      onlineConnections: online,
+    };
+  }
+
+  async getMyUsers(resellerId: string, page: number, limit: number, search?: string, status?: string) {
+    const where: Prisma.UserWhereInput = {
+      resellerId,
+      deletedAt: null,
+      ...(search ? { username: { contains: search, mode: Prisma.QueryMode.insensitive } } : {}),
+      ...(status ? { status: status as 'ACTIVE' | 'DISABLED' | 'BANNED' } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true, username: true, status: true,
+          expiresAt: true, maxConnections: true, createdAt: true,
+          _count: { select: { connections: { where: { endedAt: null } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getMyUserDetail(resellerId: string, userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, resellerId, deletedAt: null },
+      select: {
+        id: true, username: true, status: true, maxConnections: true,
+        expiresAt: true, notes: true, createdAt: true,
+        _count: { select: { connections: { where: { endedAt: null } } } },
+      },
+    });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    return user;
+  }
+
+  async updateMyUser(
+    resellerId: string,
+    userId: string,
+    dto: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string },
+  ) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    const data: Record<string, unknown> = {};
+    if (dto.maxConnections !== undefined) data.maxConnections = dto.maxConnections;
+    if (dto.expiresAt !== undefined) data.expiresAt = new Date(dto.expiresAt);
+    if (dto.notes !== undefined) data.notes = dto.notes;
+    if (dto.status !== undefined) data.status = dto.status;
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, username: true, status: true, maxConnections: true, expiresAt: true },
+    });
+  }
+
+  async deleteMyUser(resellerId: string, userId: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null } });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    await this.prisma.user.update({ where: { id: userId }, data: { deletedAt: new Date() } });
+  }
+
+  async quickCreateUser(
+    resellerId: string,
+    dto: {
+      username?: string;
+      password?: string;
+      durationDays?: number;
+      durationHours?: number;
+      maxConnections: number;
+      notes?: string;
+    },
+  ) {
+    if (!dto.durationDays && !dto.durationHours) {
+      throw new BadRequestException('durationDays veya durationHours gerekli');
+    }
+
+    const reseller = await this.prisma.reseller.findUnique({
+      where: { id: resellerId },
+      select: { credits: true },
+    });
+    if (!reseller) throw new NotFoundException('Reseller not found');
+
+    const creditCost = 1;
+    if (reseller.credits < creditCost) {
+      throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
+    }
+
+    const rawUsername = dto.username?.trim() || randomBytes(4).toString('hex');
+    const rawPassword = dto.password?.trim() || randomBytes(4).toString('hex');
+
+    const existing = await this.prisma.user.findUnique({ where: { username: rawUsername } });
+    if (existing) throw new ConflictException(`Kullanıcı adı "${rawUsername}" zaten kullanımda`);
+
+    const hashed = await bcrypt.hash(rawPassword, 12);
+    const msToAdd = dto.durationHours
+      ? dto.durationHours * 3_600_000
+      : (dto.durationDays ?? 30) * 86_400_000;
+    const expiresAt = new Date(Date.now() + msToAdd);
+    const newBalance = reseller.credits - creditCost;
+
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.create({
+        data: {
+          username: rawUsername,
+          password: hashed,
+          maxConnections: dto.maxConnections,
+          expiresAt,
+          notes: dto.notes,
+          resellerId,
+          status: 'ACTIVE',
+        },
+        select: { id: true, username: true, expiresAt: true },
+      }),
+      this.prisma.reseller.update({
+        where: { id: resellerId },
+        data: { credits: { decrement: creditCost } },
+      }),
+      this.prisma.resellerCreditLog.create({
+        data: {
+          resellerId,
+          amount: creditCost,
+          type: 'DEDUCT',
+          reason: `Kullanıcı oluşturuldu: ${rawUsername}`,
+          balanceAfter: newBalance,
+        },
+      }),
+    ]);
+
+    const serverUrl = this.config.get<string>('server.url') ?? 'http://localhost';
+    const serverPort = this.config.get<number>('server.port') ?? 8080;
+    const base = `${serverUrl}:${serverPort}`;
+
+    return {
+      user: { ...user, password: rawPassword },
+      m3uUrl: `${base}/get.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`,
+      playerApiUrl: `${base}/player_api.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}`,
+    };
+  }
+
+  async bulkAction(
+    resellerId: string,
+    action: 'extend' | 'suspend' | 'activate',
+    userIds: string[],
+    days?: number,
+  ) {
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, resellerId, deletedAt: null },
+      select: { id: true, expiresAt: true },
+    });
+    if (users.length === 0) throw new NotFoundException('Geçerli kullanıcı bulunamadı');
+
+    const validIds = users.map((u) => u.id);
+    const now = new Date();
+
+    if (action === 'extend') {
+      const addMs = (days ?? 30) * 86_400_000;
+      await this.prisma.$transaction(
+        users.map((u) => {
+          const base = u.expiresAt > now ? u.expiresAt : now;
+          return this.prisma.user.update({
+            where: { id: u.id },
+            data: { expiresAt: new Date(base.getTime() + addMs) },
+          });
+        }),
+      );
+    } else {
+      await this.prisma.user.updateMany({
+        where: { id: { in: validIds } },
+        data: { status: action === 'suspend' ? 'DISABLED' : 'ACTIVE' },
+      });
+    }
+
+    return { affected: validIds.length };
+  }
+
+  async getPackages() {
+    return this.prisma.package.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, durationDays: true, maxConnections: true, creditCost: true },
+      orderBy: { creditCost: 'asc' },
+    });
   }
 }
