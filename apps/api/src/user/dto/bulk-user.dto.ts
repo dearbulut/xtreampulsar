@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsString, Min } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkExtendDto {
@@ -23,4 +23,16 @@ export class ExtendDto {
   @IsInt()
   @Min(1)
   days!: number;
+}
+
+export class BulkActionDto {
+  @IsArray()
+  @IsString({ each: true })
+  userIds!: string[];
+
+  @IsString()
+  action!: string;
+
+  @IsOptional()
+  value?: string | number;
 }

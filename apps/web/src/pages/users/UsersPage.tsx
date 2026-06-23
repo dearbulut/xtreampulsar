@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Square, CheckSquare, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X } from 'lucide-react';
 import type { ActivityFilters } from '@/hooks/useUserActivity';
+import { useBulkAction } from '@/hooks/useBulkAction';
+import type { BulkActionResult } from '@/hooks/useBulkAction';
 import { useResellers } from '@/hooks/useResellers';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -109,10 +111,16 @@ export function UsersPage() {
     d.setDate(d.getDate() + 30);
     return { username: '', password: '', maxConnections: 1, expiresAt: d.toISOString().split('T')[0], notes: '', bouquetIds: [] as string[], packageId: '' };
   });
-  // Bulk renew state
+  // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Bulk renew (existing)
   const [showBulkRenew, setShowBulkRenew] = useState(false);
   const [bulkPackageId, setBulkPackageId] = useState('');
+  // Bulk action (new)
+  const [bulkActionType, setBulkActionType] = useState<string | null>(null);
+  const [bulkValueInput, setBulkValueInput] = useState('');
+  const [bulkPasswordResults, setBulkPasswordResults] = useState<BulkActionResult['results']>(undefined);
+
   const [activityUserId, setActivityUserId] = useState<string | null>(null);
 
   const { data, isLoading } = useUsers({ page, limit: 25, search, status, resellerId: resellerId || undefined, packageId: packageId || undefined });
@@ -121,6 +129,7 @@ export function UsersPage() {
   const { data: resellers = [] } = useResellers();
   const qc = useQueryClient();
   const bulkRenew = useBulkRenew();
+  const bulkActionMut = useBulkAction();
   const createUser = useCreateUser();
   const extendUser = useExtendUser();
   const banUser = useBanUser();
@@ -128,6 +137,36 @@ export function UsersPage() {
   const kickUser = useKickUser();
   const deleteUser = useDeleteUser();
   const updateUser = useUpdateUser();
+
+  const handleSelectId = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  });
+
+  const handleSelectAll = () => {
+    const items = data?.items ?? [];
+    const allSelected = items.length > 0 && items.every((u) => selectedIds.has(u.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) { items.forEach((u) => next.delete(u.id)); }
+      else { items.forEach((u) => next.add(u.id)); }
+      return next;
+    });
+  };
+
+  const executeBulkAction = async (action: string, value?: string | number) => {
+    try {
+      const result = await bulkActionMut.mutateAsync({ action, userIds: [...selectedIds], value });
+      if (action === 'reset-password' && result.results) {
+        setBulkPasswordResults(result.results);
+      } else {
+        toast.success(`${result.affected} kullanıcı güncellendi`);
+      }
+      setBulkActionType(null);
+      setBulkValueInput('');
+      setSelectedIds(new Set());
+      void qc.invalidateQueries({ queryKey: ['users'] });
+    } catch { /* handled by mutation onError */ }
+  };
 
   const copyCredentials = (text: string, id: string) => {
     void navigator.clipboard.writeText(text);
@@ -158,18 +197,6 @@ export function UsersPage() {
   };
 
   const columns: Column<User>[] = [
-    {
-      key: 'select' as keyof User,
-      header: '',
-      render: (r) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); setSelectedIds((prev) => { const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; }); }}
-          className="text-muted hover:text-primary"
-        >
-          {selectedIds.has(r.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
-        </button>
-      ),
-    },
     {
       key: 'username',
       header: 'Kullanıcı',
@@ -278,15 +305,6 @@ export function UsersPage() {
         description={`${data?.total ?? 0} kullanıcı`}
         actions={
           <>
-            {selectedIds.size > 0 && (
-              <button
-                onClick={() => setShowBulkRenew(true)}
-                className="btn-secondary flex items-center gap-1.5 text-sm"
-              >
-                <RefreshCw className="w-4 h-4" />
-                {selectedIds.size} Seçili Yenile
-              </button>
-            )}
             <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title="CSV İndir">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Rapor İndir</span>
@@ -298,6 +316,49 @@ export function UsersPage() {
           </>
         }
       />
+
+      {/* Bulk Action Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 mb-3 bg-primary/10 border border-primary/20 rounded-xl">
+          <div className="flex items-center gap-2 mr-2">
+            <span className="text-sm font-semibold text-primary">{selectedIds.size} kullanıcı seçildi</span>
+            <button onClick={() => setSelectedIds(new Set())} className="text-muted hover:text-fg transition-colors" title="Seçimi temizle">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="w-px h-5 bg-border hidden sm:block" />
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => { setBulkValueInput('30'); setBulkActionType('extend'); }}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
+              <Clock className="w-3 h-3" /> Uzat
+            </button>
+            <button onClick={() => setBulkActionType('suspend')}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-warning/10 hover:bg-warning/20 text-warning transition-colors">
+              <Shield className="w-3 h-3" /> Askıya Al
+            </button>
+            <button onClick={() => setBulkActionType('activate')}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-success/10 hover:bg-success/20 text-success transition-colors">
+              <UserCheck className="w-3 h-3" /> Aktifleştir
+            </button>
+            <button onClick={() => setBulkActionType('delete')}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger transition-colors">
+              <UserX className="w-3 h-3" /> Sil
+            </button>
+            <button onClick={() => setBulkActionType('reset-password')}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
+              <Key className="w-3 h-3" /> Şifre Sıfırla
+            </button>
+            <button onClick={() => { setBulkValueInput('1'); setBulkActionType('max-connections'); }}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
+              <Hash className="w-3 h-3" /> Max Bağlantı
+            </button>
+            <button onClick={() => setShowBulkRenew(true)}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
+              <RefreshCw className="w-3 h-3" /> Paket Yenile
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card mb-4">
@@ -394,6 +455,9 @@ export function UsersPage() {
           total={data?.total}
           onPageChange={setPage}
           onRowClick={(r) => setDetailUserId(r.id)}
+          selectedIds={selectedIds}
+          onSelectId={handleSelectId}
+          onSelectAll={handleSelectAll}
           emptyTitle="Kullanıcı bulunamadı"
           emptyDescription="Arama kriterlerinize uygun kullanıcı yok."
         />
@@ -643,6 +707,153 @@ export function UsersPage() {
             </>
           )}
         </div>
+      </Modal>
+
+      {/* Bulk: Askıya Al */}
+      <ConfirmDialog
+        open={bulkActionType === 'suspend'}
+        onClose={() => setBulkActionType(null)}
+        onConfirm={() => void executeBulkAction('suspend')}
+        title={`${selectedIds.size} Kullanıcıyı Askıya Al`}
+        message="Seçilen kullanıcılar yasaklanacak (BANNED). Aktif bağlantıları kesilmeyecek."
+        confirmLabel="Askıya Al"
+        loading={bulkActionMut.isPending}
+      />
+
+      {/* Bulk: Aktifleştir */}
+      <ConfirmDialog
+        open={bulkActionType === 'activate'}
+        onClose={() => setBulkActionType(null)}
+        onConfirm={() => void executeBulkAction('activate')}
+        title={`${selectedIds.size} Kullanıcıyı Aktifleştir`}
+        message="Seçilen kullanıcıların durumu ACTIVE yapılacak."
+        confirmLabel="Aktifleştir"
+        loading={bulkActionMut.isPending}
+      />
+
+      {/* Bulk: Sil */}
+      <ConfirmDialog
+        open={bulkActionType === 'delete'}
+        onClose={() => setBulkActionType(null)}
+        onConfirm={() => void executeBulkAction('delete')}
+        title={`${selectedIds.size} Kullanıcıyı Sil`}
+        message="Seçilen kullanıcılar devre dışı bırakılacak (DISABLED). Gerçek silme yapılmaz."
+        confirmLabel="Sil"
+        loading={bulkActionMut.isPending}
+      />
+
+      {/* Bulk: Şifre Sıfırla — onay */}
+      <ConfirmDialog
+        open={bulkActionType === 'reset-password'}
+        onClose={() => setBulkActionType(null)}
+        onConfirm={() => void executeBulkAction('reset-password')}
+        title={`${selectedIds.size} Kullanıcının Şifresini Sıfırla`}
+        message="Her kullanıcı için rastgele 8 karakterlik yeni şifre üretilecek. Mevcut şifreler geçersiz olacak."
+        confirmLabel="Sıfırla"
+        loading={bulkActionMut.isPending}
+      />
+
+      {/* Bulk: Uzat */}
+      <Modal open={bulkActionType === 'extend'} onClose={() => setBulkActionType(null)} title={`${selectedIds.size} Kullanıcı Süresini Uzat`} size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="label">Kaç gün uzatılsın?</label>
+            <input type="number" min={1} max={3650} className="input"
+              value={bulkValueInput}
+              onChange={(e) => setBulkValueInput(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>İptal</button>
+            <button
+              className="btn-primary flex items-center gap-2"
+              disabled={!bulkValueInput || parseInt(bulkValueInput) < 1 || bulkActionMut.isPending}
+              onClick={() => void executeBulkAction('extend', parseInt(bulkValueInput))}
+            >
+              <Clock className="w-4 h-4" />
+              {bulkActionMut.isPending ? 'Uzatılıyor…' : 'Uzat'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk: Max Bağlantı */}
+      <Modal open={bulkActionType === 'max-connections'} onClose={() => setBulkActionType(null)} title={`${selectedIds.size} Kullanıcı Maks. Bağlantı`} size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="label">Yeni maks. bağlantı sayısı</label>
+            <input type="number" min={1} max={100} className="input"
+              value={bulkValueInput}
+              onChange={(e) => setBulkValueInput(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>İptal</button>
+            <button
+              className="btn-primary flex items-center gap-2"
+              disabled={!bulkValueInput || parseInt(bulkValueInput) < 1 || bulkActionMut.isPending}
+              onClick={() => void executeBulkAction('max-connections', parseInt(bulkValueInput))}
+            >
+              <Hash className="w-4 h-4" />
+              {bulkActionMut.isPending ? 'Uygulanıyor…' : 'Uygula'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk: Şifre Sıfırlama Sonuçları */}
+      <Modal open={!!bulkPasswordResults} onClose={() => setBulkPasswordResults(undefined)} title="Yeni Şifreler" size="md">
+        {bulkPasswordResults && (
+          <div className="space-y-3">
+            <p className="text-xs text-warning">Bu şifreler bir daha görüntülenemez. Şimdi kopyalayın veya not alın.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted font-medium text-xs">Kullanıcı</th>
+                    <th className="text-left py-2 text-muted font-medium text-xs">Yeni Şifre</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkPasswordResults.map((r) => (
+                    <tr key={r.userId} className="border-b border-border/30">
+                      <td className="py-2 font-mono text-slate-200">{r.username}</td>
+                      <td className="py-2 font-mono text-primary">{r.newPassword}</td>
+                      <td className="py-2">
+                        <button
+                          className="text-muted hover:text-slate-200 transition-colors p-1"
+                          title="Kopyala"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(r.newPassword);
+                            toast.success(`${r.username} şifresi kopyalandı`);
+                          }}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                className="btn-secondary text-sm flex items-center gap-2"
+                onClick={() => {
+                  const text = bulkPasswordResults.map((r) => `${r.username}\t${r.newPassword}`).join('\n');
+                  void navigator.clipboard.writeText(text);
+                  toast.success('Tümü kopyalandı');
+                }}
+              >
+                <Copy className="w-3.5 h-3.5" /> Tümünü Kopyala
+              </button>
+              <button className="btn-primary text-sm" onClick={() => setBulkPasswordResults(undefined)}>Kapat</button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Aktivite Modal */}

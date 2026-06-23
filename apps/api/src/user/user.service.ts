@@ -2,8 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Cron } from '@nestjs/schedule';
 import * as bcrypt from 'bcryptjs';
 import * as qrcode from 'qrcode';
@@ -12,6 +14,7 @@ import { UserRepository } from './user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
+import { BulkActionDto } from './dto/bulk-user.dto';
 
 @Injectable()
 export class UserService {
@@ -320,6 +323,109 @@ export class UserService {
       data: { deletedAt: new Date(), status: 'DISABLED' },
     });
     return { deleted: result.count };
+  }
+
+  async bulkAction(dto: BulkActionDto): Promise<{
+    affected: number;
+    results?: { userId: string; username: string; newPassword: string }[];
+  }> {
+    const { userIds, action, value } = dto;
+
+    switch (action) {
+      case 'extend': {
+        const days = Math.max(1, parseInt(String(value ?? 30), 10));
+        const users = await this.prisma.user.findMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          select: { id: true, expiresAt: true },
+        });
+        await Promise.all(users.map((u) => {
+          const base = u.expiresAt > new Date() ? u.expiresAt : new Date();
+          return this.prisma.user.update({
+            where: { id: u.id },
+            data: { expiresAt: new Date(base.getTime() + days * 86_400_000) },
+          });
+        }));
+        return { affected: users.length };
+      }
+
+      case 'suspend': {
+        const r = await this.prisma.user.updateMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          data: { status: 'BANNED' },
+        });
+        return { affected: r.count };
+      }
+
+      case 'activate': {
+        const r = await this.prisma.user.updateMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          data: { status: 'ACTIVE' },
+        });
+        return { affected: r.count };
+      }
+
+      case 'delete': {
+        const r = await this.prisma.user.updateMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          data: { status: 'DISABLED', deletedAt: new Date() },
+        });
+        return { affected: r.count };
+      }
+
+      case 'reset-password': {
+        const users = await this.prisma.user.findMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          select: { id: true, username: true },
+        });
+        const results: { userId: string; username: string; newPassword: string }[] = [];
+        for (const u of users) {
+          const newPassword = this.makeRandomPassword();
+          const hashed = await bcrypt.hash(newPassword, 12);
+          await this.prisma.user.update({ where: { id: u.id }, data: { password: hashed } });
+          results.push({ userId: u.id, username: u.username, newPassword });
+        }
+        return { affected: users.length, results };
+      }
+
+      case 'package-assign': {
+        const pkg = await this.prisma.package.findUnique({ where: { id: String(value ?? '') } });
+        if (!pkg) throw new NotFoundException(`Package ${String(value)} not found`);
+        const expiry = new Date(Date.now() + pkg.durationDays * 86_400_000);
+        const r = await this.prisma.user.updateMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          data: { packageId: pkg.id, maxConnections: pkg.maxConnections, expiresAt: expiry, status: 'ACTIVE' },
+        });
+        return { affected: r.count };
+      }
+
+      case 'bouquet-assign': {
+        const bouquetId = String(value ?? '');
+        if (!bouquetId) throw new BadRequestException('bouquetId is required');
+        await this.prisma.userBouquet.createMany({
+          data: userIds.map((userId) => ({ userId, bouquetId })),
+          skipDuplicates: true,
+        });
+        return { affected: userIds.length };
+      }
+
+      case 'max-connections': {
+        const maxConn = Math.max(1, parseInt(String(value ?? 1), 10));
+        const r = await this.prisma.user.updateMany({
+          where: { id: { in: userIds }, deletedAt: null },
+          data: { maxConnections: maxConn },
+        });
+        return { affected: r.count };
+      }
+
+      default:
+        throw new BadRequestException(`Unknown bulk action: ${action}`);
+    }
+  }
+
+  private makeRandomPassword(length = 8): string {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = randomBytes(length);
+    return Array.from(bytes, (b) => chars[b % chars.length]).join('');
   }
 
   async generateQrCode(id: string): Promise<{ qrCodeImage: string; serverUrl: string; username: string }> {

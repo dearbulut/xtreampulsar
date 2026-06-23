@@ -19,7 +19,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { ActivityQueryDto } from './dto/activity-query.dto';
-import { BulkExtendDto, BulkDeleteDto, ExtendDto } from './dto/bulk-user.dto';
+import { BulkExtendDto, BulkDeleteDto, ExtendDto, BulkActionDto } from './dto/bulk-user.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -39,6 +39,12 @@ export class UserController {
   @Get('expiring')
   findExpiring(@Query('days') days?: string) {
     return this.userService.findExpiring(days ? parseInt(days, 10) : 7);
+  }
+
+  @Post('bulk')
+  @Roles('ADMIN')
+  bulkAction(@Body() dto: BulkActionDto) {
+    return this.userService.bulkAction(dto);
   }
 
   @Post('bulk-extend')
