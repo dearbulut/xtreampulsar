@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { EpgService } from './epg.service';
 import { CreateEpgSourceDto } from './dto/create-epg-source.dto';
@@ -69,11 +70,18 @@ export class EpgController {
     return this.epgService.findChannels(id, search);
   }
 
-  // ─── Mass assign ─────────────────────────────────────────────────────────
+  // ─── Mass assign (background job) ────────────────────────────────────────
 
   @Post('mass-assign')
-  massAssign(@Body() dto: MassAssignEpgDto) {
-    return this.epgService.massAssign(dto.epgSourceId, dto.minSimilarity, dto.stripPrefixes);
+  startMassAssign(@Body() dto: MassAssignEpgDto) {
+    return this.epgService.startMassAssign(dto.epgSourceId, dto.minSimilarity, dto.stripPrefixes);
+  }
+
+  @Get('mass-assign/:jobId/status')
+  getMassAssignStatus(@Param('jobId') jobId: string) {
+    const job = this.epgService.getMassAssignJob(jobId);
+    if (!job) throw new NotFoundException(`Job ${jobId} not found`);
+    return { jobId, ...job };
   }
 
   // ─── Mappings ─────────────────────────────────────────────────────────────

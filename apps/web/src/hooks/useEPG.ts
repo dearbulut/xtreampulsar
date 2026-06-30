@@ -129,16 +129,45 @@ export function useParseAllEPGSources() {
   });
 }
 
+export interface MassAssignJob {
+  jobId: string;
+  status: 'processing' | 'done' | 'failed';
+  startedAt: string;
+  finishedAt?: string;
+  total?: number;
+  matched?: number;
+  error?: string;
+}
+
 export function useMassAssignEPG() {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { epgSourceId: string; minSimilarity?: number; stripPrefixes?: string[] }) =>
-      api.post<{ success: boolean; data: { matched: number; total: number } }>('/epg/mass-assign', data),
-    onSuccess: (res) => {
-      void qc.invalidateQueries({ queryKey: ['epg'] });
-      toast.success(`${res.data.data.matched} stream eşleştirildi`);
+      api.post<{ success: boolean; data: { jobId: string; status: string } }>('/epg/mass-assign', data),
+    onSuccess: () => {
+      toast.success('Eşleştirme başlatıldı — arka planda çalışıyor');
     },
     onError: () => toast.error('Toplu eşleştirme başarısız'),
+  });
+}
+
+export function useMassAssignJobStatus(jobId: string | null) {
+  const qc = useQueryClient();
+  return useQuery<MassAssignJob>({
+    queryKey: ['epg', 'mass-assign-job', jobId],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: MassAssignJob }>(
+        `/epg/mass-assign/${jobId!}/status`,
+      );
+      return res.data.data;
+    },
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data || data.status === 'processing') return 2000;
+      // Done or failed → stop polling, invalidate mappings cache
+      void qc.invalidateQueries({ queryKey: ['epg', 'mappings'] });
+      return false;
+    },
   });
 }
 

@@ -1,12 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEpgSourceDto } from './dto/create-epg-source.dto';
 import { UpdateEpgSourceDto } from './dto/update-epg-source.dto';
 import { CreateEpgMappingDto } from './dto/create-epg-mapping.dto';
 import { EpgParserService } from './epg-parser.service';
 
+const BATCH_SIZE = 500;
+
+export interface MassAssignJobResult {
+  status: 'processing' | 'done' | 'failed';
+  startedAt: string;
+  finishedAt?: string;
+  total?: number;
+  matched?: number;
+  error?: string;
+}
+
 @Injectable()
 export class EpgService {
+  private readonly logger = new Logger(EpgService.name);
+  private readonly jobs = new Map<string, MassAssignJobResult>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly parserService: EpgParserService,
@@ -93,60 +108,127 @@ export class EpgService {
     await this.prisma.ePGMapping.delete({ where: { id } });
   }
 
-  // ─── Mass assign ─────────────────────────────────────────────────────────
+  // ─── Mass assign (background job) ────────────────────────────────────────
 
-  async massAssign(epgSourceId: string, minSimilarity = 0.6, stripPrefixes: string[] = []) {
+  async startMassAssign(epgSourceId: string, minSimilarity = 0.6, stripPrefixes: string[] = []) {
     await this.findSourceById(epgSourceId);
+    const jobId = randomUUID();
+    this.jobs.set(jobId, { status: 'processing', startedAt: new Date().toISOString() });
+    // Fire-and-forget — HTTP request returns immediately
+    void this.runMassAssign(jobId, epgSourceId, minSimilarity, stripPrefixes);
+    return { jobId, status: 'processing' as const };
+  }
 
-    const normalize = (name: string): string => {
-      let s = name;
-      for (const prefix of stripPrefixes) {
-        if (!prefix) continue;
-        const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        s = s.replace(new RegExp(`^${escaped}`, 'i'), '');
-      }
-      return s.trim();
-    };
+  getMassAssignJob(jobId: string): MassAssignJobResult | null {
+    return this.jobs.get(jobId) ?? null;
+  }
 
-    const [streams, channels] = await Promise.all([
-      this.prisma.stream.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true },
-      }),
-      this.prisma.ePGChannel.findMany({
-        where: { epgSourceId },
-        select: { id: true, channelId: true, displayName: true },
-      }),
-    ]);
+  private async runMassAssign(
+    jobId: string,
+    epgSourceId: string,
+    minSimilarity: number,
+    stripPrefixes: string[],
+  ): Promise<void> {
+    const job = this.jobs.get(jobId)!;
 
-    const matches: { streamId: string; epgSourceId: string; epgChannelId: string }[] = [];
-
-    for (const stream of streams) {
-      let bestScore = 0;
-      let bestChannel: (typeof channels)[0] | null = null;
-
-      for (const ch of channels) {
-        const score = this.similarity(normalize(stream.name), normalize(ch.displayName));
-        if (score > bestScore) {
-          bestScore = score;
-          bestChannel = ch;
+    try {
+      const mkNormalize = (prefixes: string[]) => (name: string): string => {
+        let s = name;
+        for (const prefix of prefixes) {
+          if (!prefix) continue;
+          const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          s = s.replace(new RegExp(`^${escaped}`, 'i'), '');
         }
-      }
+        return s.trim().toLowerCase();
+      };
+      const normalize = mkNormalize(stripPrefixes);
 
-      if (bestChannel && bestScore >= minSimilarity) {
-        matches.push({ streamId: stream.id, epgSourceId, epgChannelId: bestChannel.channelId });
-      }
-    }
-
-    for (const m of matches) {
-      await this.prisma.ePGMapping.upsert({
-        where: { streamId_epgSourceId: { streamId: m.streamId, epgSourceId: m.epgSourceId } },
-        create: m,
-        update: { epgChannelId: m.epgChannelId },
+      // Load EPG channels once — typically much fewer than streams
+      const rawChannels = await this.prisma.ePGChannel.findMany({
+        where: { epgSourceId },
+        select: { channelId: true, displayName: true },
       });
-    }
 
-    return { matched: matches.length, total: streams.length };
+      // Pre-normalize once to avoid repeated work inside the inner loop
+      const channels = rawChannels.map((ch) => ({
+        channelId: ch.channelId,
+        norm: normalize(ch.displayName),
+      }));
+
+      if (channels.length === 0) {
+        job.status = 'done';
+        job.finishedAt = new Date().toISOString();
+        job.total = 0;
+        job.matched = 0;
+        return;
+      }
+
+      let totalStreams = 0;
+      let totalMatched = 0;
+      let cursor: string | undefined;
+
+      // Cursor-based pagination — never loads all streams at once
+      while (true) {
+        const batch = await this.prisma.stream.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true },
+          take: BATCH_SIZE,
+          orderBy: { id: 'asc' },
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+
+        if (batch.length === 0) break;
+
+        totalStreams += batch.length;
+        cursor = batch[batch.length - 1].id;
+
+        const batchMatches: { streamId: string; epgSourceId: string; epgChannelId: string }[] = [];
+
+        for (const stream of batch) {
+          const norm = normalize(stream.name);
+          let bestScore = 0;
+          let bestChannelId: string | null = null;
+
+          for (const ch of channels) {
+            const score = this.similarity(norm, ch.norm);
+            if (score > bestScore) {
+              bestScore = score;
+              bestChannelId = ch.channelId;
+            }
+          }
+
+          if (bestChannelId && bestScore >= minSimilarity) {
+            batchMatches.push({ streamId: stream.id, epgSourceId, epgChannelId: bestChannelId });
+          }
+        }
+
+        // Batch upsert: delete then createMany — O(2) DB ops instead of O(batch_size)
+        if (batchMatches.length > 0) {
+          const matchedStreamIds = batchMatches.map((m) => m.streamId);
+          await this.prisma.ePGMapping.deleteMany({
+            where: { epgSourceId, streamId: { in: matchedStreamIds } },
+          });
+          await this.prisma.ePGMapping.createMany({ data: batchMatches });
+          totalMatched += batchMatches.length;
+        }
+
+        // Update progress and yield event loop between batches
+        job.total = totalStreams;
+        job.matched = totalMatched;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+
+      job.status = 'done';
+      job.finishedAt = new Date().toISOString();
+      job.total = totalStreams;
+      job.matched = totalMatched;
+      this.logger.log(`Mass assign done — ${totalMatched}/${totalStreams} matched (job ${jobId})`);
+    } catch (err) {
+      job.status = 'failed';
+      job.finishedAt = new Date().toISOString();
+      job.error = (err as Error).message;
+      this.logger.error(`Mass assign failed (job ${jobId}): ${(err as Error).message}`);
+    }
   }
 
   // Levenshtein-based normalized similarity [0, 1]
