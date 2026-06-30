@@ -54,6 +54,8 @@ export interface ResellerInfo {
   credits: number;
   tier: string;
   isActive: boolean;
+  brandName?: string | null;
+  logoUrl?: string | null;
   createdAt: string;
 }
 
@@ -541,5 +543,46 @@ export function useResellerTransferCredits() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Transfer başarısız');
     },
+  });
+}
+
+// ─── Branding ─────────────────────────────────────────────────────────────────
+
+export function useUpdateResellerBranding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { brandName?: string }) => {
+      const res = await resellerApi.put<{ success: boolean; data: { brandName: string | null; logoUrl: string | null } }>(
+        '/resellers/me/branding',
+        data,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Marka adı kaydedildi');
+    },
+    onError: () => toast.error('Kaydedilemedi'),
+  });
+}
+
+export function useUploadBrandingLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await resellerApi.post<{ success: boolean; data: { logoUrl: string } }>(
+        '/resellers/me/branding/logo',
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Logo yüklendi');
+    },
+    onError: () => toast.error('Logo yüklenemedi'),
   });
 }

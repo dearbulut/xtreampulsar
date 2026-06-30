@@ -6,6 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@xtreampulsar/database';
@@ -709,5 +711,52 @@ export class ResellerService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // ─── Branding ──────────────────────────────────────────────────────────────
+
+  async getBranding(resellerId: string) {
+    const r = await this.prisma.reseller.findFirst({
+      where: { id: resellerId, deletedAt: null },
+      select: { brandName: true, logoUrl: true },
+    });
+    if (!r) throw new NotFoundException('Reseller not found');
+    return r;
+  }
+
+  async updateBranding(resellerId: string, dto: { brandName?: string }) {
+    await this.prisma.reseller.update({
+      where: { id: resellerId },
+      data: { brandName: dto.brandName?.trim() || null },
+    });
+    return this.getBranding(resellerId);
+  }
+
+  async uploadBrandingLogo(resellerId: string, file: Express.Multer.File) {
+    const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!ALLOWED.includes(file.mimetype)) {
+      throw new BadRequestException('Sadece PNG, JPEG veya WebP yükleyebilirsiniz');
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Dosya boyutu 2 MB sınırını aşıyor');
+    }
+
+    const uploadDir = '/opt/xtreampulsar/uploads/reseller-logos';
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'png';
+    const filename = `${resellerId}-${Date.now()}.${ext}`;
+    const filepath = path.join(uploadDir, filename);
+    fs.writeFileSync(filepath, file.buffer);
+
+    const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:3000';
+    const logoUrl = `${baseUrl}/uploads/reseller-logos/${filename}`;
+
+    await this.prisma.reseller.update({
+      where: { id: resellerId },
+      data: { logoUrl },
+    });
+
+    return { logoUrl };
   }
 }

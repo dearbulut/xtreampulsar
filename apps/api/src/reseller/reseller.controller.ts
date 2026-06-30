@@ -12,7 +12,11 @@ import {
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResellerService } from './reseller.service';
 import { ResellerNotificationService } from './reseller-notification.service';
@@ -162,6 +166,37 @@ export class ResellerController {
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.quickCreateUserWithPackage(user.id, body);
+  }
+
+  // ─── Reseller self: branding ──────────────────────────────────────────────
+
+  @Get('me/branding')
+  @Roles('RESELLER')
+  async getMyBranding(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getBranding(user.id);
+  }
+
+  @Put('me/branding')
+  @Roles('RESELLER')
+  async updateMyBranding(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { brandName?: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.updateBranding(user.id, body);
+  }
+
+  @Post('me/branding/logo')
+  @Roles('RESELLER')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMyBrandingLogo(
+    @CurrentUser() user: JwtUser,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    if (!file) throw new BadRequestException('Dosya yüklenmedi');
+    return this.resellerService.uploadBrandingLogo(user.id, file);
   }
 
   @Put('me/profile')

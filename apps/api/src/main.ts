@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -6,11 +7,14 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
   app.enableCors();
+
+  // Reseller logos and other uploads served as static files
+  app.useStaticAssets('/opt/xtreampulsar/uploads', { prefix: '/uploads' });
 
   // Xtream Codes API routes stay at root, not under global prefix
   app.setGlobalPrefix('api/v1', {
