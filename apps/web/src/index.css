@@ -18,6 +18,11 @@
   --color-primary-hover-rgb: 79,  70, 229;
   --color-primary-light-rgb: 129, 140, 248;
   --color-primary-50-rgb:    238, 242, 255;
+
+  /* Foreground colour for elements with bg-primary.
+     Computed at runtime by ResellerLayout for custom brand colours.
+     Default: white (correct for dark indigo). */
+  --color-primary-fg: #ffffff;
 }
 
 .dark {
@@ -87,8 +92,12 @@
 
   /* ── Buttons ────────────────────────────────────────────────────────── */
   .btn-primary {
-    @apply bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium
+    @apply bg-primary hover:bg-primary-hover px-4 py-2 rounded-lg text-sm font-medium
            transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    /* text-white is intentionally replaced: custom brand colours (e.g. yellow)
+       need a dark foreground. --color-primary-fg is computed by ResellerLayout
+       based on perceived luminance; defaults to #ffffff for dark colours. */
+    color: var(--color-primary-fg);
   }
 
   .btn-ghost {
@@ -169,6 +178,6 @@
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 20px rgb(var(--color-primary-rgb) / 0.3);
   }
 }

@@ -181,10 +181,15 @@ function NotificationsSection() {
                 value ? 'bg-primary' : 'bg-surface-2 border border-border',
               )}
             >
-              <div className={cn(
-                'w-3.5 h-3.5 rounded-full bg-white shadow transition-transform mx-0.5',
-                value ? 'translate-x-4' : 'translate-x-0',
-              )} />
+              {/* thumb: use --color-primary-fg when active so it stays visible
+                  on light brand colours (e.g. yellow primary needs dark thumb) */}
+              <div
+                className={cn(
+                  'w-3.5 h-3.5 rounded-full shadow transition-transform mx-0.5',
+                  value ? 'translate-x-4' : 'translate-x-0',
+                )}
+                style={{ backgroundColor: value ? 'var(--color-primary-fg)' : '#ffffff' }}
+              />
             </div>
           </div>
           <div>

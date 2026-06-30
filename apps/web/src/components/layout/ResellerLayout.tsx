@@ -172,7 +172,7 @@ function NotificationBell() {
   );
 }
 
-// ─── Hex → RGB helper (for CSS variable override) ────────────────────────────
+// ─── Colour helpers (for CSS variable override) ───────────────────────────────
 
 function hexToRgbStr(hex: string): string {
   const c = hex.replace('#', '');
@@ -189,6 +189,19 @@ function adjustBrightness(hex: string, delta: number): string {
   const g = clamp(parseInt(c.slice(2, 4), 16) + delta);
   const b = clamp(parseInt(c.slice(4, 6), 16) + delta);
   return `${r}, ${g}, ${b}`;
+}
+
+// WCAG relative luminance — returns 0 (black) … 1 (white).
+function perceivedLuminance(hex: string): number {
+  const c = hex.replace('#', '');
+  const toLinear = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const r = toLinear(parseInt(c.slice(0, 2), 16));
+  const g = toLinear(parseInt(c.slice(2, 4), 16));
+  const b = toLinear(parseInt(c.slice(4, 6), 16));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -209,9 +222,9 @@ export function ResellerLayout() {
   const logoUrl = me?.logoUrl ?? null;
   const primaryColor = me?.primaryColor ?? null;
 
-  // Tailwind's primary color classes use rgb(var(--color-primary-rgb) / <alpha>).
-  // We override all four palette variables so bg-primary, bg-primary/10,
-  // text-primary, border-primary/30 etc. all reflect the custom colour.
+  // Tailwind primary classes use rgb(var(--color-primary-rgb) / <alpha>).
+  // We also compute --color-primary-fg so btn-primary and toggle thumbs
+  // automatically switch to a dark foreground on light brand colours (e.g. yellow).
   const brandingStyle =
     primaryColor && /^#[0-9A-Fa-f]{6}$/.test(primaryColor)
       ? ({
@@ -219,6 +232,8 @@ export function ResellerLayout() {
           '--color-primary-hover-rgb': adjustBrightness(primaryColor, -20),
           '--color-primary-light-rgb': adjustBrightness(primaryColor, 25),
           '--color-primary-50-rgb':    adjustBrightness(primaryColor, 60),
+          // Luminance > 0.45 → light colour → dark foreground; else keep white.
+          '--color-primary-fg': perceivedLuminance(primaryColor) > 0.45 ? '#1a1a1a' : '#ffffff',
         } as React.CSSProperties)
       : undefined;
 
