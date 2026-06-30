@@ -465,6 +465,49 @@ export class ResellerService {
     return { message: 'Şifre güncellendi' };
   }
 
+  async extendUser(resellerId: string, userId: string, days: number) {
+    const creditCost = Math.ceil(days / 30);
+
+    const [reseller, user] = await Promise.all([
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+      this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null }, select: { id: true, username: true, expiresAt: true } }),
+    ]);
+
+    if (!reseller) throw new NotFoundException('Reseller not found');
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (reseller.credits < creditCost) {
+      throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
+    }
+
+    const now = new Date();
+    const base = user.expiresAt > now ? user.expiresAt : now;
+    const newExpiresAt = new Date(base.getTime() + days * 86_400_000);
+    const newBalance = reseller.credits - creditCost;
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { expiresAt: newExpiresAt },
+        select: { id: true, username: true, status: true, maxConnections: true, expiresAt: true, createdAt: true },
+      }),
+      this.prisma.reseller.update({
+        where: { id: resellerId },
+        data: { credits: { decrement: creditCost } },
+      }),
+      this.prisma.resellerCreditLog.create({
+        data: {
+          resellerId,
+          amount: creditCost,
+          type: 'DEDUCT',
+          reason: `${user.username} için ${days} gün uzatma`,
+          balanceAfter: newBalance,
+        },
+      }),
+    ]);
+
+    return updated;
+  }
+
   async bulkAction(
     resellerId: string,
     action: 'extend' | 'suspend' | 'activate',
@@ -481,16 +524,42 @@ export class ResellerService {
     const now = new Date();
 
     if (action === 'extend') {
-      const addMs = (days ?? 30) * 86_400_000;
-      await this.prisma.$transaction(
-        users.map((u) => {
+      const addDays = days ?? 30;
+      const addMs = addDays * 86_400_000;
+      const creditCostPerUser = Math.ceil(addDays / 30);
+      const totalCost = creditCostPerUser * users.length;
+
+      const reseller = await this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } });
+      if (!reseller || reseller.credits < totalCost) {
+        throw new PaymentRequiredException(
+          `Yetersiz kredi (bakiye: ${reseller?.credits ?? 0}, gerekli: ${totalCost})`,
+        );
+      }
+
+      const newBalance = reseller.credits - totalCost;
+
+      await this.prisma.$transaction([
+        ...users.map((u) => {
           const base = u.expiresAt > now ? u.expiresAt : now;
           return this.prisma.user.update({
             where: { id: u.id },
             data: { expiresAt: new Date(base.getTime() + addMs) },
           });
         }),
-      );
+        this.prisma.reseller.update({
+          where: { id: resellerId },
+          data: { credits: { decrement: totalCost } },
+        }),
+        this.prisma.resellerCreditLog.create({
+          data: {
+            resellerId,
+            amount: totalCost,
+            type: 'DEDUCT',
+            reason: `${users.length} kullanıcı için ${addDays} gün toplu uzatma`,
+            balanceAfter: newBalance,
+          },
+        }),
+      ]);
     } else {
       await this.prisma.user.updateMany({
         where: { id: { in: validIds } },

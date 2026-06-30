@@ -211,6 +211,17 @@ export class ResellerController {
     return this.resellerService.bulkAction(user.id, body.action, body.userIds, body.days);
   }
 
+  @Post('me/users/:userId/extend')
+  @Roles('RESELLER')
+  async extendUserSubscription(
+    @CurrentUser() user: JwtUser,
+    @Param('userId') userId: string,
+    @Body() body: { days: number },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.extendUser(user.id, userId, body.days);
+  }
+
   @Post('me/users/:userId/reset-password')
   @Roles('RESELLER')
   async resetUserPassword(@CurrentUser() user: JwtUser, @Param('userId') userId: string) {

@@ -3,9 +3,11 @@ import {
   X, Copy, Check, CalendarPlus, Ban, Trash2, Key, ExternalLink, ListVideo,
 } from 'lucide-react';
 import {
+  useResellerMe,
   useResellerUpdateUser,
   useResellerDeleteUser,
   useResellerResetPassword,
+  useResellerExtendUser,
   useResellerUserPlaylists,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow } from '@/hooks/useResellerPanel';
@@ -74,7 +76,9 @@ export function ResellerUserDrawer({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const settings = useSettings();
+  const { data: resellerInfo } = useResellerMe();
   const updateUser = useResellerUpdateUser();
+  const extendUser = useResellerExtendUser();
   const deleteUser = useResellerDeleteUser();
   const resetPassword = useResellerResetPassword();
   const { data: playlists } = useResellerUserPlaylists(user.id);
@@ -94,8 +98,7 @@ export function ResellerUserDrawer({
   }, []);
 
   const handleExtend = async () => {
-    const base = new Date(Math.max(new Date(user.expiresAt).getTime(), Date.now()));
-    await updateUser.mutateAsync({ id: user.id, expiresAt: new Date(base.getTime() + extendDays * 86_400_000).toISOString() });
+    await extendUser.mutateAsync({ id: user.id, days: extendDays });
     toast.success(`${extendDays} gün uzatıldı`);
     onUpdated();
   };
@@ -123,7 +126,7 @@ export function ResellerUserDrawer({
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/60" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-[420px] max-w-[100vw] z-50 bg-[var(--surface,#111)] border-l border-border flex flex-col shadow-2xl">
+      <div className="fixed right-0 top-0 h-full w-[420px] max-w-[100vw] z-50 bg-surface border-l border-border flex flex-col shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border flex-shrink-0">
@@ -238,13 +241,34 @@ export function ResellerUserDrawer({
                 <span className="text-xs text-muted">gün</span>
               </div>
             </div>
-            <button
-              onClick={() => void handleExtend()}
-              disabled={updateUser.isPending}
-              className="btn-primary w-full text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <CalendarPlus className="w-4 h-4" /> Uzat
-            </button>
+            {(() => {
+              const creditCost = Math.ceil(extendDays / 30);
+              const balance = resellerInfo?.credits ?? 0;
+              const canAfford = balance >= creditCost;
+              return (
+                <>
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="text-muted">Bu işlem</span>
+                    <span className={cn('font-semibold', canAfford ? 'text-amber-400' : 'text-danger')}>
+                      {creditCost} kredi düşecek
+                    </span>
+                  </div>
+                  {!canAfford && (
+                    <p className="text-xs text-danger px-1">
+                      Yetersiz kredi — bakiye: {balance}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => void handleExtend()}
+                    disabled={extendUser.isPending || !canAfford}
+                    className="btn-primary w-full text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <CalendarPlus className="w-4 h-4" />
+                    {extendUser.isPending ? 'Uzatılıyor…' : 'Uzat'}
+                  </button>
+                </>
+              );
+            })()}
           </div>
 
           <hr className="border-border" />

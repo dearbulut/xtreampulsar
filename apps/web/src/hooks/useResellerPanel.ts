@@ -317,13 +317,20 @@ export function useResellerBanUser() {
 export function useResellerExtendUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, days }: { id: string; days: number }) =>
-      resellerApi.post(`/users/${id}/extend`, { days }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'users'] });
-      toast.success('Süre uzatıldı');
+    mutationFn: async ({ id, days }: { id: string; days: number }) => {
+      const res = await resellerApi.post<{ success: boolean; data: unknown }>(
+        `/resellers/me/users/${id}/extend`,
+        { days },
+      );
+      return res.data.data;
     },
-    onError: () => toast.error('İşlem başarısız'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Uzatma başarısız');
+    },
   });
 }
 
