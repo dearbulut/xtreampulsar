@@ -143,24 +143,24 @@ export function ResellerUserDrawer({
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted">Oluşturulma</span>
-              <span className="text-slate-300">{formatDate(user.createdAt)}</span>
+              <span className="text-slate-100">{formatDate(user.createdAt)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Bitiş Tarihi</span>
-              <span className={cn('font-medium', dl < 0 ? 'text-danger' : dl < 7 ? 'text-warning' : 'text-slate-300')}>
+              <span className={cn('font-medium', dl < 0 ? 'text-danger' : dl < 7 ? 'text-warning' : 'text-slate-100')}>
                 {formatDate(user.expiresAt)}
-                <span className="ml-1 text-xs opacity-70">
+                <span className="ml-1 text-xs text-slate-400">
                   {dl < 0 ? '(Süresi dolmuş)' : `(${dl}g kaldı)`}
                 </span>
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Max Bağlantı</span>
-              <span className="text-slate-300">{user.maxConnections}</span>
+              <span className="text-slate-100">{user.maxConnections}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Aktif Bağlantı</span>
-              <span className="text-slate-300">{user._count?.connections ?? 0}</span>
+              <span className="text-slate-100">{user._count?.connections ?? 0}</span>
             </div>
           </div>
 
@@ -310,7 +310,7 @@ export function ResellerUserDrawer({
                           {pl.isActive ? 'Aktif' : 'Pasif'} · {pl.type}
                         </span>
                       </div>
-                      <span className="text-xs text-muted shrink-0 ml-2">{pl.accessCount} erişim</span>
+                      <span className="text-xs text-slate-300 shrink-0 ml-2">{pl.accessCount} erişim</span>
                     </div>
                   ))}
                 </div>
