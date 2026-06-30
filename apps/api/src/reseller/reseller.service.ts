@@ -576,42 +576,6 @@ export class ResellerService {
     return { message: 'Şifre güncellendi' };
   }
 
-  async getBranding(resellerId: string) {
-    const r = await this.prisma.reseller.findUnique({
-      where: { id: resellerId },
-      select: { brandName: true, logoUrl: true, primaryColor: true },
-    });
-    if (!r) throw new NotFoundException('Reseller not found');
-    return r;
-  }
-
-  async updateBranding(resellerId: string, dto: { brandName?: string; primaryColor?: string }) {
-    const data: { brandName?: string | null; primaryColor?: string | null } = {};
-    if (dto.brandName !== undefined) data.brandName = dto.brandName.trim() || null;
-    if (dto.primaryColor !== undefined) data.primaryColor = dto.primaryColor.trim() || null;
-    return this.prisma.reseller.update({
-      where: { id: resellerId },
-      data,
-      select: { brandName: true, logoUrl: true, primaryColor: true },
-    });
-  }
-
-  async uploadBrandingLogo(resellerId: string, file: Express.Multer.File) {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype)) {
-      throw new BadRequestException('Sadece PNG, JPEG veya WebP formatı desteklenmektedir');
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      throw new BadRequestException('Dosya boyutu 2MB\'ı aşamaz');
-    }
-    const base64 = file.buffer.toString('base64');
-    const logoUrl = `data:${file.mimetype};base64,${base64}`;
-    return this.prisma.reseller.update({
-      where: { id: resellerId },
-      data: { logoUrl },
-      select: { brandName: true, logoUrl: true, primaryColor: true },
-    });
-  }
-
   async extendUser(resellerId: string, userId: string, days: number) {
     const creditCost = Math.ceil(days / 30);
 

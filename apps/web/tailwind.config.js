@@ -6,10 +6,10 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
-          hover:   'rgb(var(--color-primary-hover-rgb) / <alpha-value>)',
-          light:   'rgb(var(--color-primary-light-rgb) / <alpha-value>)',
-          50:      'rgb(var(--color-primary-50-rgb) / <alpha-value>)',
+          DEFAULT: '#6366f1',
+          hover: '#4f46e5',
+          light: '#818cf8',
+          50: '#eef2ff',
         },
         // Semantic tokens — resolved via CSS custom properties at runtime
         bg: 'var(--color-bg)',
