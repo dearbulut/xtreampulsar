@@ -172,6 +172,25 @@ function NotificationBell() {
   );
 }
 
+// ─── Hex → RGB helper (for CSS variable override) ────────────────────────────
+
+function hexToRgbStr(hex: string): string {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+function adjustBrightness(hex: string, delta: number): string {
+  const c = hex.replace('#', '');
+  const clamp = (v: number) => Math.min(255, Math.max(0, v));
+  const r = clamp(parseInt(c.slice(0, 2), 16) + delta);
+  const g = clamp(parseInt(c.slice(2, 4), 16) + delta);
+  const b = clamp(parseInt(c.slice(4, 6), 16) + delta);
+  return `${r}, ${g}, ${b}`;
+}
+
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export function ResellerLayout() {
@@ -189,9 +208,19 @@ export function ResellerLayout() {
   const brandName = me?.brandName || 'Bayi Paneli';
   const logoUrl = me?.logoUrl ?? null;
   const primaryColor = me?.primaryColor ?? null;
-  const brandingStyle = primaryColor
-    ? ({ '--color-primary': primaryColor } as React.CSSProperties)
-    : undefined;
+
+  // Tailwind's primary color classes use rgb(var(--color-primary-rgb) / <alpha>).
+  // We override all four palette variables so bg-primary, bg-primary/10,
+  // text-primary, border-primary/30 etc. all reflect the custom colour.
+  const brandingStyle =
+    primaryColor && /^#[0-9A-Fa-f]{6}$/.test(primaryColor)
+      ? ({
+          '--color-primary-rgb':       hexToRgbStr(primaryColor),
+          '--color-primary-hover-rgb': adjustBrightness(primaryColor, -20),
+          '--color-primary-light-rgb': adjustBrightness(primaryColor, 25),
+          '--color-primary-50-rgb':    adjustBrightness(primaryColor, 60),
+        } as React.CSSProperties)
+      : undefined;
 
   return (
     <div className="min-h-screen flex bg-background" style={brandingStyle}>

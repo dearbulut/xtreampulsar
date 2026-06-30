@@ -11,6 +11,13 @@
   --color-border:    #e2e6f0;
   --color-fg:        #1a1d2e;
   --color-muted:     #64748b;
+
+  /* Primary palette — defaults to indigo (#6366f1).
+     Override --color-primary-rgb on a parent element for per-reseller theming. */
+  --color-primary-rgb:       99, 102, 241;
+  --color-primary-hover-rgb: 79,  70, 229;
+  --color-primary-light-rgb: 129, 140, 248;
+  --color-primary-50-rgb:    238, 242, 255;
 }
 
 .dark {
@@ -74,7 +81,7 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   }
   .dark .card {
-    border-color: rgba(99, 102, 241, 0.15);
+    border-color: rgb(var(--color-primary-rgb) / 0.15);
     box-shadow: none;
   }
 
@@ -106,7 +113,7 @@
     color: var(--color-fg);
   }
   .input::placeholder { color: var(--color-muted); }
-  .input:focus { border-color: #6366f1; }
+  .input:focus { border-color: rgb(var(--color-primary-rgb)); }
 
   .label {
     @apply text-sm font-medium mb-1 block;
