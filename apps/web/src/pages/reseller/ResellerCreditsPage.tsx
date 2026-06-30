@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { CreditCard, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useResellerCreditHistory, useResellerDashboard } from '@/hooks/useResellerPanel';
 import { useQueryClient } from '@tanstack/react-query';
@@ -24,7 +24,8 @@ export function ResellerCreditsPage() {
   const [page, setPage] = useState(1);
 
   const activePeriod = PERIODS.find((p) => p.key === period)!;
-  const startDate = getStartDate(activePeriod.days);
+  // useMemo: Date.now() her render'da farklı milisaniye üretir → queryKey değişir → sonsuz fetch döngüsü
+  const startDate = useMemo(() => getStartDate(activePeriod.days), [activePeriod.days]);
 
   const qc = useQueryClient();
   const { data: dashboard } = useResellerDashboard();
