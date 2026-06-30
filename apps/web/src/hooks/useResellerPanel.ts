@@ -50,10 +50,11 @@ export interface ResellerStats {
 export interface ResellerInfo {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
   credits: number;
   tier: string;
   isActive: boolean;
+  createdAt: string;
 }
 
 export interface ResellerUserRow {
@@ -208,6 +209,54 @@ export function useResellerQuickCreate() {
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Kullanıcı oluşturulamadı');
+    },
+  });
+}
+
+export function useResellerQuickCreateWithPackage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { username?: string; password?: string; packageId: string; notes?: string }) => {
+      const res = await resellerApi.post<{ success: boolean; data: QuickCreateResult }>(
+        '/resellers/me/users/quick-create-package',
+        data,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Kullanıcı oluşturulamadı');
+    },
+  });
+}
+
+export function useResellerUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { email?: string }) =>
+      resellerApi.put('/resellers/me/profile', data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Profil güncellendi');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Güncelleme başarısız');
+    },
+  });
+}
+
+export function useResellerChangePassword() {
+  return useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      resellerApi.put('/resellers/me/password', data),
+    onSuccess: () => toast.success('Şifre değiştirildi'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Şifre değiştirilemedi');
     },
   });
 }

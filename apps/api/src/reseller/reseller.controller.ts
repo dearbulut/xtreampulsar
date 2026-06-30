@@ -115,6 +115,36 @@ export class ResellerController {
     );
   }
 
+  @Post('me/users/quick-create-package')
+  @Roles('RESELLER')
+  async quickCreateUserWithPackage(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { username?: string; password?: string; packageId: string; notes?: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.quickCreateUserWithPackage(user.id, body);
+  }
+
+  @Put('me/profile')
+  @Roles('RESELLER')
+  async updateProfile(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { email?: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.updateProfile(user.id, body);
+  }
+
+  @Put('me/password')
+  @Roles('RESELLER')
+  async changePassword(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.changePassword(user.id, body);
+  }
+
   @Post('me/users/quick-create')
   @Roles('RESELLER')
   async quickCreateUser(

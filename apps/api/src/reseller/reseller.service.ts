@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -368,6 +369,100 @@ export class ResellerService {
       m3uUrl: `${base}/get.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`,
       playerApiUrl: `${base}/player_api.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}`,
     };
+  }
+
+  async quickCreateUserWithPackage(
+    resellerId: string,
+    dto: { username?: string; password?: string; packageId: string; notes?: string },
+  ) {
+    const [reseller, pkg] = await Promise.all([
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+      this.prisma.package.findUnique({
+        where: { id: dto.packageId },
+        select: { id: true, name: true, durationDays: true, maxConnections: true, creditCost: true, isActive: true },
+      }),
+    ]);
+
+    if (!reseller) throw new NotFoundException('Reseller not found');
+    if (!pkg || !pkg.isActive) throw new NotFoundException('Paket bulunamadı veya aktif değil');
+    if (reseller.credits < pkg.creditCost) {
+      throw new PaymentRequiredException(
+        `Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${pkg.creditCost})`,
+      );
+    }
+
+    const rawUsername = dto.username?.trim() || randomBytes(4).toString('hex');
+    const rawPassword = dto.password?.trim() || randomBytes(4).toString('hex');
+
+    const existing = await this.prisma.user.findUnique({ where: { username: rawUsername } });
+    if (existing) throw new ConflictException(`Kullanıcı adı "${rawUsername}" zaten kullanımda`);
+
+    const hashed = await bcrypt.hash(rawPassword, 12);
+    const expiresAt = new Date(Date.now() + pkg.durationDays * 86_400_000);
+    const newBalance = reseller.credits - pkg.creditCost;
+
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.create({
+        data: {
+          username: rawUsername,
+          password: hashed,
+          maxConnections: pkg.maxConnections,
+          expiresAt,
+          notes: dto.notes,
+          resellerId,
+          status: 'ACTIVE',
+        },
+        select: { id: true, username: true, expiresAt: true },
+      }),
+      this.prisma.reseller.update({
+        where: { id: resellerId },
+        data: { credits: { decrement: pkg.creditCost } },
+      }),
+      this.prisma.resellerCreditLog.create({
+        data: {
+          resellerId,
+          amount: pkg.creditCost,
+          type: 'DEDUCT',
+          reason: `Paket satışı (${pkg.name}): ${rawUsername}`,
+          balanceAfter: newBalance,
+        },
+      }),
+    ]);
+
+    const serverUrl = this.config.get<string>('server.url') ?? 'http://localhost';
+    const serverPort = this.config.get<number>('server.port') ?? 8080;
+    const base = `${serverUrl}:${serverPort}`;
+
+    return {
+      user: { ...user, password: rawPassword },
+      m3uUrl: `${base}/get.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`,
+      playerApiUrl: `${base}/player_api.php?username=${encodeURIComponent(rawUsername)}&password=${encodeURIComponent(rawPassword)}`,
+    };
+  }
+
+  async updateProfile(resellerId: string, dto: { email?: string }) {
+    const reseller = await this.findById(resellerId);
+    if (dto.email && dto.email !== reseller.email) {
+      const conflict = await this.prisma.reseller.findFirst({
+        where: { email: dto.email, id: { not: resellerId }, deletedAt: null },
+      });
+      if (conflict) throw new ConflictException('Bu e-posta adresi zaten kullanımda');
+    }
+    return this.prisma.reseller.update({
+      where: { id: resellerId },
+      data: { email: dto.email ?? null },
+      select: { id: true, username: true, email: true, tier: true, createdAt: true },
+    });
+  }
+
+  async changePassword(resellerId: string, dto: { currentPassword: string; newPassword: string }) {
+    const reseller = await this.prisma.reseller.findUnique({ where: { id: resellerId } });
+    if (!reseller) throw new NotFoundException('Reseller not found');
+    const valid = await bcrypt.compare(dto.currentPassword, reseller.password);
+    if (!valid) throw new UnauthorizedException('Mevcut şifre hatalı');
+    const hashed = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.reseller.update({ where: { id: resellerId }, data: { password: hashed } });
+    return { message: 'Şifre güncellendi' };
   }
 
   async bulkAction(

@@ -1,0 +1,278 @@
+import { useState, useEffect } from 'react';
+import { User, Lock, Bell, BarChart2, Loader2, CheckCircle } from 'lucide-react';
+import {
+  useResellerMe,
+  useResellerStats,
+  useResellerUpdateProfile,
+  useResellerChangePassword,
+} from '@/hooks/useResellerPanel';
+import { cn } from '@/lib/utils';
+
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div className="card p-6">
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-primary" />
+        </div>
+        <h2 className="text-sm font-semibold text-slate-200">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Profile section ─────────────────────────────────────────────────────────
+
+function ProfileSection() {
+  const { data: me, isLoading } = useResellerMe();
+  const updateProfile = useResellerUpdateProfile();
+  const [email, setEmail] = useState('');
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (me) { setEmail(me.email ?? ''); setDirty(false); }
+  }, [me]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProfile.mutateAsync({ email: email.trim() || undefined });
+    setDirty(false);
+  };
+
+  if (isLoading) return <div className="text-sm text-muted py-2">Yükleniyor…</div>;
+
+  return (
+    <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">Kullanıcı Adı</label>
+        <input
+          value={me?.username ?? ''}
+          readOnly
+          className="input w-full opacity-60 cursor-not-allowed"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">E-posta</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setDirty(true); }}
+          placeholder="ornek@email.com"
+          className="input w-full"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={!dirty || updateProfile.isPending}
+          className="btn btn-primary text-sm"
+        >
+          {updateProfile.isPending ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Kaydediliyor…</>
+          ) : (
+            'Kaydet'
+          )}
+        </button>
+        {!dirty && !updateProfile.isPending && updateProfile.isSuccess && (
+          <span className="flex items-center gap-1 text-xs text-success">
+            <CheckCircle className="w-3 h-3" /> Kaydedildi
+          </span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ─── Password section ─────────────────────────────────────────────────────────
+
+function PasswordSection() {
+  const changePassword = useResellerChangePassword();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+
+  const mismatch = next.length > 0 && confirm.length > 0 && next !== confirm;
+  const tooShort = next.length > 0 && next.length < 6;
+  const canSubmit = current.length > 0 && next.length >= 6 && next === confirm;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    await changePassword.mutateAsync({ currentPassword: current, newPassword: next });
+    setCurrent(''); setNext(''); setConfirm('');
+  };
+
+  return (
+    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">Mevcut Şifre</label>
+        <input
+          type="password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          placeholder="••••••••"
+          className="input w-full"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">Yeni Şifre</label>
+        <input
+          type="password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="En az 6 karakter"
+          className={cn('input w-full', tooShort && 'border-danger/50')}
+        />
+        {tooShort && <p className="text-xs text-danger mt-1">En az 6 karakter olmalı</p>}
+      </div>
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">Yeni Şifre (Tekrar)</label>
+        <input
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder="••••••••"
+          className={cn('input w-full', mismatch && 'border-danger/50')}
+        />
+        {mismatch && <p className="text-xs text-danger mt-1">Şifreler eşleşmiyor</p>}
+      </div>
+      <button
+        type="submit"
+        disabled={!canSubmit || changePassword.isPending}
+        className="btn btn-primary text-sm"
+      >
+        {changePassword.isPending ? (
+          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Değiştiriliyor…</>
+        ) : (
+          'Şifreyi Değiştir'
+        )}
+      </button>
+    </form>
+  );
+}
+
+// ─── Notifications section (UI only) ─────────────────────────────────────────
+
+function NotificationsSection() {
+  const [lowCredit, setLowCredit] = useState(true);
+  const [expiring, setExpiring] = useState(true);
+
+  return (
+    <div className="space-y-3">
+      {[
+        { label: 'Düşük kredi uyarısı', desc: 'Krediniz 5\'in altına düştüğünde bildirim al', value: lowCredit, set: setLowCredit },
+        { label: 'Kullanıcı süresi dolacak uyarısı', desc: '7 gün içinde süresi dolacak kullanıcılar için bildirim al', value: expiring, set: setExpiring },
+      ].map(({ label, desc, value, set }) => (
+        <label key={label} className="flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-0.5 flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={value}
+              onChange={(e) => set(e.target.checked)}
+              className="sr-only"
+            />
+            <div
+              onClick={() => set(!value)}
+              className={cn(
+                'w-9 h-5 rounded-full transition-colors flex items-center',
+                value ? 'bg-primary' : 'bg-surface-2 border border-border',
+              )}
+            >
+              <div className={cn(
+                'w-3.5 h-3.5 rounded-full bg-white shadow transition-transform mx-0.5',
+                value ? 'translate-x-4' : 'translate-x-0',
+              )} />
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-slate-300 group-hover:text-slate-200 transition-colors">{label}</div>
+            <div className="text-xs text-muted">{desc}</div>
+          </div>
+        </label>
+      ))}
+      <p className="text-[11px] text-muted/60 mt-2">Bildirim tercihleri kaydedilir (yakında e-posta entegrasyonu)</p>
+    </div>
+  );
+}
+
+// ─── Account summary section ─────────────────────────────────────────────────
+
+function AccountSummarySection() {
+  const { data: me } = useResellerMe();
+  const { data: stats } = useResellerStats();
+
+  const TIER_COLORS: Record<string, string> = {
+    BASIC: 'text-slate-400 bg-slate-400/10',
+    SILVER: 'text-slate-300 bg-slate-400/15',
+    GOLD: 'text-amber-400 bg-amber-400/10',
+    PLATINUM: 'text-cyan-400 bg-cyan-400/10',
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="text-2xl font-bold text-slate-200">{stats?.totalUsers ?? '—'}</div>
+          <div className="text-xs text-muted mt-0.5">Toplam Kullanıcı</div>
+        </div>
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="text-2xl font-bold text-success">{stats?.activeUsers ?? '—'}</div>
+          <div className="text-xs text-muted mt-0.5">Aktif Kullanıcı</div>
+        </div>
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="text-2xl font-bold text-slate-200">{stats?.onlineConnections ?? '—'}</div>
+          <div className="text-xs text-muted mt-0.5">Anlık Bağlantı</div>
+        </div>
+        <div className="bg-surface-2 rounded-xl p-3">
+          <div className="text-2xl font-bold text-warning">{stats?.expiredUsers ?? '—'}</div>
+          <div className="text-xs text-muted mt-0.5">Süresi Dolmuş</div>
+        </div>
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <div className="flex items-center justify-between py-1.5 border-b border-border/50">
+          <span className="text-muted">Üyelik Tarihi</span>
+          <span className="text-slate-300">
+            {me?.createdAt ? new Date(me.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-muted">Seviye</span>
+          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded', TIER_COLORS[me?.tier ?? 'BASIC'] ?? 'text-muted')}>
+            {me?.tier ?? '—'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export function ResellerProfilePage() {
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div>
+        <h1 className="text-lg font-semibold text-slate-100">Profil & Ayarlar</h1>
+        <p className="text-sm text-muted">Hesap bilgilerinizi ve tercihlerinizi yönetin</p>
+      </div>
+
+      <Section title="Profil Bilgileri" icon={User}>
+        <ProfileSection />
+      </Section>
+
+      <Section title="Şifre Değiştir" icon={Lock}>
+        <PasswordSection />
+      </Section>
+
+      <Section title="Bildirim Tercihleri" icon={Bell}>
+        <NotificationsSection />
+      </Section>
+
+      <Section title="Hesap Özeti" icon={BarChart2}>
+        <AccountSummarySection />
+      </Section>
+    </div>
+  );
+}
