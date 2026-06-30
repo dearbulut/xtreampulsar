@@ -44,6 +44,16 @@ export class EpgService {
     return { message: 'EPG parse triggered' };
   }
 
+  async triggerParseAll() {
+    const sources = await this.prisma.ePGSource.findMany({ where: { isActive: true } });
+    if (!sources.length) return { total: 0, success: 0, failed: 0 };
+    const results = await Promise.allSettled(
+      sources.map((src) => this.parserService.parseSourceById(src.id)),
+    );
+    const success = results.filter((r) => r.status === 'fulfilled').length;
+    return { total: sources.length, success, failed: sources.length - success };
+  }
+
   // ─── Channels ─────────────────────────────────────────────────────────────
 
   async findChannels(sourceId: string, search?: string) {
@@ -85,8 +95,18 @@ export class EpgService {
 
   // ─── Mass assign ─────────────────────────────────────────────────────────
 
-  async massAssign(epgSourceId: string, minSimilarity = 0.6) {
+  async massAssign(epgSourceId: string, minSimilarity = 0.6, stripPrefixes: string[] = []) {
     await this.findSourceById(epgSourceId);
+
+    const normalize = (name: string): string => {
+      let s = name;
+      for (const prefix of stripPrefixes) {
+        if (!prefix) continue;
+        const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        s = s.replace(new RegExp(`^${escaped}`, 'i'), '');
+      }
+      return s.trim();
+    };
 
     const [streams, channels] = await Promise.all([
       this.prisma.stream.findMany({
@@ -106,7 +126,7 @@ export class EpgService {
       let bestChannel: (typeof channels)[0] | null = null;
 
       for (const ch of channels) {
-        const score = this.similarity(stream.name, ch.displayName);
+        const score = this.similarity(normalize(stream.name), normalize(ch.displayName));
         if (score > bestScore) {
           bestScore = score;
           bestChannel = ch;
@@ -153,6 +173,50 @@ export class EpgService {
 
     const dist = dp[m][n];
     return 1 - dist / Math.max(m, n);
+  }
+
+  async getNowPlaying(streamIds: string[]) {
+    if (!streamIds.length) return {} as Record<string, { current: object | null; next: object | null }>;
+
+    const now = new Date();
+    const mappings = await this.prisma.ePGMapping.findMany({
+      where: { streamId: { in: streamIds } },
+    });
+
+    const result: Record<string, { current: object | null; next: object | null }> = {};
+
+    await Promise.all(
+      mappings.map(async (m) => {
+        const channel = await this.prisma.ePGChannel.findFirst({
+          where: { epgSourceId: m.epgSourceId, channelId: m.epgChannelId },
+          select: { id: true },
+        });
+        if (!channel) { result[m.streamId] = { current: null, next: null }; return; }
+
+        const upcoming = await this.prisma.ePGProgramme.findMany({
+          where: { epgChannelId: channel.id, stop: { gt: now } },
+          orderBy: { start: 'asc' },
+          take: 2,
+        });
+
+        const first = upcoming[0] ?? null;
+        const second = upcoming[1] ?? null;
+        const current = first && first.start <= now ? first : null;
+        const next = current ? second : first;
+
+        const fmt = (p: NonNullable<typeof first>) => ({
+          id: p.id,
+          title: p.title,
+          start: p.start.toISOString(),
+          stop: p.stop.toISOString(),
+          durationMin: Math.round((p.stop.getTime() - p.start.getTime()) / 60000),
+        });
+
+        result[m.streamId] = { current: current ? fmt(current) : null, next: next ? fmt(next) : null };
+      }),
+    );
+
+    return result;
   }
 
   async getGuide(channelIds: string[], date: string) {

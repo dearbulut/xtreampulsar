@@ -3,6 +3,14 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { EPGSource } from '@/types';
 
+export interface NowPlayingItem {
+  id: string;
+  title: string;
+  start: string;
+  stop: string;
+  durationMin: number;
+}
+
 export interface EPGChannel {
   id: string;
   channelId: string;
@@ -105,16 +113,48 @@ export function useParseEPGSource() {
   });
 }
 
+export function useParseAllEPGSources() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ success: boolean; data: { total: number; success: number; failed: number } }>(
+        '/epg/sources/parse-all',
+      ),
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: ['epg'] });
+      const { total, success, failed } = res.data.data;
+      toast.success(`${success}/${total} kaynak güncellendi${failed > 0 ? ` (${failed} hata)` : ''}`);
+    },
+    onError: () => toast.error('Güncelleme başarısız'),
+  });
+}
+
 export function useMassAssignEPG() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { epgSourceId: string; minSimilarity?: number }) =>
+    mutationFn: (data: { epgSourceId: string; minSimilarity?: number; stripPrefixes?: string[] }) =>
       api.post<{ success: boolean; data: { matched: number; total: number } }>('/epg/mass-assign', data),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ['epg'] });
       toast.success(`${res.data.data.matched} stream eşleştirildi`);
     },
     onError: () => toast.error('Toplu eşleştirme başarısız'),
+  });
+}
+
+export function useStreamNowPlaying(streamIds: string[]) {
+  return useQuery<Record<string, { current: NowPlayingItem | null; next: NowPlayingItem | null }>>({
+    queryKey: ['epg', 'now-playing', streamIds.join(',')],
+    queryFn: async () => {
+      const res = await api.get<{
+        success: boolean;
+        data: Record<string, { current: NowPlayingItem | null; next: NowPlayingItem | null }>;
+      }>(`/epg/now-playing?streamIds=${streamIds.join(',')}`);
+      return res.data.data ?? {};
+    },
+    enabled: streamIds.length > 0,
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 }
 

@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Clock, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
+import { useEPGMappings } from '@/hooks/useEPG';
 
 interface Programme {
   id: string;
@@ -46,10 +47,22 @@ function nowOffsetMin(): number {
 export function EpgGuidePage() {
   const [date, setDate] = useState(() => toDateStr(new Date()));
   const [tooltip, setTooltip] = useState<{ prog: Programme; x: number; y: number } | null>(null);
+  const [search, setSearch] = useState('');
+  const [onlyMapped, setOnlyMapped] = useState(true);
   const timelineRef = useRef<HTMLDivElement>(null);
   const isToday = date === toDateStr(new Date());
 
-  const { data: channels = [], isLoading } = useEpgGuide(date);
+  const { data: allChannels = [], isLoading } = useEpgGuide(date);
+  const { data: mappings = [] } = useEPGMappings();
+
+  const mappedTvgIds = useMemo(() => new Set(mappings.map((m) => m.epgChannelId)), [mappings]);
+
+  const channels = useMemo(() => {
+    let list = allChannels;
+    if (onlyMapped && mappedTvgIds.size > 0) list = list.filter((ch) => mappedTvgIds.has(ch.tvgId));
+    if (search) list = list.filter((ch) => ch.channelName.toLowerCase().includes(search.toLowerCase()));
+    return list;
+  }, [allChannels, onlyMapped, mappedTvgIds, search]);
 
   const prevDay = () => {
     const d = new Date(date);
@@ -77,12 +90,35 @@ export function EpgGuidePage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Program Rehberi</h1>
           <p className="text-sm text-muted mt-0.5">EPG zaman çizelgesi</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+            <input
+              className="input pl-8 h-9 text-sm w-44"
+              placeholder="Kanal ara…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center rounded-lg border border-border overflow-hidden text-xs">
+            <button
+              onClick={() => setOnlyMapped(false)}
+              className={cn('px-3 py-1.5 transition-colors', !onlyMapped ? 'bg-primary text-white' : 'text-muted hover:text-fg')}
+            >
+              Tümü
+            </button>
+            <button
+              onClick={() => setOnlyMapped(true)}
+              className={cn('px-3 py-1.5 border-l border-border transition-colors', onlyMapped ? 'bg-primary text-white' : 'text-muted hover:text-fg')}
+            >
+              Sadece Eşleşmiş
+            </button>
+          </div>
           <button onClick={prevDay} className="btn btn-secondary p-2">
             <ChevronLeft className="w-4 h-4" />
           </button>

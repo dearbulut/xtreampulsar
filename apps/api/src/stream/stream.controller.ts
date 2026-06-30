@@ -46,6 +46,40 @@ export class StreamController {
     return this.streamService.findAllWithFilters(user.id, query);
   }
 
+  @Get(':id/now-playing')
+  async getNowPlaying(@Param('id') id: string) {
+    const now = new Date();
+    const mapping = await this.prisma.ePGMapping.findFirst({ where: { streamId: id } });
+    if (!mapping) return { current: null, next: null };
+
+    const channel = await this.prisma.ePGChannel.findFirst({
+      where: { epgSourceId: mapping.epgSourceId, channelId: mapping.epgChannelId },
+      select: { id: true },
+    });
+    if (!channel) return { current: null, next: null };
+
+    const upcoming = await this.prisma.ePGProgramme.findMany({
+      where: { epgChannelId: channel.id, stop: { gt: now } },
+      orderBy: { start: 'asc' },
+      take: 2,
+    });
+
+    const first = upcoming[0] ?? null;
+    const second = upcoming[1] ?? null;
+    const current = first && first.start <= now ? first : null;
+    const next = current ? second : first;
+
+    const fmt = (p: NonNullable<typeof first>) => ({
+      id: p.id,
+      title: p.title,
+      start: p.start.toISOString(),
+      stop: p.stop.toISOString(),
+      durationMin: Math.round((p.stop.getTime() - p.start.getTime()) / 60000),
+    });
+
+    return { current: current ? fmt(current) : null, next: next ? fmt(next) : null };
+  }
+
   @Get(':id/preview-url')
   @Roles('ADMIN')
   async getPreviewUrl(@Param('id') id: string) {

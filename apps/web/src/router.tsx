@@ -17,6 +17,7 @@ import { CategoriesPage } from '@/pages/categories/CategoriesPage';
 import { BouquetsPage } from '@/pages/bouquets/BouquetsPage';
 import { EPGSourcesPage } from '@/pages/epg/EPGSourcesPage';
 import { EPGMassAssignPage } from '@/pages/epg/EPGMassAssignPage';
+import { EPGMappingsPage } from '@/pages/epg/EPGMappingsPage';
 import { PackagesPage } from '@/pages/packages/PackagesPage';
 import { MigrationPage } from '@/pages/migration/MigrationPage';
 import { SecurityPage } from '@/pages/security/SecurityPage';
@@ -146,6 +147,12 @@ const epgMassAssignRoute = createRoute({
   component: EPGMassAssignPage,
 });
 
+const epgMappingsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/epg/mappings',
+  component: EPGMappingsPage,
+});
+
 const packagesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/packages',
@@ -270,6 +277,7 @@ const routeTree = rootRoute.addChildren([
     bouquetsRoute,
     epgRoute,
     epgMassAssignRoute,
+    epgMappingsRoute,
     epgGuideRoute,
     packagesRoute,
     migrationRoute,

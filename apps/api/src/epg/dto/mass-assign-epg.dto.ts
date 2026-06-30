@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MassAssignEpgDto {
@@ -11,4 +11,9 @@ export class MassAssignEpgDto {
   @Min(0)
   @Max(1)
   minSimilarity?: number = 0.6;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  stripPrefixes?: string[] = [];
 }

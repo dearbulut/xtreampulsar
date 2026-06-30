@@ -7,6 +7,7 @@ import {
   useCreateEPGSource,
   useDeleteEPGSource,
   useParseEPGSource,
+  useParseAllEPGSources,
   useMassAssignEPG,
 } from '@/hooks/useEPG';
 import type { EPGSource } from '@/types';
@@ -18,6 +19,7 @@ export function EPGSourcesPage() {
   const createSource = useCreateEPGSource();
   const deleteSource = useDeleteEPGSource();
   const parseSource = useParseEPGSource();
+  const parseAll = useParseAllEPGSources();
   const massAssign = useMassAssignEPG();
 
   const [showAdd, setShowAdd] = useState(false);
@@ -132,11 +134,11 @@ export function EPGSourcesPage() {
             <CheckCircle className="w-4 h-4" /> Toplu Eşleştir
           </Link>
           <button
-            onClick={() => void parseSource.mutateAsync('all')}
-            disabled={parseSource.isPending}
+            onClick={() => void parseAll.mutateAsync()}
+            disabled={parseAll.isPending}
             className="btn btn-ghost text-sm"
           >
-            <RefreshCw className={cn('w-4 h-4', parseSource.isPending && 'animate-spin')} /> Tümünü Güncelle
+            <RefreshCw className={cn('w-4 h-4', parseAll.isPending && 'animate-spin')} /> Tümünü Güncelle
           </button>
           <button onClick={() => setShowAdd(true)} className="btn btn-primary">
             <Plus className="w-4 h-4" /> Kaynak Ekle

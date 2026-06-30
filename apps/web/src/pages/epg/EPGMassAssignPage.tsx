@@ -23,6 +23,7 @@ export function EPGMassAssignPage() {
     const res = await massAssign.mutateAsync({
       epgSourceId: selectedSource,
       minSimilarity: similarity / 100,
+      stripPrefixes: stripPrefixes.length > 0 ? stripPrefixes : undefined,
     });
     setResult(res.data.data);
   };

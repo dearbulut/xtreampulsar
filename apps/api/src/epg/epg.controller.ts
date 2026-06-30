@@ -54,6 +54,11 @@ export class EpgController {
     await this.epgService.remove(id);
   }
 
+  @Post('sources/parse-all')
+  triggerParseAll() {
+    return this.epgService.triggerParseAll();
+  }
+
   @Post('sources/:id/parse')
   triggerParse(@Param('id') id: string) {
     return this.epgService.triggerParse(id);
@@ -68,7 +73,7 @@ export class EpgController {
 
   @Post('mass-assign')
   massAssign(@Body() dto: MassAssignEpgDto) {
-    return this.epgService.massAssign(dto.epgSourceId, dto.minSimilarity);
+    return this.epgService.massAssign(dto.epgSourceId, dto.minSimilarity, dto.stripPrefixes);
   }
 
   // ─── Mappings ─────────────────────────────────────────────────────────────
@@ -87,6 +92,12 @@ export class EpgController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMapping(@Param('id') id: string): Promise<void> {
     await this.epgService.deleteMapping(id);
+  }
+
+  @Get('now-playing')
+  getNowPlaying(@Query('streamIds') streamIds?: string) {
+    const ids = streamIds ? streamIds.split(',').filter(Boolean) : [];
+    return this.epgService.getNowPlaying(ids);
   }
 
   @Get('guide')

@@ -58,6 +58,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { Stream } from '@/types';
 import { cn } from '@/lib/utils';
+import { useStreamNowPlaying } from '@/hooks/useEPG';
 
 type StreamType = 'LIVE' | 'VOD' | 'SERIES';
 
@@ -426,6 +427,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const deleteStream = useDeleteStream();
   const createStream = useCreateStream();
 
+  const showEpgColumn = !type || type === 'LIVE';
+  const visibleItems = sortedItems.length > 0 ? sortedItems : (data?.items ?? []);
+  const { data: nowPlaying } = useStreamNowPlaying(
+    showEpgColumn ? visibleItems.map((s) => s.id) : [],
+  );
+
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
   const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
 
@@ -627,6 +634,22 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         </div>
       ),
     },
+    ...(showEpgColumn ? [{
+      key: 'epg',
+      header: 'Şu An',
+      className: 'w-44 hidden xl:table-cell',
+      render: (r: Stream) => {
+        const np = nowPlaying?.[r.id];
+        if (!np?.current) return <span className="text-xs text-muted">—</span>;
+        const start = new Date(np.current.start).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const stop = new Date(np.current.stop).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        return (
+          <div title={`${start} → ${stop}`} className="text-xs text-slate-300 truncate max-w-[160px] cursor-default">
+            {np.current.title}
+          </div>
+        );
+      },
+    } as Column<Stream>] : []),
     {
       key: 'actions',
       header: 'İşlemler',

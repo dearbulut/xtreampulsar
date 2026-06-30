@@ -23,6 +23,7 @@ import {
   TrendingUp,
   BarChart2,
   CalendarDays,
+  Link2,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ const NAV: NavGroup[] = [
     label: 'EPG',
     items: [
       { label: 'EPG Kaynakları', to: '/epg', icon: Radio },
+      { label: 'Manuel Eşleştirme', to: '/epg/mappings', icon: Link2 },
       { label: 'Program Rehberi', to: '/epg/guide', icon: CalendarDays },
     ],
   },
