@@ -264,21 +264,19 @@ function BrandingSection() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [brandName, setBrandName] = useState('');
-  const [primaryColor, setPrimaryColor] = useState('');
   const [previewLogo, setPreviewLogo] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (me) {
       setBrandName(me.brandName ?? '');
-      setPrimaryColor(me.primaryColor ?? '');
       setPreviewLogo(me.logoUrl ?? null);
     }
   }, [me]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateBranding.mutateAsync({ brandName, primaryColor });
+    await updateBranding.mutateAsync({ brandName });
   };
 
   const processFile = (file: File) => {
@@ -315,7 +313,7 @@ function BrandingSection() {
             </div>
             {previewLogo && (
               <button
-                onClick={() => { setPreviewLogo(null); updateBranding.mutate({ brandName, primaryColor }); }}
+                onClick={() => { setPreviewLogo(null); updateBranding.mutate({ brandName }); }}
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-danger text-white flex items-center justify-center hover:bg-danger/80 transition-colors"
                 title="Logo kaldır"
               >
@@ -355,7 +353,7 @@ function BrandingSection() {
         </div>
       </div>
 
-      {/* Brand name + color */}
+      {/* Brand name */}
       <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
         <div>
           <label className="text-xs font-medium text-muted block mb-1">Marka Adı</label>
@@ -366,34 +364,6 @@ function BrandingSection() {
             className="input w-full"
           />
           <p className="text-[11px] text-muted mt-1">Boş bırakılırsa "Bayi Paneli" gösterilir</p>
-        </div>
-
-        <div>
-          <label className="text-xs font-medium text-muted block mb-1">Ana Renk</label>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="color"
-                value={primaryColor || '#6366f1'}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-border cursor-pointer bg-surface-2"
-              />
-            </div>
-            <input
-              value={primaryColor}
-              onChange={(e) => setPrimaryColor(e.target.value)}
-              placeholder="#6366f1"
-              className="input flex-1 font-mono"
-              pattern="^#[0-9A-Fa-f]{6}$"
-            />
-            {primaryColor && (
-              <div
-                className="w-8 h-8 rounded-lg border border-border flex-shrink-0"
-                style={{ backgroundColor: primaryColor }}
-              />
-            )}
-          </div>
-          <p className="text-[11px] text-muted mt-1">Butonlar ve aktif menü rengi. Boş bırakılırsa sistem rengi kullanılır.</p>
         </div>
 
         <div className="flex items-center gap-2">

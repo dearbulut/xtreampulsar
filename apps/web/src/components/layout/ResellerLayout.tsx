@@ -172,38 +172,6 @@ function NotificationBell() {
   );
 }
 
-// ─── Colour helpers (for CSS variable override) ───────────────────────────────
-
-function hexToRgbStr(hex: string): string {
-  const c = hex.replace('#', '');
-  const r = parseInt(c.slice(0, 2), 16);
-  const g = parseInt(c.slice(2, 4), 16);
-  const b = parseInt(c.slice(4, 6), 16);
-  return `${r}, ${g}, ${b}`;
-}
-
-function adjustBrightness(hex: string, delta: number): string {
-  const c = hex.replace('#', '');
-  const clamp = (v: number) => Math.min(255, Math.max(0, v));
-  const r = clamp(parseInt(c.slice(0, 2), 16) + delta);
-  const g = clamp(parseInt(c.slice(2, 4), 16) + delta);
-  const b = clamp(parseInt(c.slice(4, 6), 16) + delta);
-  return `${r}, ${g}, ${b}`;
-}
-
-// WCAG relative luminance — returns 0 (black) … 1 (white).
-function perceivedLuminance(hex: string): number {
-  const c = hex.replace('#', '');
-  const toLinear = (v: number) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  const r = toLinear(parseInt(c.slice(0, 2), 16));
-  const g = toLinear(parseInt(c.slice(2, 4), 16));
-  const b = toLinear(parseInt(c.slice(4, 6), 16));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export function ResellerLayout() {
@@ -220,25 +188,9 @@ export function ResellerLayout() {
 
   const brandName = me?.brandName || 'Bayi Paneli';
   const logoUrl = me?.logoUrl ?? null;
-  const primaryColor = me?.primaryColor ?? null;
-
-  // Tailwind primary classes use rgb(var(--color-primary-rgb) / <alpha>).
-  // We also compute --color-primary-fg so btn-primary and toggle thumbs
-  // automatically switch to a dark foreground on light brand colours (e.g. yellow).
-  const brandingStyle =
-    primaryColor && /^#[0-9A-Fa-f]{6}$/.test(primaryColor)
-      ? ({
-          '--color-primary-rgb':       hexToRgbStr(primaryColor),
-          '--color-primary-hover-rgb': adjustBrightness(primaryColor, -20),
-          '--color-primary-light-rgb': adjustBrightness(primaryColor, 25),
-          '--color-primary-50-rgb':    adjustBrightness(primaryColor, 60),
-          // Luminance > 0.45 → light colour → dark foreground; else keep white.
-          '--color-primary-fg': perceivedLuminance(primaryColor) > 0.45 ? '#1a1a1a' : '#ffffff',
-        } as React.CSSProperties)
-      : undefined;
 
   return (
-    <div className="min-h-screen flex bg-background" style={brandingStyle}>
+    <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">

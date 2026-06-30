@@ -279,7 +279,7 @@ export class ResellerController {
   @Roles('RESELLER')
   async updateMyBranding(
     @CurrentUser() user: JwtUser,
-    @Body() body: { brandName?: string; primaryColor?: string },
+    @Body() body: { brandName?: string },
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.updateBranding(user.id, body);

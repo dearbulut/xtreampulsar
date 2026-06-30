@@ -483,8 +483,8 @@ export function useResellerCreditHistory(page = 1, limit = 30, startDate?: strin
 export function useUpdateResellerBranding() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { brandName?: string; primaryColor?: string }) => {
-      const res = await resellerApi.put<{ success: boolean; data: { brandName: string | null; logoUrl: string | null; primaryColor: string | null } }>(
+    mutationFn: async (data: { brandName?: string }) => {
+      const res = await resellerApi.put<{ success: boolean; data: { brandName: string | null; logoUrl: string | null } }>(
         '/resellers/me/branding',
         data,
       );
