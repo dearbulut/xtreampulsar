@@ -65,7 +65,11 @@ export class ResellerController {
         status: 'ACTIVE',
         expiresAt: { gte: now, lte: threshold },
       },
-      select: { id: true, username: true, expiresAt: true, maxConnections: true, status: true },
+      select: {
+          id: true, username: true, status: true,
+          expiresAt: true, maxConnections: true, createdAt: true,
+          _count: { select: { connections: { where: { endedAt: null } } } },
+        },
       orderBy: { expiresAt: 'asc' },
     });
   }

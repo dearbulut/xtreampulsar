@@ -143,7 +143,7 @@ export function ResellerUserDrawer({
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted">Oluşturulma</span>
-              <span className="text-slate-100">{formatDate(user.createdAt)}</span>
+              <span className="text-slate-100">{user.createdAt ? formatDate(user.createdAt) : '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Bitiş Tarihi</span>
@@ -156,11 +156,11 @@ export function ResellerUserDrawer({
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Max Bağlantı</span>
-              <span className="text-slate-100">{user.maxConnections}</span>
+              <span className="text-slate-100">{user.maxConnections ?? '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Aktif Bağlantı</span>
-              <span className="text-slate-100">{user._count?.connections ?? 0}</span>
+              <span className="text-slate-100">{String(user._count?.connections ?? 0)}</span>
             </div>
           </div>
 
