@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
 import { useLocation } from '@tanstack/react-router';
 import {
+  useResellerMe,
   useResellerUnreadCount,
   useResellerNotifications,
   useMarkNotificationRead,
@@ -178,20 +179,32 @@ export function ResellerLayout() {
   const resellerUser = useAuthStore((s) => s.resellerUser);
   const resellerLogout = useAuthStore((s) => s.resellerLogout);
   const location = useLocation();
+  const { data: me } = useResellerMe();
 
   const handleLogout = () => {
     resellerLogout();
     void navigate({ to: '/reseller/login' });
   };
 
+  const brandName = me?.brandName || 'Bayi Paneli';
+  const logoUrl = me?.logoUrl ?? null;
+  const primaryColor = me?.primaryColor ?? null;
+  const brandingStyle = primaryColor
+    ? ({ '--color-primary': primaryColor } as React.CSSProperties)
+    : undefined;
+
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background" style={brandingStyle}>
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Tv2 className="w-5 h-5 text-primary" />
-            <span className="font-bold text-slate-100 text-sm">Bayi Paneli</span>
+            {logoUrl ? (
+              <img src={logoUrl} alt="logo" className="w-6 h-6 rounded object-contain" />
+            ) : (
+              <Tv2 className="w-5 h-5 text-primary" />
+            )}
+            <span className="font-bold text-slate-100 text-sm">{brandName}</span>
           </div>
           {resellerUser && (
             <div className="mt-2 text-xs text-muted">

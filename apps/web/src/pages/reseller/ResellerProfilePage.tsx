@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { User, Lock, Bell, BarChart2, Loader2, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { User, Lock, Bell, BarChart2, Loader2, CheckCircle, Palette, Upload, X } from 'lucide-react';
 import {
   useResellerMe,
   useResellerStats,
   useResellerUpdateProfile,
   useResellerChangePassword,
+  useUpdateResellerBranding,
+  useUploadBrandingLogo,
 } from '@/hooks/useResellerPanel';
 import { cn } from '@/lib/utils';
 
@@ -248,6 +250,170 @@ function AccountSummarySection() {
   );
 }
 
+// ─── Branding section ─────────────────────────────────────────────────────────
+
+function BrandingSection() {
+  const { data: me } = useResellerMe();
+  const updateBranding = useUpdateResellerBranding();
+  const uploadLogo = useUploadBrandingLogo();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [brandName, setBrandName] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('');
+  const [previewLogo, setPreviewLogo] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (me) {
+      setBrandName(me.brandName ?? '');
+      setPrimaryColor(me.primaryColor ?? '');
+      setPreviewLogo(me.logoUrl ?? null);
+    }
+  }, [me]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateBranding.mutateAsync({ brandName, primaryColor });
+  };
+
+  const processFile = (file: File) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreviewLogo(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    uploadLogo.mutate(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Logo upload */}
+      <div>
+        <label className="text-xs font-medium text-muted block mb-2">Logo</label>
+        <div className="flex items-start gap-4">
+          {/* Preview */}
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-xl border border-border bg-surface-2 flex items-center justify-center overflow-hidden">
+              {previewLogo ? (
+                <img src={previewLogo} alt="logo" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-2xl text-muted/30">?</span>
+              )}
+            </div>
+            {previewLogo && (
+              <button
+                onClick={() => { setPreviewLogo(null); updateBranding.mutate({ brandName, primaryColor }); }}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-danger text-white flex items-center justify-center hover:bg-danger/80 transition-colors"
+                title="Logo kaldır"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Drop zone */}
+          <div
+            className={cn(
+              'flex-1 border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors min-h-[80px]',
+              dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+            )}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => fileRef.current?.click()}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); }}
+            />
+            {uploadLogo.isPending ? (
+              <Loader2 className="w-5 h-5 text-muted animate-spin" />
+            ) : (
+              <Upload className="w-5 h-5 text-muted" />
+            )}
+            <div className="text-center">
+              <p className="text-xs text-slate-300">PNG, JPEG veya WebP</p>
+              <p className="text-[11px] text-muted">Maks. 2 MB</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Brand name + color */}
+      <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
+        <div>
+          <label className="text-xs font-medium text-muted block mb-1">Marka Adı</label>
+          <input
+            value={brandName}
+            onChange={(e) => setBrandName(e.target.value)}
+            placeholder="Bayi Paneli"
+            className="input w-full"
+          />
+          <p className="text-[11px] text-muted mt-1">Boş bırakılırsa "Bayi Paneli" gösterilir</p>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted block mb-1">Ana Renk</label>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input
+                type="color"
+                value={primaryColor || '#6366f1'}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                className="w-10 h-10 rounded-lg border border-border cursor-pointer bg-surface-2"
+              />
+            </div>
+            <input
+              value={primaryColor}
+              onChange={(e) => setPrimaryColor(e.target.value)}
+              placeholder="#6366f1"
+              className="input flex-1 font-mono"
+              pattern="^#[0-9A-Fa-f]{6}$"
+            />
+            {primaryColor && (
+              <div
+                className="w-8 h-8 rounded-lg border border-border flex-shrink-0"
+                style={{ backgroundColor: primaryColor }}
+              />
+            )}
+          </div>
+          <p className="text-[11px] text-muted mt-1">Butonlar ve aktif menü rengi. Boş bırakılırsa sistem rengi kullanılır.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={updateBranding.isPending}
+            className="btn btn-primary text-sm"
+          >
+            {updateBranding.isPending ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Kaydediliyor…</>
+            ) : (
+              'Kaydet'
+            )}
+          </button>
+          {!updateBranding.isPending && updateBranding.isSuccess && (
+            <span className="flex items-center gap-1 text-xs text-success">
+              <CheckCircle className="w-3 h-3" /> Kaydedildi
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ResellerProfilePage() {
@@ -264,6 +430,10 @@ export function ResellerProfilePage() {
 
       <Section title="Şifre Değiştir" icon={Lock}>
         <PasswordSection />
+      </Section>
+
+      <Section title="Marka Ayarları" icon={Palette}>
+        <BrandingSection />
       </Section>
 
       <Section title="Bildirim Tercihleri" icon={Bell}>

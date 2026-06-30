@@ -372,11 +372,14 @@ model Reseller {
   password  String
   credits   Int          @default(0)
   tier      ResellerTier @default(BASIC)
-  isActive  Boolean      @default(true)
-  notes     String?
-  deletedAt DateTime?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  isActive     Boolean      @default(true)
+  notes        String?
+  brandName    String?
+  logoUrl      String?
+  primaryColor String?
+  deletedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   parentId String?
   parent   Reseller?  @relation("ResellerHierarchy", fields: [parentId], references: [id])

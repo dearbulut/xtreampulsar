@@ -55,6 +55,9 @@ export interface ResellerInfo {
   tier: string;
   isActive: boolean;
   createdAt: string;
+  brandName?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
 }
 
 export interface ResellerUserRow {
@@ -471,6 +474,50 @@ export function useResellerCreditHistory(page = 1, limit = 30, startDate?: strin
         `/resellers/me/credits?${params.toString()}`,
       );
       return res.data.data;
+    },
+  });
+}
+
+// ─── Branding ─────────────────────────────────────────────────────────────────
+
+export function useUpdateResellerBranding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { brandName?: string; primaryColor?: string }) => {
+      const res = await resellerApi.put<{ success: boolean; data: { brandName: string | null; logoUrl: string | null; primaryColor: string | null } }>(
+        '/resellers/me/branding',
+        data,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Marka ayarları kaydedildi');
+    },
+    onError: () => toast.error('Kaydedilemedi'),
+  });
+}
+
+export function useUploadBrandingLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await resellerApi.post<{ success: boolean; data: { brandName: string | null; logoUrl: string | null; primaryColor: string | null } }>(
+        '/resellers/me/branding/logo',
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Logo yüklendi');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Logo yüklenemedi');
     },
   });
 }
