@@ -381,10 +381,26 @@ model Reseller {
   parent   Reseller?  @relation("ResellerHierarchy", fields: [parentId], references: [id])
   children Reseller[] @relation("ResellerHierarchy")
 
-  users      User[]
-  creditLogs ResellerCreditLog[]
+  users         User[]
+  creditLogs    ResellerCreditLog[]
+  notifications ResellerNotification[]
 
   @@map("resellers")
+}
+
+model ResellerNotification {
+  id         String   @id @default(cuid())
+  resellerId String
+  reseller   Reseller @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  message    String
+  isRead     Boolean  @default(false)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([resellerId, isRead])
+  @@map("reseller_notifications")
 }
 
 model ResellerCreditLog {

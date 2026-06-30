@@ -388,6 +388,69 @@ export interface CreditHistoryResponse {
   summary: { added: number; spent: number };
 }
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface ResellerNotification {
+  id: string;
+  resellerId: string;
+  type: 'LOW_CREDIT' | 'USER_EXPIRING' | string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  metadata: unknown;
+  createdAt: string;
+}
+
+export function useResellerUnreadCount() {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'notifications', 'unread-count'],
+    enabled: !!token,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: { count: number } }>(
+        '/resellers/me/notifications/unread-count',
+      );
+      return res.data.data.count;
+    },
+  });
+}
+
+export function useResellerNotifications(unreadOnly = false) {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'notifications', unreadOnly],
+    enabled: !!token,
+    queryFn: async () => {
+      const params = unreadOnly ? '?unreadOnly=true' : '';
+      const res = await resellerApi.get<{ success: boolean; data: ResellerNotification[] }>(
+        `/resellers/me/notifications${params}`,
+      );
+      return res.data.data;
+    },
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (notifId: string) =>
+      resellerApi.put(`/resellers/me/notifications/${notifId}/read`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['reseller-panel', 'notifications'] }),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => resellerApi.put('/resellers/me/notifications/read-all'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'notifications'] });
+      toast.success('Tüm bildirimler okundu işaretlendi');
+    },
+  });
+}
+
 export function useResellerCreditHistory(page = 1, limit = 30, startDate?: string) {
   const token = useAuthStore((s) => s.resellerToken);
   return useQuery({

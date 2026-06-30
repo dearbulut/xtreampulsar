@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ResellerService } from './reseller.service';
+import { ResellerNotificationService } from './reseller-notification.service';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';
 import { AddCreditsDto } from './dto/add-credits.dto';
@@ -30,6 +31,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class ResellerController {
   constructor(
     private readonly resellerService: ResellerService,
+    private readonly notifService: ResellerNotificationService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -93,6 +95,39 @@ export class ResellerController {
   async getMyPackages(@CurrentUser() user: JwtUser) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.getPackages();
+  }
+
+  // ─── Notifications ───────────────────────────────────────────────────────
+
+  @Get('me/notifications/unread-count')
+  @Roles('RESELLER')
+  async getUnreadCount(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    const count = await this.notifService.getUnreadCount(user.id);
+    return { count };
+  }
+
+  @Get('me/notifications')
+  @Roles('RESELLER')
+  async getNotifications(@CurrentUser() user: JwtUser, @Query('unreadOnly') unreadOnly?: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.notifService.getNotifications(user.id, unreadOnly === 'true');
+  }
+
+  @Put('me/notifications/read-all')
+  @Roles('RESELLER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async markAllRead(@CurrentUser() user: JwtUser): Promise<void> {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    await this.notifService.markAllAsRead(user.id);
+  }
+
+  @Put('me/notifications/:notifId/read')
+  @Roles('RESELLER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async markRead(@CurrentUser() user: JwtUser, @Param('notifId') notifId: string): Promise<void> {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    await this.notifService.markAsRead(notifId, user.id);
   }
 
   // me/users — literal routes before :userId param
