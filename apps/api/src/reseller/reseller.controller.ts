@@ -262,11 +262,47 @@ export class ResellerController {
     await this.resellerService.deleteMyUser(user.id, userId);
   }
 
+  // ─── Reseller self: sub-resellers ─────────────────────────────────────────
+
+  @Get('me/sub-resellers')
+  @Roles('RESELLER')
+  async getMySubResellers(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getMySubResellers(user.id);
+  }
+
+  @Post('me/sub-resellers')
+  @Roles('RESELLER')
+  async createMySubReseller(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { username: string; password: string; email?: string; credits?: number; tier?: string },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.createSubReseller(user.id, body);
+  }
+
+  @Post('me/sub-resellers/:subId/transfer-credits')
+  @Roles('RESELLER')
+  async transferCreditsToSub(
+    @CurrentUser() user: JwtUser,
+    @Param('subId') subId: string,
+    @Body() body: { amount: number },
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.transferCredits(user.id, subId, body.amount);
+  }
+
   // ─── Admin endpoints ──────────────────────────────────────────────────────
 
   @Get()
   findAll() {
     return this.resellerService.findAll();
+  }
+
+  @Get('hierarchy')
+  @Roles('ADMIN')
+  getHierarchy() {
+    return this.resellerService.getHierarchyTree();
   }
 
   @Get(':id')
@@ -284,6 +320,12 @@ export class ResellerController {
     return this.resellerService.update(id, dto);
   }
 
+  @Put(':id')
+  @Roles('ADMIN')
+  updatePut(@Param('id') id: string, @Body() dto: UpdateResellerDto) {
+    return this.resellerService.update(id, dto);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
@@ -297,6 +339,15 @@ export class ResellerController {
     @CurrentUser() admin: JwtUser,
   ) {
     return this.resellerService.addCredits(id, dto.amount, dto.reason, admin.id);
+  }
+
+  @Post(':id/transfer-credits')
+  @Roles('ADMIN')
+  adminTransferCredits(
+    @Param('id') id: string,
+    @Body() body: { toResellerId: string; amount: number },
+  ) {
+    return this.resellerService.transferCredits(id, body.toResellerId, body.amount);
   }
 
   @Get(':id/credits')

@@ -26,10 +26,121 @@ export class ResellerService {
       where: { deletedAt: null },
       select: {
         id: true, username: true, email: true, credits: true,
-        tier: true, isActive: true, parentId: true, createdAt: true,
+        tier: true, isActive: true, parentId: true, notes: true, createdAt: true,
+        _count: { select: { users: true } },
+        parent: { select: { id: true, username: true } },
+        children: {
+          where: { deletedAt: null },
+          select: { id: true, username: true, credits: true, isActive: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getHierarchyTree() {
+    const childSelect = {
+      id: true, username: true, email: true, credits: true,
+      tier: true, isActive: true, createdAt: true,
+      _count: { select: { users: true } },
+    } as const;
+
+    return this.prisma.reseller.findMany({
+      where: { parentId: null, deletedAt: null },
+      select: {
+        ...childSelect,
+        children: {
+          where: { deletedAt: null },
+          select: {
+            ...childSelect,
+            children: { where: { deletedAt: null }, select: childSelect },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async transferCredits(fromResellerId: string, toResellerId: string, amount: number) {
+    const [from, to] = await Promise.all([
+      this.prisma.reseller.findFirst({ where: { id: fromResellerId, deletedAt: null }, select: { id: true, username: true, credits: true } }),
+      this.prisma.reseller.findFirst({ where: { id: toResellerId, deletedAt: null }, select: { id: true, username: true, credits: true } }),
+    ]);
+    if (!from) throw new NotFoundException('Kaynak reseller bulunamadı');
+    if (!to) throw new NotFoundException('Hedef reseller bulunamadı');
+    if (from.credits < amount) {
+      throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${from.credits}, gerekli: ${amount})`);
+    }
+    const fromNew = from.credits - amount;
+    const toNew = to.credits + amount;
+
+    await this.prisma.$transaction([
+      this.prisma.reseller.update({ where: { id: fromResellerId }, data: { credits: { decrement: amount } } }),
+      this.prisma.reseller.update({ where: { id: toResellerId }, data: { credits: { increment: amount } } }),
+      this.prisma.resellerCreditLog.create({
+        data: { resellerId: fromResellerId, amount, type: 'DEDUCT', reason: `${to.username} alt bayisine kredi transferi`, balanceAfter: fromNew },
+      }),
+      this.prisma.resellerCreditLog.create({
+        data: { resellerId: toResellerId, amount, type: 'ADD', reason: `${from.username} üst bayisinden kredi transferi`, balanceAfter: toNew },
+      }),
+    ]);
+    return { transferred: amount, fromBalance: fromNew, toBalance: toNew };
+  }
+
+  async getMySubResellers(resellerId: string) {
+    return this.prisma.reseller.findMany({
+      where: { parentId: resellerId, deletedAt: null },
+      select: {
+        id: true, username: true, email: true, credits: true,
+        tier: true, isActive: true, createdAt: true,
         _count: { select: { users: true } },
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createSubReseller(
+    parentResellerId: string,
+    dto: { username: string; password: string; email?: string; credits?: number; tier?: string },
+  ) {
+    const parent = await this.prisma.reseller.findFirst({
+      where: { id: parentResellerId, deletedAt: null },
+      select: { id: true, credits: true },
+    });
+    if (!parent) throw new NotFoundException('Üst reseller bulunamadı');
+
+    const initialCredits = dto.credits ?? 0;
+    if (initialCredits > 0 && parent.credits < initialCredits) {
+      throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${parent.credits}, gerekli: ${initialCredits})`);
+    }
+
+    const orConds: { username?: string; email?: string }[] = [{ username: dto.username }];
+    if (dto.email) orConds.push({ email: dto.email });
+    const existing = await this.prisma.reseller.findFirst({ where: { OR: orConds, deletedAt: null } });
+    if (existing) throw new ConflictException('Bu kullanıcı adı veya e-posta zaten kullanımda');
+
+    const hashed = await bcrypt.hash(dto.password, 12);
+    const parentNew = parent.credits - initialCredits;
+
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.reseller.create({
+        data: {
+          username: dto.username,
+          email: dto.email ?? null,
+          password: hashed,
+          credits: initialCredits,
+          tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
+          parent: { connect: { id: parentResellerId } },
+        },
+        select: { id: true, username: true, email: true, credits: true, tier: true, createdAt: true },
+      });
+      if (initialCredits > 0) {
+        await tx.reseller.update({ where: { id: parentResellerId }, data: { credits: { decrement: initialCredits } } });
+        await tx.resellerCreditLog.create({
+          data: { resellerId: parentResellerId, amount: initialCredits, type: 'DEDUCT', reason: `${dto.username} alt bayi başlangıç kredisi`, balanceAfter: parentNew },
+        });
+      }
+      return created;
     });
   }
 

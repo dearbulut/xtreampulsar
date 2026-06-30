@@ -13,6 +13,16 @@ export function useResellers() {
   });
 }
 
+export function useResellerHierarchy() {
+  return useQuery({
+    queryKey: ['resellers', 'hierarchy'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: Reseller[] }>('/resellers/hierarchy');
+      return res.data.data;
+    },
+  });
+}
+
 export function useResellerStats(id: string) {
   return useQuery({
     queryKey: ['resellers', id, 'stats'],
@@ -30,13 +40,32 @@ export function useResellerStats(id: string) {
 export function useCreateReseller() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { username: string; email: string; password: string; credits?: number }) =>
+    mutationFn: (data: { username: string; email?: string; password: string; credits?: number; tier?: string; notes?: string; parentId?: string }) =>
       api.post<{ success: boolean; data: Reseller }>('/resellers', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['resellers'] });
       toast.success('Reseller oluşturuldu');
     },
-    onError: () => toast.error('Reseller oluşturulamadı'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Reseller oluşturulamadı');
+    },
+  });
+}
+
+export function useUpdateReseller() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; tier?: string; isActive?: boolean; parentId?: string | null; notes?: string }) =>
+      api.put<{ success: boolean; data: Reseller }>(`/resellers/${id}`, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['resellers'] });
+      toast.success('Reseller güncellendi');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Güncelleme başarısız');
+    },
   });
 }
 
@@ -50,6 +79,22 @@ export function useAddCredits() {
       toast.success('Kredi eklendi');
     },
     onError: () => toast.error('Kredi eklenemedi'),
+  });
+}
+
+export function useAdminTransferCredits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fromId, toResellerId, amount }: { fromId: string; toResellerId: string; amount: number }) =>
+      api.post(`/resellers/${fromId}/transfer-credits`, { toResellerId, amount }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['resellers'] });
+      toast.success('Kredi transferi yapıldı');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Transfer başarısız');
+    },
   });
 }
 

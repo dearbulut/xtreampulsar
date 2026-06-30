@@ -82,13 +82,16 @@ export type ResellerTier = 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM';
 export interface Reseller {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
   credits: number;
   tier: ResellerTier;
   isActive: boolean;
-  parentId?: string;
+  parentId?: string | null;
+  notes?: string | null;
   createdAt: string;
   _count?: { users: number };
+  parent?: { id: string; username: string } | null;
+  children?: { id: string; username: string; credits: number; isActive: boolean }[];
 }
 
 // ─── Connection ───────────────────────────────────────────────────────────

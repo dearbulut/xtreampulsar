@@ -474,3 +474,72 @@ export function useResellerCreditHistory(page = 1, limit = 30, startDate?: strin
     },
   });
 }
+
+// ─── Sub-resellers ────────────────────────────────────────────────────────────
+
+export interface SubReseller {
+  id: string;
+  username: string;
+  email: string | null;
+  credits: number;
+  tier: string;
+  isActive: boolean;
+  createdAt: string;
+  _count?: { users: number };
+}
+
+export function useResellerSubResellers() {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'sub-resellers'],
+    enabled: !!token,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: SubReseller[] }>('/resellers/me/sub-resellers');
+      return res.data.data;
+    },
+  });
+}
+
+export function useResellerCreateSubReseller() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { username: string; password: string; email?: string; credits?: number }) => {
+      const res = await resellerApi.post<{ success: boolean; data: SubReseller }>(
+        '/resellers/me/sub-resellers',
+        data,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'sub-resellers'] });
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success('Alt bayi oluşturuldu');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Alt bayi oluşturulamadı');
+    },
+  });
+}
+
+export function useResellerTransferCredits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ subId, amount }: { subId: string; amount: number }) => {
+      const res = await resellerApi.post<{ success: boolean; data: { transferred: number; fromBalance: number; toBalance: number } }>(
+        `/resellers/me/sub-resellers/${subId}/transfer-credits`,
+        { amount },
+      );
+      return res.data.data;
+    },
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'sub-resellers'] });
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'me'] });
+      toast.success(`${data.transferred} kredi transfer edildi`);
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Transfer başarısız');
+    },
+  });
+}

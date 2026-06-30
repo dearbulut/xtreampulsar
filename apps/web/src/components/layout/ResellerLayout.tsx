@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, Link, useNavigate } from '@tanstack/react-router';
 import {
-  Tv2, LayoutDashboard, Users, LogOut, CreditCard, Settings,
+  Tv2, LayoutDashboard, Users, LogOut, CreditCard, Settings, Network,
   Bell, CreditCard as CreditIcon, Clock, CheckCheck, X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -18,6 +18,7 @@ import {
 const NAV = [
   { to: '/reseller/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/reseller/users', label: 'Kullanıcılar', icon: Users },
+  { to: '/reseller/sub-resellers', label: 'Alt Bayilerim', icon: Network },
   { to: '/reseller/credits', label: 'Kredi Hareketleri', icon: CreditCard },
   { to: '/reseller/profile', label: 'Profil / Ayarlar', icon: Settings },
 ];
