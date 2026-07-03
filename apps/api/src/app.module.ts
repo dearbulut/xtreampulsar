@@ -35,6 +35,7 @@ import { UpdateModule } from './update/update.module';
 import { WhiteLabelModule } from './white-label/white-label.module';
 import { MetadataModule } from './metadata/metadata.module';
 import { SearchModule } from './search/search.module';
+import { WebhookModule } from './webhook/webhook.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { SearchModule } from './search/search.module';
     WhiteLabelModule,
     MetadataModule,
     SearchModule,
+    WebhookModule,
   ],
   controllers: [AppController],
   providers: [

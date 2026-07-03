@@ -30,6 +30,7 @@ import { SecurityService } from '../security/security.service';
 import { LoadBalancerService } from '../server/load-balancer.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { EventsGateway } from '../gateway/events.gateway';
+import { WebhookService } from '../webhook/webhook.service';
 
 interface PlayerApiQuery {
   username?: string;
@@ -66,6 +67,7 @@ export class XtreamController {
     @Optional() private readonly workerService: StreamWorkerService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Optional() private readonly gateway?: EventsGateway,
+    @Optional() private readonly webhookService?: WebhookService,
   ) {}
 
   // ─── Authentication + action dispatch ──────────────────────────────────────
@@ -377,6 +379,12 @@ export class XtreamController {
           userAgent: clientUa,
           deviceType: this.userActivityService.detectDeviceType(clientUa),
         });
+        void this.webhookService?.triggerWebhook('user.connected', {
+          userId: user.id,
+          username: user.username,
+          streamId: streamRecord.id,
+          ip: clientIp,
+        }).catch(() => {});
       }
     } catch { /* non-fatal */ }
 
@@ -395,6 +403,12 @@ export class XtreamController {
         duration: durationSec,
         endedAt: new Date(),
       });
+      void this.webhookService?.triggerWebhook('user.disconnected', {
+        userId: user.id,
+        username: user.username,
+        streamId: streamRecord.id,
+        duration: durationSec,
+      }).catch(() => {});
     };
     res.on('close', closeConn);
     res.on('finish', closeConn);

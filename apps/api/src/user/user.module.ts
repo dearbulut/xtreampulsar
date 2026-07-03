@@ -8,9 +8,10 @@ import { ResellerModule } from '../reseller/reseller.module';
 import { StreamModule } from '../stream/stream.module';
 import { PlaylistService } from './playlist/playlist.service';
 import { UserPlaylistController, PublicPlaylistController } from './playlist/playlist.controller';
+import { WebhookModule } from '../webhook/webhook.module';
 
 @Module({
-  imports: [ResellerModule, ScheduleModule, StreamModule],
+  imports: [ResellerModule, ScheduleModule, StreamModule, WebhookModule],
   controllers: [UserController, UserPlaylistController, PublicPlaylistController],
   providers: [UserService, UserActivityService, UserRepository, PlaylistService],
   exports: [UserService, UserActivityService],

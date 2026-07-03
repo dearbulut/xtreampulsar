@@ -804,3 +804,17 @@ model UserActivityLog {
   @@index([userId, createdAt])
   @@map("user_activity_logs")
 }
+
+model Webhook {
+  id            String    @id @default(cuid())
+  name          String
+  url           String
+  secret        String?
+  events        String[]
+  isActive      Boolean   @default(true)
+  lastTriggered DateTime?
+  lastStatus    Int?
+  createdAt     DateTime  @default(now())
+
+  @@map("webhooks")
+}

@@ -12,6 +12,7 @@ import * as qrcode from 'qrcode';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository } from './user.repository';
+import { WebhookService } from '../webhook/webhook.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
@@ -24,6 +25,7 @@ export class UserService {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly prisma: PrismaService,
+    private readonly webhookService: WebhookService,
   ) {}
 
   // ─── Xtream-facing (unchanged) ─────────────────────────────────────────────
@@ -212,6 +214,13 @@ export class UserService {
       });
     }
 
+    void this.webhookService.triggerWebhook('user.created', {
+      userId: user.id,
+      username: user.username,
+      expiresAt: user.expiresAt?.toISOString() ?? null,
+      resellerId: dto.resellerId ?? null,
+    }).catch(() => {});
+
     return user;
   }
 
@@ -244,6 +253,16 @@ export class UserService {
           skipDuplicates: true,
         });
       }
+    }
+
+    const isExpiredStatus = user.status === 'DISABLED' || (user.expiresAt && user.expiresAt < new Date());
+    if (isExpiredStatus) {
+      void this.webhookService.triggerWebhook('user.expired', {
+        userId: user.id,
+        username: user.username,
+        status: user.status,
+        expiresAt: user.expiresAt?.toISOString() ?? null,
+      }).catch(() => {});
     }
 
     return user;

@@ -7,9 +7,10 @@ import { StreamModule } from '../stream/stream.module';
 import { GatewayModule } from '../gateway/gateway.module';
 import { SecurityModule } from '../security/security.module';
 import { ServerModule } from '../server/server.module';
+import { WebhookModule } from '../webhook/webhook.module';
 
 @Module({
-  imports: [UserModule, StreamModule, GatewayModule, SecurityModule, ServerModule],
+  imports: [UserModule, StreamModule, GatewayModule, SecurityModule, ServerModule, WebhookModule],
   controllers: [XtreamController, XtreamAdminController],
   providers: [XtreamService],
 })

@@ -166,6 +166,20 @@ export interface Package {
   _count?: { users: number };
 }
 
+// ─── Webhook ─────────────────────────────────────────────────────────────
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string | null;
+  events: string[];
+  isActive: boolean;
+  lastTriggered?: string | null;
+  lastStatus?: number | null;
+  createdAt: string;
+}
+
 // ─── EPG ─────────────────────────────────────────────────────────────────
 
 export interface EPGSource {
