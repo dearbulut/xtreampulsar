@@ -4,6 +4,7 @@ import {
   Patch,
   Get,
   Body,
+  Query,
   Req,
   UseGuards,
   HttpCode,
@@ -45,6 +46,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   setupTwoFactor(@CurrentUser() user: JwtUser) {
     return this.twoFactorService.generateSetup(user.id);
+  }
+
+  @Get('2fa/forced-setup')
+  forcedSetupGenerate(@Query('setupToken') setupToken: string) {
+    return this.authService.forcedSetupGenerate(setupToken);
+  }
+
+  @Post('2fa/forced-setup')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  forcedSetupEnable(@Body() dto: { setupToken: string; code: string }) {
+    return this.authService.forcedSetupEnable(dto.setupToken, dto.code);
   }
 
   @Post('2fa/enable')

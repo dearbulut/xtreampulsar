@@ -66,6 +66,7 @@ resellerApi.interceptors.response.use(
 
 export interface ResellerDashboard {
   credits: number;
+  maxUsers: number;
   totalUsers: number;
   activeUsers: number;
   newThisWeek: number;

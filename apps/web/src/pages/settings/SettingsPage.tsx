@@ -311,6 +311,26 @@ export function SettingsPage() {
                   onChange={(e) => updateSettings('reseller', { minCreditWarning: parseInt(e.target.value, 10) })} />
               </Field>
             </div>
+            <SectionTitle>Tier Bazlı Kredi Çarpanı</SectionTitle>
+            <div className="space-y-5">
+              <p className="text-xs text-muted">Reseller'ın tier'ına göre işlem başına düşülecek kredi miktarı çarpılır. 1 = standart, 2 = 2 kat kredi.</p>
+              {(['BASIC', 'SILVER', 'GOLD', 'PLATINUM'] as const).map((tier) => (
+                <Field key={tier} label={`${tier} Çarpanı`}>
+                  <input
+                    type="number"
+                    className="input"
+                    min={1}
+                    step={0.1}
+                    value={settings.reseller.tierPricing[tier] ?? 1}
+                    onChange={(e) =>
+                      updateSettings('reseller', {
+                        tierPricing: { ...settings.reseller.tierPricing, [tier]: parseFloat(e.target.value) || 1 },
+                      })
+                    }
+                  />
+                </Field>
+              ))}
+            </div>
           </>
         )}
 
@@ -435,6 +455,23 @@ export function SettingsPage() {
                 <TagInput value={settings.security.whitelistIPs}
                   onChange={(v) => updateSettings('security', { whitelistIPs: v })}
                   placeholder="192.168.1.1, 10.0.0.0/8" />
+              </Field>
+            </div>
+            <SectionTitle>Panel Coğrafi Erişim Kısıtlaması</SectionTitle>
+            <div className="space-y-5">
+              <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning">
+                ⚠ Bu ayar yalnızca admin panelini etkiler. Kendi ülkeni mutlaka listeye ekle; yoksa panelden kilitlenirsin!
+              </div>
+              <Field label="Coğrafi Engelleme Aktif" hint="Admin paneline sadece izin verilen ülkelerden erişilsin">
+                <Toggle checked={settings.security.geoBlockEnabled}
+                  onChange={(v) => updateSettings('security', { geoBlockEnabled: v })} />
+              </Field>
+              <Field label="İzin Verilen Ülkeler" hint="ISO 3166-1 alfa-2 kodları (TR, US, DE…)">
+                <TagInput
+                  value={settings.security.allowedCountries}
+                  onChange={(v) => updateSettings('security', { allowedCountries: v.map((c) => c.toUpperCase()) })}
+                  placeholder="TR, US, DE…"
+                />
               </Field>
             </div>
             <TwoFactorSection />

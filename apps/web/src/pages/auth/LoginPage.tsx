@@ -56,10 +56,16 @@ export function LoginPage() {
     try {
       const res = await api.post<{
         success: boolean;
-        data: { requiresTwoFactor?: boolean; tempToken?: string; accessToken?: string; refreshToken?: string; user?: { id: string; username: string; role: string } };
+        data: { require2FASetup?: boolean; setupToken?: string; requiresTwoFactor?: boolean; tempToken?: string; accessToken?: string; refreshToken?: string; user?: { id: string; username: string; role: string } };
       }>('/auth/login', { username, password });
 
       const data = res.data.data;
+
+      if (data.require2FASetup && data.setupToken) {
+        sessionStorage.setItem('2fa_setup_token', data.setupToken);
+        await router.navigate({ to: '/setup-2fa' });
+        return;
+      }
 
       if (data.requiresTwoFactor && data.tempToken) {
         setTempToken(data.tempToken);

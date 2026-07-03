@@ -2,11 +2,14 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
+  Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateResellerDto {
   @IsOptional()
@@ -32,4 +35,10 @@ export class UpdateResellerDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxUsers?: number;
 }

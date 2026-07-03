@@ -302,7 +302,7 @@ export class ResellerService {
     const in7Days = new Date(now.getTime() + 7 * 86_400_000);
 
     const [reseller, total, active, newThisWeek, expiringSoon, online] = await Promise.all([
-      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, maxUsers: true } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: weekAgo } } }),
@@ -312,12 +312,22 @@ export class ResellerService {
 
     return {
       credits: reseller?.credits ?? 0,
+      maxUsers: reseller?.maxUsers ?? 0,
       totalUsers: total,
       activeUsers: active,
       newThisWeek,
       expiringSoonCount: expiringSoon,
       onlineConnections: online,
     };
+  }
+
+  private async getTierMultiplier(tier: string): Promise<number> {
+    const settings = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { tierPricing: true },
+    });
+    const pricing = settings?.tierPricing as Record<string, number> | null;
+    return pricing?.[tier] ?? 1;
   }
 
   async getMyUsers(
@@ -421,13 +431,21 @@ export class ResellerService {
       throw new BadRequestException('durationDays veya durationHours gerekli');
     }
 
-    const reseller = await this.prisma.reseller.findUnique({
-      where: { id: resellerId },
-      select: { credits: true },
-    });
+    const [reseller, userCount] = await Promise.all([
+      this.prisma.reseller.findUnique({
+        where: { id: resellerId },
+        select: { credits: true, tier: true, maxUsers: true },
+      }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
+    ]);
     if (!reseller) throw new NotFoundException('Reseller not found');
 
-    const creditCost = 1;
+    if (reseller.maxUsers > 0 && userCount >= reseller.maxUsers) {
+      throw new BadRequestException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
+    }
+
+    const multiplier = await this.getTierMultiplier(reseller.tier);
+    const creditCost = Math.max(1, Math.ceil(1 * multiplier));
     if (reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
     }
@@ -488,19 +506,27 @@ export class ResellerService {
     resellerId: string,
     dto: { username?: string; password?: string; packageId: string; notes?: string },
   ) {
-    const [reseller, pkg] = await Promise.all([
-      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+    const [reseller, pkg, userCount] = await Promise.all([
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true, maxUsers: true } }),
       this.prisma.package.findUnique({
         where: { id: dto.packageId },
         select: { id: true, name: true, durationDays: true, maxConnections: true, creditCost: true, isActive: true },
       }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
     ]);
 
     if (!reseller) throw new NotFoundException('Reseller not found');
     if (!pkg || !pkg.isActive) throw new NotFoundException('Paket bulunamadı veya aktif değil');
-    if (reseller.credits < pkg.creditCost) {
+
+    if (reseller.maxUsers > 0 && userCount >= reseller.maxUsers) {
+      throw new BadRequestException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
+    }
+
+    const multiplier = await this.getTierMultiplier(reseller.tier);
+    const adjustedCost = Math.max(1, Math.ceil(pkg.creditCost * multiplier));
+    if (reseller.credits < adjustedCost) {
       throw new PaymentRequiredException(
-        `Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${pkg.creditCost})`,
+        `Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${adjustedCost})`,
       );
     }
 
@@ -512,7 +538,7 @@ export class ResellerService {
 
     const hashed = await bcrypt.hash(rawPassword, 12);
     const expiresAt = new Date(Date.now() + pkg.durationDays * 86_400_000);
-    const newBalance = reseller.credits - pkg.creditCost;
+    const newBalance = reseller.credits - adjustedCost;
 
     const [user] = await this.prisma.$transaction([
       this.prisma.user.create({
@@ -529,12 +555,12 @@ export class ResellerService {
       }),
       this.prisma.reseller.update({
         where: { id: resellerId },
-        data: { credits: { decrement: pkg.creditCost } },
+        data: { credits: { decrement: adjustedCost } },
       }),
       this.prisma.resellerCreditLog.create({
         data: {
           resellerId,
-          amount: pkg.creditCost,
+          amount: adjustedCost,
           type: 'DEDUCT',
           reason: `Paket satışı (${pkg.name}): ${rawUsername}`,
           balanceAfter: newBalance,
@@ -579,15 +605,17 @@ export class ResellerService {
   }
 
   async extendUser(resellerId: string, userId: string, days: number) {
-    const creditCost = Math.ceil(days / 30);
-
     const [reseller, user] = await Promise.all([
-      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } }),
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true } }),
       this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null }, select: { id: true, username: true, expiresAt: true } }),
     ]);
 
     if (!reseller) throw new NotFoundException('Reseller not found');
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+
+    const multiplier = await this.getTierMultiplier(reseller.tier);
+    const creditCost = Math.max(1, Math.ceil((days / 30) * multiplier));
+
     if (reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
     }

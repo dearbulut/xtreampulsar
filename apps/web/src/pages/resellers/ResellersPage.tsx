@@ -33,7 +33,7 @@ export function ResellersPage() {
     username: '', email: '', password: '', credits: 0, tier: 'BASIC', notes: '', parentId: '',
   });
   const [editForm, setEditForm] = useState({
-    tier: 'BASIC', isActive: true, parentId: '', notes: '',
+    tier: 'BASIC', isActive: true, parentId: '', notes: '', maxUsers: 0,
   });
 
   const { data: resellers, isLoading } = useResellers();
@@ -49,6 +49,7 @@ export function ResellersPage() {
       isActive: r.isActive,
       parentId: r.parentId ?? '',
       notes: r.notes ?? '',
+      maxUsers: r.maxUsers ?? 0,
     });
   };
 
@@ -354,6 +355,13 @@ export function ResellersPage() {
             </select>
           </div>
           <div>
+            <label className="label">Maks Kullanıcı</label>
+            <input type="number" className="input" min={0}
+              value={editForm.maxUsers}
+              onChange={(e) => setEditForm((f) => ({ ...f, maxUsers: parseInt(e.target.value) || 0 }))} />
+            <p className="text-xs text-muted mt-1">0 = sınırsız</p>
+          </div>
+          <div>
             <label className="label">Not</label>
             <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
               value={editForm.notes}
@@ -372,6 +380,7 @@ export function ResellersPage() {
                     isActive: editForm.isActive,
                     parentId: editForm.parentId || null,
                     notes: editForm.notes,
+                    maxUsers: editForm.maxUsers,
                   },
                   { onSuccess: () => setEditReseller(null) },
                 );

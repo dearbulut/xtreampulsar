@@ -30,6 +30,7 @@ export interface ResellerSettings {
   registrationOpen: boolean;
   minCreditWarning: number;
   defaultPackageId: string;
+  tierPricing: Record<string, number>;
 }
 
 export interface StreamingSettings {
@@ -63,6 +64,8 @@ export interface SecuritySettings {
   maxHitsRestreamer: number;
   blockDuration: number;
   denyInvalidStreamIds: boolean;
+  geoBlockEnabled: boolean;
+  allowedCountries: string[];
 }
 
 export interface DatabaseSettings {
@@ -100,9 +103,9 @@ const DEFAULTS: AllSettings = {
     telegramAlerts: false,
   },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0 },
-  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '' },
+  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 } },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
-  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true },
+  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '' },
 };
 
@@ -141,7 +144,10 @@ interface DbSettings {
   telegramAlerts?: boolean;
   // Reseller
   registrationOpen?: boolean;
+  tierPricing?: Record<string, number>;
   // Security
+  geoBlockEnabled?: boolean;
+  allowedCountries?: string[];
   enableGuard?: boolean;
   maxConnsPerIp?: number;
   maxHitsNormal?: number;
@@ -178,6 +184,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
     reseller: {
       ...DEFAULTS.reseller,
       registrationOpen: db.registrationOpen ?? false,
+      tierPricing: db.tierPricing ?? { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 },
     },
     streaming: {
       ...DEFAULTS.streaming,
@@ -206,6 +213,8 @@ function mapDbToStore(db: DbSettings): AllSettings {
       sensitivePorts: db.sensitivePorts ?? ['22', '3306', '5432'],
       whitelistIPs: db.whitelistIPs ?? [],
       openPorts: db.openPorts ?? ['80', '443', '25461'],
+      geoBlockEnabled: db.geoBlockEnabled ?? false,
+      allowedCountries: db.allowedCountries ?? [],
     },
     database: {
       ...DEFAULTS.database,
@@ -238,6 +247,7 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     trialUserLimit: settings.xtream.trialUserLimit,
     // Reseller
     registrationOpen: settings.reseller.registrationOpen,
+    tierPricing: settings.reseller.tierPricing,
     // Streaming
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
     vodDownloadLimit: settings.streaming.vodDownloadLimit,
@@ -262,6 +272,8 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     sensitivePorts: settings.security.sensitivePorts,
     whitelistIPs: settings.security.whitelistIPs,
     openPorts: settings.security.openPorts,
+    geoBlockEnabled: settings.security.geoBlockEnabled,
+    allowedCountries: settings.security.allowedCountries,
     // Database / Backup
     enableLocalBackups: settings.database.enableLocalBackups,
     localBackupDir: settings.database.localBackupDir,

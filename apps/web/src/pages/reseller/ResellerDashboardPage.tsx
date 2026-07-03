@@ -457,7 +457,15 @@ export function ResellerDashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard label="Kredi Bakiyesi" value={dashLoading ? '…' : credits} icon={CreditCard} variant="primary" />
-        <StatCard label="Toplam Kullanıcı" value={dashLoading ? '…' : (dashboard?.totalUsers ?? 0)} icon={Users} />
+        <StatCard
+          label="Kullanıcılar"
+          value={dashLoading ? '…' : (
+            dashboard?.maxUsers
+              ? `${dashboard.totalUsers} / ${dashboard.maxUsers}`
+              : String(dashboard?.totalUsers ?? 0)
+          )}
+          icon={Users}
+        />
         <StatCard label="Aktif Kullanıcı" value={dashLoading ? '…' : (dashboard?.activeUsers ?? 0)} icon={UserCheck} variant="success" />
         <StatCard label="Bu Hafta Yeni" value={dashLoading ? '…' : (dashboard?.newThisWeek ?? 0)} icon={UserPlus} variant="info" />
       </div>

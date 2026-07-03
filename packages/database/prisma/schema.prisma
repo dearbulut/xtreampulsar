@@ -371,6 +371,7 @@ model Reseller {
   email     String?      @unique
   password  String
   credits   Int          @default(0)
+  maxUsers  Int          @default(0)
   tier      ResellerTier @default(BASIC)
   isActive   Boolean      @default(true)
   notes      String?
@@ -615,6 +616,7 @@ model Settings {
   autoEnrichMetadata      Boolean  @default(false)
   // Reseller
   registrationOpen        Boolean  @default(false)
+  tierPricing             Json     @default("{}")
   // Panel geo-block
   geoBlockEnabled         Boolean  @default(false)
   allowedCountries        String[] @default([])

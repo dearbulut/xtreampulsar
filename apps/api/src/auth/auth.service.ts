@@ -94,7 +94,11 @@ export class AuthService {
 
     // 2FA zorunluluğu: hesapta require2FA=true ama 2FA kurulmamışsa setup zorunlu
     if ((user as { require2FA?: boolean }).require2FA && !user.twoFactorEnabled) {
-      return { require2FASetup: true };
+      const setupToken = this.jwtService.sign(
+        { sub: user.id, type: '2fa_setup_pending', username: user.username, role: user.role },
+        { expiresIn: '10m' },
+      );
+      return { require2FASetup: true, setupToken };
     }
 
     if (user.twoFactorEnabled) {
@@ -177,6 +181,40 @@ export class AuthService {
         twoFactorEnabled: true,
       },
     });
+  }
+
+  async forcedSetupGenerate(setupToken: string) {
+    let payload: { sub: string; type: string; username: string; role: string };
+    try {
+      payload = this.jwtService.verify<typeof payload>(setupToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired setup token');
+    }
+    if (payload.type !== '2fa_setup_pending') throw new UnauthorizedException('Invalid token type');
+    return this.twoFactorService.generateSetup(payload.sub);
+  }
+
+  async forcedSetupEnable(setupToken: string, code: string) {
+    let payload: { sub: string; type: string; username: string; role: string };
+    try {
+      payload = this.jwtService.verify<typeof payload>(setupToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired setup token');
+    }
+    if (payload.type !== '2fa_setup_pending') throw new UnauthorizedException('Invalid token type');
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, username: true, role: true, twoFactorSecret: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User not found or inactive');
+    if (!user.twoFactorSecret) throw new UnauthorizedException('2FA secret not generated yet');
+
+    const valid = await this.twoFactorService.verifyCode(code, user.twoFactorSecret);
+    if (!valid) throw new UnauthorizedException('Invalid verification code');
+
+    await this.prisma.user.update({ where: { id: payload.sub }, data: { twoFactorEnabled: true } });
+    return this.issueTokens({ id: user.id, username: user.username, role: user.role });
   }
 
   private resellerBruteKey(ip: string) { return `brute:reseller:${ip}`; }

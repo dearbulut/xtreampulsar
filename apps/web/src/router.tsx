@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { TwoFactorSetupPage } from '@/pages/auth/TwoFactorSetupPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { StreamsPage } from '@/pages/streams/StreamsPage';
 import { UsersPage } from '@/pages/users/UsersPage';
@@ -52,6 +53,12 @@ const loginRoute = createRoute({
     if (token) throw redirect({ to: '/dashboard' });
   },
   component: LoginPage,
+});
+
+const setup2FARoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/setup-2fa',
+  component: TwoFactorSetupPage,
 });
 
 const indexRoute = createRoute({
@@ -270,6 +277,7 @@ const resellerSubResellersRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  setup2FARoute,
   resellerLoginRoute,
   resellerLayoutRoute.addChildren([
     resellerDashboardRoute,

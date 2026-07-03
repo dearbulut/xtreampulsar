@@ -84,6 +84,7 @@ export interface Reseller {
   username: string;
   email: string | null;
   credits: number;
+  maxUsers: number;
   tier: ResellerTier;
   isActive: boolean;
   parentId?: string | null;
