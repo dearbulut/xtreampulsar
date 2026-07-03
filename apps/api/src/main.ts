@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -11,7 +12,30 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
-  app.enableCors();
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'https://panel.xtreampulsar.com',
+        'https://xtreampulsar.com',
+        'https://www.xtreampulsar.com',
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS policy violation'), false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  });
 
   // Reseller logos and other uploads served as static files
   app.useStaticAssets('/opt/xtreampulsar/uploads', { prefix: '/uploads' });

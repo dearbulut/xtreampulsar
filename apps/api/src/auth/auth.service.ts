@@ -173,14 +173,47 @@ export class AuthService {
     });
   }
 
-  async resellerLogin(dto: LoginDto) {
+  private resellerBruteKey(ip: string) { return `brute:reseller:${ip}`; }
+  private resellerBlockKey(ip: string)  { return `brute:reseller:block:${ip}`; }
+
+  async checkResellerBrute(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    const blocked = await this.redis.get(this.resellerBlockKey(ip)).catch(() => null);
+    if (blocked) {
+      const ttl = await this.redis.ttl(this.resellerBlockKey(ip)).catch(() => BRUTE_WINDOW_SEC);
+      const minutes = Math.ceil(ttl / 60);
+      throw new ForbiddenException(`Çok fazla başarısız deneme. ${minutes} dakika sonra tekrar deneyin.`);
+    }
+  }
+
+  async recordResellerFailedAttempt(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    const key = this.resellerBruteKey(ip);
+    const attempts = await this.redis.incr(key).catch(() => 0);
+    await this.redis.expire(key, BRUTE_WINDOW_SEC).catch(() => {});
+    if (attempts >= BRUTE_MAX_ATTEMPTS) {
+      await this.redis.setex(this.resellerBlockKey(ip), BRUTE_WINDOW_SEC, '1').catch(() => {});
+    }
+  }
+
+  async clearResellerBruteAttempts(ip: string): Promise<void> {
+    if (!this.redis || !ip) return;
+    await this.redis.del(this.resellerBruteKey(ip)).catch(() => {});
+  }
+
+  async resellerLogin(dto: LoginDto, ip = '') {
+    await this.checkResellerBrute(ip);
+
     const reseller = await this.prisma.reseller.findFirst({
       where: { username: dto.username, deletedAt: null },
     });
 
     if (!reseller || !(await bcrypt.compare(dto.password, reseller.password))) {
+      await this.recordResellerFailedAttempt(ip);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    await this.clearResellerBruteAttempts(ip);
 
     if (!reseller.isActive) {
       throw new ForbiddenException('Reseller account is inactive');

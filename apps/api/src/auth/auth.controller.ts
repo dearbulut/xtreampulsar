@@ -95,7 +95,8 @@ export class AuthController {
   @Post('reseller/login')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  resellerLogin(@Body() dto: LoginDto) {
-    return this.authService.resellerLogin(dto);
+  resellerLogin(@Body() dto: LoginDto, @Req() req: Request) {
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
+    return this.authService.resellerLogin(dto, ip);
   }
 }
