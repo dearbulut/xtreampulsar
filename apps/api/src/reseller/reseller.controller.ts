@@ -105,6 +105,40 @@ export class ResellerController {
     return this.resellerService.getPackages();
   }
 
+  @Get('me/live-connections')
+  @Roles('RESELLER')
+  async getMyLiveConnections(@CurrentUser() user: JwtUser) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getLiveConnections(user.id);
+  }
+
+  @Post('me/kick/:connectionId')
+  @Roles('RESELLER')
+  async kickMyConnection(@CurrentUser() user: JwtUser, @Param('connectionId') connectionId: string) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.kickLiveConnection(user.id, connectionId);
+  }
+
+  @Get('me/activity')
+  @Roles('RESELLER')
+  async getMyActivity(
+    @CurrentUser() user: JwtUser,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('userId') userId?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '50',
+  ) {
+    if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
+    return this.resellerService.getActivity(user.id, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      userId,
+      page: +page,
+      limit: +limit,
+    });
+  }
+
   // ─── Notifications ───────────────────────────────────────────────────────
 
   @Get('me/notifications/unread-count')

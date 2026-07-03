@@ -300,15 +300,55 @@ export class ResellerService {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
     const in7Days = new Date(now.getTime() + 7 * 86_400_000);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const days7Ago = new Date(now.getTime() - 7 * 86_400_000);
+    const days30Ago = new Date(now.getTime() - 30 * 86_400_000);
 
-    const [reseller, total, active, newThisWeek, expiringSoon, online] = await Promise.all([
+    const [reseller, total, active, newThisWeek, expiringSoon, online,
+      connectionsToday, newUsersThisMonth, bannedCount,
+      recentConns, endedConns,
+    ] = await Promise.all([
       this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, maxUsers: true } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: weekAgo } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, expiresAt: { gte: now, lte: in7Days } } }),
       this.prisma.connection.count({ where: { endedAt: null, user: { resellerId } } }),
+      this.prisma.connection.count({ where: { user: { resellerId }, startedAt: { gte: todayStart } } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: monthStart } } }),
+      this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'BANNED' } }),
+      this.prisma.connection.findMany({
+        where: { user: { resellerId }, startedAt: { gte: days7Ago } },
+        select: { startedAt: true },
+      }),
+      this.prisma.connection.findMany({
+        where: { user: { resellerId }, endedAt: { not: null }, startedAt: { gte: days30Ago } },
+        select: { startedAt: true, endedAt: true },
+        take: 500,
+      }),
     ]);
+
+    // Daily connection counts — last 7 days
+    const dayCounts: Record<string, number> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86_400_000);
+      dayCounts[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const c of recentConns) {
+      const key = c.startedAt.toISOString().slice(0, 10);
+      if (key in dayCounts) dayCounts[key]++;
+    }
+    const dailyConnections = Object.entries(dayCounts).map(([date, count]) => ({ date, count }));
+
+    // Average watch minutes
+    let avgWatchMinutes = 0;
+    if (endedConns.length > 0) {
+      const totalMs = endedConns.reduce((s, c) => s + (c.endedAt!.getTime() - c.startedAt.getTime()), 0);
+      avgWatchMinutes = Math.round(totalMs / endedConns.length / 60_000);
+    }
+
+    const expiredCount = total - active - bannedCount;
 
     return {
       credits: reseller?.credits ?? 0,
@@ -318,6 +358,118 @@ export class ResellerService {
       newThisWeek,
       expiringSoonCount: expiringSoon,
       onlineConnections: online,
+      // Extended stats
+      connectionsToday,
+      newUsersThisMonth,
+      expiringSoon,
+      avgWatchMinutes,
+      dailyConnections,
+      userStatusDistribution: {
+        active,
+        expired: Math.max(0, expiredCount),
+        banned: bannedCount,
+      },
+    };
+  }
+
+  async getLiveConnections(resellerId: string) {
+    const now = Date.now();
+    const rows = await this.prisma.connection.findMany({
+      where: { endedAt: null, user: { resellerId } },
+      select: {
+        id: true,
+        ip: true,
+        startedAt: true,
+        user: { select: { id: true, username: true } },
+        stream: { select: { id: true, name: true } },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      ip: r.ip,
+      startedAt: r.startedAt,
+      durationSeconds: Math.floor((now - r.startedAt.getTime()) / 1000),
+      user: r.user,
+      stream: r.stream,
+    }));
+  }
+
+  async kickLiveConnection(resellerId: string, connectionId: string) {
+    const conn = await this.prisma.connection.findFirst({
+      where: { id: connectionId, endedAt: null, user: { resellerId } },
+      select: { id: true },
+    });
+    if (!conn) throw new NotFoundException('Bağlantı bulunamadı');
+    await this.prisma.connection.update({
+      where: { id: connectionId },
+      data: { endedAt: new Date() },
+    });
+    return { kicked: true };
+  }
+
+  async getActivity(
+    resellerId: string,
+    opts: { startDate?: Date; endDate?: Date; userId?: string; page: number; limit: number },
+  ) {
+    const userWhere = opts.userId
+      ? { resellerId, id: opts.userId }
+      : { resellerId };
+
+    const where = {
+      user: userWhere,
+      ...(opts.startDate || opts.endDate
+        ? { createdAt: { ...(opts.startDate ? { gte: opts.startDate } : {}), ...(opts.endDate ? { lte: opts.endDate } : {}) } }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.userActivityLog.findMany({
+        where,
+        select: {
+          id: true,
+          action: true,
+          ip: true,
+          country: true,
+          duration: true,
+          createdAt: true,
+          streamId: true,
+          user: { select: { id: true, username: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (opts.page - 1) * opts.limit,
+        take: opts.limit,
+      }),
+      this.prisma.userActivityLog.count({ where }),
+    ]);
+
+    // Summary stats
+    const [totalSessions, totalDurationAgg] = await Promise.all([
+      this.prisma.userActivityLog.count({ where }),
+      this.prisma.userActivityLog.aggregate({ where, _sum: { duration: true } }),
+    ]);
+
+    const topUser = items.reduce(
+      (acc, cur) => {
+        const key = cur.user?.username ?? '?';
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    const mostActive = Object.entries(topUser).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+
+    return {
+      items,
+      total,
+      page: opts.page,
+      limit: opts.limit,
+      totalPages: Math.ceil(total / opts.limit),
+      summary: {
+        totalSessions,
+        totalWatchMinutes: Math.round((totalDurationAgg._sum.duration ?? 0) / 60),
+        mostActiveUser: mostActive,
+      },
     };
   }
 

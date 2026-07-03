@@ -3,7 +3,12 @@ import {
   CreditCard, Users, UserCheck, UserPlus, AlertTriangle, Clock,
   Search, X, Check, Copy, Zap, Shuffle,
   ChevronLeft, ChevronRight, RefreshCw, ExternalLink,
+  Activity, CalendarDays, Timer,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts';
 import { useAuthStore } from '@/store/auth.store';
 import {
   useResellerDashboard,
@@ -454,7 +459,7 @@ export function ResellerDashboardPage() {
         </div>
       )}
 
-      {/* Stat cards */}
+      {/* Stat cards — row 1 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard label="Kredi Bakiyesi" value={dashLoading ? '…' : credits} icon={CreditCard} variant="primary" />
         <StatCard
@@ -469,6 +474,67 @@ export function ResellerDashboardPage() {
         <StatCard label="Aktif Kullanıcı" value={dashLoading ? '…' : (dashboard?.activeUsers ?? 0)} icon={UserCheck} variant="success" />
         <StatCard label="Bu Hafta Yeni" value={dashLoading ? '…' : (dashboard?.newThisWeek ?? 0)} icon={UserPlus} variant="info" />
       </div>
+
+      {/* Stat cards — row 2 */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <StatCard label="Bugün Bağlantı" value={dashLoading ? '…' : (dashboard?.connectionsToday ?? 0)} icon={Activity} variant="info" />
+        <StatCard label="Bu Ay Yeni Kullanıcı" value={dashLoading ? '…' : (dashboard?.newUsersThisMonth ?? 0)} icon={CalendarDays} />
+        <StatCard label="7 Günde Dolacak" value={dashLoading ? '…' : (dashboard?.expiringSoon ?? 0)} icon={Clock} variant="warning" />
+        <StatCard label="Ort. İzleme (dk)" value={dashLoading ? '…' : (dashboard?.avgWatchMinutes ?? 0)} icon={Timer} variant="default" />
+      </div>
+
+      {/* Mini charts */}
+      {!dashLoading && dashboard && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Daily connections bar chart */}
+          <div className="card p-4">
+            <div className="text-xs font-semibold text-muted mb-3">Son 7 Gün Bağlantı</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={dashboard.dailyConnections} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#94a3b8' }}
+                  itemStyle={{ color: '#60a5fa' }}
+                />
+                <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* User status pie chart */}
+          <div className="card p-4">
+            <div className="text-xs font-semibold text-muted mb-3">Kullanıcı Dağılımı</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Aktif', value: dashboard.userStatusDistribution.active },
+                    { name: 'Süresi Dolmuş', value: dashboard.userStatusDistribution.expired },
+                    { name: 'Banlı', value: dashboard.userStatusDistribution.banned },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={60}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  <Cell fill="#10b981" />
+                  <Cell fill="#f59e0b" />
+                  <Cell fill="#ef4444" />
+                </Pie>
+                <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+                <Tooltip
+                  contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                  itemStyle={{ color: '#e2e8f0' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Users section */}
       <div className="space-y-3">

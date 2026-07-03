@@ -72,6 +72,42 @@ export interface ResellerDashboard {
   newThisWeek: number;
   expiringSoonCount: number;
   onlineConnections: number;
+  // Extended
+  connectionsToday: number;
+  newUsersThisMonth: number;
+  expiringSoon: number;
+  avgWatchMinutes: number;
+  dailyConnections: { date: string; count: number }[];
+  userStatusDistribution: { active: number; expired: number; banned: number };
+}
+
+export interface LiveConnection {
+  id: string;
+  ip: string;
+  startedAt: string;
+  durationSeconds: number;
+  user: { id: string; username: string };
+  stream: { id: string; name: string };
+}
+
+export interface ActivityItem {
+  id: string;
+  action: string;
+  ip: string | null;
+  country: string | null;
+  duration: number | null;
+  createdAt: string;
+  streamId: string | null;
+  user: { id: string; username: string } | null;
+}
+
+export interface ActivityResponse {
+  items: ActivityItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: { totalSessions: number; totalWatchMinutes: number; mostActiveUser: string };
 }
 
 export interface ResellerStats {
@@ -597,6 +633,58 @@ export function useUpdateResellerBranding() {
       toast.success('Marka adı kaydedildi');
     },
     onError: () => toast.error('Kaydedilemedi'),
+  });
+}
+
+export function useResellerLiveConnections() {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'live-connections'],
+    enabled: !!token,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: LiveConnection[] }>(
+        '/resellers/me/live-connections',
+      );
+      return res.data.data;
+    },
+  });
+}
+
+export function useKickLiveConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: string) =>
+      resellerApi.post(`/resellers/me/kick/${connectionId}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'live-connections'] });
+      toast.success('Bağlantı kesildi');
+    },
+    onError: () => toast.error('Bağlantı kesilemedi'),
+  });
+}
+
+export function useResellerActivity(opts: {
+  startDate?: string;
+  endDate?: string;
+  userId?: string;
+  page: number;
+  limit?: number;
+}) {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'activity', opts],
+    enabled: !!token,
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(opts.page), limit: String(opts.limit ?? 50) });
+      if (opts.startDate) params.set('startDate', opts.startDate);
+      if (opts.endDate) params.set('endDate', opts.endDate);
+      if (opts.userId) params.set('userId', opts.userId);
+      const res = await resellerApi.get<{ success: boolean; data: ActivityResponse }>(
+        `/resellers/me/activity?${params.toString()}`,
+      );
+      return res.data.data;
+    },
   });
 }
 

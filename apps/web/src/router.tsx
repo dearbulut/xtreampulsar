@@ -41,6 +41,9 @@ import { UserReportPage } from '@/pages/users/UserReportPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WebhooksPage } from '@/pages/webhooks/WebhooksPage';
 import { MagDevicesPage } from '@/pages/mag/MagDevicesPage';
+import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
+import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
+import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -288,6 +291,24 @@ const resellerSubResellersRoute = createRoute({
   component: ResellerSubResellersPage,
 });
 
+const resellerLiveRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/live',
+  component: ResellerLivePage,
+});
+
+const resellerActivityRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/activity',
+  component: ResellerActivityPage,
+});
+
+const resellerNotificationsRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/notifications',
+  component: ResellerNotificationsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -300,6 +321,9 @@ const routeTree = rootRoute.addChildren([
     resellerSubResellersRoute,
     resellerCreditsRoute,
     resellerProfileRoute,
+    resellerLiveRoute,
+    resellerActivityRoute,
+    resellerNotificationsRoute,
   ]),
   layoutRoute.addChildren([
     dashboardRoute,
