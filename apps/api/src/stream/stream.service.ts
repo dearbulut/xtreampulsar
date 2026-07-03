@@ -1,4 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import * as http from 'http';
+import * as https from 'https';
+import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
@@ -107,12 +109,55 @@ export class StreamService {
   async getStreamUrl(externalId: number): Promise<string> {
     const stream = await this.prisma.stream.findUnique({
       where: { externalId },
-      select: { primaryUrl: true, backupUrl: true, status: true },
+      select: { id: true, primaryUrl: true, backupUrl: true, backupUrls: true, status: true },
     });
 
     if (!stream) throw new NotFoundException(`Stream ${externalId} not found`);
-    if (stream.status === 'OFFLINE' && stream.backupUrl) return stream.backupUrl;
-    return stream.primaryUrl;
+
+    // Fast path: stream is healthy
+    if (stream.status !== 'OFFLINE') return stream.primaryUrl;
+
+    // Build candidate list: new backupUrls array first, then legacy backupUrl
+    const candidates: string[] = stream.backupUrls.length > 0
+      ? stream.backupUrls
+      : (stream.backupUrl ? [stream.backupUrl] : []);
+
+    for (const url of candidates) {
+      const ok = await this.probeUrl(url, 3000);
+      if (ok) {
+        this.logger.warn(`Stream #${externalId}: failover → ${url}`);
+        void this.prisma.streamHealthLog.create({
+          data: { streamId: stream.id, status: 'failover', errorMessage: `Failover to: ${url}` },
+        }).catch(() => {});
+        return url;
+      }
+    }
+
+    throw new ServiceUnavailableException('Tüm kaynak URL\'ler erişilemez');
+  }
+
+  async updateBackupUrls(id: string, backupUrls: string[]): Promise<void> {
+    await this.findById(id);
+    await this.prisma.stream.update({ where: { id }, data: { backupUrls } });
+  }
+
+  private probeUrl(url: string, timeoutMs = 3000): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        resolve(false);
+        return;
+      }
+      const mod = url.startsWith('https://') ? https : http;
+      const timer = setTimeout(() => { req.destroy(); resolve(false); }, timeoutMs);
+      const req = mod.request(url, { method: 'HEAD' }, (res) => {
+        clearTimeout(timer);
+        res.resume();
+        const sc = res.statusCode ?? 0;
+        resolve(sc >= 200 && sc < 500);
+      });
+      req.on('error', () => { clearTimeout(timer); resolve(false); });
+      req.end();
+    });
   }
 
   findEpgMappings(streamId: string) {

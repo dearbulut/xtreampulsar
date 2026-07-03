@@ -153,10 +153,10 @@ export class MetadataService {
     return { enriched, skipped };
   }
 
-  @Cron('0 3 * * *')
+  @Cron('30 3 * * *')
   async autoEnrichAll(): Promise<void> {
     this.enrichedToday = 0;
-    this.logger.log('Starting nightly TMDB enrichment...');
+    this.logger.log('Starting nightly TMDB enrichment (03:30)...');
     const result = await this.enrichAllBatch(100);
     this.logger.log(`Enrichment done: ${result.enriched} enriched, ${result.skipped} skipped`);
   }

@@ -51,7 +51,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
-import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream } from '@/hooks/useStreams';
+import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
 import api from '@/lib/axios';
@@ -395,6 +395,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [healthStream, setHealthStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
+  const [editStream, setEditStream] = useState<Stream | null>(null);
+  const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
   const [bulkMoveCatId, setBulkMoveCatId] = useState('');
@@ -404,6 +406,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const enrichStream = useEnrichStream();
   const reorderStreams = useReorderStreams();
   const bulkMoveCategory = useBulkMoveCategory();
+  const updateBackupUrls = useUpdateStreamBackupUrls();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -675,7 +678,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             onClick={() => restart.mutate(r.id)}
             loading={restart.isPending && restart.variables === r.id}
           />
-          <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => {}} />
+          <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); }} />
           <ActionBtn icon={Activity} title="Sağlık Raporu" color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
           <ActionBtn icon={Eye} title="URL Göster" color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
@@ -1108,6 +1111,81 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         confirmLabel="Sil"
         loading={deleteStream.isPending}
       />
+
+      {/* Edit / Backup URLs modal */}
+      <Modal
+        open={!!editStream}
+        onClose={() => setEditStream(null)}
+        title={editStream ? `Düzenle — ${editStream.name}` : ''}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">Kaynak URL (Birincil)</label>
+            <input className="input font-mono text-xs" readOnly value={editStream?.primaryUrl ?? ''} />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="label mb-0">Yedek URL'ler</label>
+              {editBackupUrls.length < 3 && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                  onClick={() => setEditBackupUrls((prev) => [...prev, ''])}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Ekle
+                </button>
+              )}
+            </div>
+            {editBackupUrls.length === 0 ? (
+              <p className="text-xs text-muted py-2">Yedek URL tanımlı değil.</p>
+            ) : (
+              <div className="space-y-2">
+                {editBackupUrls.map((url, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      className="input font-mono text-xs flex-1"
+                      placeholder="http:// veya rtmp://"
+                      value={url}
+                      onChange={(e) => {
+                        const next = [...editBackupUrls];
+                        next[i] = e.target.value;
+                        setEditBackupUrls(next);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="p-2 rounded-lg hover:bg-surface-2 text-danger transition-colors"
+                      onClick={() => setEditBackupUrls((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted mt-1">Maks 3 yedek URL. Birincil URL çevrimdışıysa sırayla denenir.</p>
+          </div>
+          <div className="flex gap-2 justify-end pt-3 border-t border-border">
+            <button onClick={() => setEditStream(null)} className="btn-ghost">İptal</button>
+            <button
+              disabled={updateBackupUrls.isPending}
+              onClick={() => {
+                if (!editStream) return;
+                const urls = editBackupUrls.filter((u) => u.trim() !== '');
+                updateBackupUrls.mutate(
+                  { id: editStream.id, backupUrls: urls },
+                  { onSuccess: () => setEditStream(null) },
+                );
+              }}
+              className="btn-primary"
+            >
+              {updateBackupUrls.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Stream health modal */}
       {healthStream && (

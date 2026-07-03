@@ -121,3 +121,16 @@ export function useUpdateStream() {
     onError: () => toast.error('Güncelleme başarısız'),
   });
 }
+
+export function useUpdateStreamBackupUrls() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, backupUrls }: { id: string; backupUrls: string[] }) =>
+      api.put(`/streams/${id}/backup-urls`, { backupUrls }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+      toast.success('Yedek URL\'ler kaydedildi');
+    },
+    onError: () => toast.error('Kaydetme başarısız'),
+  });
+}

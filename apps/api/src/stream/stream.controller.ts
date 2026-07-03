@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Param,
@@ -205,6 +206,17 @@ export class StreamController {
   @Roles('ADMIN', 'RESELLER')
   analyzeStream(@Param('id') id: string) {
     return this.qualityService.analyzeStream(id);
+  }
+
+  @Put(':id/backup-urls')
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async updateBackupUrls(
+    @Param('id') id: string,
+    @Body('backupUrls') backupUrls: string[],
+  ) {
+    await this.streamService.updateBackupUrls(id, backupUrls ?? []);
+    return { success: true };
   }
 
   @Post(':id/clone')

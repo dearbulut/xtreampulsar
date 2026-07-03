@@ -239,6 +239,7 @@ model Stream {
   name            String
   primaryUrl      String
   backupUrl       String?
+  backupUrls      String[] @default([])
   ffmpegPid       Int?
   streamMode      String       @default("PROXY") // PROXY | TRANSCODE
   workerStatus    WorkerStatus @default(IDLE)
