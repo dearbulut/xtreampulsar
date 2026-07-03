@@ -15,4 +15,9 @@ export class QueryUserDto extends PaginationDto {
   @Type(() => Boolean)
   @IsBoolean()
   expiring_soon?: boolean;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isTrial?: boolean;
 }

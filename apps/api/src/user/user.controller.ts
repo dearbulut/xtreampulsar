@@ -152,6 +152,14 @@ export class UserController {
     return this.userService.bulkRenew(body.userIds, body.packageId);
   }
 
+  @Post('trial')
+  @Roles('ADMIN')
+  createTrial(
+    @Body() body: { username?: string; password?: string; durationDays?: number; maxConnections?: number },
+  ) {
+    return this.userService.createTrialUser(body);
+  }
+
   @Post('quick-create')
   @Roles('ADMIN')
   quickCreate(

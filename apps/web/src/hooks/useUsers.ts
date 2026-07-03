@@ -10,6 +10,7 @@ interface UserFilter {
   status?: string;
   resellerId?: string;
   packageId?: string;
+  isTrial?: boolean;
 }
 
 export function useUsers(filter: UserFilter = {}) {
@@ -20,6 +21,7 @@ export function useUsers(filter: UserFilter = {}) {
   if (filter.status) params.set('status', filter.status);
   if (filter.resellerId) params.set('resellerId', filter.resellerId);
   if (filter.packageId) params.set('packageId', filter.packageId);
+  if (filter.isTrial !== undefined) params.set('isTrial', String(filter.isTrial));
 
   return useQuery({
     queryKey: ['users', filter],
@@ -57,6 +59,23 @@ export interface QuickCreateResult {
   user: { id: string; username: string; password: string; expiresAt: string };
   m3uUrl: string;
   playerApiUrl: string;
+}
+
+export interface TrialCreateResult {
+  user: { id: string; username: string; password: string; expiresAt: string };
+  m3uUrl: string;
+}
+
+export function useCreateTrialUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { username?: string; password?: string; durationDays?: number; maxConnections?: number }) =>
+      api.post<{ success: boolean; data: TrialCreateResult }>('/users/trial', data).then((r) => r.data.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: () => toast.error('Trial hesap oluşturulamadı'),
+  });
 }
 
 export function useQuickCreateUser() {

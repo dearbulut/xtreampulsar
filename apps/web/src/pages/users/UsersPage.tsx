@@ -13,10 +13,10 @@ import { Modal } from '@/components/ui/Modal';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
-  useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser,
+  useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser, useCreateTrialUser,
 } from '@/hooks/useUsers';
 import { useSettings } from '@/hooks/useSettings';
-import type { QuickCreateResult } from '@/hooks/useUsers';
+import type { QuickCreateResult, TrialCreateResult } from '@/hooks/useUsers';
 import { useBulkRenew } from '@/hooks/useBulkRenew';
 import { usePackages } from '@/hooks/usePackages';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -125,8 +125,10 @@ export function UsersPage() {
 
   const [activityUserId, setActivityUserId] = useState<string | null>(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [showTrialCreate, setShowTrialCreate] = useState(false);
+  const [isTrial, setIsTrial] = useState(() => getParam('isTrial') === 'true' ? true : undefined as boolean | undefined);
 
-  const { data, isLoading } = useUsers({ page, limit: 25, search, status, resellerId: resellerId || undefined, packageId: packageId || undefined });
+  const { data, isLoading } = useUsers({ page, limit: 25, search, status, resellerId: resellerId || undefined, packageId: packageId || undefined, isTrial });
   const { data: bouquets = [] } = useBouquets();
   const { data: packages = [] } = usePackages();
   const { data: resellers = [] } = useResellers();
@@ -135,6 +137,7 @@ export function UsersPage() {
   const bulkActionMut = useBulkAction();
   const createUser = useCreateUser();
   const quickCreateUser = useQuickCreateUser();
+  const trialCreateUser = useCreateTrialUser();
   const extendUser = useExtendUser();
   const banUser = useBanUser();
   const unbanUser = useUnbanUser();
@@ -207,7 +210,12 @@ export function UsersPage() {
       render: (r) => (
         <div className="flex items-center gap-2">
           <div>
-            <div className="text-sm font-medium text-slate-200 font-mono">{r.username}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-slate-200 font-mono">{r.username}</span>
+              {r.isTrial && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">TRIAL</span>
+              )}
+            </div>
             {r.notes && <div className="text-xs text-muted truncate max-w-24">{r.notes}</div>}
           </div>
           <button
@@ -312,6 +320,10 @@ export function UsersPage() {
             <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title="CSV İndir">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Rapor İndir</span>
+            </button>
+            <button onClick={() => setShowTrialCreate(true)} className="btn-secondary flex items-center gap-1.5 text-sm text-amber-300 border-amber-300/30 hover:border-amber-300/60">
+              <Timer className="w-4 h-4" />
+              <span className="hidden sm:inline">Trial Ekle</span>
             </button>
             <button onClick={() => setShowQuickCreate(true)} className="btn-secondary flex items-center gap-1.5 text-sm text-amber-400 border-amber-400/30 hover:border-amber-400/60">
               <Zap className="w-4 h-4" />
@@ -434,6 +446,21 @@ export function UsersPage() {
               <option value="7">7 gün içinde bitiyor</option>
               <option value="14">14 gün içinde bitiyor</option>
               <option value="30">30 gün içinde bitiyor</option>
+            </select>
+            <select
+              className="input h-9 w-auto min-w-40"
+              value={isTrial === true ? 'true' : isTrial === false ? 'false' : ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                const next = v === 'true' ? true : v === 'false' ? false : undefined;
+                setIsTrial(next);
+                setParam('isTrial', v);
+                setPage(1);
+              }}
+            >
+              <option value="">Tüm Hesaplar</option>
+              <option value="true">Trial Hesaplar</option>
+              <option value="false">Normal Hesaplar</option>
             </select>
             {(resellerId || packageId || expiresInDays) && (
               <button
@@ -869,6 +896,14 @@ export function UsersPage() {
         <QuickCreateModal
           onClose={() => setShowQuickCreate(false)}
           mutation={quickCreateUser}
+        />
+      )}
+
+      {/* Trial Ekle Modal */}
+      {showTrialCreate && (
+        <TrialCreateModal
+          onClose={() => setShowTrialCreate(false)}
+          mutation={trialCreateUser}
         />
       )}
 
@@ -1925,6 +1960,114 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
           </div>
         </div>
       )}
+    </Modal>
+  );
+}
+
+interface TrialCreateModalProps {
+  onClose: () => void;
+  mutation: ReturnType<typeof useCreateTrialUser>;
+}
+
+function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [durationDays, setDurationDays] = useState(7);
+  const [maxConnections, setMaxConnections] = useState(1);
+  const [result, setResult] = useState<TrialCreateResult | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCreate = () => {
+    mutation.mutate(
+      { username: username || undefined, password: password || undefined, durationDays, maxConnections },
+      { onSuccess: (res) => setResult(res) },
+    );
+  };
+
+  if (result) {
+    const text = `Kullanıcı Adı: ${result.user.username}\nŞifre: ${result.user.password}\nM3U URL: ${result.m3uUrl}`;
+    return (
+      <Modal open onClose={onClose} title="⏱ Trial Hesap Oluşturuldu" size="md">
+        <div className="space-y-4">
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted">Kullanıcı Adı</span>
+              <span className="font-mono text-amber-300">{result.user.username}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted">Şifre</span>
+              <span className="font-mono text-amber-300">{result.user.password}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted">Süre</span>
+              <span className="font-mono">{new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}</span>
+            </div>
+          </div>
+          <div className="rounded-xl bg-surface-2 border border-border p-3">
+            <p className="text-xs text-muted mb-1">M3U URL</p>
+            <p className="font-mono text-xs text-primary break-all">{result.m3uUrl}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { void navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+              className="btn-secondary text-sm flex-1"
+            >
+              {copied ? 'Kopyalandı!' : 'Kopyala'}
+            </button>
+            <button onClick={() => { setResult(null); setUsername(''); setPassword(''); }} className="btn-ghost text-sm">Yeni</button>
+            <button onClick={onClose} className="btn-ghost text-sm">Kapat</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal open onClose={onClose} title="⏱ Trial Hesap Ekle" size="sm">
+      <div className="space-y-4">
+        <div>
+          <label className="label">Kullanıcı Adı <span className="text-muted text-xs">(boş bırakılırsa otomatik)</span></label>
+          <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="trial_..." />
+        </div>
+        <div>
+          <label className="label">Şifre <span className="text-muted text-xs">(boş bırakılırsa otomatik)</span></label>
+          <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Otomatik üretilir" />
+        </div>
+        <div>
+          <label className="label">Süre</label>
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 3, 7, 14].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDurationDays(d)}
+                className={cn('py-2 rounded-lg text-sm font-medium border transition-colors', durationDays === d ? 'bg-primary text-white border-primary' : 'border-border text-muted hover:text-fg hover:border-border/80')}
+              >
+                {d} Gün
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="label">Max Bağlantı</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2].map((n) => (
+              <button
+                key={n}
+                onClick={() => setMaxConnections(n)}
+                className={cn('py-2 rounded-lg text-sm font-medium border transition-colors', maxConnections === n ? 'bg-primary text-white border-primary' : 'border-border text-muted hover:text-fg')}
+              >
+                {n} Bağlantı
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end pt-2 border-t border-border">
+          <button onClick={onClose} className="btn-ghost">İptal</button>
+          <button onClick={handleCreate} disabled={mutation.isPending} className="btn-primary">
+            {mutation.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }

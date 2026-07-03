@@ -73,7 +73,21 @@ export interface User {
   updatedAt: string;
   resellerId?: string;
   notes?: string;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
   _count?: { connections: number };
+}
+
+// ─── MagDevice ────────────────────────────────────────────────────────────────
+
+export interface MagDevice {
+  id: string;
+  mac: string;
+  serialNumber?: string | null;
+  userId?: string | null;
+  user?: { id: string; username: string; status: string } | null;
+  lastSeen?: string;
+  createdAt: string;
 }
 
 // ─── Reseller ─────────────────────────────────────────────────────────────

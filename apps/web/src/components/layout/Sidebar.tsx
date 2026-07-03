@@ -25,6 +25,7 @@ import {
   CalendarDays,
   Link2,
   Webhook,
+  Tablet,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,7 @@ const NAV: NavGroup[] = [
       { label: 'Kullanıcılar', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
       { label: 'Kullanıcı Raporları', to: '/users/report', icon: BarChart2 },
       { label: "Reseller'lar", to: '/resellers', icon: UserCircle },
+      { label: 'MAG Cihazlar', to: '/mag-devices', icon: Tablet },
     ],
   },
   {

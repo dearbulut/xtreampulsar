@@ -40,6 +40,7 @@ import { EpgGuidePage } from '@/pages/epg/EpgGuidePage';
 import { UserReportPage } from '@/pages/users/UserReportPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WebhooksPage } from '@/pages/webhooks/WebhooksPage';
+import { MagDevicesPage } from '@/pages/mag/MagDevicesPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -223,6 +224,12 @@ const webhooksRoute = createRoute({
   component: WebhooksPage,
 });
 
+const magDevicesRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/mag-devices',
+  component: MagDevicesPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -319,6 +326,7 @@ const routeTree = rootRoute.addChildren([
     userReportRoute,
     profileRoute,
     webhooksRoute,
+    magDevicesRoute,
   ]),
 ]);
 

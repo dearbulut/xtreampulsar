@@ -449,6 +449,8 @@ model User {
   status           UserStatus @default(ACTIVE)
   expiresAt        DateTime
   notes            String?
+  isTrial          Boolean    @default(false)
+  trialEndsAt      DateTime?
   deletedAt        DateTime?
   twoFactorSecret  String?
   twoFactorEnabled Boolean    @default(false)
@@ -599,6 +601,8 @@ model Settings {
   serverPort              Int      @default(25461)
   timezone                String   @default("UTC")
   trialUserLimit          Int      @default(500)
+  trialDays               Int      @default(7)
+  trialMaxConnections     Int      @default(1)
   adminEmail              String   @default("")
   resellerNotifyExpiry    Boolean  @default(true)
   streamDownAlert         Boolean  @default(true)

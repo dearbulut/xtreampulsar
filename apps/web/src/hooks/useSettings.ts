@@ -24,6 +24,8 @@ export interface XtreamSettings {
   httpsPort: number;
   outputFormats: string[];
   trialUserLimit: number;
+  trialDays: number;
+  trialMaxConnections: number;
 }
 
 export interface ResellerSettings {
@@ -102,7 +104,7 @@ const DEFAULTS: AllSettings = {
     discordAlerts: false,
     telegramAlerts: false,
   },
-  xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0 },
+  xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0, trialDays: 7, trialMaxConnections: 1 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 } },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
   security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
@@ -115,6 +117,8 @@ interface DbSettings {
   serverPort: number;
   timezone: string;
   trialUserLimit: number;
+  trialDays?: number;
+  trialMaxConnections?: number;
   vodDownloadSpeed: number;
   vodDownloadLimit: number;
   bufferSize: number;
@@ -180,6 +184,8 @@ function mapDbToStore(db: DbSettings): AllSettings {
       ...DEFAULTS.xtream,
       port: db.serverPort,
       trialUserLimit: db.trialUserLimit,
+      trialDays: db.trialDays ?? 7,
+      trialMaxConnections: db.trialMaxConnections ?? 1,
     },
     reseller: {
       ...DEFAULTS.reseller,
@@ -245,6 +251,8 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     // Xtream
     serverPort: settings.xtream.port,
     trialUserLimit: settings.xtream.trialUserLimit,
+    trialDays: settings.xtream.trialDays,
+    trialMaxConnections: settings.xtream.trialMaxConnections,
     // Reseller
     registrationOpen: settings.reseller.registrationOpen,
     tierPricing: settings.reseller.tierPricing,

@@ -109,7 +109,7 @@ export class UserService {
   // ─── Admin CRUD ────────────────────────────────────────────────────────────
 
   async findAll(query: QueryUserDto) {
-    const { page = 1, limit = 20, search, resellerId, status, expiring_soon } = query;
+    const { page = 1, limit = 20, search, resellerId, status, expiring_soon, isTrial } = query;
     const now = new Date();
     const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -124,6 +124,7 @@ export class UserService {
       ...(resellerId ? { resellerId } : {}),
       ...(status ? { status: status as 'ACTIVE' | 'DISABLED' | 'EXPIRED' | 'BANNED' } : {}),
       ...(expiring_soon ? { expiresAt: { lte: sevenDays, gte: now } } : {}),
+      ...(isTrial !== undefined ? { isTrial } : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -519,6 +520,64 @@ export class UserService {
     const playerApiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(rawPassword)}`;
 
     return { user: { ...user, password: rawPassword }, m3uUrl, playerApiUrl };
+  }
+
+  async createTrialUser(dto: {
+    username?: string;
+    password?: string;
+    durationDays?: number;
+    maxConnections?: number;
+  }): Promise<{ user: { id: string; username: string; password: string; expiresAt: Date }; m3uUrl: string }> {
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const trialDays = dto.durationDays ?? (settings as Record<string, unknown> & { trialDays?: number })?.trialDays ?? 7;
+    const trialMaxConn = dto.maxConnections ?? (settings as Record<string, unknown> & { trialMaxConnections?: number })?.trialMaxConnections ?? 1;
+
+    const username = dto.username?.trim() || `trial_${this.makeRandomPassword(6).toLowerCase()}`;
+    const rawPassword = dto.password?.trim() || this.makeRandomPassword(8);
+
+    let finalUsername = username;
+    const existing = await this.prisma.user.findUnique({ where: { username } });
+    if (existing) finalUsername = `${username}${this.makeRandomPassword(3).toLowerCase()}`;
+
+    const hashed = await bcrypt.hash(rawPassword, 12);
+    const expiresAt = new Date(Date.now() + trialDays * 86_400_000);
+
+    const user = await this.prisma.user.create({
+      data: {
+        username: finalUsername,
+        password: hashed,
+        maxConnections: trialMaxConn,
+        expiresAt,
+        trialEndsAt: expiresAt,
+        isTrial: true,
+        status: 'ACTIVE',
+        role: 'USER',
+      },
+      select: { id: true, username: true, expiresAt: true },
+    });
+
+    const baseUrl = settings?.serverUrl
+      ? `${settings.serverUrl}:${settings.serverPort ?? 25461}`
+      : `http://localhost:${settings?.serverPort ?? 25461}`;
+
+    const m3uUrl = `${baseUrl}/get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`;
+    return { user: { ...user, password: rawPassword }, m3uUrl };
+  }
+
+  @Cron('0 1 * * *')
+  async expiredTrialUsers(): Promise<void> {
+    const result = await this.prisma.user.updateMany({
+      where: {
+        isTrial: true,
+        status: { not: 'DISABLED' },
+        expiresAt: { lt: new Date() },
+        deletedAt: null,
+      },
+      data: { status: 'DISABLED' },
+    });
+    if (result.count > 0) {
+      this.logger.log(`Trial cleanup: ${result.count} expired trial account(s) disabled`);
+    }
   }
 
   async generateQrCode(id: string): Promise<{ qrCodeImage: string; serverUrl: string; username: string }> {

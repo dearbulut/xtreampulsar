@@ -292,6 +292,18 @@ export function SettingsPage() {
                   onChange={(e) => updateSettings('xtream', { trialUserLimit: parseInt(e.target.value, 10) })} />
               </Field>
             </div>
+
+            <SectionTitle>Trial Ayarları</SectionTitle>
+            <div className="space-y-5">
+              <Field label="Varsayılan Trial Süresi (gün)" hint="'Trial Ekle' butonunda varsayılan süre">
+                <input type="number" min={1} max={90} className="input" value={settings.xtream.trialDays}
+                  onChange={(e) => updateSettings('xtream', { trialDays: parseInt(e.target.value, 10) })} />
+              </Field>
+              <Field label="Varsayılan Max Bağlantı" hint="Trial hesaplar için maksimum eş zamanlı bağlantı">
+                <input type="number" min={1} max={5} className="input" value={settings.xtream.trialMaxConnections}
+                  onChange={(e) => updateSettings('xtream', { trialMaxConnections: parseInt(e.target.value, 10) })} />
+              </Field>
+            </div>
           </>
         )}
 
