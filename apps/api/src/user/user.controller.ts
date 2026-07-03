@@ -105,6 +105,17 @@ export class UserController {
     return this.userService.extend(id, dto.days);
   }
 
+  @Patch(':id/require-2fa')
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async setRequire2FA(
+    @Param('id') id: string,
+    @Body('require2FA') require2FA: boolean,
+  ) {
+    await this.prisma.user.update({ where: { id }, data: { require2FA } });
+    return { id, require2FA };
+  }
+
   @Post(':id/ban')
   @Roles('ADMIN', 'RESELLER')
   ban(@Param('id') id: string) {

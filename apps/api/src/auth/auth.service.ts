@@ -92,6 +92,11 @@ export class AuthService {
       deviceType: this.userActivityService.detectDeviceType(userAgent),
     });
 
+    // 2FA zorunluluğu: hesapta require2FA=true ama 2FA kurulmamışsa setup zorunlu
+    if ((user as { require2FA?: boolean }).require2FA && !user.twoFactorEnabled) {
+      return { require2FASetup: true };
+    }
+
     if (user.twoFactorEnabled) {
       const tempToken = this.jwtService.sign(
         { sub: user.id, type: '2fa_pending', username: user.username, role: user.role },

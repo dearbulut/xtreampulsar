@@ -450,6 +450,7 @@ model User {
   deletedAt        DateTime?
   twoFactorSecret  String?
   twoFactorEnabled Boolean    @default(false)
+  require2FA       Boolean    @default(false)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -614,6 +615,9 @@ model Settings {
   autoEnrichMetadata      Boolean  @default(false)
   // Reseller
   registrationOpen        Boolean  @default(false)
+  // Panel geo-block
+  geoBlockEnabled         Boolean  @default(false)
+  allowedCountries        String[] @default([])
   // Security / Server Guard
   enableGuard             Boolean  @default(false)
   maxConnsPerIp           Int      @default(10)

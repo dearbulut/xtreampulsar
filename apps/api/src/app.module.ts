@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { PanelGeoBlockGuard } from './security/panel-geo-block.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -74,6 +75,7 @@ import { SearchModule } from './search/search.module';
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: PanelGeoBlockGuard },
   ],
 })
 export class AppModule {}
