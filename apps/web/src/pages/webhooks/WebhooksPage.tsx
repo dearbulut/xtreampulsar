@@ -41,7 +41,8 @@ interface TestResult {
 }
 
 export function WebhooksPage() {
-  const { data: webhooks = [], isLoading } = useWebhooks();
+  const { data: webhooksRaw, isLoading } = useWebhooks();
+  const webhooks = Array.isArray(webhooksRaw) ? webhooksRaw : [];
   const createWebhook = useCreateWebhook();
   const updateWebhook = useUpdateWebhook();
   const deleteWebhook = useDeleteWebhook();

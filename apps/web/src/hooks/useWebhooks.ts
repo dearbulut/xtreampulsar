@@ -8,7 +8,11 @@ const KEY = ['webhooks'] as const;
 export function useWebhooks() {
   return useQuery({
     queryKey: KEY,
-    queryFn: () => api.get<Webhook[]>('/webhooks').then((r) => r.data),
+    queryFn: async () => {
+      const res = await api.get<{ data: Webhook[] }>('/webhooks');
+      const raw = res.data.data ?? res.data;
+      return Array.isArray(raw) ? raw : [];
+    },
   });
 }
 
