@@ -19,6 +19,7 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 
 const BRUTE_MAX_ATTEMPTS = 5;
 const BRUTE_WINDOW_SEC = 15 * 60;
+const RESELLER_REFRESH_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -226,10 +227,21 @@ export class AuthService {
       type: 'reseller',
     };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const rawRefresh = crypto.randomBytes(64).toString('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefresh).digest('hex');
+
+    await this.prisma.resellerRefreshToken.create({
+      data: {
+        token: hashedRefresh,
+        resellerId: reseller.id,
+        expiresAt: new Date(Date.now() + RESELLER_REFRESH_EXPIRES_MS),
+      },
+    });
 
     return {
       accessToken,
+      refreshToken: rawRefresh,
       reseller: {
         id: reseller.id,
         username: reseller.username,
@@ -237,6 +249,57 @@ export class AuthService {
         tier: reseller.tier,
       } satisfies Partial<Reseller>,
     };
+  }
+
+  async resellerRefresh(rawToken: string) {
+    const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const stored = await this.prisma.resellerRefreshToken.findUnique({
+      where: { token: hash },
+      include: { reseller: true },
+    });
+
+    if (!stored || stored.isRevoked || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (!stored.reseller.isActive) {
+      throw new ForbiddenException('Reseller account is inactive');
+    }
+
+    await this.prisma.resellerRefreshToken.update({
+      where: { id: stored.id },
+      data: { isRevoked: true },
+    });
+
+    const payload = {
+      sub: stored.reseller.id,
+      username: stored.reseller.username,
+      role: 'RESELLER',
+      type: 'reseller',
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const rawRefresh = crypto.randomBytes(64).toString('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefresh).digest('hex');
+
+    await this.prisma.resellerRefreshToken.create({
+      data: {
+        token: hashedRefresh,
+        resellerId: stored.reseller.id,
+        expiresAt: new Date(Date.now() + RESELLER_REFRESH_EXPIRES_MS),
+      },
+    });
+
+    return { accessToken, refreshToken: rawRefresh };
+  }
+
+  async resellerLogout(rawToken: string): Promise<void> {
+    const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await this.prisma.resellerRefreshToken.updateMany({
+      where: { token: hash },
+      data: { isRevoked: true },
+    });
   }
 
   private async issueTokens(user: { id: string; username: string; role: string }) {

@@ -387,8 +387,24 @@ model Reseller {
   users         User[]
   creditLogs    ResellerCreditLog[]
   notifications ResellerNotification[]
+  refreshTokens ResellerRefreshToken[]
 
   @@map("resellers")
+}
+
+model ResellerRefreshToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  isRevoked  Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  resellerId String
+  reseller   Reseller @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+
+  @@index([resellerId])
+  @@index([token])
+  @@map("reseller_refresh_tokens")
 }
 
 model ResellerNotification {

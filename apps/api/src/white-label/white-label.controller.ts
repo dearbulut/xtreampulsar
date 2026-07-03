@@ -30,11 +30,15 @@ export class WhiteLabelController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadLogo(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file provided');
-    // In production: upload to S3/CDN and return URL
-    // For now: convert to base64 data URL
+    const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!ALLOWED_MIME.includes(file.mimetype)) {
+      throw new BadRequestException('Sadece PNG, JPEG veya WebP yükleyebilirsiniz');
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Dosya boyutu 2 MB sınırını aşıyor');
+    }
     const base64 = file.buffer.toString('base64');
-    const mimeType = file.mimetype;
-    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
     return this.whiteLabelService.setLogoUrl(dataUrl);
   }
 

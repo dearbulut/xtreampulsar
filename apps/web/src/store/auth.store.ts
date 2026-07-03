@@ -18,16 +18,18 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   resellerToken: string | null;
+  resellerRefreshToken: string | null;
   resellerUser: ResellerUser | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
   setTokens: (access: string, refresh: string, user: AuthUser) => void;
   resellerLogin: (username: string, password: string) => Promise<void>;
+  resellerRefresh: () => Promise<void>;
   resellerLogout: () => void;
 }
 
-type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user' | 'resellerToken' | 'resellerUser'>;
+type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user' | 'resellerToken' | 'resellerRefreshToken' | 'resellerUser'>;
 
 export const useAuthStore = create<AuthState>()(
   persist<AuthState, [], [], PersistedState>(
@@ -36,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       resellerToken: null,
+      resellerRefreshToken: null,
       resellerUser: null,
 
       setTokens(access: string, refresh: string, user: AuthUser) {
@@ -75,14 +78,31 @@ export const useAuthStore = create<AuthState>()(
       async resellerLogin(username: string, password: string) {
         const res = await authClient.post<{
           success: boolean;
-          data: { accessToken: string; reseller: ResellerUser };
+          data: { accessToken: string; refreshToken: string; reseller: ResellerUser };
         }>('/auth/reseller/login', { username, password });
-        const { accessToken, reseller } = res.data.data;
-        set({ resellerToken: accessToken, resellerUser: reseller });
+        const { accessToken, refreshToken, reseller } = res.data.data;
+        set({ resellerToken: accessToken, resellerRefreshToken: refreshToken, resellerUser: reseller });
+      },
+
+      async resellerRefresh() {
+        const token = get().resellerRefreshToken;
+        if (!token) throw new Error('No reseller refresh token');
+        const res = await authClient.post<{
+          success: boolean;
+          data: { accessToken: string; refreshToken: string };
+        }>('/auth/reseller/refresh', { refreshToken: token });
+        const { accessToken, refreshToken } = res.data.data;
+        set({ resellerToken: accessToken, resellerRefreshToken: refreshToken });
       },
 
       resellerLogout() {
-        set({ resellerToken: null, resellerUser: null });
+        const token = get().resellerRefreshToken;
+        if (token) {
+          void authClient
+            .post('/auth/reseller/logout', { refreshToken: token })
+            .catch(() => {});
+        }
+        set({ resellerToken: null, resellerRefreshToken: null, resellerUser: null });
       },
     }),
     {
@@ -92,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         user: state.user,
         resellerToken: state.resellerToken,
+        resellerRefreshToken: state.resellerRefreshToken,
         resellerUser: state.resellerUser,
       }),
     },

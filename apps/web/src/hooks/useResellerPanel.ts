@@ -13,13 +13,46 @@ resellerApi.interceptors.request.use((config) => {
   return config;
 });
 
+let resellerRefreshing = false;
+let resellerRefreshQueue: Array<(token: string) => void> = [];
+
 resellerApi.interceptors.response.use(
   (res) => res,
-  (err: unknown) => {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 401) {
-      useAuthStore.getState().resellerLogout();
-      window.location.href = '/reseller/login';
+  async (err: unknown) => {
+    const axiosErr = err as { config?: { _retry?: boolean; headers?: Record<string, string> }; response?: { status?: number } };
+    const status = axiosErr?.response?.status;
+
+    if (status === 401 && !axiosErr.config?._retry) {
+      const store = useAuthStore.getState();
+      if (store.resellerRefreshToken) {
+        if (resellerRefreshing) {
+          return new Promise((resolve) => {
+            resellerRefreshQueue.push((token: string) => {
+              if (axiosErr.config) axiosErr.config.headers = { ...axiosErr.config.headers, Authorization: `Bearer ${token}` };
+              resolve(resellerApi(axiosErr.config ?? {}));
+            });
+          });
+        }
+        resellerRefreshing = true;
+        if (axiosErr.config) axiosErr.config._retry = true;
+        try {
+          await store.resellerRefresh();
+          const newToken = useAuthStore.getState().resellerToken ?? '';
+          resellerRefreshQueue.forEach((cb) => cb(newToken));
+          resellerRefreshQueue = [];
+          if (axiosErr.config) axiosErr.config.headers = { ...axiosErr.config.headers, Authorization: `Bearer ${newToken}` };
+          return resellerApi(axiosErr.config ?? {});
+        } catch {
+          resellerRefreshQueue = [];
+          store.resellerLogout();
+          window.location.href = '/reseller/login';
+        } finally {
+          resellerRefreshing = false;
+        }
+      } else {
+        store.resellerLogout();
+        window.location.href = '/reseller/login';
+      }
     } else if (status === 503) {
       toast.error('Sunucu geçici olarak kullanılamıyor, lütfen bekleyin.');
     } else if (status === 429) {

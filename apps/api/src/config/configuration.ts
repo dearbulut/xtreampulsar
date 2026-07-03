@@ -9,7 +9,8 @@ export default () => ({
   },
   jwt: {
     secret: process.env.JWT_SECRET!,
-    expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+    refreshSecret: process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET!,
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
   },
   licenseServer: {
     url: process.env.LICENSE_SERVER_URL ?? 'http://localhost:3001',

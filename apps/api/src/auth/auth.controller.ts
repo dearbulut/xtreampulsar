@@ -99,4 +99,16 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
     return this.authService.resellerLogin(dto, ip);
   }
+
+  @Post('reseller/refresh')
+  @HttpCode(HttpStatus.OK)
+  resellerRefresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.resellerRefresh(dto.refreshToken);
+  }
+
+  @Post('reseller/logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resellerLogout(@Body() dto: RefreshTokenDto): Promise<void> {
+    await this.authService.resellerLogout(dto.refreshToken);
+  }
 }
