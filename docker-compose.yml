@@ -109,8 +109,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
       CONTROL_JWT_SECRET: ${CONTROL_JWT_SECRET:-}
     restart: always
-    ports:
-      - "3003:3003"
+    expose:
+      - "3003"
     networks:
       - internal
 
@@ -119,6 +119,7 @@ services:
     depends_on:
       - api
       - web
+      - control
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
