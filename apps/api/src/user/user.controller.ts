@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from './user.service';
@@ -35,8 +36,23 @@ export class UserController {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Ownership guard (K5): a reseller may only act on its OWN users. Admin bypasses.
+  // Reseller cPanel reaches only ban/kick via /users/*; every other reseller
+  // action goes through the already-scoped /resellers/me/* routes.
+  private async assertResellerOwnsUser(user: JwtUser, targetId: string): Promise<void> {
+    if (user.type !== 'reseller') return;
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { resellerId: true },
+    });
+    if (!target || target.resellerId !== user.id) {
+      throw new ForbiddenException('Bu kullanıcı üzerinde yetkiniz yok');
+    }
+  }
+
   // Must be before :id routes
   @Get('expiring')
+  @Roles('ADMIN')
   findExpiring(@Query('days') days?: string) {
     return this.userService.findExpiring(days ? parseInt(days, 10) : 7);
   }
@@ -48,7 +64,7 @@ export class UserController {
   }
 
   @Post('bulk-extend')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   bulkExtend(@Body() dto: BulkExtendDto) {
     return this.userService.bulkExtend(dto.userIds, dto.days);
   }
@@ -72,7 +88,21 @@ export class UserController {
   @Roles('ADMIN', 'RESELLER')
   async create(@Body() dto: CreateUserDto, @CurrentUser() user: JwtUser) {
     if (user.type === 'reseller') {
+      // K1: reseller ASLA privileged rol atayamaz — zorla USER.
+      dto.role = 'USER';
+      // Ownership: oluşturulan kullanıcı her zaman bu reseller'a bağlanır.
       dto.resellerId = user.id;
+
+      // K6: kullanıcı kotası (maxUsers=0 => sınırsız). reseller.service.ts:628-639 ile aynı kural.
+      const [reseller, userCount] = await Promise.all([
+        this.prisma.reseller.findUnique({ where: { id: user.id }, select: { maxUsers: true } }),
+        this.prisma.user.count({ where: { resellerId: user.id, deletedAt: null } }),
+      ]);
+      if (!reseller) throw new ForbiddenException('Reseller bulunamadı');
+      if (reseller.maxUsers > 0 && userCount >= reseller.maxUsers) {
+        throw new ForbiddenException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
+      }
+
       let creditCost = 1;
       if (dto.packageId) {
         const pkg = await this.prisma.package.findUnique({
@@ -87,20 +117,20 @@ export class UserController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.userService.update(id, dto);
   }
 
   @Delete(':id')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.userService.softDelete(id);
   }
 
   @Post(':id/extend')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   extend(@Param('id') id: string, @Body() dto: ExtendDto) {
     return this.userService.extend(id, dto.days);
   }
@@ -118,36 +148,38 @@ export class UserController {
 
   @Post(':id/ban')
   @Roles('ADMIN', 'RESELLER')
-  ban(@Param('id') id: string) {
+  async ban(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    await this.assertResellerOwnsUser(user, id);
     return this.userService.ban(id);
   }
 
   @Post(':id/unban')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   unban(@Param('id') id: string) {
     return this.userService.unban(id);
   }
 
   @Get(':id/connections')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   getConnections(@Param('id') id: string) {
     return this.userService.getActiveConnections(id);
   }
 
   @Post(':id/kick')
   @Roles('ADMIN', 'RESELLER')
-  kick(@Param('id') id: string) {
+  async kick(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    await this.assertResellerOwnsUser(user, id);
     return this.userService.kickAll(id);
   }
 
   @Get(':id/qr')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   generateQr(@Param('id') id: string) {
     return this.userService.generateQrCode(id);
   }
 
   @Post('bulk-renew')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   bulkRenew(@Body() body: { userIds: string[]; packageId: string }) {
     return this.userService.bulkRenew(body.userIds, body.packageId);
   }
@@ -181,13 +213,13 @@ export class UserController {
   }
 
   @Get(':id/stats')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   getStats(@Param('id') id: string) {
     return this.userActivityService.getUserStats(id);
   }
 
   @Get(':id/activity')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   getActivity(@Param('id') id: string, @Query() query: ActivityQueryDto) {
     return this.userActivityService.getActivityByUser(id, query);
   }
