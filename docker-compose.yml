@@ -106,7 +106,6 @@ services:
     depends_on:
       - api
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
       CONTROL_JWT_SECRET: ${CONTROL_JWT_SECRET:-}
     restart: always
     expose:
