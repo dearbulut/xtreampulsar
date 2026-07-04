@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { LicenseService } from './license.service';
 
-@Controller('api/v1/license')
+@Controller('license')
 export class LicenseController {
   constructor(private readonly licenseService: LicenseService) {}
 

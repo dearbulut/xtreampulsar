@@ -42,10 +42,65 @@ export class StreamController {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
+  // ─── Static-path routes ───────────────────────────────────────────────────
+  // These MUST be declared before the parametric `:id` routes below. NestJS
+  // (Express) matches in declaration order, so a bare `@Get(':id')` placed above
+  // would swallow single-segment paths like `health-summary` (treating them as an
+  // id). Stream ids are cuid, not uuid, so ParseUUIDPipe cannot be used to
+  // disambiguate — ordering is the fix.
+
   @Get()
   findAll(@Query() query: QueryStreamDto, @CurrentUser() user: JwtUser) {
     return this.streamService.findAllWithFilters(user.id, query);
   }
+
+  @Post()
+  @Roles('ADMIN', 'RESELLER')
+  create(@Body() dto: CreateStreamDto) {
+    return this.streamService.create(dto);
+  }
+
+  @Post('reset-crashed')
+  @Roles('ADMIN')
+  async resetCrashed() {
+    const result = await this.prisma.stream.updateMany({
+      where: { workerStatus: 'CRASHED' },
+      data: { workerStatus: 'IDLE', ffmpegPid: null },
+    });
+    return { reset: result.count };
+  }
+
+  @Get('health/summary')
+  @Roles('ADMIN')
+  healthSummaryNew() {
+    return this.healthService.getHealthSummary();
+  }
+
+  @Get('health-summary')
+  healthSummary() {
+    return this.healthService.getHealthSummary();
+  }
+
+  @Get('quality-summary')
+  qualitySummary() {
+    return this.qualityService.getQualitySummary();
+  }
+
+  @Patch('reorder')
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reorderStreams(@Body() body: { streamIds: string[] }): Promise<void> {
+    await this.streamService.reorderStreams(body.streamIds);
+  }
+
+  @Patch('bulk-move')
+  @Roles('ADMIN')
+  bulkMoveCategory(@Body() body: { streamIds: string[]; categoryId: string }) {
+    return this.streamService.bulkMoveCategory(body.streamIds, body.categoryId);
+  }
+
+  // ─── Parametric `:id` routes ──────────────────────────────────────────────
+  // Multi-segment `:id/...` routes first, then the bare `:id` handlers last.
 
   @Get(':id/now-playing')
   async getNowPlaying(@Param('id') id: string) {
@@ -103,38 +158,15 @@ export class StreamController {
     };
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.streamService.findById(id);
+  @Get(':id/stats')
+  stats(@Param('id') id: string) {
+    return this.workerService.getWorkerStats(id);
   }
 
-  @Post()
-  @Roles('ADMIN', 'RESELLER')
-  create(@Body() dto: CreateStreamDto) {
-    return this.streamService.create(dto);
-  }
-
-  @Patch(':id')
-  @Roles('ADMIN', 'RESELLER')
-  update(@Param('id') id: string, @Body() dto: UpdateStreamDto) {
-    return this.streamService.update(id, dto);
-  }
-
-  @Delete(':id')
+  @Get(':id/health')
   @Roles('ADMIN')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.streamService.remove(id);
-  }
-
-  @Post('reset-crashed')
-  @Roles('ADMIN')
-  async resetCrashed() {
-    const result = await this.prisma.stream.updateMany({
-      where: { workerStatus: 'CRASHED' },
-      data: { workerStatus: 'IDLE', ffmpegPid: null },
-    });
-    return { reset: result.count };
+  getHealth(@Param('id') id: string, @Query('hours') hours?: string) {
+    return this.healthService.getStreamHealth(id, hours ? parseInt(hours, 10) : 24);
   }
 
   @Post(':id/start')
@@ -162,29 +194,6 @@ export class StreamController {
     return { message: `Stream ${id} worker restarted` };
   }
 
-  @Get(':id/stats')
-  stats(@Param('id') id: string) {
-    return this.workerService.getWorkerStats(id);
-  }
-
-  // Must be before :id/health to avoid route shadowing
-  @Get('health/summary')
-  @Roles('ADMIN')
-  healthSummaryNew() {
-    return this.healthService.getHealthSummary();
-  }
-
-  @Get('health-summary')
-  healthSummary() {
-    return this.healthService.getHealthSummary();
-  }
-
-  @Get(':id/health')
-  @Roles('ADMIN')
-  getHealth(@Param('id') id: string, @Query('hours') hours?: string) {
-    return this.healthService.getStreamHealth(id, hours ? parseInt(hours, 10) : 24);
-  }
-
   @Post(':id/health/check')
   @Roles('ADMIN')
   manualCheck(@Param('id') id: string) {
@@ -195,11 +204,6 @@ export class StreamController {
   @Roles('ADMIN', 'RESELLER')
   probe(@Param('id') id: string) {
     return this.healthService.probeStream(id);
-  }
-
-  @Get('quality-summary')
-  qualitySummary() {
-    return this.qualityService.getQualitySummary();
   }
 
   @Post(':id/analyze')
@@ -225,16 +229,21 @@ export class StreamController {
     return this.streamService.cloneStream(id, body);
   }
 
-  @Patch('reorder')
-  @Roles('ADMIN')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async reorderStreams(@Body() body: { streamIds: string[] }): Promise<void> {
-    await this.streamService.reorderStreams(body.streamIds);
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.streamService.findById(id);
   }
 
-  @Patch('bulk-move')
+  @Patch(':id')
+  @Roles('ADMIN', 'RESELLER')
+  update(@Param('id') id: string, @Body() dto: UpdateStreamDto) {
+    return this.streamService.update(id, dto);
+  }
+
+  @Delete(':id')
   @Roles('ADMIN')
-  bulkMoveCategory(@Body() body: { streamIds: string[]; categoryId: string }) {
-    return this.streamService.bulkMoveCategory(body.streamIds, body.categoryId);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string): Promise<void> {
+    await this.streamService.remove(id);
   }
 }
