@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 240px;
+}
+
+body {
+  @apply bg-gray-950 text-gray-100;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+}

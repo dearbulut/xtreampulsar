@@ -99,6 +99,21 @@ services:
     networks:
       - internal
 
+  control:
+    build:
+      context: .
+      dockerfile: apps/control/Dockerfile
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      CONTROL_JWT_SECRET: ${CONTROL_JWT_SECRET:-}
+    restart: always
+    ports:
+      - "3003:3003"
+    networks:
+      - internal
+
   nginx:
     image: nginx:alpine
     depends_on:

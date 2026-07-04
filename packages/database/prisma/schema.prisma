@@ -826,3 +826,120 @@ model Webhook {
 
   @@map("webhooks")
 }
+
+// ─── Control Panel ────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  phone     String?
+  company   String?
+  country   String?
+  notes     String?
+  status    String    @default("ACTIVE")
+  source    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  licenses CustomerLicense[]
+  tickets  Ticket[]
+  invoices Invoice[]
+
+  @@map("customers")
+}
+
+model CustomerLicense {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  customerId     String
+  customer       Customer  @relation(fields: [customerId], references: [id])
+  plan           String    @default("STARTER")
+  status         String    @default("TRIAL")
+  serverIp       String?
+  serverDomain   String?
+  version        String?
+  maxUsers       Int       @default(500)
+  maxServers     Int       @default(2)
+  trialEndsAt    DateTime?
+  expiresAt      DateTime?
+  lastVerifiedAt DateTime?
+  lastSeenAt     DateTime?
+  activatedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  logs CustomerLicenseLog[]
+
+  @@map("customer_licenses")
+}
+
+model CustomerLicenseLog {
+  id        String          @id @default(cuid())
+  licenseId String
+  license   CustomerLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  serverIp  String
+  success   Boolean
+  message   String?
+  createdAt DateTime        @default(now())
+
+  @@map("customer_license_logs")
+}
+
+model Ticket {
+  id         String    @id @default(cuid())
+  ticketNo   String    @unique
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  subject    String
+  status     String    @default("OPEN")
+  priority   String    @default("MEDIUM")
+  category   String    @default("GENERAL")
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  messages TicketMessage[]
+
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  content    String
+  isStaff    Boolean  @default(false)
+  authorName String?
+  createdAt  DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
+model Invoice {
+  id         String    @id @default(cuid())
+  invoiceNo  String    @unique
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  amount     Float
+  currency   String    @default("EUR")
+  status     String    @default("PENDING")
+  plan       String?
+  period     String?
+  stripeId   String?
+  paidAt     DateTime?
+  dueAt      DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@map("invoices")
+}
+
+model ControlAdmin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  @@map("control_admins")
+}

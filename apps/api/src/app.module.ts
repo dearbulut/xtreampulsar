@@ -36,6 +36,7 @@ import { WhiteLabelModule } from './white-label/white-label.module';
 import { MetadataModule } from './metadata/metadata.module';
 import { SearchModule } from './search/search.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { ControlModule } from './control/control.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { WebhookModule } from './webhook/webhook.module';
     MetadataModule,
     SearchModule,
     WebhookModule,
+    ControlModule,
   ],
   controllers: [AppController],
   providers: [
