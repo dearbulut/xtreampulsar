@@ -12,7 +12,7 @@ interface SupportRequest {
   socket?: { remoteAddress?: string };
 }
 
-@Controller('support/tickets')
+@Controller('control/support/tickets')
 @UseGuards(LicenseSupportGuard)
 export class ControlSupportController {
   constructor(private readonly tickets: ControlTicketsService) {}

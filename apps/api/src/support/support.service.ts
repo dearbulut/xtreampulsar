@@ -35,7 +35,7 @@ export class SupportService {
   createTicket(dto: { subject: string; message: string; category?: string; priority?: string }) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.post(`${this.controlPanelUrl()}/api/v1/support/tickets`, dto, {
+        this.http.post(`${this.controlPanelUrl()}/api/v1/control/support/tickets`, dto, {
           headers: this.headers(),
         }),
       ),
@@ -45,7 +45,7 @@ export class SupportService {
   getTickets() {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.get(`${this.controlPanelUrl()}/api/v1/support/tickets`, {
+        this.http.get(`${this.controlPanelUrl()}/api/v1/control/support/tickets`, {
           headers: this.headers(),
         }),
       ),
@@ -55,7 +55,7 @@ export class SupportService {
   getTicket(id: string) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.get(`${this.controlPanelUrl()}/api/v1/support/tickets/${id}`, {
+        this.http.get(`${this.controlPanelUrl()}/api/v1/control/support/tickets/${id}`, {
           headers: this.headers(),
         }),
       ),
@@ -65,7 +65,7 @@ export class SupportService {
   closeTicket(id: string) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.post(`${this.controlPanelUrl()}/api/v1/support/tickets/${id}/close`, {}, {
+        this.http.post(`${this.controlPanelUrl()}/api/v1/control/support/tickets/${id}/close`, {}, {
           headers: this.headers(),
         }),
       ),
