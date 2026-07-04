@@ -25,6 +25,7 @@ async function bootstrap() {
         'https://panel.xtreampulsar.com',
         'https://xtreampulsar.com',
         'https://www.xtreampulsar.com',
+        'https://control.xtreampulsar.com',
       ];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
