@@ -22,6 +22,7 @@ import type { ResellerUserRow, QuickCreateResult } from '@/hooks/useResellerPane
 import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { Modal } from '@/components/ui/Modal';
 import { ResellerUserDrawer } from './ResellerUserDrawer';
+import { ResellerQuickCreateModal } from './ResellerQuickCreateModal';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -79,9 +80,9 @@ function StatCard({
   );
 }
 
-// ─── Quick Create Modal ───────────────────────────────────────────────────────
+// ─── QuickCreateModal → shared component in ResellerQuickCreateModal.tsx ─────
 
-function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: number }) {
+function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: number }) {
   const mutation = useResellerQuickCreate();
   const { data: pricingData } = useCreditPricing();
 
@@ -730,7 +731,7 @@ export function ResellerDashboardPage() {
 
       {/* Quick Create Modal */}
       {showQuickCreate && (
-        <QuickCreateModal onClose={() => setShowQuickCreate(false)} credits={credits} />
+        <ResellerQuickCreateModal onClose={() => setShowQuickCreate(false)} credits={credits} />
       )}
 
       {/* User Detail Drawer */}
