@@ -5,16 +5,20 @@ import * as http from 'http';
 import { parseString } from 'xml2js';
 import { PrismaService } from '../prisma/prisma.service';
 
+// xml2js: <title lang="tr">Metin</title> → { _: 'Metin', $: { lang: 'tr' } }.
+// Öznitelik yoksa düz string döner. Her iki durumu da temsil eder.
+type XmlTextNode = string | { _?: string; $?: Record<string, string> };
+
 interface XmltvChannel {
   $: { id: string };
-  'display-name'?: string[];
+  'display-name'?: XmlTextNode[];
   icon?: [{ $: { src: string } }];
 }
 
 interface XmltvProgramme {
   $: { start: string; stop: string; channel: string };
-  title?: string[];
-  desc?: string[];
+  title?: XmlTextNode[];
+  desc?: XmlTextNode[];
 }
 
 @Injectable()
@@ -144,6 +148,18 @@ export class EpgParserService {
     return new Date(ms);
   }
 
+  // xml2js metin düğümünü güvenli STRING'e çevirir. TR EPG kaynakları başlık/
+  // açıklama/kanal adını dil-öznitelikli verir (<title lang="tr">…</title> →
+  // { _: '…', $: { lang } }); düz string durumunu da karşılar. Aksi halde obje
+  // doğrudan String kolonuna yazılıp insert kırılıyordu (programme tablosu boş).
+  private xmlText(node: XmlTextNode[] | XmlTextNode | undefined): string {
+    const v = Array.isArray(node) ? node[0] : node;
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object' && typeof v._ === 'string') return v._;
+    return '';
+  }
+
   private async parseSource(sourceId: string, xmltvUrl: string, daysToKeep: number): Promise<void> {
     const raw = await this.fetchXml(xmltvUrl);
     const parsed = await this.parseXml(raw);
@@ -158,7 +174,7 @@ export class EpgParserService {
 
     for (const ch of channels) {
       const channelId = ch.$.id;
-      const displayName = ch['display-name']?.[0] ?? channelId;
+      const displayName = this.xmlText(ch['display-name']) || channelId;
       const icon = ch.icon?.[0]?.$.src;
 
       await this.prisma.ePGChannel.upsert({
@@ -185,6 +201,16 @@ export class EpgParserService {
     const BATCH = 500;
     const toCreate: { epgChannelId: string; start: Date; stop: Date; title: string; description?: string }[] = [];
 
+    let candidates = 0; // filtreleri geçen (yazılmaya aday) programme sayısı
+    let written = 0;    // createMany'nin gerçekten yazdığı satır (skipDuplicates hariç)
+
+    const flush = async () => {
+      if (toCreate.length === 0) return;
+      const res = await this.prisma.ePGProgramme.createMany({ data: toCreate, skipDuplicates: true });
+      written += res.count;
+      toCreate.length = 0;
+    };
+
     for (const prog of programmes) {
       const epgChannelId = epgChannelMap.get(prog.$.channel);
       if (!epgChannelId) continue;
@@ -192,18 +218,35 @@ export class EpgParserService {
       const stop = this.parseXmltvDate(prog.$.stop);
       if (isNaN(start.getTime()) || isNaN(stop.getTime())) continue; // geçersiz damga
       if (start < cutoff) continue;
-      const title = prog.title?.[0] ?? '(no title)';
-      const description = prog.desc?.[0];
+      // Dil-öznitelikli obje veya düz string → güvenli STRING.
+      const title = this.xmlText(prog.title) || '(no title)';
+      const description = this.xmlText(prog.desc) || undefined; // description nullable
+      candidates++;
       toCreate.push({ epgChannelId, start, stop, title, description });
 
-      if (toCreate.length >= BATCH) {
-        await this.prisma.ePGProgramme.createMany({ data: toCreate, skipDuplicates: true });
-        toCreate.length = 0;
-      }
+      if (toCreate.length >= BATCH) await flush();
     }
+    await flush();
 
-    if (toCreate.length > 0) {
-      await this.prisma.ePGProgramme.createMany({ data: toCreate, skipDuplicates: true });
+    // Şüphe #4: sessiz başarı olmasın. Aday varken tabloda bu kaynağa ait hiç
+    // programme kalmadıysa insert kırılmıştır → hata fırlat (status=FAILED olur).
+    // (Reparse'ta tüm satırlar duplicate ise written=0 olabilir ama total>0 kalır.)
+    if (candidates > 0) {
+      const total = await this.prisma.ePGProgramme.count({
+        where: { epgChannel: { epgSourceId: sourceId } },
+      });
+      this.logger.log(
+        `EPG parse (${sourceId}): ${channels.length} kanal, ${candidates} aday, ${written} yeni programme yazıldı, toplam ${total}.`,
+      );
+      if (total === 0) {
+        throw new Error(
+          `0 programme yazıldı: ${candidates} aday parse edildi ama tabloda bu kaynağa ait programme yok (title/format/eşleşme kontrol et).`,
+        );
+      }
+    } else {
+      this.logger.log(
+        `EPG parse (${sourceId}): ${channels.length} kanal, 0 aday programme (kaynak boş veya tümü filtrelendi).`,
+      );
     }
   }
 }
