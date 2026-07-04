@@ -23,6 +23,7 @@ import { ResellerNotificationService } from './reseller-notification.service';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';
 import { AddCreditsDto } from './dto/add-credits.dto';
+import { TransferCreditsDto, AdminTransferCreditsDto } from './dto/transfer-credits.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -355,10 +356,11 @@ export class ResellerController {
   async transferCreditsToSub(
     @CurrentUser() user: JwtUser,
     @Param('subId') subId: string,
-    @Body() body: { amount: number },
+    @Body() dto: TransferCreditsDto,
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
-    return this.resellerService.transferCredits(user.id, subId, body.amount);
+    // requireParentIsFrom: subId gerçekten bu reseller'ın alt bayisi olmalı (K2 ownership).
+    return this.resellerService.transferCredits(user.id, subId, dto.amount, { requireParentIsFrom: true });
   }
 
   // ─── Admin endpoints ──────────────────────────────────────────────────────
@@ -414,9 +416,11 @@ export class ResellerController {
   @Roles('ADMIN')
   adminTransferCredits(
     @Param('id') id: string,
-    @Body() body: { toResellerId: string; amount: number },
+    @Body() dto: AdminTransferCreditsDto,
   ) {
-    return this.resellerService.transferCredits(id, body.toResellerId, body.amount);
+    // Admin herhangi iki bayi arasında transfer edebilir → ownership zorunlu değil,
+    // ama negatif/atomiklik/ledger korumaları (DTO + koşullu düşüm) geçerli.
+    return this.resellerService.transferCredits(id, dto.toResellerId, dto.amount);
   }
 
   @Get(':id/credits')

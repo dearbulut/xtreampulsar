@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
@@ -63,30 +64,58 @@ export class ResellerService {
     });
   }
 
-  async transferCredits(fromResellerId: string, toResellerId: string, amount: number) {
+  // amount is validated (@Min(1)) at the DTO layer. opts.requireParentIsFrom
+  // enforces that `to` is a direct sub-reseller of `from` (reseller self-service
+  // K2 ownership); admin transfers omit it. Decrement is atomic + conditional so
+  // balance can never go negative (TOCTOU), and both ledger rows are written in
+  // the same transaction.
+  async transferCredits(
+    fromResellerId: string,
+    toResellerId: string,
+    amount: number,
+    opts?: { requireParentIsFrom?: boolean },
+  ) {
+    if (fromResellerId === toResellerId) {
+      throw new BadRequestException('Kaynak ve hedef aynı olamaz');
+    }
     const [from, to] = await Promise.all([
-      this.prisma.reseller.findFirst({ where: { id: fromResellerId, deletedAt: null }, select: { id: true, username: true, credits: true } }),
-      this.prisma.reseller.findFirst({ where: { id: toResellerId, deletedAt: null }, select: { id: true, username: true, credits: true } }),
+      this.prisma.reseller.findFirst({ where: { id: fromResellerId, deletedAt: null }, select: { id: true, username: true } }),
+      this.prisma.reseller.findFirst({ where: { id: toResellerId, deletedAt: null }, select: { id: true, username: true, parentId: true } }),
     ]);
     if (!from) throw new NotFoundException('Kaynak reseller bulunamadı');
     if (!to) throw new NotFoundException('Hedef reseller bulunamadı');
-    if (from.credits < amount) {
-      throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${from.credits}, gerekli: ${amount})`);
+    if (opts?.requireParentIsFrom && to.parentId !== fromResellerId) {
+      throw new ForbiddenException('Bu alt bayi size ait değil');
     }
-    const fromNew = from.credits - amount;
-    const toNew = to.credits + amount;
 
-    await this.prisma.$transaction([
-      this.prisma.reseller.update({ where: { id: fromResellerId }, data: { credits: { decrement: amount } } }),
-      this.prisma.reseller.update({ where: { id: toResellerId }, data: { credits: { increment: amount } } }),
-      this.prisma.resellerCreditLog.create({
-        data: { resellerId: fromResellerId, amount, type: 'DEDUCT', reason: `${to.username} alt bayisine kredi transferi`, balanceAfter: fromNew },
-      }),
-      this.prisma.resellerCreditLog.create({
-        data: { resellerId: toResellerId, amount, type: 'ADD', reason: `${from.username} üst bayisinden kredi transferi`, balanceAfter: toNew },
-      }),
-    ]);
-    return { transferred: amount, fromBalance: fromNew, toBalance: toNew };
+    return this.prisma.$transaction(async (tx) => {
+      // Koşullu düşüm: yalnızca yeterli bakiye varsa gerçekleşir → negatife düşemez.
+      const dec = await tx.reseller.updateMany({
+        where: { id: fromResellerId, credits: { gte: amount } },
+        data: { credits: { decrement: amount } },
+      });
+      if (dec.count === 0) throw new BadRequestException('Yetersiz kredi');
+
+      const toUpdated = await tx.reseller.update({
+        where: { id: toResellerId },
+        data: { credits: { increment: amount } },
+        select: { credits: true },
+      });
+      const fromAfter = await tx.reseller.findUnique({
+        where: { id: fromResellerId },
+        select: { credits: true },
+      });
+      const fromBalance = fromAfter?.credits ?? 0;
+
+      await tx.resellerCreditLog.create({
+        data: { resellerId: fromResellerId, amount, type: 'DEDUCT', reason: `${to.username} bayisine kredi transferi`, balanceAfter: fromBalance },
+      });
+      await tx.resellerCreditLog.create({
+        data: { resellerId: toResellerId, amount, type: 'ADD', reason: `${from.username} bayisinden kredi transferi`, balanceAfter: toUpdated.credits },
+      });
+
+      return { transferred: amount, fromBalance, toBalance: toUpdated.credits };
+    });
   }
 
   async getMySubResellers(resellerId: string) {

@@ -169,13 +169,9 @@ export class UserService {
         if (!dto.maxConnections) {
           resolvedMaxConnections = pkg.maxConnections;
         }
-        // Deduct credits from reseller if applicable
-        if (dto.resellerId) {
-          await this.prisma.reseller.update({
-            where: { id: dto.resellerId },
-            data: { credits: { decrement: pkg.creditCost } },
-          }).catch(() => { /* non-fatal — reseller might not exist */ });
-        }
+        // NOT: Reseller kredi düşümü BURADA yapılmaz. Tek kaynak, ledger'lı düşüm
+        // UserController.create içindeki resellerService.deductCredits'tir (K3 —
+        // çifte tahsilat kaldırıldı).
       }
     }
 
