@@ -4,6 +4,7 @@ import {
   Patch,
   Get,
   Body,
+  Headers,
   Query,
   Req,
   UseGuards,
@@ -25,6 +26,15 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly twoFactorService: TwoFactorService,
   ) {}
+
+  @Post('setup')
+  @HttpCode(HttpStatus.CREATED)
+  setup(
+    @Body() dto: { username: string; password: string },
+    @Headers('x-admin-key') adminKey?: string,
+  ) {
+    return this.authService.setup(dto.username, dto.password, adminKey);
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

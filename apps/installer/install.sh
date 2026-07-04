@@ -89,7 +89,7 @@ cat <<'EOF'
 /_/  \_\|_____|______|\_____|        |_|  |_|_|     \____/|______|_____/_/    \_\_|  \_\
 EOF
 echo -e "${RESET}"
-echo -e "${BOLD}XtreamPulsar Panel — Kurulum Sihirbazı v1.0${RESET}"
+echo -e "${BOLD}XtreamPulsar Panel — Kurulum Sihirbazı v1.1${RESET}"
 echo -e "────────────────────────────────────────────────────────────────────"
 
 # ─── Pre-flight Checks ───────────────────────────────────────────────────────
@@ -203,7 +203,6 @@ if [[ "$DEV_MODE" = true ]]; then
   LICENSE_KEY="DEV-TEST-KEY"
   LICENSE_SERVER="http://localhost:3001"
   log_info "Lisans anahtarı: $LICENSE_KEY (dev)"
-  log_info "Lisans sunucusu: $LICENSE_SERVER (dev — henüz deploy edilmedi)"
 else
   log_info "Lisans anahtarı: ${LICENSE_KEY:0:8}****"
 
@@ -223,7 +222,6 @@ else
     exit 1
   fi
 
-  # valid alanını kontrol et
   IS_VALID=$(echo "$RESPONSE_BODY" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "PENDING")
   if [[ "$IS_VALID" == "SUSPENDED" || "$IS_VALID" == "EXPIRED" ]]; then
     log_error "Lisans geçersiz veya askıya alınmış: $IS_VALID"
@@ -259,11 +257,13 @@ else
   log_success "Kaynak GitHub'dan indirildi"
 fi
 
-# .env dosyasını oluştur
+# ── [FIX #1] Gizli anahtarlar üret — REDIS_PASSWORD dahil ──────────────────
 DB_PASSWORD=$(generate_password)
+REDIS_PASSWORD=$(openssl rand -hex 32)
 JWT_SECRET=$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=$(openssl rand -hex 32)
 ADMIN_API_KEY=$(generate_password)
+ADMIN_PASSWORD=$(generate_password)
 
 if [[ -n "$DOMAIN" ]]; then
   SERVER_URL="https://${DOMAIN}"
@@ -279,7 +279,8 @@ POSTGRES_USER=xtreampulsar
 POSTGRES_PASSWORD=${DB_PASSWORD}
 
 # ─── Redis ────────────────────────────────────────────────────────────────
-REDIS_URL=redis://redis:6379
+REDIS_PASSWORD=${REDIS_PASSWORD}
+REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
 
 # ─── JWT ──────────────────────────────────────────────────────────────────
 JWT_SECRET=${JWT_SECRET}
@@ -304,6 +305,35 @@ ENV
 chmod 600 "$INSTALL_DIR/.env"
 log_success "Kurulum dizini hazır: $INSTALL_DIR"
 
+# ── [FIX #2+#3] SSL için dizinleri ve self-signed sertifika oluştur ─────────
+log_info "SSL dizinleri ve başlangıç sertifikası hazırlanıyor..."
+mkdir -p "${INSTALL_DIR}/nginx/ssl"
+mkdir -p "${INSTALL_DIR}/nginx/webroot"
+
+if [[ -n "$DOMAIN" ]]; then
+  # Domain varsa: self-signed ile başla, certbot sonra gerçeğiyle değiştirecek
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "${INSTALL_DIR}/nginx/ssl/privkey.pem" \
+    -out    "${INSTALL_DIR}/nginx/ssl/fullchain.pem" \
+    -subj "/CN=${DOMAIN}" &>/dev/null
+  log_success "Geçici self-signed sertifika oluşturuldu (Let's Encrypt ile değiştirilecek)"
+else
+  # Domain yok: IP ile erişim, HTTP-only nginx config kullan
+  if [[ -f "${INSTALL_DIR}/nginx/nginx-http-only.conf" ]]; then
+    cp "${INSTALL_DIR}/nginx/nginx-http-only.conf" "${INSTALL_DIR}/nginx/nginx.conf"
+    log_success "HTTP-only nginx config aktifleştirildi (SSL yok)"
+  else
+    log_warning "nginx-http-only.conf bulunamadı, mevcut nginx.conf kullanılıyor"
+    # Domain olmadan SSL gerekmesin diye self-signed oluştur
+    openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
+      -keyout "${INSTALL_DIR}/nginx/ssl/privkey.pem" \
+      -out    "${INSTALL_DIR}/nginx/ssl/fullchain.pem" \
+      -subj "/CN=${SERVER_IP}" &>/dev/null
+    log_info "IP için self-signed sertifika oluşturuldu (tarayıcıda uyarı verir)"
+  fi
+  log_warning "Domain belirtilmedi. Panel HTTP üzerinden erişilebilir: http://${SERVER_IP}"
+fi
+
 # ─── Step 6/9: Veritabanı Başlat ─────────────────────────────────────────────
 log_step "[6/9] Veritabanı başlatılıyor..."
 cd "$INSTALL_DIR"
@@ -325,9 +355,11 @@ for i in $(seq 1 12); do
 done
 
 log_info "Migration çalıştırılıyor..."
-docker compose run --rm api sh -c "cd /repo/packages/database && ./node_modules/.bin/prisma migrate deploy" &>/tmp/xp_migrate.log || {
+docker compose run --rm api sh -c \
+  "cd /repo/packages/database && ./node_modules/.bin/prisma migrate deploy" \
+  &>/tmp/xp_migrate.log || {
   log_warning "Migration başarısız — atlanıyor"
-  log_info "Kurulum tamamlandıktan sonra: docker compose exec api sh -c 'cd /repo/packages/database && ./node_modules/.bin/prisma migrate deploy'"
+  log_info "Kurulum tamamlandıktan sonra: docker compose exec api npx prisma migrate deploy"
 }
 log_success "Veritabanı hazır"
 
@@ -344,7 +376,7 @@ HEALTH_STATUS=""
 for i in $(seq 1 6); do
   HEALTH_STATUS=$(curl -sf http://localhost:3000/health 2>/dev/null || echo "")
   if [[ -n "$HEALTH_STATUS" ]]; then
-    log_success "API sağlıklı: $HEALTH_STATUS"
+    log_success "API sağlıklı"
     break
   fi
   log_info "Health check başarısız, yeniden deneniyor ($i/6)..."
@@ -358,62 +390,72 @@ fi
 # ─── Step 8/9: SSL Kurulumu ──────────────────────────────────────────────────
 log_step "[8/9] SSL yapılandırması..."
 if [[ -n "$DOMAIN" && -n "$EMAIL" ]]; then
-  log_info "Let's Encrypt sertifikası alınıyor: $DOMAIN"
+  # ── [FIX #2] Certbot webroot modu — nginx zaten ayakta, port çakışması yok ──
+  log_info "Let's Encrypt sertifikası alınıyor (webroot modu): $DOMAIN"
 
-  # Certbot ile sertifika al
   docker run --rm \
     -v "${INSTALL_DIR}/nginx/ssl:/etc/letsencrypt" \
-    -v "${INSTALL_DIR}/nginx/certbot:/var/www/certbot" \
-    -p 80:80 \
-    certbot/certbot certonly \
-    --standalone \
+    -v "${INSTALL_DIR}/nginx/webroot:/var/www/certbot" \
+    certbot/certbot certonly --webroot \
+    --webroot-path /var/www/certbot \
+    -d "$DOMAIN" \
     --email "$EMAIL" \
-    --agree-tos \
-    --no-eff-email \
-    -d "$DOMAIN" 2>/tmp/xp_certbot.log && {
+    --agree-tos --non-interactive --no-eff-email \
+    2>/tmp/xp_certbot.log && {
 
-    # SSL sertifika yollarını nginx.conf için sembolik link oluştur
+    # Gerçek sertifikaları nginx ssl dizinine kopyala
     SSL_DIR="${INSTALL_DIR}/nginx/ssl/live/${DOMAIN}"
-    mkdir -p "${INSTALL_DIR}/nginx/ssl"
-    ln -sf "${SSL_DIR}/fullchain.pem" "${INSTALL_DIR}/nginx/ssl/fullchain.pem" 2>/dev/null || true
-    ln -sf "${SSL_DIR}/privkey.pem"   "${INSTALL_DIR}/nginx/ssl/privkey.pem"   2>/dev/null || true
+    cp "${SSL_DIR}/fullchain.pem" "${INSTALL_DIR}/nginx/ssl/fullchain.pem"
+    cp "${SSL_DIR}/privkey.pem"   "${INSTALL_DIR}/nginx/ssl/privkey.pem"
 
     docker compose restart nginx
-    log_success "SSL sertifikası alındı ve nginx yeniden başlatıldı"
+    log_success "Let's Encrypt sertifikası alındı ve nginx yeniden başlatıldı"
+
+    # ── [FIX #5] Otomatik SSL yenileme cron'u ──────────────────────────────
+    RENEW_CMD="docker run --rm -v ${INSTALL_DIR}/nginx/ssl:/etc/letsencrypt -v ${INSTALL_DIR}/nginx/webroot:/var/www/certbot certbot/certbot renew --quiet && docker compose -f ${INSTALL_DIR}/docker-compose.yml restart nginx"
+    (crontab -l 2>/dev/null | grep -v "certbot/certbot renew"; echo "0 3 * * * ${RENEW_CMD}") | crontab -
+    log_success "SSL otomatik yenileme cron'u eklendi (her gün 03:00)"
   } || {
-    log_warning "SSL sertifikası alınamadı (log: /tmp/xp_certbot.log). HTTP ile devam ediliyor."
+    log_warning "Let's Encrypt sertifikası alınamadı (log: /tmp/xp_certbot.log)"
+    log_warning "Self-signed sertifika ile devam ediliyor. Daha sonra elle alabilirsiniz:"
+    log_warning "  cd ${INSTALL_DIR} && sudo bash apps/installer/install.sh --key ${LICENSE_KEY} --domain ${DOMAIN} --email ${EMAIL}"
   }
 elif [[ -n "$DOMAIN" && -z "$EMAIL" ]]; then
-  log_warning "--email belirtilmedi, SSL atlanıyor. SSL için: $0 --key $LICENSE_KEY --domain $DOMAIN --email admin@$DOMAIN"
+  log_warning "--email belirtilmedi, SSL atlanıyor."
+  log_warning "SSL için: $0 --key ${LICENSE_KEY} --domain ${DOMAIN} --email admin@${DOMAIN}"
 else
-  log_info "--domain belirtilmedi, SSL atlanıyor. HTTP ile devam ediliyor."
+  log_info "Domain belirtilmedi, SSL atlanıyor. HTTP ile devam ediliyor."
 fi
 
 # ─── Step 9/9: Firewall ──────────────────────────────────────────────────────
 log_step "[9/9] Firewall yapılandırılıyor..."
-ufw allow 22/tcp  comment 'SSH'    &>/dev/null
-ufw allow 80/tcp  comment 'HTTP'   &>/dev/null
-ufw allow 443/tcp comment 'HTTPS'  &>/dev/null
+ufw allow 22/tcp    comment 'SSH'        &>/dev/null
+ufw allow 80/tcp    comment 'HTTP'       &>/dev/null
+ufw allow 443/tcp   comment 'HTTPS'      &>/dev/null
 ufw allow 25461/tcp comment 'Xtream API' &>/dev/null
-ufw --force enable &>/dev/null
+ufw --force enable  &>/dev/null
 log_success "Firewall kuralları uygulandı (22, 80, 443, 25461)"
 
-# ─── Admin kullanıcı oluştur ─────────────────────────────────────────────────
-ADMIN_PASSWORD=$(generate_password)
-docker compose exec -T api sh -c \
-  "node -e \"
-    const bcrypt = require('bcryptjs');
-    const hash = bcrypt.hashSync('${ADMIN_PASSWORD}', 12);
-    const { PrismaClient } = require('@xtreampulsar/database');
-    const db = new PrismaClient();
-    db.user.upsert({
-      where: { username: 'admin' },
-      update: {},
-      create: { username: 'admin', password: hash, role: 'ADMIN', expiresAt: new Date('2099-12-31') }
-    }).then(() => db.\$disconnect());
-  \"" 2>/dev/null || {
-    ADMIN_PASSWORD="(admin kullanıcısı manuel oluşturulacak)"
-  }
+# ─── [FIX #4] Admin kullanıcı — /auth/setup endpoint ────────────────────────
+log_info "Admin kullanıcı oluşturuluyor..."
+SETUP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "http://localhost:3000/api/v1/auth/setup" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Key: ${ADMIN_API_KEY}" \
+  -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+  --max-time 15 2>/dev/null || echo "000")
+
+if [[ "$SETUP_RESPONSE" == "201" ]]; then
+  log_success "Admin kullanıcı oluşturuldu"
+elif [[ "$SETUP_RESPONSE" == "409" ]]; then
+  log_info "Admin kullanıcı zaten mevcut (atlanıyor)"
+  ADMIN_PASSWORD="(mevcut şifre değiştirilmedi)"
+else
+  log_warning "Admin kullanıcı oluşturulamadı (HTTP $SETUP_RESPONSE)"
+  log_warning "Panele girdikten sonra manuel oluşturun:"
+  log_warning "  docker compose exec api npx ts-node scripts/create-admin.ts"
+  ADMIN_PASSWORD="(manuel oluşturulacak)"
+fi
 
 # ─── Tamamlandı ──────────────────────────────────────────────────────────────
 PANEL_URL="${SERVER_URL}"
@@ -421,31 +463,31 @@ PANEL_URL="${SERVER_URL}"
 echo ""
 echo -e "${GREEN}${BOLD}"
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║          XtreamPulsar kurulumu tamamlandı! 🎉               ║"
+echo "║          XtreamPulsar kurulumu tamamlandı!                  ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${RESET}"
 echo -e "${BOLD}Erişim Bilgileri${RESET}"
 echo -e "────────────────────────────────────────────────────────────────"
-echo -e "  Panel URL    : ${CYAN}${PANEL_URL}${RESET}"
-echo -e "  Xtream API   : ${CYAN}http://${SERVER_IP}:25461${RESET}"
+echo -e "  Panel URL       : ${CYAN}${PANEL_URL}${RESET}"
+echo -e "  Xtream API      : ${CYAN}http://${SERVER_IP}:25461${RESET}"
 echo -e "  Admin Kullanıcı : ${BOLD}admin${RESET}"
-echo -e "  Admin Şifre  : ${BOLD}${YELLOW}${ADMIN_PASSWORD}${RESET}"
+echo -e "  Admin Şifre     : ${BOLD}${YELLOW}${ADMIN_PASSWORD}${RESET}"
 echo -e "  Kurulum Dizini  : ${INSTALL_DIR}"
 echo ""
 echo -e "${BOLD}Faydalı Komutlar${RESET}"
 echo -e "────────────────────────────────────────────────────────────────"
-echo -e "  Loglar       : cd ${INSTALL_DIR} && docker compose logs -f"
-echo -e "  Güncelleme   : ${INSTALL_DIR}/update.sh"
+echo -e "  Loglar          : cd ${INSTALL_DIR} && docker compose logs -f"
+echo -e "  Güncelleme      : ${INSTALL_DIR}/update.sh"
 echo -e "  Sağlık Kontrolü : ${INSTALL_DIR}/health-check.sh"
-echo -e "  Kaldırma     : ${INSTALL_DIR}/uninstall.sh"
+echo -e "  Kaldırma        : ${INSTALL_DIR}/uninstall.sh"
 echo ""
 echo -e "${BOLD}Dokümantasyon${RESET} : https://docs.xtreampulsar.io"
 echo -e "  ${YELLOW}⚠  Admin şifreyi şimdi kaydedin! Tekrar gösterilmeyecek.${RESET}"
 echo ""
 
-# Scripti kurulum dizinine kopyala
+# Scriptleri kurulum dizinine kopyala
 cp "$0" "$INSTALL_DIR/install.sh" 2>/dev/null || true
-[[ -f "$(dirname "$0")/update.sh" ]]       && cp "$(dirname "$0")/update.sh" "$INSTALL_DIR/"
-[[ -f "$(dirname "$0")/uninstall.sh" ]]    && cp "$(dirname "$0")/uninstall.sh" "$INSTALL_DIR/"
+[[ -f "$(dirname "$0")/update.sh" ]]       && cp "$(dirname "$0")/update.sh"       "$INSTALL_DIR/"
+[[ -f "$(dirname "$0")/uninstall.sh" ]]    && cp "$(dirname "$0")/uninstall.sh"    "$INSTALL_DIR/"
 [[ -f "$(dirname "$0")/health-check.sh" ]] && cp "$(dirname "$0")/health-check.sh" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR"/*.sh 2>/dev/null || true

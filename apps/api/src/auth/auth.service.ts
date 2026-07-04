@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  ConflictException,
   Inject,
   Optional,
 } from '@nestjs/common';
@@ -31,6 +32,29 @@ export class AuthService {
     private readonly userActivityService: UserActivityService,
     @Optional() @Inject(REDIS_CLIENT) private readonly redis: Redis | null,
   ) {}
+
+  async setup(username: string, password: string, adminKey?: string) {
+    const expectedKey = this.config.get<string>('ADMIN_API_KEY');
+    if (!expectedKey || adminKey !== expectedKey) {
+      throw new ForbiddenException('Invalid admin key');
+    }
+    const count = await this.prisma.user.count();
+    if (count > 0) {
+      throw new ConflictException('System already initialized');
+    }
+    const hashed = await bcrypt.hash(password, 12);
+    await this.prisma.user.create({
+      data: {
+        username,
+        password: hashed,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        maxConnections: 9999,
+        expiresAt: new Date('2099-12-31'),
+      },
+    });
+    return { success: true, username };
+  }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
