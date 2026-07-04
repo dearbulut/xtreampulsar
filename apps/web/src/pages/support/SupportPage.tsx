@@ -151,7 +151,7 @@ export function SupportPage() {
       </div>
 
       {/* Ticket list */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
@@ -178,7 +178,7 @@ export function SupportPage() {
               <tr
                 key={t.ticketId}
                 onClick={() => { void loadDetail(t.ticketId); }}
-                className="border-b border-border last:border-0 hover:bg-hover cursor-pointer transition-colors"
+                className="border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors"
               >
                 <td className="px-4 py-3 font-mono text-xs text-muted">{t.ticketNo}</td>
                 <td className="px-4 py-3 font-medium">{t.subject}</td>
@@ -203,7 +203,7 @@ export function SupportPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-2xl bg-card border-l border-border h-full flex flex-col shadow-2xl">
+          <div className="relative w-full max-w-2xl bg-surface border-l border-border h-full flex flex-col shadow-2xl">
             {/* Drawer header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
@@ -214,7 +214,7 @@ export function SupportPage() {
                 <button
                   onClick={() => { void loadDetail(selected.id); }}
                   disabled={detailLoading}
-                  className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-hover transition-colors"
+                  className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors"
                   title="Yenile"
                 >
                   <RefreshCw size={13} className={detailLoading ? 'animate-spin' : ''} />
@@ -228,7 +228,7 @@ export function SupportPage() {
                     Talebi Kapat
                   </button>
                 )}
-                <button onClick={() => setSelected(null)} className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-hover transition-colors">
+                <button onClick={() => setSelected(null)} className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors">
                   <X size={15} />
                 </button>
               </div>
@@ -261,13 +261,13 @@ export function SupportPage() {
                 <div key={m.id} className={`flex ${m.isStaff ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
                     m.isStaff
-                      ? 'bg-border/50 border border-border'
-                      : 'bg-primary/20 border border-primary/30'
+                      ? 'bg-surface-2 border border-border'
+                      : 'bg-primary/10 border border-primary/40'
                   }`}>
                     <p className="text-xs text-muted mb-1">
                       {m.isStaff ? (m.authorName ?? 'XtreamPulsar Destek') : 'Siz'} · {new Date(m.createdAt).toLocaleString('tr-TR')}
                     </p>
-                    <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                    <p className="text-sm text-fg whitespace-pre-wrap">{m.content}</p>
                   </div>
                 </div>
               ))}
@@ -281,10 +281,10 @@ export function SupportPage() {
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setCreateOpen(false)} />
-          <div className="relative bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg">
+          <div className="relative bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="text-sm font-semibold">Yeni Destek Talebi</h2>
-              <button onClick={() => setCreateOpen(false)} className="text-muted hover:text-fg p-1 rounded-lg hover:bg-hover transition-colors">
+              <button onClick={() => setCreateOpen(false)} className="text-muted hover:text-fg p-1 rounded-lg hover:bg-surface-2 transition-colors">
                 <X size={15} />
               </button>
             </div>
@@ -296,14 +296,14 @@ export function SupportPage() {
                   value={form.subject}
                   onChange={handleField}
                   placeholder="Sorununuzu kısaca açıklayın"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1.5">Kategori</label>
-                  <select name="category" value={form.category} onChange={handleField} className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <select name="category" value={form.category} onChange={handleField} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                     <option value="TECHNICAL">Teknik</option>
                     <option value="BILLING">Fatura</option>
                     <option value="GENERAL">Genel</option>
@@ -312,7 +312,7 @@ export function SupportPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1.5">Öncelik</label>
-                  <select name="priority" value={form.priority} onChange={handleField} className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                  <select name="priority" value={form.priority} onChange={handleField} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                     <option value="LOW">Düşük</option>
                     <option value="MEDIUM">Orta</option>
                     <option value="HIGH">Yüksek</option>
@@ -328,12 +328,12 @@ export function SupportPage() {
                   onChange={handleField}
                   rows={4}
                   placeholder="Sorununuzu detaylı açıklayın…"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   required
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-fg rounded-lg hover:bg-hover transition-colors">İptal</button>
+                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors">İptal</button>
                 <button type="submit" disabled={submitting} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg transition-colors">
                   {submitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                   Gönder
