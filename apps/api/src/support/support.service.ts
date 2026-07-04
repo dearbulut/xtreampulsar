@@ -8,9 +8,11 @@ export class SupportService {
 
   constructor(private readonly http: HttpService) {}
 
-  private internalApiUrl(): string {
-    const port = process.env.PORT ?? '3000';
-    return (process.env.INTERNAL_API_URL ?? `http://localhost:${port}`).replace(/\/$/, '');
+  private controlPanelUrl(): string {
+    // Kendi sunucumuzda docker-compose bunu http://api:3000 olarak set eder.
+    // Müşteri kurulumunda ise https://control.xtreampulsar.com (bizim control panel).
+    // ASLA localhost'a düşme — müşteri sunucusunda localhost yanlış hedeftir.
+    return (process.env.CONTROL_PANEL_URL ?? 'https://control.xtreampulsar.com').replace(/\/$/, '');
   }
 
   private licenseKey(): string {
@@ -36,7 +38,7 @@ export class SupportService {
   createTicket(dto: { subject: string; message: string; category?: string; priority?: string }) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.post(`${this.internalApiUrl()}/api/v1/control/support/tickets`, dto, {
+        this.http.post(`${this.controlPanelUrl()}/api/v1/control/support/tickets`, dto, {
           headers: this.headers(),
         }),
       ),
@@ -46,7 +48,7 @@ export class SupportService {
   getTickets() {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.get(`${this.internalApiUrl()}/api/v1/control/support/tickets`, {
+        this.http.get(`${this.controlPanelUrl()}/api/v1/control/support/tickets`, {
           headers: this.headers(),
         }),
       ),
@@ -56,7 +58,7 @@ export class SupportService {
   getTicket(id: string) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.get(`${this.internalApiUrl()}/api/v1/control/support/tickets/${id}`, {
+        this.http.get(`${this.controlPanelUrl()}/api/v1/control/support/tickets/${id}`, {
           headers: this.headers(),
         }),
       ),
@@ -66,7 +68,7 @@ export class SupportService {
   closeTicket(id: string) {
     return this.proxy(() =>
       firstValueFrom(
-        this.http.post(`${this.internalApiUrl()}/api/v1/control/support/tickets/${id}/close`, {}, {
+        this.http.post(`${this.controlPanelUrl()}/api/v1/control/support/tickets/${id}/close`, {}, {
           headers: this.headers(),
         }),
       ),

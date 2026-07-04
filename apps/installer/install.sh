@@ -294,6 +294,13 @@ LICENSE_SERVER_URL=${LICENSE_SERVER}
 ADMIN_API_KEY=${ADMIN_API_KEY}
 DEV_MODE=${DEV_MODE}
 
+# ─── Support / Control Panel ─────────────────────────────────────────────────
+# Destek talepleri bizim control panelimize düşer. Müşteri sunucusunda bu URL
+# her zaman bizim control panelimizi göstermeli; X-License-Key olarak müşterinin
+# lisans anahtarı kullanılır.
+CONTROL_PANEL_URL=https://control.xtreampulsar.com
+PANEL_LICENSE_KEY=${LICENSE_KEY}
+
 # ─── Server ───────────────────────────────────────────────────────────────
 SERVER_URL=${SERVER_URL}
 SERVER_PORT=25461
