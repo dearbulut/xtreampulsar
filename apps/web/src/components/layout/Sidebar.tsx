@@ -26,6 +26,7 @@ import {
   Link2,
   Webhook,
   Tablet,
+  Bell,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -100,6 +101,7 @@ const NAV: NavGroup[] = [
       { label: 'Gelişmiş Araçlar', to: '/tools/advanced', icon: Wrench },
       { label: 'Güvenlik', to: '/security', icon: Shield },
       { label: "Webhook'lar", to: '/webhooks', icon: Webhook },
+      { label: 'Destek Merkezi', to: '/support', icon: Bell },
       { label: 'Ayarlar', to: '/settings', icon: Settings },
     ],
   },

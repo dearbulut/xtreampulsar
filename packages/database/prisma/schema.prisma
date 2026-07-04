@@ -869,7 +869,8 @@ model CustomerLicense {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  logs CustomerLicenseLog[]
+  logs    CustomerLicenseLog[]
+  tickets Ticket[]
 
   @@map("customer_licenses")
 }
@@ -887,17 +888,22 @@ model CustomerLicenseLog {
 }
 
 model Ticket {
-  id         String    @id @default(cuid())
-  ticketNo   String    @unique
-  customerId String
-  customer   Customer  @relation(fields: [customerId], references: [id])
-  subject    String
-  status     String    @default("OPEN")
-  priority   String    @default("MEDIUM")
-  category   String    @default("GENERAL")
-  resolvedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id           String           @id @default(cuid())
+  ticketNo     String           @unique
+  customerId   String
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  licenseId    String?
+  license      CustomerLicense? @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  subject      String
+  status       String           @default("OPEN")
+  priority     String           @default("MEDIUM")
+  category     String           @default("GENERAL")
+  panelUrl     String?
+  panelVersion String?
+  serverIp     String?
+  resolvedAt   DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   messages TicketMessage[]
 

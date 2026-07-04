@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { controlApi } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
-import { ArrowLeft, Send, XCircle } from 'lucide-react';
+import { ArrowLeft, Send, XCircle, CheckCircle, Globe, Monitor, Layers } from 'lucide-react';
 
 interface Message { id: string; content: string; isStaff: boolean; authorName?: string; createdAt: string }
 interface Ticket {
@@ -16,6 +16,9 @@ interface Ticket {
   status: string;
   priority: string;
   category: string;
+  panelUrl?: string;
+  panelVersion?: string;
+  serverIp?: string;
   createdAt: string;
   customer: { id: string; name: string; email: string };
   messages: Message[];
@@ -41,6 +44,7 @@ export default function TicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -75,27 +79,52 @@ export default function TicketDetailPage() {
     }
   }
 
+  async function handleResolve() {
+    if (!confirm('Bu talebi çözüldü olarak işaretlemek istiyor musunuz?')) return;
+    setResolving(true);
+    try {
+      await controlApi.tickets.resolve(id);
+      load();
+    } finally {
+      setResolving(false);
+    }
+  }
+
   async function handleClose() {
     if (!confirm('Bu talebi kapatmak istiyor musunuz?')) return;
     await controlApi.tickets.close(id);
     load();
   }
 
+  const canAct = ticket?.status === 'OPEN' || ticket?.status === 'IN_PROGRESS';
+
   return (
     <div className="flex h-screen bg-gray-950 text-white">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={ticket ? `#${ticket.ticketNo}` : 'Destek Talebi'} />
+        <Header title={ticket ? ticket.ticketNo : 'Destek Talebi'} />
         <main className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="flex items-center justify-between">
             <Link href="/tickets" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300">
               <ArrowLeft size={14} /> Talepler
             </Link>
-            {ticket?.status === 'OPEN' || ticket?.status === 'IN_PROGRESS' ? (
-              <button onClick={handleClose} className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors">
-                <XCircle size={14} /> Kapat
-              </button>
-            ) : null}
+            {canAct && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { void handleResolve(); }}
+                  disabled={resolving}
+                  className="flex items-center gap-1.5 text-sm text-green-400 hover:text-green-300 bg-green-500/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <CheckCircle size={14} /> Çözüldü
+                </button>
+                <button
+                  onClick={() => { void handleClose(); }}
+                  className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <XCircle size={14} /> Kapat
+                </button>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -117,6 +146,30 @@ export default function TicketDetailPage() {
                     <p className="text-gray-200 break-all">{value}</p>
                   </div>
                 ))}
+                {/* Panel info (from customer panel) */}
+                {(ticket.panelUrl || ticket.serverIp || ticket.panelVersion) && (
+                  <div className="pt-1 border-t border-gray-800 space-y-2">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Panel Bilgisi</p>
+                    {ticket.panelUrl && (
+                      <div className="flex items-start gap-1.5 text-sm">
+                        <Globe size={12} className="text-gray-500 mt-0.5 shrink-0" />
+                        <span className="text-gray-300 break-all text-xs">{ticket.panelUrl}</span>
+                      </div>
+                    )}
+                    {ticket.panelVersion && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Layers size={12} className="text-gray-500 shrink-0" />
+                        <span className="text-gray-300 text-xs">v{ticket.panelVersion}</span>
+                      </div>
+                    )}
+                    {ticket.serverIp && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Monitor size={12} className="text-gray-500 shrink-0" />
+                        <span className="text-gray-300 text-xs font-mono">{ticket.serverIp}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-800">
                   <span className="text-xs text-gray-500">Öncelik</span>
                   <span className={`text-xs font-semibold ${PRIORITY_COLOR[ticket.priority] ?? 'text-gray-400'}`}>{ticket.priority}</span>
@@ -147,16 +200,16 @@ export default function TicketDetailPage() {
                   ))}
                   <div ref={bottomRef} />
                 </div>
-                {ticket.status !== 'CLOSED' && (
-                  <form onSubmit={handleReply} className="flex gap-2">
+                {ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED' && (
+                  <form onSubmit={(e) => { void handleReply(e); }} className="flex gap-2">
                     <textarea
                       value={reply}
                       onChange={(e) => setReply(e.target.value)}
-                      placeholder="Yanıt yazın…"
+                      placeholder="Yanıt yazın… (Ctrl+Enter gönder)"
                       rows={2}
                       className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-600 resize-none"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.ctrlKey) handleReply(e as unknown as React.FormEvent);
+                        if (e.key === 'Enter' && e.ctrlKey) void handleReply(e as unknown as React.FormEvent);
                       }}
                     />
                     <button

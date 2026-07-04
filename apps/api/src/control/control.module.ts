@@ -12,6 +12,8 @@ import { ControlLicensesService } from './control-licenses.service';
 import { ControlLicensesController } from './control-licenses.controller';
 import { ControlTicketsService } from './control-tickets.service';
 import { ControlTicketsController } from './control-tickets.controller';
+import { ControlSupportController } from './control-support.controller';
+import { LicenseSupportGuard } from './license-support.guard';
 import { ControlInvoicesService } from './control-invoices.service';
 import { ControlInvoicesController } from './control-invoices.controller';
 
@@ -30,10 +32,12 @@ import { ControlInvoicesController } from './control-invoices.controller';
     ControlCustomersController,
     ControlLicensesController,
     ControlTicketsController,
+    ControlSupportController,
     ControlInvoicesController,
   ],
   providers: [
     ControlJwtStrategy,
+    LicenseSupportGuard,
     ControlAuthService,
     ControlCustomersService,
     ControlLicensesService,

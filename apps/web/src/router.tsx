@@ -44,6 +44,7 @@ import { MagDevicesPage } from '@/pages/mag/MagDevicesPage';
 import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
 import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
 import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
+import { SupportPage } from '@/pages/support/SupportPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -233,6 +234,12 @@ const magDevicesRoute = createRoute({
   component: MagDevicesPage,
 });
 
+const supportRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/support',
+  component: SupportPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -351,6 +358,7 @@ const routeTree = rootRoute.addChildren([
     profileRoute,
     webhooksRoute,
     magDevicesRoute,
+    supportRoute,
   ]),
 ]);
 

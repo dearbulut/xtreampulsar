@@ -1,12 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { controlApi } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Globe, Monitor } from 'lucide-react';
 
 interface Ticket {
   id: string;
@@ -15,6 +14,8 @@ interface Ticket {
   status: string;
   priority: string;
   category: string;
+  panelUrl?: string;
+  serverIp?: string;
   createdAt: string;
   customer: { name: string; email: string };
   _count?: { messages: number };
@@ -111,6 +112,7 @@ export default function TicketsPage() {
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">No</th>
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Konu</th>
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Müşteri</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Panel</th>
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Öncelik</th>
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Durum</th>
                   <th className="text-left text-xs text-gray-500 font-medium px-4 py-3">Mesaj</th>
@@ -119,9 +121,9 @@ export default function TicketsPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600">Yükleniyor…</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-600">Yükleniyor…</td></tr>
                 ) : tickets.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-600">Talep bulunamadı</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-600">Talep bulunamadı</td></tr>
                 ) : tickets.map((t) => (
                   <tr
                     key={t.id}
@@ -129,10 +131,23 @@ export default function TicketsPage() {
                     className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">{t.ticketNo}</td>
-                    <td className="px-4 py-3 text-white max-w-[240px] truncate">{t.subject}</td>
+                    <td className="px-4 py-3 text-white max-w-[200px] truncate">{t.subject}</td>
                     <td className="px-4 py-3">
                       <p className="text-gray-300">{t.customer?.name ?? '—'}</p>
                       <p className="text-xs text-gray-500">{t.customer?.email}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {t.panelUrl ? (
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <Globe size={11} />
+                          <span className="truncate max-w-[100px]">{t.panelUrl.replace(/^https?:\/\//, '')}</span>
+                        </div>
+                      ) : t.serverIp ? (
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <Monitor size={11} />
+                          <span>{t.serverIp}</span>
+                        </div>
+                      ) : <span className="text-gray-600 text-xs">—</span>}
                     </td>
                     <td className={`px-4 py-3 text-xs font-semibold ${PRIORITY_COLOR[t.priority] ?? 'text-gray-400'}`}>{t.priority}</td>
                     <td className="px-4 py-3">

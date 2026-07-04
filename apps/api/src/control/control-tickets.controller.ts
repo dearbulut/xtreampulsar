@@ -28,6 +28,12 @@ export class ControlTicketsController {
     return this.service.reply(id, dto.content, dto.isStaff ?? true, dto.authorName);
   }
 
+  @Post(':id/resolve')
+  @HttpCode(HttpStatus.OK)
+  resolve(@Param('id') id: string) {
+    return this.service.resolve(id);
+  }
+
   @Post(':id/close')
   @HttpCode(HttpStatus.OK)
   close(@Param('id') id: string) {

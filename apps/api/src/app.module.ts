@@ -37,6 +37,7 @@ import { MetadataModule } from './metadata/metadata.module';
 import { SearchModule } from './search/search.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { ControlModule } from './control/control.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { ControlModule } from './control/control.module';
     SearchModule,
     WebhookModule,
     ControlModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [

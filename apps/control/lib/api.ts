@@ -58,6 +58,7 @@ export const controlApi = {
     get: (id: string) => api.get(`/control/tickets/${id}`),
     create: (data: Record<string, unknown>) => api.post('/control/tickets', data),
     reply: (id: string, content: string) => api.post(`/control/tickets/${id}/reply`, { content }),
+    resolve: (id: string) => api.post(`/control/tickets/${id}/resolve`),
     close: (id: string) => api.post(`/control/tickets/${id}/close`),
     update: (id: string, data: Record<string, unknown>) => api.patch(`/control/tickets/${id}`, data),
   },
