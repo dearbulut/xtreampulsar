@@ -3,6 +3,8 @@ import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, 
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
+import type { CreditPricingConfig } from '@/hooks/useSettings';
+import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, formatBytes } from '@/hooks/useBackup';
 import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
@@ -309,41 +311,7 @@ export function SettingsPage() {
 
         {/* === RESELLER === */}
         {activeTab === 'reseller' && (
-          <>
-            <SectionTitle>Reseller Yönetimi</SectionTitle>
-            <div className="space-y-5">
-              <Field label="Kayıt Açık" hint="Yeni reseller kaydına izin ver">
-                <Toggle
-                  checked={settings.reseller.registrationOpen}
-                  onChange={(v) => updateSettings('reseller', { registrationOpen: v })}
-                />
-              </Field>
-              <Field label="Min Kredi Uyarısı" hint="Bu değerin altına düşünce uyarı">
-                <input type="number" className="input" value={settings.reseller.minCreditWarning}
-                  onChange={(e) => updateSettings('reseller', { minCreditWarning: parseInt(e.target.value, 10) })} />
-              </Field>
-            </div>
-            <SectionTitle>Tier Bazlı Kredi Çarpanı</SectionTitle>
-            <div className="space-y-5">
-              <p className="text-xs text-muted">Reseller'ın tier'ına göre işlem başına düşülecek kredi miktarı çarpılır. 1 = standart, 2 = 2 kat kredi.</p>
-              {(['BASIC', 'SILVER', 'GOLD', 'PLATINUM'] as const).map((tier) => (
-                <Field key={tier} label={`${tier} Çarpanı`}>
-                  <input
-                    type="number"
-                    className="input"
-                    min={1}
-                    step={0.1}
-                    value={settings.reseller.tierPricing[tier] ?? 1}
-                    onChange={(e) =>
-                      updateSettings('reseller', {
-                        tierPricing: { ...settings.reseller.tierPricing, [tier]: parseFloat(e.target.value) || 1 },
-                      })
-                    }
-                  />
-                </Field>
-              ))}
-            </div>
-          </>
+          <ResellerTab settings={settings} updateSettings={updateSettings} />
         )}
 
         {/* === STREAMING === */}
@@ -870,6 +838,175 @@ function WhiteLabelTab() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// ─── Reseller Tab ────────────────────────────────────────────────────────────
+
+function ResellerTab({
+  settings,
+  updateSettings,
+}: {
+  settings: ReturnType<typeof useSettings>;
+  updateSettings: <K extends keyof ReturnType<typeof useSettings>>(tab: K, values: Partial<ReturnType<typeof useSettings>[K]>) => void;
+}) {
+  const cp = settings.reseller.creditPricing ?? DEFAULT_CREDIT_PRICING;
+
+  function updateDurationCredits(index: number, credits: number) {
+    const durations = cp.durations.map((d, i) => (i === index ? { ...d, credits } : d));
+    updateSettings('reseller', { creditPricing: { ...cp, durations } });
+  }
+
+  function updateTestDurationCredits(index: number, credits: number) {
+    const testDurations = cp.testDurations.map((d, i) => (i === index ? { ...d, credits } : d));
+    updateSettings('reseller', { creditPricing: { ...cp, testDurations } });
+  }
+
+  function updateCustomPricing(patch: Partial<CreditPricingConfig['customPricing']>) {
+    updateSettings('reseller', {
+      creditPricing: { ...cp, customPricing: { ...cp.customPricing, ...patch } },
+    });
+  }
+
+  const customDaysPreview = Math.max(1, Math.ceil(25 * (cp.customPricing?.creditsPerDay ?? 0.1)));
+
+  return (
+    <>
+      <SectionTitle>Reseller Yönetimi</SectionTitle>
+      <div className="space-y-5">
+        <Field label="Kayıt Açık" hint="Yeni reseller kaydına izin ver">
+          <Toggle
+            checked={settings.reseller.registrationOpen}
+            onChange={(v) => updateSettings('reseller', { registrationOpen: v })}
+          />
+        </Field>
+        <Field label="Min Kredi Uyarısı" hint="Bu değerin altına düşünce uyarı">
+          <input
+            type="number"
+            className="input"
+            value={settings.reseller.minCreditWarning}
+            onChange={(e) => updateSettings('reseller', { minCreditWarning: parseInt(e.target.value, 10) })}
+          />
+        </Field>
+      </div>
+
+      <SectionTitle>Tier Bazlı Kredi Çarpanı</SectionTitle>
+      <div className="space-y-5">
+        <p className="text-xs text-muted">
+          Reseller'ın tier'ına göre işlem başına düşülecek kredi miktarı çarpılır. 1 = standart, 2 = 2 kat kredi.
+        </p>
+        {(['BASIC', 'SILVER', 'GOLD', 'PLATINUM'] as const).map((tier) => (
+          <Field key={tier} label={`${tier} Çarpanı`}>
+            <input
+              type="number"
+              className="input"
+              min={1}
+              step={0.1}
+              value={settings.reseller.tierPricing[tier] ?? 1}
+              onChange={(e) =>
+                updateSettings('reseller', {
+                  tierPricing: { ...settings.reseller.tierPricing, [tier]: parseFloat(e.target.value) || 1 },
+                })
+              }
+            />
+          </Field>
+        ))}
+      </div>
+
+      <SectionTitle>Kredi Fiyatlandırması</SectionTitle>
+
+      <p className="text-xs text-muted mb-4">
+        Reseller'ların kullanıcı oluşturma/uzatma işlemlerinde hangi süre için kaç kredi düşüleceğini belirler.
+        Tier çarpanı bu değerlere ayrıca uygulanır.
+      </p>
+
+      <div className="mb-6">
+        <h4 className="text-sm font-medium mb-3">Standart Süreler</h4>
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-2">
+                <th className="text-left px-4 py-2 text-muted font-normal">Süre</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">Kredi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cp.durations.map((d, i) => (
+                <tr key={d.days} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2">{d.label}</td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      className="input w-24"
+                      value={d.credits}
+                      onChange={(e) => updateDurationCredits(i, parseInt(e.target.value, 10) || 0)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h4 className="text-sm font-medium mb-3">Test Süreleri</h4>
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-2">
+                <th className="text-left px-4 py-2 text-muted font-normal">Süre</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">Kredi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cp.testDurations.map((d, i) => (
+                <tr key={d.hours} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2">{d.label}</td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      className="input w-24"
+                      value={d.credits}
+                      onChange={(e) => updateTestDurationCredits(i, parseInt(e.target.value, 10) || 0)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="text-sm font-medium">Özel Fiyatlandırma</h4>
+        <Field label="Özel fiyatlandırma aktif" hint="Listede olmayan süreler için gün bazlı hesaplanır">
+          <Toggle
+            checked={cp.customPricing?.enabled ?? false}
+            onChange={(v) => updateCustomPricing({ enabled: v })}
+          />
+        </Field>
+        {cp.customPricing?.enabled && (
+          <Field label="Gün Başına Kredi" hint="Örn: 0.1 → 25 gün = 3 kredi">
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={0.01}
+                step={0.01}
+                className="input w-28"
+                value={cp.customPricing.creditsPerDay ?? 0.1}
+                onChange={(e) => updateCustomPricing({ creditsPerDay: parseFloat(e.target.value) || 0.1 })}
+              />
+              <span className="text-xs text-muted">25 gün = {customDaysPreview} kredi</span>
+            </div>
+          </Field>
+        )}
+      </div>
     </>
   );
 }

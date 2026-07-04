@@ -1647,7 +1647,9 @@ const STANDARD_PRESETS = [
   { label: '1 Ay',  days: 30 },
   { label: '3 Ay',  days: 90 },
   { label: '6 Ay',  days: 180 },
+  { label: '9 Ay',  days: 270 },
   { label: '1 Yıl', days: 365 },
+  { label: '2 Yıl', days: 730 },
 ] as const;
 
 const CONN_PRESETS = [1, 2, 3, 5] as const;

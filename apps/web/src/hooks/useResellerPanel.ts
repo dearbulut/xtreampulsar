@@ -3,6 +3,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
 import type { Package, PaginatedResponse } from '@/types';
+import type { CreditPricingConfig } from './useSettings';
+import { DEFAULT_CREDIT_PRICING } from './useSettings';
 
 // Axios instance with reseller JWT
 const resellerApi = axios.create({ baseURL: '/api/v1' });
@@ -634,6 +636,27 @@ export function useUpdateResellerBranding() {
     },
     onError: () => toast.error('Kaydedilemedi'),
   });
+}
+
+export function useCreditPricing() {
+  return useQuery({
+    queryKey: ['credit-pricing'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: CreditPricingConfig }>('/settings/credit-pricing');
+      return (res.data.data ?? res.data) as CreditPricingConfig;
+    },
+    placeholderData: DEFAULT_CREDIT_PRICING,
+  });
+}
+
+export function computeCustomCreditCost(days: number, pricing: CreditPricingConfig, tierMultiplier = 1): number {
+  const exact = pricing.durations.find((d) => d.days === days);
+  if (exact) return Math.max(1, Math.ceil(exact.credits * tierMultiplier));
+  if (pricing.customPricing?.enabled) {
+    return Math.max(1, Math.ceil(days * (pricing.customPricing.creditsPerDay ?? 0.1) * tierMultiplier));
+  }
+  return Math.max(1, Math.ceil((days / 30) * tierMultiplier));
 }
 
 export function useResellerLiveConnections() {

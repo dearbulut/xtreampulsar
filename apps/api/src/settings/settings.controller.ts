@@ -11,6 +11,11 @@ export class SettingsController {
     return this.settingsService.getPublicConfig();
   }
 
+  @Get('credit-pricing')
+  getCreditPricing() {
+    return this.settingsService.getCreditPricing();
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   getSettings() {

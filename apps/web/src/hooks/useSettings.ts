@@ -28,11 +28,50 @@ export interface XtreamSettings {
   trialMaxConnections: number;
 }
 
+export interface CreditPricingDuration {
+  months: number;
+  days: number;
+  credits: number;
+  label: string;
+}
+
+export interface CreditPricingTestDuration {
+  hours: number;
+  credits: number;
+  label: string;
+}
+
+export interface CreditPricingConfig {
+  durations: CreditPricingDuration[];
+  testDurations: CreditPricingTestDuration[];
+  customPricing: { enabled: boolean; creditsPerDay: number };
+}
+
+export const DEFAULT_CREDIT_PRICING: CreditPricingConfig = {
+  durations: [
+    { months: 1,  days: 30,  credits: 1,  label: '1 Ay' },
+    { months: 3,  days: 90,  credits: 3,  label: '3 Ay' },
+    { months: 6,  days: 180, credits: 5,  label: '6 Ay' },
+    { months: 9,  days: 270, credits: 7,  label: '9 Ay' },
+    { months: 12, days: 365, credits: 10, label: '1 Yıl' },
+    { months: 24, days: 730, credits: 18, label: '2 Yıl' },
+  ],
+  testDurations: [
+    { hours: 1,  credits: 0, label: '1 Saat' },
+    { hours: 3,  credits: 0, label: '3 Saat' },
+    { hours: 6,  credits: 0, label: '6 Saat' },
+    { hours: 12, credits: 0, label: '12 Saat' },
+    { hours: 24, credits: 0, label: '24 Saat' },
+  ],
+  customPricing: { enabled: true, creditsPerDay: 0.1 },
+};
+
 export interface ResellerSettings {
   registrationOpen: boolean;
   minCreditWarning: number;
   defaultPackageId: string;
   tierPricing: Record<string, number>;
+  creditPricing: CreditPricingConfig;
 }
 
 export interface StreamingSettings {
@@ -105,7 +144,7 @@ const DEFAULTS: AllSettings = {
     telegramAlerts: false,
   },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0, trialDays: 7, trialMaxConnections: 1 },
-  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 } },
+  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
   security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '' },
@@ -149,6 +188,7 @@ interface DbSettings {
   // Reseller
   registrationOpen?: boolean;
   tierPricing?: Record<string, number>;
+  creditPricing?: CreditPricingConfig | null;
   // Security
   geoBlockEnabled?: boolean;
   allowedCountries?: string[];
@@ -191,6 +231,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
       ...DEFAULTS.reseller,
       registrationOpen: db.registrationOpen ?? false,
       tierPricing: db.tierPricing ?? { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 },
+      creditPricing: db.creditPricing ?? DEFAULT_CREDIT_PRICING,
     },
     streaming: {
       ...DEFAULTS.streaming,
@@ -256,6 +297,7 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     // Reseller
     registrationOpen: settings.reseller.registrationOpen,
     tierPricing: settings.reseller.tierPricing,
+    creditPricing: settings.reseller.creditPricing,
     // Streaming
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
     vodDownloadLimit: settings.streaming.vodDownloadLimit,

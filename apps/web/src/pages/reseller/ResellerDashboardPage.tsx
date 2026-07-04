@@ -15,29 +15,14 @@ import {
   useResellerUsers,
   useResellerQuickCreate,
   useResellerBulkAction,
+  useCreditPricing,
+  computeCustomCreditCost,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow, QuickCreateResult } from '@/hooks/useResellerPanel';
 import { Modal } from '@/components/ui/Modal';
 import { ResellerUserDrawer } from './ResellerUserDrawer';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
-
-// ─── Duration presets ────────────────────────────────────────────────────────
-
-const TEST_PRESETS = [
-  { label: '1 Saat', hours: 1 },
-  { label: '3 Saat', hours: 3 },
-  { label: '6 Saat', hours: 6 },
-  { label: '12 Saat', hours: 12 },
-  { label: '24 Saat', hours: 24 },
-] as const;
-
-const STANDARD_PRESETS = [
-  { label: '1 Ay', days: 30 },
-  { label: '3 Ay', days: 90 },
-  { label: '6 Ay', days: 180 },
-  { label: '1 Yıl', days: 365 },
-] as const;
 
 type DurationKey = `h:${number}` | `d:${number}` | 'custom';
 
@@ -97,6 +82,7 @@ function StatCard({
 
 function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: number }) {
   const mutation = useResellerQuickCreate();
+  const { data: pricing } = useCreditPricing();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -112,6 +98,20 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
   const [copied, setCopied] = useState<string | null>(null);
 
   const effectiveConns = useCustomConns ? customConns : connections;
+
+  // Compute credit cost for the selected duration
+  const creditCost = (() => {
+    if (!pricing) return 1;
+    if (durationKey === 'custom') {
+      return computeCustomCreditCost(parseInt(customDays) || 30, pricing);
+    }
+    const [type, val] = durationKey.split(':');
+    if (type === 'h') {
+      const match = pricing.testDurations.find((d) => d.hours === Number(val));
+      return Math.max(0, match?.credits ?? 0);
+    }
+    return computeCustomCreditCost(Number(val), pricing);
+  })();
 
   const copy = useCallback((text: string, key: string) => {
     void navigator.clipboard.writeText(text);
@@ -202,14 +202,14 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
   return (
     <Modal open onClose={onClose} title="⚡ Hızlı Hat Ekle" size="sm">
       <div className="space-y-4">
-        {credits < 1 && (
+        {creditCost > credits && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             Yetersiz kredi. Yöneticinizle iletişime geçin.
           </div>
         )}
 
-        <p className="text-xs text-muted">Bu işlem <span className="text-primary font-medium">1 kredi</span> düşecek (mevcut: {credits})</p>
+        <p className="text-xs text-muted">Bu işlem <span className="text-primary font-medium">{creditCost} kredi</span> düşecek (mevcut: {credits})</p>
 
         {/* Username */}
         <div className="space-y-1.5">
@@ -259,35 +259,42 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted">Süre — Test</label>
           <div className="flex flex-wrap gap-1.5">
-            {TEST_PRESETS.map((p) => (
-              <button
-                key={p.hours}
-                onClick={() => setDurationKey(`h:${p.hours}`)}
-                className={cn('text-xs px-2.5 py-1 rounded-lg border transition-colors',
-                  durationKey === `h:${p.hours}`
-                    ? 'bg-primary/20 border-primary text-primary'
-                    : 'border-border text-muted hover:border-primary/50')}
-              >
-                {p.label}
-              </button>
-            ))}
+            {(pricing?.testDurations ?? []).map((p) => {
+              const key: DurationKey = `h:${p.hours}`;
+              const cr = p.credits;
+              return (
+                <button
+                  key={p.hours}
+                  onClick={() => setDurationKey(key)}
+                  className={cn('text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                    durationKey === key
+                      ? 'bg-primary/20 border-primary text-primary'
+                      : 'border-border text-muted hover:border-primary/50')}
+                >
+                  {p.label}{cr > 0 ? ` (${cr}k)` : ''}
+                </button>
+              );
+            })}
           </div>
 
           {/* Duration — Standard row */}
           <label className="text-xs font-medium text-muted">Süre — Standart</label>
           <div className="flex flex-wrap gap-1.5">
-            {STANDARD_PRESETS.map((p) => (
-              <button
-                key={p.days}
-                onClick={() => setDurationKey(`d:${p.days}`)}
-                className={cn('text-xs px-2.5 py-1 rounded-lg border transition-colors',
-                  durationKey === `d:${p.days}`
-                    ? 'bg-primary/20 border-primary text-primary'
-                    : 'border-border text-muted hover:border-primary/50')}
-              >
-                {p.label}
-              </button>
-            ))}
+            {(pricing?.durations ?? []).map((p) => {
+              const key: DurationKey = `d:${p.days}`;
+              return (
+                <button
+                  key={p.days}
+                  onClick={() => setDurationKey(key)}
+                  className={cn('text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                    durationKey === key
+                      ? 'bg-primary/20 border-primary text-primary'
+                      : 'border-border text-muted hover:border-primary/50')}
+                >
+                  {p.label} ({p.credits}k)
+                </button>
+              );
+            })}
             <button
               onClick={() => setDurationKey('custom')}
               className={cn('text-xs px-2.5 py-1 rounded-lg border transition-colors',
@@ -306,6 +313,7 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
                 className="input w-24 text-sm"
               />
               <span className="text-xs text-muted">gün</span>
+              <span className="text-xs text-primary font-medium">= {creditCost} kredi</span>
             </div>
           )}
         </div>
@@ -360,7 +368,7 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
           <button onClick={onClose} className="btn-ghost flex-1 text-sm">İptal</button>
           <button
             onClick={() => void handleCreate()}
-            disabled={mutation.isPending || credits < 1}
+            disabled={mutation.isPending || creditCost > credits}
             className="btn-primary flex-1 text-sm flex items-center justify-center gap-2"
           >
             {mutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}

@@ -482,6 +482,48 @@ export class ResellerService {
     return pricing?.[tier] ?? 1;
   }
 
+  private async getCreditCost(
+    tier: string,
+    durationDays?: number,
+    durationHours?: number,
+  ): Promise<number> {
+    const settings = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { tierPricing: true, creditPricing: true },
+    });
+
+    const tierPricing = settings?.tierPricing as Record<string, number> | null;
+    const multiplier = tierPricing?.[tier] ?? 1;
+
+    type DurEntry = { days: number; credits: number };
+    type TestEntry = { hours: number; credits: number };
+    type CpConfig = {
+      durations?: DurEntry[];
+      testDurations?: TestEntry[];
+      customPricing?: { enabled: boolean; creditsPerDay: number };
+    };
+    const cp = settings?.creditPricing as CpConfig | null;
+
+    if (durationHours !== undefined) {
+      const match = cp?.testDurations?.find((d) => d.hours === durationHours);
+      const base = match?.credits ?? 0;
+      return Math.max(0, Math.ceil(base * multiplier));
+    }
+
+    const days = durationDays ?? 30;
+
+    if (cp?.durations) {
+      const exact = cp.durations.find((d) => d.days === days);
+      if (exact) return Math.max(1, Math.ceil(exact.credits * multiplier));
+    }
+
+    if (cp?.customPricing?.enabled) {
+      return Math.max(1, Math.ceil(days * (cp.customPricing.creditsPerDay ?? 0.1) * multiplier));
+    }
+
+    return Math.max(1, Math.ceil((days / 30) * multiplier));
+  }
+
   async getMyUsers(
     resellerId: string,
     page: number,
@@ -596,8 +638,7 @@ export class ResellerService {
       throw new BadRequestException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
     }
 
-    const multiplier = await this.getTierMultiplier(reseller.tier);
-    const creditCost = Math.max(1, Math.ceil(1 * multiplier));
+    const creditCost = await this.getCreditCost(reseller.tier, dto.durationDays, dto.durationHours);
     if (reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
     }
@@ -765,8 +806,7 @@ export class ResellerService {
     if (!reseller) throw new NotFoundException('Reseller not found');
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    const multiplier = await this.getTierMultiplier(reseller.tier);
-    const creditCost = Math.max(1, Math.ceil((days / 30) * multiplier));
+    const creditCost = await this.getCreditCost(reseller.tier, days);
 
     if (reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);

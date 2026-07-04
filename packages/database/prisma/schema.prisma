@@ -622,6 +622,7 @@ model Settings {
   // Reseller
   registrationOpen        Boolean  @default(false)
   tierPricing             Json     @default("{}")
+  creditPricing           Json?
   // Panel geo-block
   geoBlockEnabled         Boolean  @default(false)
   allowedCountries        String[] @default([])
