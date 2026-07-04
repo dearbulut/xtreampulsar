@@ -6,7 +6,8 @@ import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from
 import type { CreditPricingConfig } from '@/hooks/useSettings';
 import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, formatBytes } from '@/hooks/useBackup';
-import { use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
+import { useQueryClient } from '@tanstack/react-query';
+import { use2FAStatus, use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
 import api from '@/lib/axios';
@@ -57,30 +58,37 @@ function TwoFactorSection() {
   const [showSetup, setShowSetup] = useState(false);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const [enabled, setEnabled] = useState(false);
 
-  const setup = use2FASetup(showSetup);
+  const queryClient = useQueryClient();
+  const status = use2FAStatus();
+  const enabled = status.data?.twoFactorEnabled ?? false;
+
+  // Never generate a setup secret while 2FA is already enabled — guarded on the
+  // real server state so an active secret can't be clobbered.
+  const setup = use2FASetup(showSetup && !enabled);
   const enableMut = use2FAEnable();
   const disableMut = use2FADisable();
 
   const handleEnable = async () => {
     await enableMut.mutateAsync(code);
-    setEnabled(true);
     setShowSetup(false);
     setCode('');
+    await queryClient.invalidateQueries({ queryKey: ['2fa-status'] });
   };
 
   const handleDisable = async () => {
     await disableMut.mutateAsync(password);
-    setEnabled(false);
     setPassword('');
+    await queryClient.invalidateQueries({ queryKey: ['2fa-status'] });
   };
 
   return (
     <div className="mt-2">
       <SectionTitle>İki Faktörlü Doğrulama (2FA)</SectionTitle>
       <div className="space-y-4">
-        {!enabled ? (
+        {status.isLoading ? (
+          <p className="text-muted text-sm">Durum yükleniyor…</p>
+        ) : !enabled ? (
           <>
             {!showSetup ? (
               <button className="btn-secondary text-sm" onClick={() => setShowSetup(true)}>

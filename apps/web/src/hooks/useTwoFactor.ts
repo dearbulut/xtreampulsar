@@ -8,6 +8,20 @@ interface SetupData {
   qrCodeImage: string;
 }
 
+// Reads the authoritative 2FA state from the server (/auth/me already returns
+// twoFactorEnabled). Used so the settings UI reflects real state instead of a
+// local guess — prevents offering "setup" to an already-enabled account.
+export function use2FAStatus() {
+  return useQuery<{ twoFactorEnabled: boolean }>({
+    queryKey: ['2fa-status'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { twoFactorEnabled: boolean } }>('/auth/me');
+      return { twoFactorEnabled: !!res.data.data.twoFactorEnabled };
+    },
+    staleTime: 0,
+  });
+}
+
 export function use2FASetup(enabled: boolean) {
   return useQuery<SetupData>({
     queryKey: ['2fa-setup'],

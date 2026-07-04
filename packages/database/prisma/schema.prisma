@@ -452,7 +452,8 @@ model User {
   isTrial          Boolean    @default(false)
   trialEndsAt      DateTime?
   deletedAt        DateTime?
-  twoFactorSecret  String?
+  twoFactorSecret     String?
+  twoFactorTempSecret String?
   twoFactorEnabled Boolean    @default(false)
   require2FA       Boolean    @default(false)
   createdAt        DateTime   @default(now())

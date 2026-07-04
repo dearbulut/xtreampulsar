@@ -229,15 +229,23 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, username: true, role: true, twoFactorSecret: true, status: true },
+      select: { id: true, username: true, role: true, twoFactorTempSecret: true, status: true },
     });
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User not found or inactive');
-    if (!user.twoFactorSecret) throw new UnauthorizedException('2FA secret not generated yet');
+    if (!user.twoFactorTempSecret) throw new UnauthorizedException('2FA secret not generated yet');
 
-    const valid = await this.twoFactorService.verifyCode(code, user.twoFactorSecret);
+    const valid = await this.twoFactorService.verifyCode(code, user.twoFactorTempSecret);
     if (!valid) throw new UnauthorizedException('Invalid verification code');
 
-    await this.prisma.user.update({ where: { id: payload.sub }, data: { twoFactorEnabled: true } });
+    // Promote temp secret to permanent and enable — single atomic update.
+    await this.prisma.user.update({
+      where: { id: payload.sub },
+      data: {
+        twoFactorSecret: user.twoFactorTempSecret,
+        twoFactorEnabled: true,
+        twoFactorTempSecret: null,
+      },
+    });
     return this.issueTokens({ id: user.id, username: user.username, role: user.role });
   }
 
