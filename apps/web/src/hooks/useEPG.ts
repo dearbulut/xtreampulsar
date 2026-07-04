@@ -161,12 +161,21 @@ export function useMassAssignJobStatus(jobId: string | null) {
       return res.data.data;
     },
     enabled: !!jobId,
+    // 404 (restart'ta in-memory job kaybolur) → hemen error; sonsuz retry yok.
+    retry: false,
     refetchInterval: (query) => {
+      // Hata (ör. 404 — job bulunamadı) → poll'u DURDUR (eskiden !data olduğu
+      // için 404'te sonsuz 2sn poll ediyordu).
+      if (query.state.status === 'error') return false;
       const data = query.state.data;
-      if (!data || data.status === 'processing') return 2000;
-      // Done or failed → stop polling, invalidate mappings cache
-      void qc.invalidateQueries({ queryKey: ['epg', 'mappings'] });
-      return false;
+      if (data && data.status !== 'processing') {
+        // Done or failed → stop polling, invalidate mappings cache
+        void qc.invalidateQueries({ queryKey: ['epg', 'mappings'] });
+        return false;
+      }
+      // Güvenlik tavanı: ~150 × 2s ≈ 5 dk sonra poll'u kes (stuck job'a karşı).
+      if (query.state.dataUpdateCount + query.state.fetchFailureCount >= 150) return false;
+      return 2000;
     },
   });
 }

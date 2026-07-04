@@ -307,6 +307,8 @@ model EPGSource {
   lastParsed DateTime?
   daysToKeep Int       @default(7)
   isActive   Boolean   @default(true)
+  status     String    @default("IDLE") // IDLE | RUNNING | SUCCESS | FAILED
+  lastError  String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -360,7 +362,9 @@ model EPGProgramme {
   epgChannelId String
   epgChannel   EPGChannel @relation(fields: [epgChannelId], references: [id], onDelete: Cascade)
 
-  @@index([epgChannelId, start])
+  // Mantıksal doğal anahtar: bir kanalda bir başlangıç anında tek program olabilir.
+  // Reparse'ın duplicate üretmesini engeller (skipDuplicates artık gerçek çalışır).
+  @@unique([epgChannelId, start])
   @@map("epg_programmes")
 }
 

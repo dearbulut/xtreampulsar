@@ -55,17 +55,28 @@ export class EpgService {
 
   async triggerParse(sourceId: string) {
     await this.findSourceById(sourceId);
-    void this.parserService.parseSourceById(sourceId);
+    // Güvenli fire-and-forget: parseSourceById status'u (RUNNING/SUCCESS/FAILED)
+    // yönetir; .catch ile unhandled promise rejection (process crash) önlenir.
+    void this.parserService.parseSourceById(sourceId).catch((err) => {
+      this.logger.error(`EPG parse failed (${sourceId}): ${(err as Error).message}`);
+    });
     return { message: 'EPG parse triggered' };
   }
 
   async triggerParseAll() {
     const sources = await this.prisma.ePGSource.findMany({ where: { isActive: true } });
     if (!sources.length) return { total: 0, success: 0, failed: 0 };
-    const results = await Promise.allSettled(
-      sources.map((src) => this.parserService.parseSourceById(src.id)),
-    );
-    const success = results.filter((r) => r.status === 'fulfilled').length;
+    // SIRALI: aynı anda tek kaynak parse edilir (paralel yerine) — bellek baskısı
+    // ve OOM riski azalır.
+    let success = 0;
+    for (const src of sources) {
+      try {
+        await this.parserService.parseSourceById(src.id);
+        success++;
+      } catch {
+        // Hata parseSourceById içinde status=FAILED olarak kaydedildi.
+      }
+    }
     return { total: sources.length, success, failed: sources.length - success };
   }
 
@@ -313,7 +324,10 @@ export class EpgService {
       where,
       include: {
         programmes: {
-          where: { start: { gte: dayStart }, stop: { lte: dayEnd } },
+          // Günle ÖRTÜŞEN tüm programlar (gece-yarısı taşanlar dahil):
+          // start < günSonu AND stop > günBaşı. (Eski gte/lte gece-yarısı
+          // taşan programı iki günden de düşürüyordu.)
+          where: { start: { lt: dayEnd }, stop: { gt: dayStart } },
           orderBy: { start: 'asc' },
         },
       },

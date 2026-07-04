@@ -39,11 +39,7 @@ export class EpgParserService {
 
     for (const src of sources) {
       try {
-        await this.parseSource(src.id, src.xmltvUrl, src.daysToKeep);
-        await this.prisma.ePGSource.update({
-          where: { id: src.id },
-          data: { lastParsed: new Date() },
-        });
+        await this.parseSourceById(src.id); // status + lastParsed'ı yönetir
         this.logger.log(`EPG parsed: ${src.name}`);
       } catch (err) {
         this.logger.error(`EPG parse failed for ${src.name}: ${(err as Error).message}`);
@@ -53,12 +49,27 @@ export class EpgParserService {
 
   async parseSourceById(sourceId: string): Promise<void> {
     const src = await this.prisma.ePGSource.findUniqueOrThrow({ where: { id: sourceId } });
-    await this.parseSource(src.id, src.xmltvUrl, src.daysToKeep);
-    await this.prisma.ePGSource.update({
-      where: { id: src.id },
-      data: { lastParsed: new Date() },
-    });
+    await this.prisma.ePGSource.update({ where: { id: src.id }, data: { status: 'RUNNING', lastError: null } });
+    try {
+      await this.parseSource(src.id, src.xmltvUrl, src.daysToKeep);
+      await this.prisma.ePGSource.update({
+        where: { id: src.id },
+        data: { lastParsed: new Date(), status: 'SUCCESS', lastError: null },
+      });
+    } catch (err) {
+      await this.prisma.ePGSource
+        .update({
+          where: { id: src.id },
+          data: { status: 'FAILED', lastError: String((err as Error).message).slice(0, 500) },
+        })
+        .catch(() => { /* status yazımı da başarısızsa yut */ });
+      throw err;
+    }
   }
+
+  // İndirilen EPG içeriği için üst sınır — büyük XMLTV dump'ları container'ı
+  // OOM ile düşürebiliyor. Aşılırsa indirme iptal edilir ve reddedilir.
+  private static readonly MAX_EPG_BYTES = 100 * 1024 * 1024; // 100MB
 
   private fetchXml(url: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -70,8 +81,21 @@ export class EpgParserService {
           return;
         }
         const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+        let size = 0;
+        let aborted = false;
+        res.on('data', (chunk: Buffer) => {
+          if (aborted) return;
+          size += chunk.length;
+          if (size > EpgParserService.MAX_EPG_BYTES) {
+            aborted = true;
+            req.destroy();
+            res.destroy();
+            reject(new Error(`EPG dosyası çok büyük (>${Math.round(EpgParserService.MAX_EPG_BYTES / 1024 / 1024)}MB)`));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => { if (!aborted) resolve(Buffer.concat(chunks).toString('utf-8')); });
         res.on('error', reject);
       });
       req.on('error', reject);
@@ -100,22 +124,34 @@ export class EpgParserService {
     });
   }
 
+  // XMLTV tarih formatı: "YYYYMMDDHHMMSS ±HHMM" (offset opsiyonel).
+  // Offset UYGULANIR: duvar-saati bileşenleri UTC alınıp offset çıkarılır.
+  //   "20260704120000 +0300" → 12:00 - 3s = 09:00 UTC
+  //   "20260704120000 -0500" → 12:00 + 5s = 17:00 UTC
+  // Offset yoksa (naif damga) UTC varsayılır (eski davranışla uyumlu).
+  // Geçersiz damga → Invalid Date (çağıran tarafta filtrelenir).
   private parseXmltvDate(dateStr: string): Date {
-    // Format: 20240101120000 +0000
-    const clean = dateStr.replace(/\s.*$/, '');
-    const year = clean.slice(0, 4);
-    const month = clean.slice(4, 6);
-    const day = clean.slice(6, 8);
-    const hour = clean.slice(8, 10);
-    const min = clean.slice(10, 12);
-    const sec = clean.slice(12, 14);
-    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+    const m = dateStr
+      .trim()
+      .match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-])(\d{2})(\d{2}))?/);
+    if (!m) return new Date(NaN);
+    const [, y, mo, d, h, mi, s, sign, oh, om] = m;
+    let ms = Date.UTC(+y, +mo - 1, +d, +h, +mi, +s);
+    if (sign) {
+      const offsetMin = (+oh * 60 + +om) * (sign === '-' ? -1 : 1);
+      ms -= offsetMin * 60_000; // UTC = duvar-saati - offset
+    }
+    return new Date(ms);
   }
 
   private async parseSource(sourceId: string, xmltvUrl: string, daysToKeep: number): Promise<void> {
     const raw = await this.fetchXml(xmltvUrl);
     const parsed = await this.parseXml(raw);
-    const { channel: channels = [], programme: programmes = [] } = parsed.tv;
+    // Geçerli XML ama XMLTV olmayan içerik (ör. HTML hata sayfası) → parsed.tv
+    // undefined olur; destructure crash'ini önlemek için guard.
+    const tv = parsed?.tv ?? {};
+    const channels = tv.channel ?? [];
+    const programmes = tv.programme ?? [];
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - daysToKeep);
@@ -154,6 +190,7 @@ export class EpgParserService {
       if (!epgChannelId) continue;
       const start = this.parseXmltvDate(prog.$.start);
       const stop = this.parseXmltvDate(prog.$.stop);
+      if (isNaN(start.getTime()) || isNaN(stop.getTime())) continue; // geçersiz damga
       if (start < cutoff) continue;
       const title = prog.title?.[0] ?? '(no title)';
       const description = prog.desc?.[0];

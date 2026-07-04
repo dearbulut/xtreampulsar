@@ -39,9 +39,12 @@ function useEpgGuide(date: string) {
   });
 }
 
+// Guide UTC-tutarlı çizilir: gün sorgusu backend'de UTC (date T00:00Z–23:59Z),
+// dolayısıyla konumlar ve "şimdi" çizgisi de UTC saatiyle hesaplanır — aksi halde
+// non-UTC tarayıcıda program blokları ve kırmızı çizgi kayıyordu.
 function nowOffsetMin(): number {
   const now = new Date();
-  return now.getHours() * 60 + now.getMinutes();
+  return now.getUTCHours() * 60 + now.getUTCMinutes();
 }
 
 export function EpgGuidePage() {
@@ -80,7 +83,7 @@ export function EpgGuidePage() {
 
   const progLeft = (prog: Programme) => {
     const start = new Date(prog.start);
-    return (start.getHours() * 60 + start.getMinutes()) * PIXELS_PER_MIN;
+    return (start.getUTCHours() * 60 + start.getUTCMinutes()) * PIXELS_PER_MIN;
   };
 
   const progWidth = (prog: Programme) => Math.max(prog.durationMin * PIXELS_PER_MIN, 40);
