@@ -38,14 +38,14 @@ export const controlApi = {
     stats: () => api.get('/control/dashboard'),
   },
   customers: {
-    list: (params?: { page?: number; limit?: number; search?: string }) => api.get('/control/customers', { params }),
+    list: (params?: { page?: number; limit?: number; search?: string; status?: string }) => api.get('/control/customers', { params }),
     get: (id: string) => api.get(`/control/customers/${id}`),
     create: (data: Record<string, unknown>) => api.post('/control/customers', data),
     update: (id: string, data: Record<string, unknown>) => api.patch(`/control/customers/${id}`, data),
     delete: (id: string) => api.delete(`/control/customers/${id}`),
   },
   licenses: {
-    list: (params?: { page?: number; limit?: number; customerId?: string }) => api.get('/control/licenses', { params }),
+    list: (params?: { page?: number; limit?: number; customerId?: string; search?: string; plan?: string; status?: string }) => api.get('/control/licenses', { params }),
     get: (id: string) => api.get(`/control/licenses/${id}`),
     create: (data: Record<string, unknown>) => api.post('/control/licenses', data),
     update: (id: string, data: Record<string, unknown>) => api.patch(`/control/licenses/${id}`, data),

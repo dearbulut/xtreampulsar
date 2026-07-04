@@ -162,6 +162,9 @@ importers:
 
   apps/control:
     dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.56.2
+        version: 5.101.0(react@18.3.1)
       axios:
         specifier: ^1.7.9
         version: 1.18.0
@@ -177,6 +180,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      recharts:
+        specifier: ^2.12.7
+        version: 2.15.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@types/node':
         specifier: ^20.14.0
