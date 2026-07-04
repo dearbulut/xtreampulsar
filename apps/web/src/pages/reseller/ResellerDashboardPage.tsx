@@ -19,6 +19,7 @@ import {
   computeCustomCreditCost,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow, QuickCreateResult } from '@/hooks/useResellerPanel';
+import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { Modal } from '@/components/ui/Modal';
 import { ResellerUserDrawer } from './ResellerUserDrawer';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
@@ -82,7 +83,7 @@ function StatCard({
 
 function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: number }) {
   const mutation = useResellerQuickCreate();
-  const { data: pricing } = useCreditPricing();
+  const { data: pricingData } = useCreditPricing();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -99,9 +100,11 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
 
   const effectiveConns = useCustomConns ? customConns : connections;
 
+  // Always defined — falls back to DEFAULT_CREDIT_PRICING if query errored
+  const pricing = pricingData ?? DEFAULT_CREDIT_PRICING;
+
   // Compute credit cost for the selected duration
   const creditCost = (() => {
-    if (!pricing) return 1;
     if (durationKey === 'custom') {
       return computeCustomCreditCost(parseInt(customDays) || 30, pricing);
     }
@@ -259,7 +262,7 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted">Süre — Test</label>
           <div className="flex flex-wrap gap-1.5">
-            {(pricing?.testDurations ?? []).map((p) => {
+            {pricing.testDurations.map((p) => {
               const key: DurationKey = `h:${p.hours}`;
               const cr = p.credits;
               return (
@@ -280,7 +283,7 @@ function QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: 
           {/* Duration — Standard row */}
           <label className="text-xs font-medium text-muted">Süre — Standart</label>
           <div className="flex flex-wrap gap-1.5">
-            {(pricing?.durations ?? []).map((p) => {
+            {pricing.durations.map((p) => {
               const key: DurationKey = `d:${p.days}`;
               return (
                 <button

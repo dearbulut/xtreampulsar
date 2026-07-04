@@ -642,11 +642,19 @@ export function useCreditPricing() {
   return useQuery({
     queryKey: ['credit-pricing'],
     staleTime: 5 * 60_000,
+    retry: 1,
     queryFn: async () => {
-      const res = await resellerApi.get<{ success: boolean; data: CreditPricingConfig }>('/settings/credit-pricing');
-      return (res.data.data ?? res.data) as CreditPricingConfig;
+      // Public endpoint — plain axios, no auth required
+      const res = await axios.get<{ success: boolean; data: CreditPricingConfig }>('/api/v1/settings/credit-pricing');
+      const payload = res.data?.data ?? res.data;
+      if (!payload || typeof payload !== 'object' || !('durations' in payload)) {
+        return DEFAULT_CREDIT_PRICING;
+      }
+      return payload as CreditPricingConfig;
     },
-    placeholderData: DEFAULT_CREDIT_PRICING,
+    // initialData so pricing is ALWAYS defined (never undefined after error)
+    initialData: DEFAULT_CREDIT_PRICING,
+    initialDataUpdatedAt: 0, // force a refetch on mount despite initialData
   });
 }
 
