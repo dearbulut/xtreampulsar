@@ -20,7 +20,7 @@ export function useCreateWebhook() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: { name: string; url: string; secret?: string; events: string[] }) =>
-      api.post<Webhook>('/webhooks', dto).then((r) => r.data),
+      api.post<{ success: boolean; data: Webhook }>('/webhooks', dto).then((r) => r.data?.data ?? r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEY });
       toast.success('Webhook oluşturuldu');
@@ -33,7 +33,7 @@ export function useUpdateWebhook() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...dto }: Partial<Webhook> & { id: string }) =>
-      api.put<Webhook>(`/webhooks/${id}`, dto).then((r) => r.data),
+      api.put<{ success: boolean; data: Webhook }>(`/webhooks/${id}`, dto).then((r) => r.data?.data ?? r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEY });
       toast.success('Webhook güncellendi');
@@ -57,6 +57,8 @@ export function useDeleteWebhook() {
 export function useTestWebhook() {
   return useMutation({
     mutationFn: (id: string) =>
-      api.post<{ status: number | null; ok: boolean; error?: string }>(`/webhooks/${id}/test`).then((r) => r.data),
+      api
+        .post<{ success: boolean; data: { status: number | null; ok: boolean; error?: string } }>(`/webhooks/${id}/test`)
+        .then((r) => (r.data?.data ?? r.data) as { status: number | null; ok: boolean; error?: string }),
   });
 }

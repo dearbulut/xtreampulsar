@@ -38,8 +38,8 @@ function useUnreadCount() {
   return useQuery<number>({
     queryKey: ['notification-unread'],
     queryFn: async () => {
-      const res = await api.get<{ count: number }>('/notifications/unread-count');
-      return res.data.count;
+      const res = await api.get<{ success: boolean; data: { count: number } }>('/notifications/unread-count');
+      return res.data.data?.count ?? 0;
     },
     staleTime: 15_000,
     refetchInterval: 60_000,
@@ -124,7 +124,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
         const res = await api.get<{ success: boolean; data: SearchResults }>(
           `/search?q=${encodeURIComponent(q)}&types=users,streams,resellers,categories`,
         );
-        setResults(res.data.data);
+        setResults(res.data?.data ?? null);
       } catch {
         setResults(null);
       } finally {
@@ -138,9 +138,9 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
     onClose();
   }, [router, onClose]);
 
-  const hasResults = results && (
-    results.users.length + results.streams.length +
-    results.resellers.length + results.categories.length
+  const hasResults = !!results && (
+    (results.users?.length ?? 0) + (results.streams?.length ?? 0) +
+    (results.resellers?.length ?? 0) + (results.categories?.length ?? 0)
   ) > 0;
 
   return (
