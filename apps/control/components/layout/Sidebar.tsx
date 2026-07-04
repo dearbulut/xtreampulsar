@@ -22,7 +22,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="sidebar fixed inset-y-0 left-0 flex flex-col bg-gray-900 border-r border-gray-800 z-10">
+    <aside className="sidebar flex-none flex flex-col h-full bg-gray-900 border-r border-gray-800">
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-gray-800">
         <div className="w-7 h-7 rounded-md bg-brand-600 flex items-center justify-center text-white font-bold text-xs">XP</div>
         <div>
