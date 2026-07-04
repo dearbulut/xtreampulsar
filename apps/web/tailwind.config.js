@@ -13,6 +13,10 @@ export default {
         },
         // Semantic tokens — resolved via CSS custom properties at runtime
         bg: 'var(--color-bg)',
+        // `background` is a widely-used alias for the page background (bg-background,
+        // to-background) across auth/layout pages — map it to the same token so those
+        // utilities produce CSS instead of silently rendering nothing.
+        background: 'var(--color-bg)',
         surface: 'var(--color-surface)',
         'surface-2': 'var(--color-surface-2)',
         sidebar: 'var(--color-sidebar)',
