@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Param,
@@ -14,7 +13,6 @@ import {
 import { BouquetService } from './bouquet.service';
 import { CreateBouquetDto } from './dto/create-bouquet.dto';
 import { UpdateBouquetDto } from './dto/update-bouquet.dto';
-import { ManageStreamsDto } from './dto/manage-streams.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -51,23 +49,6 @@ export class BouquetController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
     await this.bouquetService.remove(id);
-  }
-
-  @Get(':id/streams')
-  getBouquetStreams(@Param('id') id: string) {
-    return this.bouquetService.getBouquetStreams(id);
-  }
-
-  @Put(':id/streams')
-  @Roles('ADMIN', 'RESELLER')
-  replaceStreams(@Param('id') id: string, @Body() dto: ManageStreamsDto) {
-    return this.bouquetService.replaceStreams(id, dto.streamIds);
-  }
-
-  @Post(':id/streams')
-  @Roles('ADMIN', 'RESELLER')
-  setStreams(@Param('id') id: string, @Body() dto: ManageStreamsDto) {
-    return this.bouquetService.setStreams(id, dto.streamIds);
   }
 
   @Post(':id/resign')

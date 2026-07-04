@@ -9,7 +9,7 @@ export interface Bouquet {
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
-  _count?: { categories: number; bouquetStreams: number; userBouquets: number };
+  _count?: { categories: number; userBouquets: number };
 }
 
 export function useBouquets() {
@@ -72,53 +72,9 @@ export function useResignBouquet() {
   });
 }
 
-export function useSetBouquetStreams() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, streamIds }: { id: string; streamIds: string[] }) =>
-      api.post(`/bouquets/${id}/streams`, { streamIds }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['bouquets'] });
-      toast.success('Stream listesi güncellendi');
-    },
-    onError: () => toast.error('Güncelleme başarısız'),
-  });
-}
-
-export interface BouquetStream {
-  id: string;
-  name: string;
-  externalId: number;
-  status: string;
-  tvgLogo?: string;
-  isActive: boolean;
-  category?: { id: string; name: string; type: string };
-}
-
-export function useBouquetStreams(bouquetId: string | null) {
-  return useQuery({
-    queryKey: ['bouquet-streams', bouquetId],
-    queryFn: async () => {
-      const res = await api.get<{ success: boolean; data: BouquetStream[] }>(`/bouquets/${bouquetId}/streams`);
-      return res.data.data;
-    },
-    enabled: !!bouquetId,
-  });
-}
-
-export function useReplaceBouquetStreams() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, streamIds }: { id: string; streamIds: string[] }) =>
-      api.put(`/bouquets/${id}/streams`, { streamIds }),
-    onSuccess: (_data, vars) => {
-      void qc.invalidateQueries({ queryKey: ['bouquets'] });
-      void qc.invalidateQueries({ queryKey: ['bouquet-streams', vars.id] });
-      toast.success('Bouquet stream listesi güncellendi');
-    },
-    onError: () => toast.error('Güncelleme başarısız'),
-  });
-}
+// NOT: Bouquet↔Stream M2M ("Stream Yönetimi") kaldırıldı — entitlement artık
+// kategori-bazlı (Category.bouquetId). useSetBouquetStreams / useBouquetStreams /
+// useReplaceBouquetStreams hook'ları ve BouquetStream tipi silindi.
 
 export function useCloneBouquet() {
   const qc = useQueryClient();

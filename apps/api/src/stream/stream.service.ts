@@ -26,24 +26,23 @@ export class StreamService {
     return userBouquets.map((ub) => ub.bouquetId);
   }
 
-  // Bir kullanıcının, istenen stream'e paketi (bouquet) üzerinden erişip
-  // erişemeyeceğini döner. Bouquet'i yoksa fail-closed → false.
+  // Bir kullanıcının, istenen stream'e erişip erişemeyeceğini döner. Entitlement
+  // KATEGORİ-bazlıdır: stream'in kategorisi (Category.bouquetId) kullanıcının
+  // bouquet'lerinden birine bağlıysa izin. Bouquet'i yoksa fail-closed → false.
   async canUserAccessStream(
     userId: string,
     target: { streamId?: string; externalId?: number },
   ): Promise<boolean> {
     const bouquetIds = await this.getUserBouquetIds(userId);
     if (bouquetIds.length === 0) return false;
-    const link = await this.prisma.bouquetStream.findFirst({
+    const stream = await this.prisma.stream.findFirst({
       where: {
-        bouquetId: { in: bouquetIds },
-        ...(target.streamId
-          ? { streamId: target.streamId }
-          : { stream: { externalId: target.externalId } }),
+        ...(target.streamId ? { id: target.streamId } : { externalId: target.externalId }),
+        category: { bouquetId: { in: bouquetIds } },
       },
-      select: { streamId: true },
+      select: { id: true },
     });
-    return !!link;
+    return !!stream;
   }
 
   async findAllLive(userId: string) {
@@ -52,8 +51,9 @@ export class StreamService {
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
-          category: { type: 'LIVE' },
-          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+          // Entitlement: kategori kullanıcının bouquet'lerinden birine bağlı olmalı.
+          // bouquetIds boşsa in:[] → hiçbir kategori/stream eşleşmez (fail-closed).
+          category: { type: 'LIVE', bouquetId: { in: bouquetIds } },
         },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
@@ -70,8 +70,7 @@ export class StreamService {
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
-          category: { type: 'VOD' },
-          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+          category: { type: 'VOD', bouquetId: { in: bouquetIds } },
         },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
@@ -88,8 +87,7 @@ export class StreamService {
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
-          category: { type: 'SERIES' },
-          ...(bouquetIds ? { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } : {}),
+          category: { type: 'SERIES', bouquetId: { in: bouquetIds } },
         },
         include: { category: true },
         orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
