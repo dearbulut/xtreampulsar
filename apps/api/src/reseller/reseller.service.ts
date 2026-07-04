@@ -222,6 +222,15 @@ export class ResellerService {
 
   async softDelete(id: string): Promise<void> {
     await this.findById(id);
+    // O10: aktif kullanıcısı veya alt bayisi olan reseller sessizce silinip
+    // öksüz kayıt bırakmamalı. Silmeden önce taşınması/silinmesi istenir.
+    const [activeUsers, subResellers] = await Promise.all([
+      this.prisma.user.count({ where: { resellerId: id, deletedAt: null, status: 'ACTIVE' } }),
+      this.prisma.reseller.count({ where: { parentId: id, deletedAt: null } }),
+    ]);
+    if (activeUsers > 0 || subResellers > 0) {
+      throw new ConflictException('Önce kullanıcıları/alt bayileri taşıyın veya silin');
+    }
     await this.prisma.reseller.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
@@ -849,7 +858,8 @@ export class ResellerService {
     const [updated] = await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { expiresAt: newExpiresAt },
+        // O7: uzatma trial'ı kalıcıya çevirir — trial bayraklarını temizle.
+        data: { expiresAt: newExpiresAt, isTrial: false, trialEndsAt: null },
         select: { id: true, username: true, status: true, maxConnections: true, expiresAt: true, createdAt: true },
       }),
       this.prisma.reseller.update({

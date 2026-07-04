@@ -702,7 +702,7 @@ export function UsersPage() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => { if (deleteId) deleteUser.mutate(deleteId, { onSuccess: () => setDeleteId(null) }); }}
         title="Kullanıcıyı Sil"
-        message="Bu kullanıcı kalıcı olarak silinecek."
+        message="Bu kullanıcı devre dışı bırakılacak (DISABLED). Gerçek silme yapılmaz."
         confirmLabel="Sil"
         loading={deleteUser.isPending}
       />

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
@@ -267,6 +268,9 @@ export class UserService {
 
   async softDelete(id: string): Promise<void> {
     await this.assertExists(id);
+    // O9: ban gibi, silinen kullanıcının açık bağlantılarını kapat — aksi halde
+    // Connection satırları endedAt=null kalıp "online" sayacını şişirir.
+    await this.userRepo.closeAllUserConnections(id);
     await this.prisma.user.update({
       where: { id },
       data: { deletedAt: new Date(), status: 'DISABLED' },
@@ -280,7 +284,8 @@ export class UserService {
 
     return this.prisma.user.update({
       where: { id },
-      data: { expiresAt: newExpiry, status: 'ACTIVE' },
+      // O7: uzatma trial'ı kalıcı kullanıcıya çevirir — trial bayraklarını temizle.
+      data: { expiresAt: newExpiry, status: 'ACTIVE', isTrial: false, trialEndsAt: null },
       select: { id: true, username: true, expiresAt: true },
     });
   }
@@ -347,7 +352,8 @@ export class UserService {
         const base = u.expiresAt > new Date() ? u.expiresAt : new Date();
         return this.prisma.user.update({
           where: { id: u.id },
-          data: { expiresAt: new Date(base.getTime() + days * 24 * 60 * 60 * 1000) },
+          // O7: uzatılan trial kalıcıya döner — trial bayraklarını temizle.
+          data: { expiresAt: new Date(base.getTime() + days * 24 * 60 * 60 * 1000), isTrial: false, trialEndsAt: null },
         });
       }),
     );
@@ -428,12 +434,33 @@ export class UserService {
       case 'package-assign': {
         const pkg = await this.prisma.package.findUnique({ where: { id: String(value ?? '') } });
         if (!pkg) throw new NotFoundException(`Package ${String(value)} not found`);
-        const expiry = new Date(Date.now() + pkg.durationDays * 86_400_000);
-        const r = await this.prisma.user.updateMany({
+        // O5: kalan süreyi koru — mevcut expiresAt gelecekteyse ondan, değilse
+        // now'dan başlat (diğer renewal yolları ile aynı base mantığı). updateMany
+        // tek expiry uyguladığından kullanıcı bazında güncelliyoruz.
+        const targets = await this.prisma.user.findMany({
           where: { id: { in: userIds }, deletedAt: null },
-          data: { packageId: pkg.id, maxConnections: pkg.maxConnections, expiresAt: expiry, status: 'ACTIVE' },
+          select: { id: true, expiresAt: true },
         });
-        return { affected: r.count };
+        const now = new Date();
+        await Promise.all(
+          targets.map((u) => {
+            const base = u.expiresAt > now ? u.expiresAt : now;
+            const expiresAt = new Date(base.getTime() + pkg.durationDays * 86_400_000);
+            return this.prisma.user.update({
+              where: { id: u.id },
+              // O7: paket atama trial'ı kalıcıya çevirir — trial bayraklarını temizle.
+              data: {
+                packageId: pkg.id,
+                maxConnections: pkg.maxConnections,
+                expiresAt,
+                status: 'ACTIVE',
+                isTrial: false,
+                trialEndsAt: null,
+              },
+            });
+          }),
+        );
+        return { affected: targets.length };
       }
 
       case 'bouquet-assign': {
@@ -527,6 +554,18 @@ export class UserService {
     const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
     const trialDays = dto.durationDays ?? (settings as Record<string, unknown> & { trialDays?: number })?.trialDays ?? 7;
     const trialMaxConn = dto.maxConnections ?? (settings as Record<string, unknown> & { trialMaxConnections?: number })?.trialMaxConnections ?? 1;
+
+    // O6: trialUserLimit uygulaması (0/null => sınırsız). Aktif trial sayısı limiti
+    // aşıyorsa yeni trial reddedilir.
+    const trialUserLimit = (settings as Record<string, unknown> & { trialUserLimit?: number })?.trialUserLimit ?? 0;
+    if (trialUserLimit > 0) {
+      const activeTrials = await this.prisma.user.count({
+        where: { isTrial: true, deletedAt: null, status: { not: 'DISABLED' } },
+      });
+      if (activeTrials >= trialUserLimit) {
+        throw new ForbiddenException(`Trial kullanıcı limitine ulaşıldı (maks: ${trialUserLimit})`);
+      }
+    }
 
     const username = dto.username?.trim() || `trial_${this.makeRandomPassword(6).toLowerCase()}`;
     const rawPassword = dto.password?.trim() || this.makeRandomPassword(8);
@@ -710,12 +749,29 @@ export class UserService {
         await this.prisma.$transaction(async (tx) => {
           await tx.user.update({
             where: { id: userId },
-            data: { expiresAt: newExpiry, status: 'ACTIVE', maxConnections: pkg.maxConnections },
+            // O7: yenileme trial'ı kalıcıya çevirir — trial bayraklarını temizle.
+            data: {
+              expiresAt: newExpiry,
+              status: 'ACTIVE',
+              maxConnections: pkg.maxConnections,
+              isTrial: false,
+              trialEndsAt: null,
+            },
           });
           if (user.reseller) {
             await tx.reseller.update({
               where: { id: user.reseller!.id },
               data: { credits: { decrement: pkg.creditCost } },
+            });
+            // O1: bakiye/ledger sapmasını önlemek için aynı transaction'da ledger yaz.
+            await tx.resellerCreditLog.create({
+              data: {
+                resellerId: user.reseller!.id,
+                amount: pkg.creditCost,
+                type: 'DEDUCT',
+                reason: `Toplu yenileme: ${user.username} (${pkg.name})`,
+                balanceAfter: user.reseller!.credits - pkg.creditCost,
+              },
             });
           }
         });

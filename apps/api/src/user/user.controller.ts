@@ -95,7 +95,7 @@ export class UserController {
 
       // K6: kullanıcı kotası (maxUsers=0 => sınırsız). reseller.service.ts:628-639 ile aynı kural.
       const [reseller, userCount] = await Promise.all([
-        this.prisma.reseller.findUnique({ where: { id: user.id }, select: { maxUsers: true } }),
+        this.prisma.reseller.findUnique({ where: { id: user.id }, select: { maxUsers: true, credits: true } }),
         this.prisma.user.count({ where: { resellerId: user.id, deletedAt: null } }),
       ]);
       if (!reseller) throw new ForbiddenException('Reseller bulunamadı');
@@ -111,7 +111,23 @@ export class UserController {
         });
         if (pkg) creditCost = pkg.creditCost;
       }
-      await this.resellerService.deductCredits(user.id, creditCost, `Kullanıcı oluşturma: ${dto.username}`);
+      // Kredi ön-kontrolü: yetersizse hiç oluşturma (gereksiz create+rollback'i önler).
+      if (reseller.credits < creditCost) {
+        throw new ForbiddenException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
+      }
+
+      // 1b atomiklik: kullanıcıyı ÖNCE oluştur; başarılıysa krediyi düş. Create
+      // patlarsa (ör. duplicate username) kredi HİÇ düşmez. Düşüm nadir bir yarışta
+      // (ön-kontrol sonrası bakiye düşerse) hata verirse, oluşturulan kullanıcıyı
+      // geri sil (rollback) — kredisiz kullanıcı kalmaz.
+      const created = await this.userService.create(dto);
+      try {
+        await this.resellerService.deductCredits(user.id, creditCost, `Kullanıcı oluşturma: ${dto.username}`);
+      } catch (err) {
+        await this.prisma.user.delete({ where: { id: (created as { id: string }).id } }).catch(() => {});
+        throw err;
+      }
+      return created;
     }
     return this.userService.create(dto);
   }
