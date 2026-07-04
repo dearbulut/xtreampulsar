@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Clock, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
@@ -22,6 +22,7 @@ interface ChannelGuide {
 }
 
 const PIXELS_PER_MIN = 3;
+const LABEL_W = 160; // sabit sol "Kanal" sütunu genişliği (px) — sticky left-0
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function toDateStr(d: Date) {
@@ -52,7 +53,6 @@ export function EpgGuidePage() {
   const [tooltip, setTooltip] = useState<{ prog: Programme; x: number; y: number } | null>(null);
   const [search, setSearch] = useState('');
   const [onlyMapped, setOnlyMapped] = useState(true);
-  const timelineRef = useRef<HTMLDivElement>(null);
   const isToday = date === toDateStr(new Date());
 
   const { data: allChannels = [], isLoading } = useEpgGuide(date);
@@ -150,43 +150,51 @@ export function EpgGuidePage() {
 
       {channels.length > 0 && (
         <div className="card overflow-hidden">
-          {/* Time header */}
-          <div className="flex border-b border-border sticky top-0 bg-surface z-10">
-            <div className="w-40 flex-shrink-0 border-r border-border p-3 text-xs text-muted font-semibold">Kanal</div>
-            <div className="overflow-x-auto flex-1" ref={timelineRef}>
-              <div className="flex relative" style={{ width: totalWidth }}>
-                {HOURS.map((h) => (
-                  <div
-                    key={h}
-                    className="flex-shrink-0 text-xs text-muted border-r border-border/30 px-2 py-3"
-                    style={{ width: 60 * PIXELS_PER_MIN }}
-                  >
-                    {String(h).padStart(2, '0')}:00
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Channel rows */}
-          <div className="overflow-y-auto max-h-[60vh]">
-            {channels.map((ch) => (
-              <div key={ch.channelId} className="flex border-b border-border/20 hover:bg-surface-2/30 transition-colors">
-                {/* Channel label */}
-                <div className="w-40 flex-shrink-0 border-r border-border p-3 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
-                    {ch.channelName[0]}
-                  </div>
-                  <span className="text-xs text-slate-300 truncate">{ch.channelName}</span>
+          {/* TEK yatay+dikey scroll konteyneri: başlık ve tüm satırlar aynı scroll'da.
+              Sol "Kanal" sütunu sticky left-0, saat başlığı sticky top-0. */}
+          <div className="overflow-auto max-h-[65vh]">
+            <div style={{ width: LABEL_W + totalWidth }}>
+              {/* Time header row — dikey scroll'da üstte sabit */}
+              <div className="flex sticky top-0 z-30 bg-surface border-b border-border">
+                <div
+                  className="flex-shrink-0 sticky left-0 z-10 bg-surface border-r border-border p-3 text-xs text-muted font-semibold"
+                  style={{ width: LABEL_W }}
+                >
+                  Kanal
                 </div>
+                <div className="flex flex-shrink-0" style={{ width: totalWidth }}>
+                  {HOURS.map((h) => (
+                    <div
+                      key={h}
+                      className="flex-shrink-0 text-xs text-muted border-r border-border/30 px-2 py-3"
+                      style={{ width: 60 * PIXELS_PER_MIN }}
+                    >
+                      {String(h).padStart(2, '0')}:00
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                {/* Timeline */}
-                <div className="relative overflow-hidden flex-1" style={{ height: 44 }}>
-                  <div className="relative h-full" style={{ width: totalWidth }}>
+              {/* Channel rows */}
+              {channels.map((ch) => (
+                <div key={ch.channelId} className="flex border-b border-border/20 hover:bg-surface-2/30 transition-colors">
+                  {/* Channel label — yatay scroll'da solda sabit */}
+                  <div
+                    className="flex-shrink-0 sticky left-0 z-20 bg-surface border-r border-border p-3 flex items-center gap-2"
+                    style={{ width: LABEL_W }}
+                  >
+                    <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
+                      {ch.channelName[0]}
+                    </div>
+                    <span className="text-xs text-slate-300 truncate">{ch.channelName}</span>
+                  </div>
+
+                  {/* Timeline — saat başlığıyla aynı genişlik birimi, piksel-doğru hiza */}
+                  <div className="relative flex-shrink-0" style={{ width: totalWidth, height: 44 }}>
                     {/* Now indicator */}
                     {isToday && (
                       <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-danger z-20"
+                        className="absolute top-0 bottom-0 w-0.5 bg-danger z-10"
                         style={{ left: nowOffset }}
                       />
                     )}
@@ -220,8 +228,8 @@ export function EpgGuidePage() {
                     })}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
