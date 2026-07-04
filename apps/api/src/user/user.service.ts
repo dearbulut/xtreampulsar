@@ -91,6 +91,35 @@ export class UserService {
     return { allowed: true };
   }
 
+  // Abonelik geçerlilik kapısı (status + expiry, bağlantı sayımı YOK). Playlist
+  // (get.php) ve segment servisi için kullanılır. ADMIN/RESELLER expiry'den muaf.
+  private evalSubscription(
+    user: { status: string; role: string; expiresAt: Date | null; deletedAt: Date | null } | null,
+  ): { allowed: boolean; reason?: string } {
+    if (!user || user.deletedAt) return { allowed: false, reason: 'User not found' };
+    if (user.status !== 'ACTIVE') return { allowed: false, reason: `Account ${user.status.toLowerCase()}` };
+    if (user.role === 'ADMIN' || user.role === 'RESELLER') return { allowed: true };
+    if (!user.expiresAt || user.expiresAt < new Date()) return { allowed: false, reason: 'Account expired' };
+    return { allowed: true };
+  }
+
+  async checkSubscriptionActive(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const user = await this.userRepo.findById(userId);
+    return this.evalSubscription(user);
+  }
+
+  // C3: bir HLS segment token'ını aktif bir bağlantıya ve o bağlantının hâlâ
+  // geçerli (status ACTIVE + expiresAt) kullanıcısına çözer. Token yoksa/kapalı
+  // bağlantıysa/kullanıcı geçersizse false → segment servis edilmez.
+  async validateSegmentToken(token: string): Promise<boolean> {
+    const conn = await this.prisma.connection.findFirst({
+      where: { token, endedAt: null },
+      select: { user: { select: { status: true, role: true, expiresAt: true, deletedAt: true } } },
+    });
+    if (!conn?.user) return false;
+    return this.evalSubscription(conn.user).allowed;
+  }
+
   async createConnection(userId: string, streamId: string, ip: string, userAgent?: string, serverId?: string, token?: string) {
     return this.userRepo.createConnection({ userId, streamId, ip, userAgent, serverId, token });
   }

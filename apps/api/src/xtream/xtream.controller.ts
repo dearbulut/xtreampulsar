@@ -166,6 +166,13 @@ export class XtreamController {
       return;
     }
 
+    // C2: expired/disabled/banned kullanıcıya playlist verme (status + expiry gate).
+    const access = await this.userService.checkSubscriptionActive(user.id);
+    if (!access.allowed) {
+      res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden');
+      return;
+    }
+
     const streamType: 'all' | 'live' | 'vod' | 'series' =
       type === 'live' ? 'live'
       : type === 'vod' ? 'vod'
@@ -214,6 +221,15 @@ export class XtreamController {
       if (!validation.allowed) {
         res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
         return null;
+      }
+
+      // C4: paket (bouquet) zorlaması (movie/series). ADMIN/RESELLER muaf.
+      if (user.role !== 'ADMIN' && user.role !== 'RESELLER') {
+        const canAccess = await this.streamService.canUserAccessStream(user.id, { externalId });
+        if (!canAccess) {
+          res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil');
+          return null;
+        }
       }
 
       const url = await this.streamService.getStreamUrl(externalId);
@@ -347,6 +363,17 @@ export class XtreamController {
     } catch {
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return;
+    }
+
+    // C4: paket (bouquet) zorlaması — kullanıcı bu stream'e paketi üzerinden
+    // erişebiliyor mu? ADMIN/RESELLER muaf. Aksi halde ID enumerasyonu ile
+    // paket dışı kanal açılabiliyordu.
+    if (user.role !== 'ADMIN' && user.role !== 'RESELLER') {
+      const canAccess = await this.streamService.canUserAccessStream(user.id, { streamId: streamRecord.id });
+      if (!canAccess) {
+        res.status(HttpStatus.FORBIDDEN).send('Bu kanal paketinizde mevcut değil');
+        return;
+      }
     }
 
     // ── Track connection ────────────────────────────────────────────────────
@@ -497,7 +524,27 @@ export class XtreamController {
     @Query('token') token: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    this.logger.log(`Segment request: token=${token}, streamId=${streamId}, segment=${segment}`);
+    // C3: segment servisi geçerli, aktif bir bağlantı token'ına ZORUNLU bağlı.
+    // Token yoksa reddet — token'sız serbest erişim (süresi dolmuş kullanıcının
+    // manifest'i bir kez alıp segment çekmeye devam etmesi) kapatıldı.
+    if (!token) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Token required' });
+      return;
+    }
+
+    // Kick blacklist: token kara listedeyse durdur.
+    const kicked = await this.redis.get(`kicked:${token}`).catch(() => null);
+    if (kicked) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Connection terminated' });
+      return;
+    }
+
+    // Token → aktif bağlantı → geçerli (status ACTIVE + expiresAt) kullanıcı.
+    const tokenOk = await this.userService.validateSegmentToken(token);
+    if (!tokenOk) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Invalid or expired token' });
+      return;
+    }
 
     // Guard against path traversal
     const safeSegment = path.basename(segment);
@@ -515,21 +562,10 @@ export class XtreamController {
     // Trigger prefetch for next segments in background
     this.prefetchService?.prefetchSegments(streamId, 3);
 
-    if (token) {
-      // Kick check: if token is blacklisted, deny segment — VLC/player will stop
-      const kicked = await this.redis.get(`kicked:${token}`).catch(() => null);
-      this.logger.log(`Kicked check: token=${token}, result=${kicked}`);
-      if (kicked) {
-        res.status(HttpStatus.FORBIDDEN).json({ error: 'Connection terminated' });
-        return;
-      }
-
-      // Heartbeat: refresh connection updatedAt so analytics detects live viewers
-      // token is stored on the connection record; use updateMany since token has no unique index
-      void this.prisma.connection
-        .updateMany({ where: { token }, data: { updatedAt: new Date() } })
-        .catch(() => { /* stale token — ignore */ });
-    }
+    // Heartbeat: refresh connection updatedAt so analytics detects live viewers.
+    void this.prisma.connection
+      .updateMany({ where: { token }, data: { updatedAt: new Date() } })
+      .catch(() => { /* stale token — ignore */ });
 
     res.setHeader('Content-Type', 'video/MP2T');
     res.setHeader('Cache-Control', 'no-cache, no-store');

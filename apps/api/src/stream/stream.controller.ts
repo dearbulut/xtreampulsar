@@ -55,7 +55,7 @@ export class StreamController {
   }
 
   @Post()
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   create(@Body() dto: CreateStreamDto) {
     return this.streamService.create(dto);
   }
@@ -235,7 +235,7 @@ export class StreamController {
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'RESELLER')
+  @Roles('ADMIN')
   update(@Param('id') id: string, @Body() dto: UpdateStreamDto) {
     return this.streamService.update(id, dto);
   }

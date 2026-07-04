@@ -1077,16 +1077,18 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 !createForm.categoryId
               }
               onClick={() => {
+                // NOT: 'type' gönderilmez — backend stream tipini Category.type'tan
+                // türetir; CreateStreamDto'da type alanı yok ve ValidationPipe
+                // forbidNonWhitelisted ile fazladan alan 400 verirdi.
                 const payload = {
                   name: createForm.name,
                   primaryUrl: createForm.primaryUrl,
                   categoryId: createForm.categoryId,
-                  type: type ?? 'LIVE',
                   streamMode: createForm.streamMode,
                   ...(createForm.backupUrl && { backupUrl: createForm.backupUrl }),
                   ...(createForm.serverId && { serverId: createForm.serverId }),
                   ...(createForm.tvgLogo && { tvgLogo: createForm.tvgLogo }),
-                } as Partial<Stream> & { type: string };
+                } as Partial<Stream>;
                 createStream.mutate(payload, {
                   onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); },
                 });

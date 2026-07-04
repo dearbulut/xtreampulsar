@@ -15,13 +15,35 @@ export class StreamService {
 
   // ─── Xtream-facing queries (no auth, type-based) ───────────────────────────
 
-  private async getUserBouquetIds(userId: string): Promise<string[] | null> {
+  // FAIL-CLOSED: bouquet'i olmayan kullanıcı hiçbir kanal görmemeli. Boş dizi
+  // döner; çağıranlar `in: []` ile filtreleyince sonuç boş olur (eskiden null
+  // dönüp filtreyi atlıyordu = fail-open, tüm katalog görünüyordu).
+  private async getUserBouquetIds(userId: string): Promise<string[]> {
     const userBouquets = await this.prisma.userBouquet.findMany({
       where: { userId },
       select: { bouquetId: true },
     });
-    if (!userBouquets.length) return null;
     return userBouquets.map((ub) => ub.bouquetId);
+  }
+
+  // Bir kullanıcının, istenen stream'e paketi (bouquet) üzerinden erişip
+  // erişemeyeceğini döner. Bouquet'i yoksa fail-closed → false.
+  async canUserAccessStream(
+    userId: string,
+    target: { streamId?: string; externalId?: number },
+  ): Promise<boolean> {
+    const bouquetIds = await this.getUserBouquetIds(userId);
+    if (bouquetIds.length === 0) return false;
+    const link = await this.prisma.bouquetStream.findFirst({
+      where: {
+        bouquetId: { in: bouquetIds },
+        ...(target.streamId
+          ? { streamId: target.streamId }
+          : { stream: { externalId: target.externalId } }),
+      },
+      select: { streamId: true },
+    });
+    return !!link;
   }
 
   async findAllLive(userId: string) {
