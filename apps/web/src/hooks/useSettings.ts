@@ -8,6 +8,9 @@ export interface GeneralSettings {
   timezone: string;
   language: string;
   serverUrl: string;
+  serverUrls: string[];
+  primaryUrlIndex: number;
+  urlHealthCheck: boolean;
   logoUrl: string;
   adminEmail: string;
   streamDownAlert: boolean;
@@ -133,6 +136,9 @@ const DEFAULTS: AllSettings = {
     timezone: 'Europe/Istanbul',
     language: 'tr',
     serverUrl: '',
+    serverUrls: [],
+    primaryUrlIndex: 0,
+    urlHealthCheck: true,
     logoUrl: '',
     adminEmail: '',
     streamDownAlert: true,
@@ -153,6 +159,9 @@ const DEFAULTS: AllSettings = {
 interface DbSettings {
   panelName: string;
   serverUrl: string;
+  serverUrls?: string[];
+  primaryUrlIndex?: number;
+  urlHealthCheck?: boolean;
   serverPort: number;
   timezone: string;
   trialUserLimit: number;
@@ -210,6 +219,9 @@ function mapDbToStore(db: DbSettings): AllSettings {
       ...DEFAULTS.general,
       panelName: db.panelName,
       serverUrl: db.serverUrl,
+      serverUrls: db.serverUrls ?? [],
+      primaryUrlIndex: db.primaryUrlIndex ?? 0,
+      urlHealthCheck: db.urlHealthCheck ?? true,
       timezone: db.timezone,
       adminEmail: db.adminEmail ?? '',
       streamDownAlert: db.streamDownAlert ?? true,
@@ -280,6 +292,9 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     // General
     panelName: settings.general.panelName,
     serverUrl: settings.general.serverUrl,
+    serverUrls: settings.general.serverUrls,
+    primaryUrlIndex: settings.general.primaryUrlIndex,
+    urlHealthCheck: settings.general.urlHealthCheck,
     timezone: settings.general.timezone,
     adminEmail: settings.general.adminEmail,
     streamDownAlert: settings.general.streamDownAlert,

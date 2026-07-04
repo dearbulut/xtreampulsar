@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { StreamService } from '../stream/stream.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   XtreamAuthResponse,
   XtreamCategory,
@@ -19,14 +20,16 @@ export class XtreamService {
     private readonly userService: UserService,
     private readonly streamService: StreamService,
     private readonly config: ConfigService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async authenticate(username: string, password: string) {
     return this.userService.findByCredentials(username, password);
   }
 
-  buildServerInfo(): XtreamServerInfo {
-    const url = this.config.get<string>('server.url') ?? 'http://localhost';
+  async buildServerInfo(): Promise<XtreamServerInfo> {
+    const activeUrl = await this.settingsService.getActiveServerUrl();
+    const url = activeUrl || this.config.get<string>('server.url') || 'http://localhost';
     const port = this.config.get<number>('server.port') ?? 8080;
     const now = new Date();
 
@@ -48,7 +51,7 @@ export class XtreamService {
     password: string,
   ): Promise<XtreamAuthResponse> {
     const userInfo = await this.buildUserInfo(user!, username, password);
-    return { user_info: userInfo, server_info: this.buildServerInfo() };
+    return { user_info: userInfo, server_info: await this.buildServerInfo() };
   }
 
   async buildUserInfo(
@@ -200,7 +203,7 @@ export class XtreamService {
     type: 'all' | 'live' | 'vod' | 'series' = 'all',
     output: 'm3u8' | 'ts' = 'm3u8',
   ): Promise<string> {
-    const serverInfo = this.buildServerInfo();
+    const serverInfo = await this.buildServerInfo();
     const baseUrl = `${serverInfo.url}:${serverInfo.port}`;
     const ext = output === 'ts' ? 'ts' : 'm3u8';
     const lines: string[] = ['#EXTM3U'];

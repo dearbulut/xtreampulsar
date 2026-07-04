@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
@@ -196,11 +196,78 @@ export function SettingsPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Sunucu URL" hint="Xtream Kodları bağlantısı için">
-                <input className="input" value={settings.general.serverUrl}
-                  onChange={(e) => updateSettings('general', { serverUrl: e.target.value })}
-                  placeholder="http://panel.example.com" />
-              </Field>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-slate-200">Sunucu URL Listesi</span>
+                    <p className="text-xs text-muted mt-0.5">Birden fazla URL ekleyin; birincil çevrimdışı olursa yedek devreye girer</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={(settings.general.serverUrls ?? []).length >= 5}
+                    onClick={() => updateSettings('general', { serverUrls: [...(settings.general.serverUrls ?? []), ''] })}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> URL Ekle
+                  </button>
+                </div>
+                {(settings.general.serverUrls ?? []).length === 0 ? (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    Henüz URL eklenmedi. Playlist ve Xtream Kodları için en az bir URL gerekli.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(settings.general.serverUrls ?? []).map((url, idx) => {
+                      const isPrimary = idx === (settings.general.primaryUrlIndex ?? 0);
+                      return (
+                        <div key={idx} className={`flex items-center gap-2 p-2.5 rounded-lg border transition-colors ${isPrimary ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-border bg-surface-2/30'}`}>
+                          <button
+                            type="button"
+                            title="Birincil Yap"
+                            onClick={() => updateSettings('general', { primaryUrlIndex: idx })}
+                            className={`shrink-0 transition-colors ${isPrimary ? 'text-emerald-400' : 'text-muted hover:text-slate-300'}`}
+                          >
+                            <Star className={`w-4 h-4 ${isPrimary ? 'fill-emerald-400' : ''}`} />
+                          </button>
+                          <input
+                            className="input flex-1 py-1.5 text-sm"
+                            value={url}
+                            placeholder="http://panel.example.com"
+                            onChange={(e) => {
+                              const next = [...(settings.general.serverUrls ?? [])];
+                              next[idx] = e.target.value;
+                              updateSettings('general', { serverUrls: next });
+                            }}
+                          />
+                          {isPrimary && (
+                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">Aktif</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = (settings.general.serverUrls ?? []).filter((_, i) => i !== idx);
+                              const newPrimary = idx === (settings.general.primaryUrlIndex ?? 0) ? 0 : Math.min(settings.general.primaryUrlIndex ?? 0, next.length - 1);
+                              updateSettings('general', { serverUrls: next, primaryUrlIndex: Math.max(0, newPrimary) });
+                            }}
+                            className="shrink-0 text-muted hover:text-danger transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <Field label="Otomatik Geçiş" hint="Birincil URL çevrimdışı olduğunda yedek URL'e otomatik geç">
+                  <Toggle checked={settings.general.urlHealthCheck ?? true}
+                    onChange={(v) => updateSettings('general', { urlHealthCheck: v })} />
+                </Field>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  URL değişikliği sonrası tüm aktif playlist bağlantıları otomatik güncellenir.
+                </div>
+              </div>
               <Field label="Logo URL">
                 <input className="input" value={settings.general.logoUrl}
                   onChange={(e) => updateSettings('general', { logoUrl: e.target.value })}

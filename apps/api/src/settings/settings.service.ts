@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SettingsService {
+  private readonly logger = new Logger(SettingsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getPublicConfig() {
@@ -32,6 +36,83 @@ export class SettingsService {
       update: {},
       create: { id: 'singleton' },
     });
+  }
+
+  async getActiveServerUrl(): Promise<string> {
+    const s = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { serverUrl: true, serverUrls: true, primaryUrlIndex: true },
+    });
+    if (!s) return '';
+    const urls = s.serverUrls ?? [];
+    if (urls.length > 0) {
+      const idx = Math.min(s.primaryUrlIndex ?? 0, urls.length - 1);
+      return urls[idx] ?? s.serverUrl ?? '';
+    }
+    return s.serverUrl ?? '';
+  }
+
+  async updateServerUrls(urls: string[]): Promise<void> {
+    const cleaned = urls
+      .map((u) => u.trim().replace(/\/+$/, ''))
+      .filter((u) => u.startsWith('http://') || u.startsWith('https://'));
+    await this.prisma.settings.upsert({
+      where: { id: 'singleton' },
+      update: { serverUrls: cleaned, primaryUrlIndex: 0 },
+      create: { id: 'singleton', serverUrls: cleaned, primaryUrlIndex: 0 },
+    });
+  }
+
+  async setPrimaryUrl(index: number): Promise<void> {
+    const s = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { serverUrls: true },
+    });
+    const urls = s?.serverUrls ?? [];
+    if (index < 0 || index >= urls.length) return;
+    await this.prisma.settings.update({
+      where: { id: 'singleton' },
+      data: { primaryUrlIndex: index },
+    });
+  }
+
+  @Cron('*/5 * * * *')
+  async checkServerUrlHealth(): Promise<void> {
+    const s = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { serverUrls: true, primaryUrlIndex: true, urlHealthCheck: true },
+    });
+    if (!s?.urlHealthCheck || !s.serverUrls?.length) return;
+
+    const urls = s.serverUrls;
+    const current = s.primaryUrlIndex ?? 0;
+
+    const isAlive = async (url: string): Promise<boolean> => {
+      try {
+        await axios.get(url, { timeout: 3000, validateStatus: () => true });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    if (await isAlive(urls[current])) return;
+
+    this.logger.warn(`Primary URL offline: ${urls[current]} — trying fallbacks`);
+
+    for (let i = 0; i < urls.length; i++) {
+      if (i === current) continue;
+      if (await isAlive(urls[i])) {
+        await this.prisma.settings.update({
+          where: { id: 'singleton' },
+          data: { primaryUrlIndex: i },
+        });
+        this.logger.log(`Switched primary URL to index ${i}: ${urls[i]}`);
+        return;
+      }
+    }
+
+    this.logger.error('All server URLs are offline, keeping current primary');
   }
 
   async getCreditPricing() {
@@ -65,7 +146,7 @@ export class SettingsService {
       'blockVpnProxy', 'priorityBackupStream', 'enableConxExceedLog', 'instantCloseConn',
       'resellerNotifyExpiry', 'streamDownAlert', 'enableLocalBackups', 'enableRemoteBackup',
       'discordAlerts', 'telegramAlerts', 'registrationOpen', 'enableGuard', 'denyInvalidStreamIds',
-      'autoEnrichMetadata', 'geoBlockEnabled',
+      'autoEnrichMetadata', 'geoBlockEnabled', 'urlHealthCheck',
     ]);
 
     const clean: Record<string, unknown> = {};
