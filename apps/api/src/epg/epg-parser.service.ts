@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import * as https from 'https';
 import * as http from 'http';
+import { URL } from 'url';
 import { parseString } from 'xml2js';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -75,15 +76,32 @@ export class EpgParserService {
   // OOM ile düşürebiliyor. Aşılırsa indirme iptal edilir ve reddedilir.
   private static readonly MAX_EPG_BYTES = 100 * 1024 * 1024; // 100MB
 
-  private fetchXml(url: string): Promise<string> {
+  private fetchXml(url: string, redirectsLeft = 5): Promise<string> {
     return new Promise((resolve, reject) => {
       const mod = url.startsWith('https') ? https : http;
       const req = mod.get(url, (res) => {
-        if (res.statusCode !== 200) {
+        const status = res.statusCode ?? 0;
+
+        // 3xx yönlendirmelerini TAKİP ET (Location header). open-epg gibi kaynaklar
+        // 302 ile gerçek dosyaya yönlendiriyor; node http.get otomatik takip etmez.
+        if (status >= 300 && status < 400 && res.headers.location) {
+          res.resume(); // gövdeyi tüket
+          if (redirectsLeft <= 0) {
+            reject(new Error('Çok fazla yönlendirme (redirect döngüsü?)'));
+            return;
+          }
+          const next = new URL(res.headers.location, url).toString(); // göreli Location'ı çöz
+          resolve(this.fetchXml(next, redirectsLeft - 1));
+          return;
+        }
+
+        // Yalnızca 4xx/5xx (ve Location'sız 3xx) gerçek hatadır.
+        if (status >= 400 || status < 200) {
           reject(new Error(`HTTP ${res.statusCode ?? 'unknown'}`));
           res.resume();
           return;
         }
+
         const chunks: Buffer[] = [];
         let size = 0;
         let aborted = false;
