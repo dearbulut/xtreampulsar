@@ -450,7 +450,11 @@ export class XtreamController {
 
     // ── Track connection ────────────────────────────────────────────────────
     // findOrCreateConnection ensures one row per user+stream, not one per HLS request.
-    const connStartedAt = Date.now();
+    // NOT: Bağlantı OTURUM bazlıdır. HLS'te her istek (master/variant/segment) ayrı
+    // ve kısa ömürlüdür; response bitişini (res 'close'/'finish') "oturum bitti"
+    // sanıp kapatmak, master playlist gönderilir gönderilmez (~62ms) bağlantıyı
+    // öldürüyordu. Kapatma YALNIZ stale cron (90sn heartbeat yok), zap ve kick/ban
+    // ile yapılır; alt-istekler (liveProxySub) updatedAt'i tazeleyerek canlı tutar.
     const hlsToken = randomUUID();
     let connectionId: string | null = null;
     let activeToken: string = hlsToken;
@@ -484,31 +488,6 @@ export class XtreamController {
         }).catch(() => {});
       }
     } catch { /* non-fatal */ }
-
-    const closeConn = (): void => {
-      if (!connectionId) return;
-      const id = connectionId;
-      connectionId = null;
-      const durationSec = Math.round((Date.now() - connStartedAt) / 1000);
-      this.gateway?.emitConnectionClose(id);
-      void this.userService.closeConnection(id);
-      void this.userActivityService.logActivity({
-        userId: user.id,
-        action: 'STREAM_END',
-        streamId: streamRecord.id,
-        ip: clientIp,
-        duration: durationSec,
-        endedAt: new Date(),
-      });
-      void this.webhookService?.triggerWebhook('user.disconnected', {
-        userId: user.id,
-        username: user.username,
-        streamId: streamRecord.id,
-        duration: durationSec,
-      }).catch(() => {});
-    };
-    res.on('close', closeConn);
-    res.on('finish', closeConn);
 
     // ── PROXY mode: upstream'i geçir; m3u8 ise içindeki URL'leri panel proxy'sine
     //    rewrite et (aksi halde upstream'in göreli variant/segment yolları VLC'de
