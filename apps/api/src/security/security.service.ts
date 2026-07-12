@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeConnectionWhere } from '../user/user.repository';
 import { REDIS_CLIENT } from '../redis/redis.module';
 
 interface IpInfo {
@@ -154,7 +155,7 @@ export class SecurityService {
 
   async getGeoStats() {
     const connections = await this.prisma.connection.findMany({
-      where: { endedAt: null },
+      where: activeConnectionWhere(),
       select: { ip: true },
       take: 500,
     });

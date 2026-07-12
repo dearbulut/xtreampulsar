@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeConnectionWhere } from '../user/user.repository';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { SecurityService } from '../security/security.service';
 
@@ -56,7 +57,7 @@ export class AnalyticsService {
       safe('totalServers',      () => this.prisma.server.count(), 0),
       safe('onlineServers',     () => this.prisma.server.count({ where: { isOnline: true } }), 0),
       safe('activeConnections', () => this.prisma.connection.count({
-        where: { updatedAt: { gte: new Date(Date.now() - 30_000) } },
+        where: activeConnectionWhere(),
       }), 0),
       safe('connectionsToday',  () => this.prisma.connection.count({ where: { startedAt: { gte: todayStart } } }), 0),
     ]);
@@ -66,7 +67,7 @@ export class AnalyticsService {
     try {
       const rows = await this.prisma.connection.groupBy({
         by: ['streamId'],
-        where: { updatedAt: { gte: new Date(Date.now() - 30_000) } },
+        where: activeConnectionWhere(),
       });
       activeStreams = rows.length;
     } catch {}
@@ -95,11 +96,10 @@ export class AnalyticsService {
   }
 
   async getLiveConnections(page = 1, limit = 50) {
-    const activeThreshold = new Date(Date.now() - 30_000);
     try {
       const [raw, total] = await Promise.all([
         this.prisma.connection.findMany({
-          where: { updatedAt: { gte: activeThreshold } },
+          where: activeConnectionWhere(),
           include: {
             user: { select: { username: true } },
             stream: { select: { name: true, category: { select: { type: true } } } },
@@ -108,7 +108,7 @@ export class AnalyticsService {
           skip: (page - 1) * limit,
           take: limit,
         }),
-        this.prisma.connection.count({ where: { updatedAt: { gte: activeThreshold } } }),
+        this.prisma.connection.count({ where: activeConnectionWhere() }),
       ]);
 
       const items = raw.map((c) => ({
@@ -261,7 +261,7 @@ export class AnalyticsService {
     if (cached) return JSON.parse(cached) as unknown[];
 
     const connections = await this.prisma.connection.findMany({
-      where: { endedAt: null },
+      where: activeConnectionWhere(),
       select: { ip: true },
       take: 500,
     });
@@ -583,7 +583,6 @@ export class AnalyticsService {
   async getDashboardStats() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const activeThreshold = new Date(Date.now() - 30_000);
 
     const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
       try { return await fn(); }
@@ -609,7 +608,7 @@ export class AnalyticsService {
       safe('newUsersToday',   () => this.prisma.user.count({ where: { deletedAt: null, createdAt: { gte: todayStart } } }), 0),
       safe('totalStreams',    () => this.prisma.stream.count({ where: { isActive: true } }), 0),
       safe('healthyStreams',  () => this.prisma.stream.count({ where: { isActive: true, uptimePercent: { gte: 95 } } }), 0),
-      safe('activeConns',    () => this.prisma.connection.count({ where: { updatedAt: { gte: activeThreshold } } }), 0),
+      safe('activeConns',    () => this.prisma.connection.count({ where: activeConnectionWhere() }), 0),
       safe('connsToday',     () => this.prisma.connection.count({ where: { startedAt: { gte: todayStart } } }), 0),
       safe('streamsUp',      () => this.prisma.stream.count({ where: { isActive: true, healthStatus: 'HEALTHY' } }), 0),
       safe('streamsDown',    () => this.prisma.stream.count({ where: { isActive: true, healthStatus: 'UNHEALTHY' } }), 0),
@@ -622,7 +621,7 @@ export class AnalyticsService {
     try {
       activeStreams = (await this.prisma.connection.groupBy({
         by: ['streamId'],
-        where: { updatedAt: { gte: activeThreshold } },
+        where: activeConnectionWhere(),
       })).length;
     } catch {}
 

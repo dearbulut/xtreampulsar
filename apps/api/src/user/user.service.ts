@@ -12,7 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import * as qrcode from 'qrcode';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRepository, STALE_CONNECTION_MS } from './user.repository';
+import { UserRepository, activeConnectionWhere } from './user.repository';
 import { WebhookService } from '../webhook/webhook.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -171,7 +171,7 @@ export class UserService {
           maxConnections: true, expiresAt: true, notes: true,
           createdAt: true, resellerId: true,
           // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
-          _count: { select: { connections: { where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) } } } } },
+          _count: { select: { connections: { where: activeConnectionWhere() } } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -360,9 +360,8 @@ export class UserService {
 
   async getActiveConnections(id: string) {
     await this.assertExists(id);
-    const cutoff = new Date(Date.now() - STALE_CONNECTION_MS);
     return this.prisma.connection.findMany({
-      where: { userId: id, endedAt: null, updatedAt: { gte: cutoff } },
+      where: { userId: id, ...activeConnectionWhere() },
       include: { stream: { select: { id: true, name: true, status: true } }, server: true },
       orderBy: { startedAt: 'desc' },
     });

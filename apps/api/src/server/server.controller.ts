@@ -12,6 +12,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { activeConnectionWhere } from '../user/user.repository';
 import { ServerService } from './server.service';
 import { ServerHealthService } from './server-health.service';
 import { LoadBalancerService } from './load-balancer.service';
@@ -93,7 +94,7 @@ export class ServerController {
     if (!server) throw new NotFoundException(`Server ${id} not found`);
 
     const activeConns = await this.prisma.connection.count({
-      where: { serverId: id, endedAt: null },
+      where: { serverId: id, ...activeConnectionWhere() },
     });
 
     const utilPct = server.maxClients > 0

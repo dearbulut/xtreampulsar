@@ -9,6 +9,14 @@ import { PrismaService } from '../prisma/prisma.service';
 // dalgalanmasında yanlış düşme yok, hayaleti hızlı temizler.
 export const STALE_CONNECTION_MS = 90_000;
 
+// "Aktif bağlantı" TEK tanımı — her yerde (enforcement + tüm UI/dashboard sayaçları)
+// bunu kullan; tanım bir daha ayrışmasın. Aktif = kapanmamış (endedAt IS NULL) VE
+// son STALE_CONNECTION_MS içinde aktivite (updatedAt taze). Yalnız updatedAt filtresi
+// kapanmış (endedAt dolu) kayıtları "aktif" sayardı — panelin şişik sayacının nedeni.
+export function activeConnectionWhere(): Prisma.ConnectionWhereInput {
+  return { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) } };
+}
+
 // Zap (kanal değiştirme) için daha kısa eşik. HLS segment süresi 4sn
 // (-hls_time 4); canlı izleyen manifest'i ~4sn'de yeniler → updatedAt tazelenir.
 // 15sn (≈3.5 segment) tazelenmemiş = izleyici o stream'den ayrılmış.
@@ -38,9 +46,8 @@ export class UserRepository {
   // Yalnız GERÇEKTEN aktif (endedAt=null VE son STALE_CONNECTION_MS içinde aktivite)
   // bağlantıları sayar — hayalet kayıtlar maxConnections kotasını bloke etmesin.
   countActiveConnections(userId: string): Promise<number> {
-    const cutoff = new Date(Date.now() - STALE_CONNECTION_MS);
     return this.prisma.connection.count({
-      where: { userId, endedAt: null, updatedAt: { gte: cutoff } },
+      where: { userId, ...activeConnectionWhere() },
     });
   }
 

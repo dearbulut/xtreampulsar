@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@xtreampulsar/database';
 import { PaymentRequiredException } from '../common/exceptions/payment-required.exception';
 import { PrismaService } from '../prisma/prisma.service';
-import { STALE_CONNECTION_MS } from '../user/user.repository';
+import { activeConnectionWhere } from '../user/user.repository';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';
 
@@ -326,7 +326,7 @@ export class ResellerService {
       this.prisma.user.count({ where: { resellerId: id, deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }),
       this.prisma.user.count({ where: { resellerId: id, deletedAt: null, expiresAt: { lt: now } } }),
       this.prisma.connection.count({
-        where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) }, user: { resellerId: id } },
+        where: { ...activeConnectionWhere(), user: { resellerId: id } },
       }),
     ]);
 
@@ -353,7 +353,7 @@ export class ResellerService {
       this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: weekAgo } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, expiresAt: { gte: now, lte: in7Days } } }),
-      this.prisma.connection.count({ where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) }, user: { resellerId } } }),
+      this.prisma.connection.count({ where: { ...activeConnectionWhere(), user: { resellerId } } }),
       this.prisma.connection.count({ where: { user: { resellerId }, startedAt: { gte: todayStart } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, createdAt: { gte: monthStart } } }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null, status: 'BANNED' } }),
@@ -413,9 +413,8 @@ export class ResellerService {
 
   async getLiveConnections(resellerId: string) {
     const now = Date.now();
-    const cutoff = new Date(now - STALE_CONNECTION_MS);
     const rows = await this.prisma.connection.findMany({
-      where: { endedAt: null, updatedAt: { gte: cutoff }, user: { resellerId } },
+      where: { ...activeConnectionWhere(), user: { resellerId } },
       select: {
         id: true,
         ip: true,
@@ -599,7 +598,7 @@ export class ResellerService {
         select: {
           id: true, username: true, status: true,
           expiresAt: true, maxConnections: true, createdAt: true,
-          _count: { select: { connections: { where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) } } } } },
+          _count: { select: { connections: { where: activeConnectionWhere() } } },
         },
         orderBy,
         skip: (page - 1) * limit,
@@ -616,7 +615,7 @@ export class ResellerService {
       select: {
         id: true, username: true, status: true, maxConnections: true,
         expiresAt: true, notes: true, createdAt: true,
-        _count: { select: { connections: { where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) } } } } },
+        _count: { select: { connections: { where: activeConnectionWhere() } } },
         userBouquets: { select: { bouquet: { select: { id: true, name: true } } } },
       },
     });
