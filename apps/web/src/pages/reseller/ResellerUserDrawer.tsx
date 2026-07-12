@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import {
-  X, Copy, Check, CalendarPlus, Ban, Trash2, Key, ExternalLink, ListVideo,
+  X, Copy, Check, CalendarPlus, Ban, Trash2, Key, ExternalLink, ListVideo, Layers, Pencil,
 } from 'lucide-react';
 import {
   useResellerMe,
@@ -9,8 +9,11 @@ import {
   useResellerResetPassword,
   useResellerExtendUser,
   useResellerUserPlaylists,
+  useResellerUserBouquets,
+  useResellerBouquets,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow } from '@/hooks/useResellerPanel';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useSettings } from '@/hooks/useSettings';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -82,6 +85,10 @@ export function ResellerUserDrawer({
   const deleteUser = useResellerDeleteUser();
   const resetPassword = useResellerResetPassword();
   const { data: playlists } = useResellerUserPlaylists(user.id);
+  const { data: userBouquets = [] } = useResellerUserBouquets(user.id);
+  const { data: allBouquets = [] } = useResellerBouquets();
+  const [editingBouquets, setEditingBouquets] = useState(false);
+  const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
 
   const xtreamPort = settings?.xtream?.port ?? 25461;
   const rawUrl = settings?.general?.serverUrl?.trim() ?? '';
@@ -310,6 +317,64 @@ export function ResellerUserDrawer({
               <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted hover:text-fg w-full text-center">
                 İptal
               </button>
+            )}
+          </div>
+
+          {/* Bouquet'ler — görünürlük + düzenleme */}
+          <hr className="border-border" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-muted" />
+                <span className="text-xs font-semibold text-muted uppercase tracking-wide">Bouquet'ler</span>
+              </div>
+              {!editingBouquets && (
+                <button
+                  onClick={() => { setBouquetDraft(userBouquets.map((b) => b.id)); setEditingBouquets(true); }}
+                  className="flex items-center gap-1 text-xs text-muted hover:text-fg"
+                >
+                  <Pencil className="w-3 h-3" /> Düzenle
+                </button>
+              )}
+            </div>
+
+            {!editingBouquets ? (
+              userBouquets.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {userBouquets.map((b) => (
+                    <span key={b.id} className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{b.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-danger bg-danger/10 rounded-lg p-2">
+                  Bouquet atanmamış — bu kullanıcı hiçbir kanal göremez.
+                </div>
+              )
+            ) : (
+              <div className="space-y-2">
+                <MultiSelect
+                  options={allBouquets.map((b) => ({ value: b.id, label: b.name }))}
+                  value={bouquetDraft}
+                  onChange={setBouquetDraft}
+                  placeholder="Bouquet seçin…"
+                />
+                {bouquetDraft.length === 0 && (
+                  <p className="text-[11px] text-warning">Uyarı: boş bırakılırsa kullanıcı hiçbir kanal göremez.</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    className="btn-primary text-xs px-3 py-1.5"
+                    onClick={async () => {
+                      await updateUser.mutateAsync({ id: user.id, bouquetIds: bouquetDraft });
+                      setEditingBouquets(false);
+                      onUpdated();
+                    }}
+                  >
+                    Kaydet
+                  </button>
+                  <button className="text-xs text-muted hover:text-fg" onClick={() => setEditingBouquets(false)}>İptal</button>
+                </div>
+              </div>
             )}
           </div>
 

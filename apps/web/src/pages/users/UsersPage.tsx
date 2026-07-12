@@ -14,6 +14,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser, useCreateTrialUser,
+  useUserBouquets,
 } from '@/hooks/useUsers';
 import { useSettings } from '@/hooks/useSettings';
 import type { QuickCreateResult, TrialCreateResult } from '@/hooks/useUsers';
@@ -277,7 +278,7 @@ export function UsersPage() {
         <div className="flex items-center gap-1">
           <ActionBtn icon={Clock} title="Süre uzat" color="text-info"
             onClick={() => { setExtendId(r.id); setExtendDays(30); }} />
-          <ActionBtn icon={Pencil} title="Düzenle" color="text-muted" onClick={() => {}} />
+          <ActionBtn icon={Pencil} title="Düzenle" color="text-muted" onClick={() => setDetailUserId(r.id)} />
           <ActionBtn icon={Wifi} title="Bağlantıları kes" color="text-warning"
             onClick={() => kickUser.mutate(r.id)} />
           {r.status === 'BANNED' ? (
@@ -960,6 +961,10 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
 
   const { data: activityData, isLoading: activityLoading } = useUserActivity(userId, activityPage, 50, activityFilters);
   const { data: stats, isLoading: statsLoading } = useUserStats(userId);
+  const { data: userBouquets = [] } = useUserBouquets(userId);
+  const { data: allBouquets = [] } = useBouquets();
+  const [editingBouquets, setEditingBouquets] = useState(false);
+  const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
 
   if (!user) return null;
 
@@ -1061,6 +1066,56 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 <button className="btn-ghost text-sm" onClick={() => { setEditPassword(false); setNewPassword(''); }}>
                   İptal
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* Bouquet'ler — görünürlük + düzenleme */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-muted">Bouquet'ler</div>
+              {!editingBouquets && (
+                <button
+                  onClick={() => { setBouquetDraft(userBouquets.map((b) => b.id)); setEditingBouquets(true); }}
+                  className="btn-secondary text-sm flex items-center gap-2"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Düzenle
+                </button>
+              )}
+            </div>
+
+            {!editingBouquets ? (
+              userBouquets.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {userBouquets.map((b) => (
+                    <span key={b.id} className="badge bg-primary/10 text-primary-light">{b.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-danger bg-danger/10 rounded-lg p-2">
+                  Bouquet atanmamış — bu kullanıcı hiçbir kanal göremez.
+                </div>
+              )
+            ) : (
+              <div className="space-y-2">
+                <MultiSelect
+                  options={allBouquets.map((b) => ({ value: b.id, label: b.name }))}
+                  value={bouquetDraft}
+                  onChange={setBouquetDraft}
+                  placeholder="Bouquet seçin…"
+                />
+                {bouquetDraft.length === 0 && (
+                  <p className="text-xs text-warning">Uyarı: boş bırakılırsa kullanıcı hiçbir kanal göremez.</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    className="btn-primary text-sm"
+                    onClick={() => { onUpdate(userId, { bouquetIds: bouquetDraft }); setEditingBouquets(false); }}
+                  >
+                    Kaydet
+                  </button>
+                  <button className="btn-ghost text-sm" onClick={() => setEditingBouquets(false)}>İptal</button>
+                </div>
               </div>
             )}
           </div>

@@ -615,16 +615,18 @@ export class ResellerService {
         id: true, username: true, status: true, maxConnections: true,
         expiresAt: true, notes: true, createdAt: true,
         _count: { select: { connections: { where: { endedAt: null } } } },
+        userBouquets: { select: { bouquet: { select: { id: true, name: true } } } },
       },
     });
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
-    return user;
+    const { userBouquets, ...rest } = user;
+    return { ...rest, bouquets: userBouquets.map((ub) => ub.bouquet) };
   }
 
   async updateMyUser(
     resellerId: string,
     userId: string,
-    dto: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string },
+    dto: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string; bouquetIds?: string[] },
   ) {
     const user = await this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null } });
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
@@ -635,11 +637,25 @@ export class ResellerService {
     if (dto.notes !== undefined) data.notes = dto.notes;
     if (dto.status !== undefined) data.status = dto.status;
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data,
       select: { id: true, username: true, status: true, maxConnections: true, expiresAt: true },
     });
+
+    // Bouquet set semantiği: bouquetIds verildiyse tam olarak onlarla değiştir;
+    // verilmezse (undefined) mevcut ataması korunur.
+    if (dto.bouquetIds !== undefined) {
+      await this.prisma.userBouquet.deleteMany({ where: { userId } });
+      if (dto.bouquetIds.length > 0) {
+        await this.prisma.userBouquet.createMany({
+          data: dto.bouquetIds.map((bouquetId) => ({ userId, bouquetId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    return updated;
   }
 
   async deleteMyUser(resellerId: string, userId: string): Promise<void> {

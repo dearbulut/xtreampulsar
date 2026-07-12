@@ -354,13 +354,43 @@ export function useResellerBulkAction() {
 export function useResellerUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; maxConnections?: number; expiresAt?: string; notes?: string; status?: string }) =>
+    mutationFn: ({ id, ...data }: { id: string; maxConnections?: number; expiresAt?: string; notes?: string; status?: string; bouquetIds?: string[] }) =>
       resellerApi.put(`/resellers/me/users/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (_res, vars) => {
       void qc.invalidateQueries({ queryKey: ['reseller-panel', 'users'] });
+      void qc.invalidateQueries({ queryKey: ['reseller-panel', 'user-bouquets', vars.id] });
       toast.success('Güncellendi');
     },
     onError: () => toast.error('Güncelleme başarısız'),
+  });
+}
+
+// Kullanıcının atanmış bouquet'leri (getMyUserDetail bouquets alanı).
+export function useResellerUserBouquets(userId: string | null) {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'user-bouquets', userId],
+    enabled: !!userId && !!token,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: { bouquets?: { id: string; name: string }[] } }>(
+        `/resellers/me/users/${userId!}`,
+      );
+      return res.data.data.bouquets ?? [];
+    },
+  });
+}
+
+// Tüm bouquet seçenekleri (reseller düzenleme MultiSelect'i için).
+export function useResellerBouquets() {
+  const token = useAuthStore((s) => s.resellerToken);
+  return useQuery({
+    queryKey: ['reseller-panel', 'bouquets'],
+    enabled: !!token,
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: { id: string; name: string }[] }>('/bouquets');
+      const raw = res.data?.data ?? [];
+      return Array.isArray(raw) ? raw.map((b) => ({ id: b.id, name: b.name })) : [];
+    },
   });
 }
 

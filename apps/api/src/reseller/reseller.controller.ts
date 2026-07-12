@@ -318,7 +318,7 @@ export class ResellerController {
   async updateMyUser(
     @CurrentUser() user: JwtUser,
     @Param('userId') userId: string,
-    @Body() body: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string },
+    @Body() body: { maxConnections?: number; expiresAt?: string; notes?: string; status?: string; bouquetIds?: string[] },
   ) {
     if (user.type !== 'reseller') throw new ForbiddenException('Reseller panel access only');
     return this.resellerService.updateMyUser(user.id, userId, body);

@@ -181,6 +181,12 @@ export class UserController {
     return this.userService.getActiveConnections(id);
   }
 
+  @Get(':id/bouquets')
+  @Roles('ADMIN')
+  getBouquets(@Param('id') id: string) {
+    return this.userService.getUserBouquets(id);
+  }
+
   @Post(':id/kick')
   @Roles('ADMIN', 'RESELLER')
   async kick(@Param('id') id: string, @CurrentUser() user: JwtUser) {

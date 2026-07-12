@@ -297,6 +297,17 @@ export class UserService {
     return user;
   }
 
+  // Kullanıcının atanmış bouquet'leri (id + ad). Detay drawer'ında görünürlük için.
+  async getUserBouquets(id: string): Promise<{ id: string; name: string }[]> {
+    await this.assertExists(id);
+    const rows = await this.prisma.userBouquet.findMany({
+      where: { userId: id },
+      select: { bouquet: { select: { id: true, name: true } } },
+      orderBy: { bouquet: { name: 'asc' } },
+    });
+    return rows.map((r) => r.bouquet);
+  }
+
   async softDelete(id: string): Promise<void> {
     await this.assertExists(id);
     // O9: ban gibi, silinen kullanıcının açık bağlantılarını kapat — aksi halde

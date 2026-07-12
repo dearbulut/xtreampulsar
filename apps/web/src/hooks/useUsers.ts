@@ -13,6 +13,20 @@ interface UserFilter {
   isTrial?: boolean;
 }
 
+// Kullanıcının atanmış bouquet'leri (detay drawer görünürlük + düzenleme için).
+export function useUserBouquets(userId: string | null) {
+  return useQuery({
+    queryKey: ['user', userId, 'bouquets'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: { id: string; name: string }[] }>(
+        `/users/${userId!}/bouquets`,
+      );
+      return res.data.data;
+    },
+    enabled: !!userId,
+  });
+}
+
 export function useUsers(filter: UserFilter = {}) {
   const params = new URLSearchParams();
   if (filter.page) params.set('page', String(filter.page));
@@ -93,10 +107,11 @@ export function useQuickCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<User> & { password?: string; expiresAt?: string } }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> & { password?: string; expiresAt?: string; bouquetIds?: string[] } }) =>
       api.patch(`/users/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (_res, vars) => {
       void qc.invalidateQueries({ queryKey: ['users'] });
+      void qc.invalidateQueries({ queryKey: ['user', vars.id, 'bouquets'] });
       toast.success('Kullanıcı güncellendi');
     },
     onError: () => toast.error('Güncelleme başarısız'),
