@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import * as https from 'https';
 import * as http from 'http';
 import * as fs from 'fs';
@@ -44,7 +44,7 @@ export interface DumpImportOptions {
 }
 
 @Injectable()
-export class MigrationService {
+export class MigrationService implements OnModuleInit {
   private readonly logger = new Logger(MigrationService.name);
 
   private readonly jobMeta = new Map<string, {
@@ -55,6 +55,35 @@ export class MigrationService {
   }>();
 
   constructor(private readonly prisma: PrismaService) {}
+
+  // Madde 3b — startup reconciliation: sunucu yeniden başladığında yarıda kalan
+  // (RUNNING/PENDING) job'lar artık çalışmıyordur; sonsuza dek RUNNING kalmasınlar.
+  async onModuleInit(): Promise<void> {
+    try {
+      const res = await this.prisma.migrationJob.updateMany({
+        where: { status: { in: ['RUNNING', 'PENDING'] } },
+        data: {
+          status: 'FAILED',
+          errors: ['Sunucu yeniden başladı, iş kesildi'],
+          completedAt: new Date(),
+        },
+      });
+      if (res.count > 0) {
+        this.logger.warn(`Startup: ${res.count} yarıda kalmış migration job FAILED işaretlendi`);
+      }
+    } catch (err) {
+      this.logger.error(`Startup reconciliation failed: ${(err as Error).message}`);
+    }
+  }
+
+  // Madde 3a — iptal token'ı: job CANCELLED işaretlendiyse import loop'ları durur.
+  private async isCancelled(jobId: string): Promise<boolean> {
+    const job = await this.prisma.migrationJob.findUnique({
+      where: { id: jobId },
+      select: { status: true },
+    });
+    return job?.status === 'CANCELLED';
+  }
 
   // ─── Job list / status ─────────────────────────────────────────────────────
 
@@ -152,7 +181,9 @@ export class MigrationService {
       return cat.id;
     };
 
+    let i = 0;
     for (const entry of entries) {
+      if (++i % 200 === 0 && (await this.isCancelled(jobId))) break; // madde 3a
       try {
         const categoryId = await ensureCategory(entry.groupTitle || 'Uncategorized', entry.streamType);
         const existing = await this.prisma.stream.findFirst({
@@ -183,10 +214,11 @@ export class MigrationService {
       }
     }
 
+    const cancelled = await this.isCancelled(jobId); // madde 3a: iptal durumunu koru
     await this.prisma.migrationJob.update({
       where: { id: jobId },
       data: {
-        status: failed === entries.length ? 'FAILED' : 'COMPLETED',
+        status: cancelled ? 'CANCELLED' : failed === entries.length && entries.length > 0 ? 'FAILED' : 'COMPLETED',
         processedRecords: processed,
         failedRecords: failed,
         errors: errors.length > 0 ? errors : Prisma.JsonNull,
@@ -194,7 +226,7 @@ export class MigrationService {
       },
     });
 
-    this.logger.log(`M3U import ${jobId}: ${processed} ok, ${failed} failed`);
+    this.logger.log(`M3U import ${jobId}: ${processed} ok, ${failed} failed${cancelled ? ' (iptal edildi)' : ''}`);
   }
 
   // ─── Xtream API import ────────────────────────────────────────────────────
@@ -222,57 +254,79 @@ export class MigrationService {
       data: { status: 'RUNNING', startedAt: new Date() },
     });
 
+    let totalImported = 0;
+    // Madde 1: her bölüm sonrası ilerlemeyi kaydet → yarım kalan/başarısız import'ta
+    // kaç kayıt yazıldığı GÖRÜNÜR olsun (sessiz yarım-import yok).
+    const saveProgress = () =>
+      this.prisma.migrationJob.update({
+        where: { id: jobId },
+        data: { totalRecords: totalImported, processedRecords: totalImported },
+      });
+
     try {
       const base = `${dto.serverUrl}/player_api.php?username=${encodeURIComponent(dto.username)}&password=${encodeURIComponent(dto.password)}`;
 
-      let totalImported = 0;
-
-      if (dto.importLive) {
+      if (dto.importLive && !(await this.isCancelled(jobId))) {
         const [cats, streams] = await Promise.all([
           this.fetchJson<{ category_id: string; category_name: string }[]>(`${base}&action=get_live_categories`),
           this.fetchJson<{ name: string; stream_id: number; category_id: string; stream_icon: string; epg_channel_id: string }[]>(`${base}&action=get_live_streams`),
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'LIVE');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'LIVE');
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'LIVE', jobId);
+        await saveProgress();
       }
 
-      if (dto.importVod) {
+      if (dto.importVod && !(await this.isCancelled(jobId))) {
         const [cats, streams] = await Promise.all([
           this.fetchJson<{ category_id: string; category_name: string }[]>(`${base}&action=get_vod_categories`),
           this.fetchJson<{ name: string; stream_id: number; category_id: string; stream_icon: string }[]>(`${base}&action=get_vod_streams`),
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'VOD');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD');
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD', jobId);
+        await saveProgress();
       }
 
-      if (dto.importSeries) {
+      if (dto.importSeries && !(await this.isCancelled(jobId))) {
         const [cats, series] = await Promise.all([
           this.fetchJson<{ category_id: string; category_name: string }[]>(`${base}&action=get_series_categories`),
           this.fetchJson<{ series_id: number; name: string; cover: string; category_id: string }[]>(`${base}&action=get_series`),
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'SERIES');
-        totalImported += await this.importXtreamSeriesItems(series, catIdMap, dto.serverUrl, dto.username, dto.password);
+        totalImported += await this.importXtreamSeriesItems(series, catIdMap, dto.serverUrl, dto.username, dto.password, jobId);
+        await saveProgress();
       }
 
-      await this.prisma.migrationJob.update({
-        where: { id: jobId },
-        data: {
-          status: 'COMPLETED',
-          totalRecords: totalImported,
-          processedRecords: totalImported,
-          completedAt: new Date(),
-        },
-      });
+      // Madde 3a: iptal edildiyse CANCELLED durumunu KORU (COMPLETED yapma).
+      if (await this.isCancelled(jobId)) {
+        await this.prisma.migrationJob.update({
+          where: { id: jobId },
+          data: { totalRecords: totalImported, processedRecords: totalImported, completedAt: new Date() },
+        });
+        this.logger.warn(`Xtream import ${jobId} iptal edildi — ${totalImported} kayıt işlendi`);
+      } else {
+        await this.prisma.migrationJob.update({
+          where: { id: jobId },
+          data: {
+            status: 'COMPLETED',
+            totalRecords: totalImported,
+            processedRecords: totalImported,
+            completedAt: new Date(),
+          },
+        });
+      }
     } catch (err) {
       this.logger.error(`Xtream import ${jobId} failed: ${(err as Error).message}`);
       await this.prisma.migrationJob.update({
         where: { id: jobId },
         data: {
           status: 'FAILED',
-          errors: [(err as Error).message],
+          // Madde 1: hata anına kadar kaç kayıt yazıldığını bildir.
+          totalRecords: totalImported,
+          processedRecords: totalImported,
+          errors: [`${(err as Error).message} (${totalImported} kayıt import edildi)`],
           completedAt: new Date(),
         },
       });
@@ -313,11 +367,16 @@ export class MigrationService {
     username: string,
     password: string,
     type: 'LIVE' | 'VOD' | 'SERIES',
+    jobId: string,
   ): Promise<number> {
     let count = 0;
+    let i = 0;
     const baseUrl = serverUrl.replace(/\/$/, '');
 
     for (const s of streams) {
+      // Madde 3a: periyodik iptal kontrolü.
+      if (++i % 500 === 0 && (await this.isCancelled(jobId))) break;
+
       const categoryId = catIdMap.get(s.category_id);
       if (!categoryId) continue;
 
@@ -329,29 +388,43 @@ export class MigrationService {
           : `${baseUrl}/live/${username}/${password}/${s.stream_id}.m3u8`;
 
       try {
-        await this.prisma.stream.upsert({
-          where: { externalId: s.stream_id },
-          create: {
-            externalId: s.stream_id,
-            name: s.name,
-            primaryUrl,
-            streamMode: 'PROXY',
-            tvgLogo: s.stream_icon || null,
-            tvgId: s.epg_channel_id || null,
-            categoryId,
-          },
-          update: {
-            name: s.name,
-            primaryUrl,
-            streamMode: 'PROXY',
-            tvgLogo: s.stream_icon || null,
-            tvgId: s.epg_channel_id || null,
-            categoryId,
-          },
+        // Madde 2/4: externalId (upstream stream_id) global @unique olduğundan farklı
+        // panellerin aynı stream_id'si çakışıp öncekini SESSİZCE eziyordu. Dedup'ı
+        // primaryUrl (panel+stream'e özgü) ile yap; externalId'yi EXPLICIT verme →
+        // autoincrement (çakışma yok, farklı paneller bir arada durur). Series ile
+        // aynı desen. Aynı kaynağın tekrar import'u → primaryUrl eşleşir → update
+        // (duplicate yok, idempotent).
+        const existing = await this.prisma.stream.findFirst({
+          where: { primaryUrl },
+          select: { id: true },
         });
+        if (existing) {
+          await this.prisma.stream.update({
+            where: { id: existing.id },
+            data: {
+              name: s.name,
+              primaryUrl,
+              streamMode: 'PROXY',
+              tvgLogo: s.stream_icon || null,
+              tvgId: s.epg_channel_id || null,
+              categoryId,
+            },
+          });
+        } else {
+          await this.prisma.stream.create({
+            data: {
+              name: s.name,
+              primaryUrl,
+              streamMode: 'PROXY',
+              tvgLogo: s.stream_icon || null,
+              tvgId: s.epg_channel_id || null,
+              categoryId,
+            },
+          });
+        }
         count++;
       } catch {
-        // skip duplicates
+        // skip on error
       }
     }
 
@@ -367,11 +440,14 @@ export class MigrationService {
     serverUrl: string,
     username: string,
     password: string,
+    jobId: string,
   ): Promise<number> {
     let count = 0;
+    let i = 0;
     const baseUrl = serverUrl.replace(/\/$/, '');
 
     for (const s of series) {
+      if (++i % 500 === 0 && (await this.isCancelled(jobId))) break; // madde 3a
       const categoryId = catIdMap.get(s.category_id);
       if (!categoryId) continue;
 
@@ -804,9 +880,11 @@ export class MigrationService {
 
     const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
     const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+    let cancelled = false;
 
     try {
       for await (const line of rl) {
+        if (cancelled) break;
         const insertData = this.extractInsertData(line);
         if (!insertData) continue;
 
@@ -878,14 +956,18 @@ export class MigrationService {
 
           if ((processed + failed) % 100 === 0) {
             await this.updateJobProgress(jobId, processed, failed, total);
+            if (await this.isCancelled(jobId)) { cancelled = true; break; } // madde 3a
           }
         }
       }
 
+      rl.close();
+      fileStream.close();
+
       await this.prisma.migrationJob.update({
         where: { id: jobId },
         data: {
-          status: 'COMPLETED',
+          status: cancelled ? 'CANCELLED' : 'COMPLETED',
           processedRecords: processed,
           failedRecords: failed,
           totalRecords: total,
@@ -1495,6 +1577,10 @@ export class MigrationService {
     return entries;
   }
 
+  // Madde 5: uzak Xtream yanıtı için üst sınır — cap'siz buffer büyük panellerde
+  // OOM riski. Aşılırsa indirme iptal + reddedilir (job FAILED olur).
+  private static readonly MAX_JSON_BYTES = 100 * 1024 * 1024; // 100MB
+
   private fetchJson<T>(url: string): Promise<T> {
     return new Promise((resolve, reject) => {
       const mod = url.startsWith('https') ? https : http;
@@ -1505,8 +1591,22 @@ export class MigrationService {
           return;
         }
         const chunks: Buffer[] = [];
-        res.on('data', (c: Buffer) => chunks.push(c));
+        let size = 0;
+        let aborted = false;
+        res.on('data', (c: Buffer) => {
+          if (aborted) return;
+          size += c.length;
+          if (size > MigrationService.MAX_JSON_BYTES) {
+            aborted = true;
+            req.destroy();
+            res.destroy();
+            reject(new Error(`Xtream yanıtı çok büyük (>${Math.round(MigrationService.MAX_JSON_BYTES / 1024 / 1024)}MB)`));
+            return;
+          }
+          chunks.push(c);
+        });
         res.on('end', () => {
+          if (aborted) return;
           try {
             resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8')) as T);
           } catch (e) {
