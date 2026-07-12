@@ -9,6 +9,11 @@ import { PrismaService } from '../prisma/prisma.service';
 // dalgalanmasında yanlış düşme yok, hayaleti hızlı temizler.
 export const STALE_CONNECTION_MS = 90_000;
 
+// Zap (kanal değiştirme) için daha kısa eşik. HLS segment süresi 4sn
+// (-hls_time 4); canlı izleyen manifest'i ~4sn'de yeniler → updatedAt tazelenir.
+// 15sn (≈3.5 segment) tazelenmemiş = izleyici o stream'den ayrılmış.
+export const ZAP_STALE_MS = 15_000;
+
 export interface CreateConnectionData {
   userId: string;
   streamId: string;
@@ -36,6 +41,33 @@ export class UserRepository {
     const cutoff = new Date(Date.now() - STALE_CONNECTION_MS);
     return this.prisma.connection.count({
       where: { userId, endedAt: null, updatedAt: { gte: cutoff } },
+    });
+  }
+
+  // Zap fix: yeni bir stream açılırken, aynı kullanıcının DİĞER stream'lerdeki
+  // artık geçerli olmayan açık bağlantılarını kapat. "Geçerli değil" =
+  //   (a) aynı cihaz (IP + userAgent) — kanal değiştiren cihazın eski bağlantısı, VEYA
+  //   (b) ZAP_STALE_MS'tir tazelenmemiş (ölü).
+  // Böylece hızlı zap'te bağlantı birikmez; farklı cihazdan (farklı IP/UA + taze)
+  // eşzamanlı izleyen KORUNUR → maxConnections çoklu-cihaz için doğru çalışır.
+  closeSupersededConnections(
+    userId: string,
+    keepStreamId: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<{ count: number }> {
+    const cutoff = new Date(Date.now() - ZAP_STALE_MS);
+    return this.prisma.connection.updateMany({
+      where: {
+        userId,
+        streamId: { not: keepStreamId },
+        endedAt: null,
+        OR: [
+          { updatedAt: { lt: cutoff } },
+          { ip, userAgent: userAgent ?? null },
+        ],
+      },
+      data: { endedAt: new Date() },
     });
   }
 

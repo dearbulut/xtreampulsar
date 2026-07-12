@@ -335,22 +335,6 @@ export class XtreamController {
       return;
     }
 
-    // Validate connection limits
-    try {
-      const validation = await this.userService.validateConnection(
-        user.id,
-        (req as Request).ip ?? '',
-        req.headers['user-agent'],
-      );
-      if (!validation.allowed) {
-        res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
-        return;
-      }
-    } catch {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Connection validation error');
-      return;
-    }
-
     // Find the stream record to get its internal ID and mode
     let streamRecord: { id: string; primaryUrl: string; streamMode: string };
     try {
@@ -376,10 +360,30 @@ export class XtreamController {
       }
     }
 
-    // ── Track connection ────────────────────────────────────────────────────
-    // findOrCreateConnection ensures one row per user+stream, not one per HLS request.
     const clientIp = clientIpRaw;
     const clientUa = req.headers['user-agent'] ?? '';
+
+    // ZAP FIX: yeni stream açılıyor — kullanıcının DİĞER stream'lerdeki eski/aynı-cihaz
+    // bağlantılarını KAPAT, sonra limiti değerlendir. Böylece kanal değiştiren cihazın
+    // eski bağlantısı birikmez; farklı cihazdan taze izleyen korunur.
+    try {
+      await this.userService.closeSupersededConnections(user.id, streamRecord.id, clientIp, clientUa);
+    } catch { /* non-fatal */ }
+
+    // Validate connection limits (zap temizliğinden SONRA → doğru sayım)
+    try {
+      const validation = await this.userService.validateConnection(user.id, clientIp, clientUa);
+      if (!validation.allowed) {
+        res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
+        return;
+      }
+    } catch {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Connection validation error');
+      return;
+    }
+
+    // ── Track connection ────────────────────────────────────────────────────
+    // findOrCreateConnection ensures one row per user+stream, not one per HLS request.
     const connStartedAt = Date.now();
     const hlsToken = randomUUID();
     let connectionId: string | null = null;

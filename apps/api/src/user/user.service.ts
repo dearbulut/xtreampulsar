@@ -128,6 +128,12 @@ export class UserService {
     return this.userRepo.findOrCreateConnection({ userId, streamId, ip, userAgent, serverId, token });
   }
 
+  // Zap fix: yeni stream açılırken kullanıcının diğer stream'lerdeki eski/aynı-cihaz
+  // bağlantılarını kapat (limit sayımından ÖNCE çağrılmalı).
+  async closeSupersededConnections(userId: string, keepStreamId: string, ip: string, userAgent?: string) {
+    return this.userRepo.closeSupersededConnections(userId, keepStreamId, ip, userAgent);
+  }
+
   async closeConnection(connectionId: string): Promise<void> {
     return this.userRepo.closeConnection(connectionId);
   }
