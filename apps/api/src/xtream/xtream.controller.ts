@@ -240,12 +240,50 @@ export class XtreamController {
     }
   }
 
+  // HLS playlist (m3u8) içindeki URL'leri panel proxy path'ine yeniden yazar.
+  // - Yorum/tag satırları korunur; URI="..." içeren tag'lar (EXT-X-KEY/MAP/MEDIA)
+  //   ve düz URL satırları (variant/segment) rewrite edilir.
+  // - Göreli/mutlak URL upstream playlist'e göre çözülür; yalnız AYNI origin'e ait
+  //   olanlar panel proxy'sine yönlendirilir (farklı CDN origin'i olduğu gibi kalır).
+  // - proxyPrefix = /live/<user>/<pass>/<externalId>; alt-yol upstream pathname'idir
+  //   → route liveProxySub bunu güvenle (sabit origin) tekrar upstream'e çözer.
+  private rewritePlaylist(content: string, playlistUrl: string, upstreamOrigin: string, proxyPrefix: string): string {
+    const rewriteOne = (uri: string): string => {
+      const u = uri.trim();
+      if (!u) return uri;
+      try {
+        const abs = new URL(u, playlistUrl);
+        if (abs.origin !== upstreamOrigin) return uri; // farklı origin — dokunma
+        return `${proxyPrefix}${abs.pathname}${abs.search}`;
+      } catch {
+        return uri;
+      }
+    };
+    return content
+      .split(/\r?\n/)
+      .map((line) => {
+        const t = line.trim();
+        if (!t) return line;
+        if (t.startsWith('#')) {
+          const m = t.match(/URI="([^"]*)"/);
+          if (m && m[1]) return line.replace(m[1], rewriteOne(m[1]));
+          return line;
+        }
+        return rewriteOne(t);
+      })
+      .join('\n');
+  }
+
   private proxyToUpstream(
     streamUrl: string,
     req: Request,
     res: Response,
-    onEnd?: (bytes: bigint, durationSeconds: number) => void,
+    opts?: {
+      onEnd?: (bytes: bigint, durationSeconds: number) => void;
+      rewrite?: { proxyPrefix: string; upstreamOrigin: string; playlistUrl: string };
+    },
   ): void {
+    const onEnd = opts?.onEnd;
     const startMs = Date.now();
     let bytes = BigInt(0);
 
@@ -266,10 +304,38 @@ export class XtreamController {
         headers: {
           'User-Agent': req.headers['user-agent'] ?? 'XtreamPulsar/1.0',
           'Accept': '*/*',
+          // Rewrite için gzip'siz düz metin iste (buffer + parse edilebilsin).
+          'Accept-Encoding': 'identity',
           'Connection': 'keep-alive',
         },
       },
       (proxyRes) => {
+        const ct = String(proxyRes.headers['content-type'] ?? '');
+        const isPlaylist = !!opts?.rewrite && (/mpegurl/i.test(ct) || /\.m3u8($|\?)/i.test(target.pathname + target.search));
+
+        if (isPlaylist) {
+          // Playlist: tamamını topla → URL'leri rewrite et → yeni Content-Length ile gönder.
+          const chunks: Buffer[] = [];
+          proxyRes.on('data', (c: Buffer) => chunks.push(c));
+          proxyRes.on('end', () => {
+            const body = Buffer.concat(chunks).toString('utf-8');
+            const rw = opts!.rewrite!;
+            const out = Buffer.from(this.rewritePlaylist(body, rw.playlistUrl, rw.upstreamOrigin, rw.proxyPrefix), 'utf-8');
+            if (res.headersSent) return;
+            res.writeHead(proxyRes.statusCode ?? 200, {
+              'Content-Type': 'application/vnd.apple.mpegurl',
+              'Content-Length': out.length,
+              'Cache-Control': 'no-cache, no-store',
+              'Access-Control-Allow-Origin': '*',
+              'X-Proxied-By': 'XtreamPulsar',
+            });
+            res.end(out);
+          });
+          proxyRes.on('error', () => { if (!res.headersSent) res.status(HttpStatus.BAD_GATEWAY).end(); });
+          return;
+        }
+
+        // Segment/binary: ham pipe (performans).
         if (onEnd) {
           proxyRes.on('data', (chunk: Buffer) => { bytes += BigInt(chunk.length); });
         }
@@ -296,7 +362,7 @@ export class XtreamController {
       }
     });
 
-    req.pipe(proxyReq);
+    proxyReq.end();
   }
 
   // ─── Live stream ───────────────────────────────────────────────────────────
@@ -444,9 +510,15 @@ export class XtreamController {
     res.on('close', closeConn);
     res.on('finish', closeConn);
 
-    // ── PROXY mode: pass source URL directly, skip FFmpeg/HLS entirely ──────
+    // ── PROXY mode: upstream'i geçir; m3u8 ise içindeki URL'leri panel proxy'sine
+    //    rewrite et (aksi halde upstream'in göreli variant/segment yolları VLC'de
+    //    panel URL'ine göre çözülüp 404 verirdi). FFmpeg/HLS atlanır.
     if ((streamRecord.streamMode ?? 'PROXY') === 'PROXY') {
-      this.proxyToUpstream(streamRecord.primaryUrl, req, res);
+      const proxyPrefix = `/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${externalId}`;
+      const upstreamOrigin = new URL(streamRecord.primaryUrl).origin;
+      this.proxyToUpstream(streamRecord.primaryUrl, req, res, {
+        rewrite: { proxyPrefix, upstreamOrigin, playlistUrl: streamRecord.primaryUrl },
+      });
       return;
     }
 
@@ -517,6 +589,61 @@ export class XtreamController {
       return;
     }
     this.proxyToUpstream(sourceUrl, req, res);
+  }
+
+  // ─── PROXY alt-istekleri (variant/media playlist + segment) ─────────────────
+  // liveStream'in rewrite ettiği master playlist'in alt URL'leri buraya gelir.
+  // Güvenlik: hedef origin DAİMA stream'in primaryUrl origin'i (DB'den, sabit);
+  // wildcard yalnız PATH taşır → keyfi host'a proxy (SSRF) imkânsız, ham ?url= yok.
+  // Auth zinciri korunur: authenticate + subscription (C2) + bouquet (C4) burada da.
+  @Get('live/:username/:password/:streamId/*')
+  async liveProxySub(
+    @Param('username') username: string,
+    @Param('password') password: string,
+    @Param('streamId') streamId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const user = await this.xtream.authenticate(username, password);
+    if (!user) { res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized'); return; }
+
+    const access = await this.userService.checkSubscriptionActive(user.id);
+    if (!access.allowed) { res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden'); return; }
+
+    const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
+    const externalId = parseInt(cleanId, 10);
+    if (isNaN(externalId)) { res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID'); return; }
+
+    const stream = await this.streamService.findByExternalId(externalId);
+    if (!stream) { res.status(HttpStatus.NOT_FOUND).send('Stream not found'); return; }
+
+    // C4: bouquet zorlaması alt-isteklerde de geçerli.
+    if (user.role !== 'ADMIN' && user.role !== 'RESELLER') {
+      const canAccess = await this.streamService.canUserAccessStream(user.id, { streamId: stream.id });
+      if (!canAccess) { res.status(HttpStatus.FORBIDDEN).send('Bu kanal paketinizde mevcut değil'); return; }
+    }
+
+    const upstreamOrigin = new URL(stream.primaryUrl).origin;
+    const rest = String((req.params as Record<string, string>)[0] ?? '');
+    const search = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    let target: string;
+    try {
+      target = new URL(`/${rest}${search}`, upstreamOrigin).toString();
+    } catch {
+      res.status(HttpStatus.BAD_REQUEST).send('Invalid path');
+      return;
+    }
+
+    // Heartbeat: alt-istek = izleyici aktif; açık bağlantının updatedAt'ini tazele.
+    void this.prisma.connection.updateMany({
+      where: { userId: user.id, streamId: stream.id, endedAt: null },
+      data: { updatedAt: new Date() },
+    }).catch(() => {});
+
+    const proxyPrefix = `/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${externalId}`;
+    this.proxyToUpstream(target, req, res, {
+      rewrite: { proxyPrefix, upstreamOrigin, playlistUrl: target },
+    });
   }
 
   // ─── HLS segment serve ─────────────────────────────────────────────────────
@@ -605,12 +732,12 @@ export class XtreamController {
       userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
       deviceType: this.userActivityService.detectDeviceType(ua),
     });
-    this.proxyToUpstream(result.url, req, res, (bytes, duration) => {
+    this.proxyToUpstream(result.url, req, res, { onEnd: (bytes, duration) => {
       void this.userActivityService.logActivity({
         userId: result.userId, action: 'STREAM_END', ip,
         duration, bytesTransferred: bytes, endedAt: new Date(),
       });
-    });
+    } });
   }
 
   // ─── Series ────────────────────────────────────────────────────────────────
@@ -641,11 +768,11 @@ export class XtreamController {
       userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
       deviceType: this.userActivityService.detectDeviceType(ua),
     });
-    this.proxyToUpstream(result.url, req, res, (bytes, duration) => {
+    this.proxyToUpstream(result.url, req, res, { onEnd: (bytes, duration) => {
       void this.userActivityService.logActivity({
         userId: result.userId, action: 'STREAM_END', ip,
         duration, bytesTransferred: bytes, endedAt: new Date(),
       });
-    });
+    } });
   }
 }

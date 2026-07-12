@@ -34,7 +34,7 @@ export class StreamHealthService {
   async checkStream(streamId: string): Promise<{ status: HealthStatus; responseTime: number | null }> {
     const stream = await this.prisma.stream.findUnique({
       where: { id: streamId },
-      select: { id: true, name: true, primaryUrl: true },
+      select: { id: true, name: true, primaryUrl: true, streamMode: true },
     });
     if (!stream) return { status: 'down', responseTime: null };
 
@@ -88,12 +88,20 @@ export class StreamHealthService {
 
       if (count >= 3) {
         this.failureCounts.delete(streamId);
-        this.logger.error(`Stream ${stream.name} failed 3 checks — restarting`);
-        try {
-          await this.workerService.restartWorker(streamId);
-        } catch {
-          await this.prisma.stream.update({ where: { id: streamId }, data: { workerStatus: 'CRASHED' } });
-          await this.notificationService.notifyStreamDown(streamId, stream.name);
+        // PROXY stream'in FFmpeg worker'ı YOK — restart anlamsız (gereksiz FFmpeg
+        // spawn + exit 255 döngüsü yaratırdı). Sağlık zaten UNHEALTHY işaretlendi;
+        // upstream gerçekten erişilemiyorsa bildirim gönder.
+        if ((stream.streamMode ?? 'PROXY') === 'PROXY') {
+          this.logger.warn(`PROXY stream ${stream.name} 3 kez erişilemedi (worker restart atlandı)`);
+          await this.notificationService.notifyStreamDown(streamId, stream.name).catch(() => {});
+        } else {
+          this.logger.error(`Stream ${stream.name} failed 3 checks — restarting`);
+          try {
+            await this.workerService.restartWorker(streamId);
+          } catch {
+            await this.prisma.stream.update({ where: { id: streamId }, data: { workerStatus: 'CRASHED' } });
+            await this.notificationService.notifyStreamDown(streamId, stream.name);
+          }
         }
       }
     }

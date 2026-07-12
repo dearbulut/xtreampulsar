@@ -21,6 +21,7 @@ interface WorkerState {
   startedAt: Date;
   stopping: boolean;
   activeUrl: string;
+  stderrTail: string[]; // FFmpeg'in son stderr satırları — çökme sebebini görmek için
 }
 
 @Injectable()
@@ -88,12 +89,20 @@ export class StreamWorkerService implements OnModuleDestroy {
       startedAt: new Date(),
       stopping: false,
       activeUrl,
+      stderrTail: [],
     };
 
     this.workers.set(streamId, state);
 
+    // Tüm stderr'ı log'a basmak gürültülü (FFmpeg sürekli progress basar); son 20
+    // satırı tut, çökme anında handleExit son satırları error ile gösterir.
     proc.stderr?.on('data', (data: Buffer) => {
-      this.logger.verbose(`[${streamId}] ${data.toString().trim()}`);
+      for (const line of data.toString().split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t) continue;
+        state.stderrTail.push(t);
+        if (state.stderrTail.length > 20) state.stderrTail.shift();
+      }
     });
 
     proc.on('error', (err) => {
@@ -171,8 +180,9 @@ export class StreamWorkerService implements OnModuleDestroy {
     const restarts = currentStream?.restartCount ?? state.restarts;
 
     if (code !== 0 && restarts < MAX_RESTARTS) {
-      this.logger.warn(
-        `Stream ${streamId} crashed (exit ${code}), restarting (${restarts + 1}/${MAX_RESTARTS})`,
+      const tail = state.stderrTail.slice(-8).join(' | ');
+      this.logger.error(
+        `Stream ${streamId} crashed (exit ${code}), restarting (${restarts + 1}/${MAX_RESTARTS}). FFmpeg stderr: ${tail || '(boş)'}`,
       );
 
       await this.prisma.stream.update({
