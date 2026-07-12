@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '@/hooks/usePackages';
+import { useBouquets } from '@/hooks/useBouquets';
 import type { Package } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -12,11 +13,13 @@ interface FormState {
   creditCost: string;
   price: string;
   description: string;
+  bouquetIds: string[];
 }
-const FORM_DEFAULT: FormState = { name: '', durationDays: '30', maxConnections: '1', creditCost: '30', price: '0', description: '' };
+const FORM_DEFAULT: FormState = { name: '', durationDays: '30', maxConnections: '1', creditCost: '30', price: '0', description: '', bouquetIds: [] };
 
 export function PackagesPage() {
   const { data: packages = [], isLoading } = usePackages();
+  const { data: bouquets = [] } = useBouquets();
   const createPkg = useCreatePackage();
   const updatePkg = useUpdatePackage();
   const deletePkg = useDeletePackage();
@@ -28,6 +31,9 @@ export function PackagesPage() {
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  const toggleBouquet = (id: string) =>
+    setForm((p) => ({ ...p, bouquetIds: p.bouquetIds.includes(id) ? p.bouquetIds.filter((b) => b !== id) : [...p.bouquetIds, id] }));
+
   const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setShowModal(true); };
   const openEdit = (p: Package) => {
     setForm({
@@ -37,6 +43,7 @@ export function PackagesPage() {
       creditCost: String(p.creditCost),
       price: String(p.price ?? 0),
       description: p.description ?? '',
+      bouquetIds: p.bouquets?.map((b) => b.id) ?? [],
     });
     setEditTarget(p.id);
     setShowModal(true);
@@ -51,6 +58,7 @@ export function PackagesPage() {
       creditCost: parseInt(form.creditCost, 10),
       price: parseFloat(form.price),
       description: form.description || undefined,
+      bouquetIds: form.bouquetIds,
     };
     if (editTarget) {
       await updatePkg.mutateAsync({ id: editTarget, data: payload });
@@ -188,6 +196,27 @@ export function PackagesPage() {
           <div>
             <label className="label">Açıklama (opsiyonel)</label>
             <textarea className="input resize-none h-16" value={form.description} onChange={f('description')} />
+          </div>
+          <div>
+            <label className="label">Bouquet'ler (opsiyonel)</label>
+            <p className="text-xs text-muted mb-2">Bu paketi alan kullanıcılar seçilen bouquet'leri otomatik alır. Boş bırakılırsa kullanıcıya varsayılan bouquet atanır.</p>
+            {bouquets.length === 0 ? (
+              <p className="text-xs text-muted">Henüz bouquet yok.</p>
+            ) : (
+              <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border/40">
+                {bouquets.map((b) => (
+                  <label key={b.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-surface-2">
+                    <input
+                      type="checkbox"
+                      className="accent-primary"
+                      checked={form.bouquetIds.includes(b.id)}
+                      onChange={() => toggleBouquet(b.id)}
+                    />
+                    <span className="text-slate-300">{b.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>

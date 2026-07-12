@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsInt,
   IsNumber,
@@ -40,4 +41,10 @@ export class CreatePackageDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  // Bu paketi alan kullanıcı bu bouquet'leri miras alır.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bouquetIds?: string[];
 }

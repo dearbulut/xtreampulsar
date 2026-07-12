@@ -209,6 +209,7 @@ model Bouquet {
   categories    Category[]
   bouquetStreams BouquetStream[]
   userBouquets  UserBouquet[]
+  packages      Package[]
 
   @@map("bouquets")
 }
@@ -533,6 +534,8 @@ model Package {
   updatedAt      DateTime @updatedAt
 
   users User[]
+  // Paket satın alan/atanan kullanıcı bu bouquet'leri miras alır (implicit m2m).
+  bouquets Bouquet[]
 
   @@map("packages")
 }

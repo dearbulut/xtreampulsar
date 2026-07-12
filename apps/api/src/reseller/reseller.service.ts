@@ -648,6 +648,35 @@ export class ResellerService {
     await this.prisma.user.update({ where: { id: userId }, data: { deletedAt: new Date() } });
   }
 
+  // "Default" bouquet'i bul/oluştur (user.service ile aynı mekanizma).
+  private async getDefaultBouquetId(): Promise<string> {
+    let bouquet = await this.prisma.bouquet.findFirst({ where: { name: 'Default' }, select: { id: true } });
+    if (!bouquet) bouquet = await this.prisma.bouquet.create({ data: { name: 'Default' }, select: { id: true } });
+    return bouquet.id;
+  }
+
+  // Bouquet öncelik sırası: açık seçim → paket bouquet'leri → Default. Kimse boş kalmaz.
+  private async resolveBouquetIds(explicit: string[] | undefined, packageId: string | undefined): Promise<string[]> {
+    if (explicit && explicit.length > 0) return explicit;
+    if (packageId) {
+      const pkg = await this.prisma.package.findUnique({
+        where: { id: packageId },
+        select: { bouquets: { select: { id: true } } },
+      });
+      const ids = pkg?.bouquets.map((b) => b.id) ?? [];
+      if (ids.length > 0) return ids;
+    }
+    return [await this.getDefaultBouquetId()];
+  }
+
+  private async assignBouquets(userId: string, bouquetIds: string[]): Promise<void> {
+    if (bouquetIds.length === 0) return;
+    await this.prisma.userBouquet.createMany({
+      data: bouquetIds.map((bouquetId) => ({ userId, bouquetId })),
+      skipDuplicates: true,
+    });
+  }
+
   async quickCreateUser(
     resellerId: string,
     dto: {
@@ -721,6 +750,9 @@ export class ResellerService {
         },
       }),
     ]);
+
+    // Paket/bouquet yok → Default ata (boş playlist olmasın).
+    await this.assignBouquets(user.id, await this.resolveBouquetIds(undefined, undefined));
 
     const serverUrl = this.config.get<string>('server.url') ?? 'http://localhost';
     const serverPort = this.config.get<number>('server.port') ?? 8080;
@@ -798,6 +830,9 @@ export class ResellerService {
         },
       }),
     ]);
+
+    // Paket bouquet'lerini miras al (yoksa Default) — boş playlist olmasın.
+    await this.assignBouquets(user.id, await this.resolveBouquetIds(undefined, pkg.id));
 
     const serverUrl = this.config.get<string>('server.url') ?? 'http://localhost';
     const serverPort = this.config.get<number>('server.port') ?? 8080;

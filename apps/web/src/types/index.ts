@@ -178,6 +178,7 @@ export interface Package {
   isActive: boolean;
   createdAt: string;
   _count?: { users: number };
+  bouquets?: { id: string; name: string }[];
 }
 
 // ─── Webhook ─────────────────────────────────────────────────────────────

@@ -234,9 +234,11 @@ export class UserService {
       throw err;
     }
 
-    if (bouquetIds && bouquetIds.length > 0) {
+    // Öncelik: açık seçim → paket bouquet'leri → Default. Kimse bouquet'siz kalmaz.
+    const finalBouquetIds = await this.resolveBouquetIds(bouquetIds, packageId);
+    if (finalBouquetIds.length > 0) {
       await this.prisma.userBouquet.createMany({
-        data: bouquetIds.map((bouquetId) => ({ userId: user.id, bouquetId })),
+        data: finalBouquetIds.map((bouquetId) => ({ userId: user.id, bouquetId })),
         skipDuplicates: true,
       });
     }
@@ -471,11 +473,15 @@ export class UserService {
           select: { id: true, expiresAt: true },
         });
         const now = new Date();
+        // Paket bouquet'leri (yoksa Default). Mevcut özel seçim SİLİNMEZ — sadece
+        // eklenir (skipDuplicates), böylece kullanıcı paketin kanallarını garanti alır
+        // ve hiç bouquet'i yoksa boş playlist kalmaz.
+        const pkgBouquetIds = await this.resolveBouquetIds(undefined, pkg.id);
         await Promise.all(
-          targets.map((u) => {
+          targets.map(async (u) => {
             const base = u.expiresAt > now ? u.expiresAt : now;
             const expiresAt = new Date(base.getTime() + pkg.durationDays * 86_400_000);
-            return this.prisma.user.update({
+            await this.prisma.user.update({
               where: { id: u.id },
               // O7: paket atama trial'ı kalıcıya çevirir — trial bayraklarını temizle.
               data: {
@@ -487,6 +493,12 @@ export class UserService {
                 trialEndsAt: null,
               },
             });
+            if (pkgBouquetIds.length > 0) {
+              await this.prisma.userBouquet.createMany({
+                data: pkgBouquetIds.map((bouquetId) => ({ userId: u.id, bouquetId })),
+                skipDuplicates: true,
+              });
+            }
           }),
         );
         return { affected: targets.length };
@@ -520,6 +532,32 @@ export class UserService {
     const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const bytes = randomBytes(length);
     return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+  }
+
+  // "Default" bouquet'i bul/oluştur (migration.service.getOrCreateDefaultBouquet ile
+  // aynı mekanizma — isimle eşleşen tekil bouquet).
+  private async getDefaultBouquetId(): Promise<string> {
+    let bouquet = await this.prisma.bouquet.findFirst({ where: { name: 'Default' }, select: { id: true } });
+    if (!bouquet) bouquet = await this.prisma.bouquet.create({ data: { name: 'Default' }, select: { id: true } });
+    return bouquet.id;
+  }
+
+  // Kullanıcı bouquet ataması öncelik sırası:
+  //   a) Açıkça seçilen bouquet'ler (en yüksek öncelik)
+  //   b) Yoksa ve paket seçiliyse → paketin bouquet'leri (miras)
+  //   c) İkisi de yoksa → Default bouquet (fallback)
+  // Hiçbir kullanıcı bouquet'siz kalmaz.
+  async resolveBouquetIds(explicit: string[] | undefined, packageId: string | undefined): Promise<string[]> {
+    if (explicit && explicit.length > 0) return explicit;
+    if (packageId) {
+      const pkg = await this.prisma.package.findUnique({
+        where: { id: packageId },
+        select: { bouquets: { select: { id: true } } },
+      });
+      const ids = pkg?.bouquets.map((b) => b.id) ?? [];
+      if (ids.length > 0) return ids;
+    }
+    return [await this.getDefaultBouquetId()];
   }
 
   async quickCreate(dto: {
@@ -561,6 +599,12 @@ export class UserService {
         ...(dto.notes ? { notes: dto.notes } : {}),
       },
       select: { id: true, username: true, expiresAt: true },
+    });
+
+    // quickCreate paket/bouquet almıyor → Default ata (boş playlist olmasın).
+    await this.prisma.userBouquet.createMany({
+      data: (await this.resolveBouquetIds(undefined, undefined)).map((bouquetId) => ({ userId: user.id, bouquetId })),
+      skipDuplicates: true,
     });
 
     const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
@@ -618,6 +662,12 @@ export class UserService {
         role: 'USER',
       },
       select: { id: true, username: true, expiresAt: true },
+    });
+
+    // Trial de bouquet almıyor → Default ata (boş playlist olmasın).
+    await this.prisma.userBouquet.createMany({
+      data: (await this.resolveBouquetIds(undefined, undefined)).map((bouquetId) => ({ userId: user.id, bouquetId })),
+      skipDuplicates: true,
     });
 
     const baseUrl = settings?.serverUrl

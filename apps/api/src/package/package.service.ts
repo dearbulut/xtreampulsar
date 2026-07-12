@@ -10,26 +10,50 @@ export class PackageService {
   findAll() {
     return this.prisma.package.findMany({
       orderBy: { creditCost: 'asc' },
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        bouquets: { select: { id: true, name: true } },
+      },
     });
   }
 
   async findById(id: string) {
     const pkg = await this.prisma.package.findUnique({
       where: { id },
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        bouquets: { select: { id: true, name: true } },
+      },
     });
     if (!pkg) throw new NotFoundException(`Package ${id} not found`);
     return pkg;
   }
 
   create(dto: CreatePackageDto) {
-    return this.prisma.package.create({ data: dto });
+    const { bouquetIds, ...rest } = dto;
+    return this.prisma.package.create({
+      data: {
+        ...rest,
+        ...(bouquetIds && bouquetIds.length > 0
+          ? { bouquets: { connect: bouquetIds.map((bid) => ({ id: bid })) } }
+          : {}),
+      },
+    });
   }
 
   async update(id: string, dto: UpdatePackageDto) {
     await this.findById(id);
-    return this.prisma.package.update({ where: { id }, data: dto });
+    const { bouquetIds, ...rest } = dto;
+    return this.prisma.package.update({
+      where: { id },
+      data: {
+        ...rest,
+        // bouquetIds verildiyse tam olarak onlarla değiştir (set). Verilmezse dokunma.
+        ...(bouquetIds !== undefined
+          ? { bouquets: { set: bouquetIds.map((bid) => ({ id: bid })) } }
+          : {}),
+      },
+    });
   }
 
   async remove(id: string): Promise<void> {

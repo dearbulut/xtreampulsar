@@ -583,6 +583,22 @@ export function UsersPage() {
                 onChange={(v) => setCreateForm((f) => ({ ...f, bouquetIds: v }))}
                 placeholder="Bouquet seçin…"
               />
+              {createForm.bouquetIds.length === 0 && (() => {
+                const pkg = packages.find((p) => p.id === createForm.packageId);
+                const pkgBouquets = pkg?.bouquets ?? [];
+                if (pkg && pkgBouquets.length > 0) {
+                  return (
+                    <p className="text-xs text-info mt-1.5">
+                      Bu paket şu bouquet'leri içerir: {pkgBouquets.map((b) => b.name).join(', ')}
+                    </p>
+                  );
+                }
+                return (
+                  <p className="text-xs text-muted mt-1.5">
+                    Hiçbir şey seçilmezse kullanıcıya varsayılan bouquet atanır (playlist boş kalmaz).
+                  </p>
+                );
+              })()}
             </div>
           )}
           <div className="flex gap-2 justify-end pt-2">

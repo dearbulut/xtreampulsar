@@ -23,6 +23,7 @@ export function useCreatePackage() {
       creditCost: number;
       price?: number;
       description?: string;
+      bouquetIds?: string[];
     }) => api.post<{ success: boolean; data: Package }>('/packages', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['packages'] });
@@ -35,7 +36,7 @@ export function useCreatePackage() {
 export function useUpdatePackage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Package> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<Package> & { bouquetIds?: string[] } }) =>
       api.patch(`/packages/${id}`, data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['packages'] });

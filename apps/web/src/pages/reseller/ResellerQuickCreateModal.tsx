@@ -431,6 +431,13 @@ export function ResellerQuickCreateModal({
           </>
         )}
 
+        {/* Bouquet bilgisi — reseller quick-create bouquet seçtirmez; backend atar */}
+        <p className="text-xs text-muted">
+          {tab === 'package'
+            ? 'Kullanıcı, paketin bouquet’lerini otomatik alır (paket bouquet içermiyorsa varsayılan atanır).'
+            : 'Kullanıcıya varsayılan bouquet atanır (playlist boş kalmaz).'}
+        </p>
+
         {/* Credentials — always shown */}
         <div className="grid grid-cols-2 gap-3">
           <CredentialRow
