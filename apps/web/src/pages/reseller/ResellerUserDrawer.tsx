@@ -11,6 +11,7 @@ import {
   useResellerUserPlaylists,
   useResellerUserBouquets,
   useResellerBouquets,
+  useResellerKickUser,
 } from '@/hooks/useResellerPanel';
 import type { ResellerUserRow } from '@/hooks/useResellerPanel';
 import { MultiSelect } from '@/components/ui/MultiSelect';
@@ -87,6 +88,7 @@ export function ResellerUserDrawer({
   const { data: playlists } = useResellerUserPlaylists(user.id);
   const { data: userBouquets = [] } = useResellerUserBouquets(user.id);
   const { data: allBouquets = [] } = useResellerBouquets();
+  const kickUser = useResellerKickUser();
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
 
@@ -168,9 +170,25 @@ export function ResellerUserDrawer({
               <span className="text-muted">Max Bağlantı</span>
               <span className="text-slate-100">{user.maxConnections ?? '—'}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Aktif Bağlantı</span>
-              <span className="text-slate-100">{String(user._count?.connections ?? 0)}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-slate-100">{String(user._count?.connections ?? 0)}</span>
+                {(user._count?.connections ?? 0) > 0 && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`${user.username} kullanıcısının tüm aktif bağlantıları kesilecek.`)) return;
+                      await kickUser.mutateAsync(user.id);
+                      toast.success('Bağlantılar kesildi');
+                      onUpdated();
+                    }}
+                    disabled={kickUser.isPending}
+                    className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
+                  >
+                    Kes
+                  </button>
+                )}
+              </span>
             </div>
           </div>
 

@@ -12,7 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import * as qrcode from 'qrcode';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRepository } from './user.repository';
+import { UserRepository, STALE_CONNECTION_MS } from './user.repository';
 import { WebhookService } from '../webhook/webhook.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -164,7 +164,8 @@ export class UserService {
           id: true, username: true, role: true, status: true,
           maxConnections: true, expiresAt: true, notes: true,
           createdAt: true, resellerId: true,
-          _count: { select: { connections: { where: { endedAt: null } } } },
+          // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
+          _count: { select: { connections: { where: { endedAt: null, updatedAt: { gte: new Date(Date.now() - STALE_CONNECTION_MS) } } } } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -353,8 +354,9 @@ export class UserService {
 
   async getActiveConnections(id: string) {
     await this.assertExists(id);
+    const cutoff = new Date(Date.now() - STALE_CONNECTION_MS);
     return this.prisma.connection.findMany({
-      where: { userId: id, endedAt: null },
+      where: { userId: id, endedAt: null, updatedAt: { gte: cutoff } },
       include: { stream: { select: { id: true, name: true, status: true } }, server: true },
       orderBy: { startedAt: 'desc' },
     });
@@ -687,6 +689,21 @@ export class UserService {
 
     const m3uUrl = `${baseUrl}/get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(rawPassword)}&type=m3u_plus`;
     return { user: { ...user, password: rawPassword }, m3uUrl };
+  }
+
+  // HLS istemcisi "ayrıldım" sinyali göndermez; hayalet (endedAt=null ama
+  // STALE_CONNECTION_MS'ten eski) bağlantıları her dakika kapat. Aksi halde
+  // maxConnections kotası dolu kalıp kullanıcı kendi hesabıyla yayın açamaz.
+  @Cron('* * * * *')
+  async closeStaleConnections(): Promise<void> {
+    try {
+      const res = await this.userRepo.closeStaleConnections();
+      if (res.count > 0) {
+        this.logger.log(`Stale connection cleanup: ${res.count} hayalet bağlantı kapatıldı`);
+      }
+    } catch (err) {
+      this.logger.error(`Stale connection cleanup failed: ${(err as Error).message}`);
+    }
   }
 
   @Cron('0 1 * * *')

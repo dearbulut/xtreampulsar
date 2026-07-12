@@ -101,6 +101,7 @@ export function UsersPage() {
   }, []);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [banId, setBanId] = useState<string | null>(null);
+  const [kickId, setKickId] = useState<string | null>(null);
   const [extendId, setExtendId] = useState<string | null>(null);
   const [extendDays, setExtendDays] = useState(30);
   const [showCreate, setShowCreate] = useState(false);
@@ -280,7 +281,7 @@ export function UsersPage() {
             onClick={() => { setExtendId(r.id); setExtendDays(30); }} />
           <ActionBtn icon={Pencil} title="Düzenle" color="text-muted" onClick={() => setDetailUserId(r.id)} />
           <ActionBtn icon={Wifi} title="Bağlantıları kes" color="text-warning"
-            onClick={() => kickUser.mutate(r.id)} />
+            onClick={() => setKickId(r.id)} />
           {r.status === 'BANNED' ? (
             <ActionBtn icon={Check} title="Yasağı kaldır" color="text-success"
               onClick={() => unbanUser.mutate(r.id)} />
@@ -713,6 +714,16 @@ export function UsersPage() {
         loading={banUser.isPending}
       />
 
+      <ConfirmDialog
+        open={!!kickId}
+        onClose={() => setKickId(null)}
+        onConfirm={() => { if (kickId) kickUser.mutate(kickId, { onSuccess: () => setKickId(null) }); }}
+        title="Bağlantıları Kes"
+        message="Bu kullanıcının tüm aktif bağlantıları kesilecek (hesap kapatılmaz)."
+        confirmLabel="Bağlantıları Kes"
+        loading={kickUser.isPending}
+      />
+
       {/* Delete confirm */}
       <ConfirmDialog
         open={!!deleteId}
@@ -965,6 +976,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const { data: allBouquets = [] } = useBouquets();
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
+  const kickUser = useKickUser();
 
   if (!user) return null;
 
@@ -1010,8 +1022,22 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
               <span className="badge bg-primary/10 text-primary-light">{user.role}</span>
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Maks Bağlantı</div>
-              <div className="text-sm text-slate-200 font-semibold">{user.maxConnections}</div>
+              <div className="text-xs text-muted mb-1">Bağlantı (aktif / maks)</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-200 font-semibold">
+                  {user._count?.connections ?? 0} / {user.maxConnections}
+                </span>
+                {(user._count?.connections ?? 0) > 0 && (
+                  <button
+                    onClick={() => kickUser.mutate(user.id)}
+                    disabled={kickUser.isPending}
+                    className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
+                    title="Aktif bağlantıları kes"
+                  >
+                    Bağlantıları Kes
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <div className="text-xs text-muted mb-1">Başlangıç</div>
