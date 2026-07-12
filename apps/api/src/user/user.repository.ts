@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 
 // HLS'te istemci "ayrıldım" demez; aktiflik son aktivite (Connection.updatedAt) ile
@@ -51,14 +52,23 @@ export class UserRepository {
     return this.prisma.connection.create({ data });
   }
 
-  // Returns existing open connection for the same user+stream, or creates one.
-  // This prevents a new DB row for every HLS segment request.
+  // Aynı user+stream için tek açık (endedAt=null) bağlantı döndürür ya da oluşturur.
+  // Her HLS segment/manifest isteğinde yeni satır oluşmasını engeller.
+  //
+  // YARIŞ KOŞULU KORUMASI: VLC bir stream açarken neredeyse eşzamanlı birden çok
+  // istek atar (manifest + segment). Salt "SELECT-sonra-INSERT" bunların hepsinin
+  // "açık kayıt yok" görüp ayrı ayrı INSERT etmesine → duplicate bağlantıya yol
+  // açardı. Bu yüzden DB'de partial unique index var:
+  //   CREATE UNIQUE INDEX ... ON connections(userId, streamId) WHERE endedAt IS NULL
+  // (Prisma partial unique index'i schema'da temsil edemediğinden migration-only.)
+  // Burada INSERT deneriz; eşzamanlı istek önce oluşturmuşsa index P2002 fırlatır,
+  // biz de mevcut kaydı bulup güncelleriz → tek satır garantisi.
   async findOrCreateConnection(data: CreateConnectionData): Promise<{ id: string; token: string | null; isNew: boolean }> {
+    // Hızlı yol: çoğu istek zaten açık olan kaydı yeniden kullanır.
     const existing = await this.prisma.connection.findFirst({
       where: { userId: data.userId, streamId: data.streamId, endedAt: null },
       select: { id: true, token: true },
     });
-
     if (existing) {
       await this.prisma.connection.update({
         where: { id: existing.id },
@@ -67,8 +77,26 @@ export class UserRepository {
       return { id: existing.id, token: existing.token ?? null, isNew: false };
     }
 
-    const conn = await this.prisma.connection.create({ data });
-    return { id: conn.id, token: conn.token ?? null, isNew: true };
+    try {
+      const conn = await this.prisma.connection.create({ data });
+      return { id: conn.id, token: conn.token ?? null, isNew: true };
+    } catch (err) {
+      // P2002 = eşzamanlı istek aynı user+stream için açık bağlantıyı oluşturdu.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const winner = await this.prisma.connection.findFirst({
+          where: { userId: data.userId, streamId: data.streamId, endedAt: null },
+          select: { id: true, token: true },
+        });
+        if (winner) {
+          await this.prisma.connection.update({
+            where: { id: winner.id },
+            data: { updatedAt: new Date() },
+          });
+          return { id: winner.id, token: winner.token ?? null, isNew: false };
+        }
+      }
+      throw err;
+    }
   }
 
   async closeConnection(connectionId: string): Promise<void> {
