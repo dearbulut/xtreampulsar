@@ -613,11 +613,22 @@ export class XtreamController {
       return;
     }
 
-    // Heartbeat: alt-istek = izleyici aktif; açık bağlantının updatedAt'ini tazele.
-    void this.prisma.connection.updateMany({
-      where: { userId: user.id, streamId: stream.id, endedAt: null },
-      data: { updatedAt: new Date() },
-    }).catch(() => {});
+    // Heartbeat + oturum yetkisi: açık bağlantının updatedAt'ini tazele. count===0 ise
+    // kullanıcının bu stream için AÇIK bağlantısı yoktur — kick/ban/softDelete/reseller-kick
+    // hepsi endedAt=now yazarak bağlantıyı kapattığından, sonraki playlist/segment
+    // isteklerini REDDET (aksi halde PROXY yayını kesintisiz akmaya devam ediyordu).
+    // TRANSCODE'daki serveHlsSegment de aynı prensibi (validateSegmentToken → endedAt IS
+    // NULL) kullanır; iki yol tutarlı, ayrı blacklist gerekmez.
+    const beat = await this.prisma.connection
+      .updateMany({
+        where: { userId: user.id, streamId: stream.id, endedAt: null },
+        data: { updatedAt: new Date() },
+      })
+      .catch(() => ({ count: 0 }));
+    if (beat.count === 0) {
+      res.status(HttpStatus.FORBIDDEN).send('Session terminated');
+      return;
+    }
 
     const proxyPrefix = `/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${externalId}`;
     this.proxyToUpstream(target, req, res, {
