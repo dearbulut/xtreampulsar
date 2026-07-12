@@ -47,6 +47,8 @@ async function bootstrap() {
       { path: 'player_api.php', method: RequestMethod.ALL },
       { path: 'get.php', method: RequestMethod.ALL },
       { path: 'live/:username/:password/:streamId', method: RequestMethod.ALL },
+      // PROXY alt-istekleri (variant/media playlist + segment) — liveProxySub route'u.
+      { path: 'live/:username/:password/:streamId/*', method: RequestMethod.ALL },
       { path: 'movie/:username/:password/:streamId', method: RequestMethod.ALL },
       { path: 'series/:username/:password/:streamId', method: RequestMethod.ALL },
       { path: 'hls/:streamId/:segment', method: RequestMethod.GET },
