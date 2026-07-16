@@ -51,6 +51,7 @@ services:
       CONTROL_PANEL_URL: ${CONTROL_PANEL_URL:-http://api:3000}
       PANEL_LICENSE_KEY: ${PANEL_LICENSE_KEY:-DEV-TEST-KEY}
       SERVER_URL: ${SERVER_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       SERVER_PORT: ${SERVER_PORT:-25461}
       FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
       HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}

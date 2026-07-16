@@ -272,6 +272,12 @@ else
   SERVER_URL="http://${SERVER_IP}"
 fi
 
+if [[ -n "$DOMAIN" ]]; then
+  CORS_ORIGINS="https://${DOMAIN},http://${DOMAIN}"
+else
+  CORS_ORIGINS="http://${SERVER_IP}"
+fi
+
 cat > "$INSTALL_DIR/.env" <<ENV
 # ─── Database ─────────────────────────────────────────────────────────────
 DATABASE_URL=postgresql://xtreampulsar:${DB_PASSWORD}@postgres:5432/xtreampulsar
@@ -305,6 +311,7 @@ CONTROL_JWT_SECRET=${CONTROL_JWT_SECRET}
 
 # ─── Server ───────────────────────────────────────────────────────────────
 SERVER_URL=${SERVER_URL}
+CORS_ORIGINS=${CORS_ORIGINS}
 SERVER_PORT=25461
 FFMPEG_PATH=/usr/bin/ffmpeg
 HLS_OUTPUT_PATH=/tmp/xtreampulsar/hls

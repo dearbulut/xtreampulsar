@@ -21,12 +21,17 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      const allowedOrigins = [
+      const defaultOrigins = [
         'https://panel.xtreampulsar.com',
         'https://xtreampulsar.com',
         'https://www.xtreampulsar.com',
         'https://control.xtreampulsar.com',
       ];
+      const envOrigins = (process.env.CORS_ORIGINS ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const allowedOrigins = [...defaultOrigins, ...envOrigins];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
