@@ -390,7 +390,7 @@ sleep 30
 # Health check
 HEALTH_OK=""
 for i in $(seq 1 6); do
-  HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/v1/health 2>/dev/null || echo "000")
+  HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/health 2>/dev/null || echo "000")
   if [[ "$HTTP" == "200" || "$HTTP" == "503" ]]; then
     log_success "API yanıt veriyor (HTTP $HTTP)"
     HEALTH_OK="1"; break
@@ -454,7 +454,7 @@ log_success "Firewall kuralları uygulandı (22, 80, 443, 25461)"
 # ─── [FIX #4] Admin kullanıcı — /auth/setup endpoint ────────────────────────
 log_info "Admin kullanıcı oluşturuluyor..."
 SETUP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "http://localhost:3000/api/v1/auth/setup" \
+  -X POST "http://localhost/api/v1/auth/setup" \
   -H "Content-Type: application/json" \
   -H "X-Admin-Key: ${ADMIN_API_KEY}" \
   -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}" \
