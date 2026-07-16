@@ -47,6 +47,17 @@ export class StreamWorkerService implements OnModuleDestroy {
     });
     if (!stream) throw new NotFoundException(`Stream ${streamId} not found`);
 
+    if ((stream.streamMode ?? 'PROXY') === 'PROXY') {
+      this.logger.log(`Stream ${streamId} PROXY modda — FFmpeg worker başlatılmıyor`);
+      await this.prisma.stream
+        .update({
+          where: { id: streamId },
+          data: { workerStatus: 'IDLE', ffmpegPid: null },
+        })
+        .catch(() => {});
+      return;
+    }
+
     if (this.workers.has(streamId)) {
       await this.stopWorker(streamId);
     }
