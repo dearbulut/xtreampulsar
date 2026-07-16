@@ -59,8 +59,8 @@ LICENSE_KEY=""
 DOMAIN=""
 EMAIL=""
 INSTALL_DIR="/opt/xtreampulsar"
-REPO_URL="https://github.com/xtreampulsar/xtreampulsar"
-LICENSE_SERVER="https://license.xtreampulsar.io"
+REPO_URL="https://github.com/dearbulut/xtreampulsar"
+LICENSE_SERVER="https://license.xtreampulsar.com"
 DEV_MODE=false
 
 while [[ $# -gt 0 ]]; do
@@ -218,7 +218,7 @@ else
   if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
     log_error "Lisans aktivasyonu başarısız (HTTP $HTTP_CODE)."
     log_error "Yanıt: $RESPONSE_BODY"
-    log_error "Lütfen lisans anahtarınızı kontrol edin veya support@xtreampulsar.io ile iletişime geçin."
+    log_error "Lütfen lisans anahtarınızı kontrol edin veya support@xtreampulsar.com ile iletişime geçin."
     exit 1
   fi
 
@@ -264,9 +264,10 @@ JWT_SECRET=$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=$(openssl rand -hex 32)
 ADMIN_API_KEY=$(generate_password)
 ADMIN_PASSWORD=$(generate_password)
+CONTROL_JWT_SECRET=$(openssl rand -hex 32)
 
 if [[ -n "$DOMAIN" ]]; then
-  SERVER_URL="https://${DOMAIN}"
+  SERVER_URL="http://${DOMAIN}"
 else
   SERVER_URL="http://${SERVER_IP}"
 fi
@@ -300,6 +301,7 @@ DEV_MODE=${DEV_MODE}
 # lisans anahtarı kullanılır.
 CONTROL_PANEL_URL=https://control.xtreampulsar.com
 PANEL_LICENSE_KEY=${LICENSE_KEY}
+CONTROL_JWT_SECRET=${CONTROL_JWT_SECRET}
 
 # ─── Server ───────────────────────────────────────────────────────────────
 SERVER_URL=${SERVER_URL}
@@ -379,19 +381,18 @@ log_info "Servislerin hazır olması bekleniyor (30s)..."
 sleep 30
 
 # Health check
-HEALTH_STATUS=""
+HEALTH_OK=""
 for i in $(seq 1 6); do
-  HEALTH_STATUS=$(curl -sf http://localhost:3000/health 2>/dev/null || echo "")
-  if [[ -n "$HEALTH_STATUS" ]]; then
-    log_success "API sağlıklı"
-    break
+  HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/v1/health 2>/dev/null || echo "000")
+  if [[ "$HTTP" == "200" || "$HTTP" == "503" ]]; then
+    log_success "API yanıt veriyor (HTTP $HTTP)"
+    HEALTH_OK="1"; break
   fi
-  log_info "Health check başarısız, yeniden deneniyor ($i/6)..."
+  log_info "Health check bekleniyor, yeniden deneniyor ($i/6, HTTP $HTTP)..."
   sleep 10
 done
-
-if [[ -z "$HEALTH_STATUS" ]]; then
-  log_warning "API health check başarısız. Logları kontrol edin: docker compose logs api"
+if [[ -z "$HEALTH_OK" ]]; then
+  log_warning "API health check başarısız. Loglar: cd $INSTALL_DIR && docker compose logs api"
 fi
 
 # ─── Step 8/9: SSL Kurulumu ──────────────────────────────────────────────────
@@ -488,7 +489,7 @@ echo -e "  Güncelleme      : ${INSTALL_DIR}/update.sh"
 echo -e "  Sağlık Kontrolü : ${INSTALL_DIR}/health-check.sh"
 echo -e "  Kaldırma        : ${INSTALL_DIR}/uninstall.sh"
 echo ""
-echo -e "${BOLD}Dokümantasyon${RESET} : https://docs.xtreampulsar.io"
+echo -e "${BOLD}Dokümantasyon${RESET} : https://docs.xtreampulsar.com"
 echo -e "  ${YELLOW}⚠  Admin şifreyi şimdi kaydedin! Tekrar gösterilmeyecek.${RESET}"
 echo ""
 

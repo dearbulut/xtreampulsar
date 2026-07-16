@@ -15,13 +15,13 @@ Production-ready bash installer scripts for XtreamPulsar Panel.
 ## Hızlı Kurulum
 
 ```bash
-curl -fsSL https://install.xtreampulsar.io | bash -s -- --key YOUR_LICENSE_KEY
+curl -fsSL https://install.xtreampulsar.com | bash -s -- --key YOUR_LICENSE_KEY
 ```
 
 ### Domain ve SSL ile kurulum
 
 ```bash
-curl -fsSL https://install.xtreampulsar.io | bash -s -- \
+curl -fsSL https://install.xtreampulsar.com | bash -s -- \
   --key YOUR_LICENSE_KEY \
   --domain panel.example.com \
   --email admin@example.com
@@ -50,7 +50,7 @@ sudo bash apps/installer/install.sh \
 Ayrı bir sunucuya load balancer node kurulumu:
 
 ```bash
-curl -fsSL https://install.xtreampulsar.io/lb | bash -s -- \
+curl -fsSL https://install.xtreampulsar.com/lb | bash -s -- \
   --main-ip ANA_SUNUCU_IP \
   --lb-token PANEL_DEN_URETILEN_TOKEN
 ```
@@ -152,6 +152,6 @@ docker compose exec api npx prisma migrate deploy
 
 ## Destek
 
-- Dokümantasyon: https://docs.xtreampulsar.io
-- E-posta: support@xtreampulsar.io
+- Dokümantasyon: https://docs.xtreampulsar.com
+- E-posta: support@xtreampulsar.com
 - GitHub Issues: https://github.com/xtreampulsar/xtreampulsar/issues
