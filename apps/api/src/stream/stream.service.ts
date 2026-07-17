@@ -1,6 +1,6 @@
 import * as http from 'http';
 import * as https from 'https';
-import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
@@ -129,22 +129,19 @@ export class StreamService {
   async getStreamUrl(externalId: number): Promise<string> {
     const stream = await this.prisma.stream.findUnique({
       where: { externalId },
-      select: { id: true, primaryUrl: true, backupUrl: true, backupUrls: true, status: true },
+      select: { id: true, primaryUrl: true, backupUrl: true, backupUrls: true, healthStatus: true },
     });
-
     if (!stream) throw new NotFoundException(`Stream ${externalId} not found`);
 
-    // Fast path: stream is healthy
-    if (stream.status !== 'OFFLINE') return stream.primaryUrl;
+    // Hızlı yol: sağlıklı ya da bilinmiyor → primary (health yalnız UNHEALTHY yazar)
+    if (stream.healthStatus !== 'UNHEALTHY') return stream.primaryUrl;
 
-    // Build candidate list: new backupUrls array first, then legacy backupUrl
+    // UNHEALTHY → yedekleri sırayla dene (yeni backupUrls[] önce, sonra legacy backupUrl)
     const candidates: string[] = stream.backupUrls.length > 0
       ? stream.backupUrls
       : (stream.backupUrl ? [stream.backupUrl] : []);
-
     for (const url of candidates) {
-      const ok = await this.probeUrl(url, 3000);
-      if (ok) {
+      if (await this.probeUrl(url, 3000)) {
         this.logger.warn(`Stream #${externalId}: failover → ${url}`);
         void this.prisma.streamHealthLog.create({
           data: { streamId: stream.id, status: 'failover', errorMessage: `Failover to: ${url}` },
@@ -153,7 +150,8 @@ export class StreamService {
       }
     }
 
-    throw new ServiceUnavailableException('Tüm kaynak URL\'ler erişilemez');
+    // Yedek yok / hiçbiri erişilemedi → son çare primary (oynatıcı denesin; 503 ATMA)
+    return stream.primaryUrl;
   }
 
   async updateBackupUrls(id: string, backupUrls: string[]): Promise<void> {
