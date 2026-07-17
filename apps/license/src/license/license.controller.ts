@@ -54,6 +54,13 @@ export class LicenseController {
     return this.licenseService.suspend(key);
   }
 
+  @Post(':key/reactivate')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  reactivate(@Param('key') key: string) {
+    return this.licenseService.reactivate(key);
+  }
+
   @Post(':key/revoke')
   @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)

@@ -166,6 +166,17 @@ export class LicenseService {
     });
   }
 
+  async reactivate(key: string) {
+    const license = await this.findByKey(key);
+    if (license.status === 'ACTIVE') return license; // idempotent
+    // Esas kullanım: SUSPENDED → ACTIVE. EXPIRED + geçmiş expiresAt için tek
+    // başına yetmez (status ACTIVE olsa da süre geçmiş kalır) — o durumda extend kullanılır.
+    return this.prisma.license.update({
+      where: { key },
+      data: { status: 'ACTIVE' },
+    });
+  }
+
   async revoke(key: string) {
     await this.findByKey(key);
     return this.prisma.license.update({
