@@ -445,40 +445,49 @@ export class MigrationService implements OnModuleInit {
     let count = 0;
     let i = 0;
     const baseUrl = serverUrl.replace(/\/$/, '');
+    const playerApi = `${baseUrl}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
 
     for (const s of series) {
-      if (++i % 500 === 0 && (await this.isCancelled(jobId))) break; // madde 3a
+      if (await this.isCancelled(jobId)) break; // her dizi bir API çağrısı → her turda iptal kontrolü
+      i++;
       const categoryId = catIdMap.get(s.category_id);
       if (!categoryId) continue;
 
       const primaryUrl = `${baseUrl}/series/${username}/${password}/${s.series_id}.mkv`;
-
+      let seriesStreamId: string;
       try {
-        const existing = await this.prisma.stream.findFirst({
-          where: { primaryUrl },
-          select: { id: true },
-        });
-
+        const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
         if (existing) {
-          await this.prisma.stream.update({
-            where: { id: existing.id },
-            data: { name: s.name, tvgLogo: s.cover || null, streamMode: 'PROXY', categoryId },
-          });
+          await this.prisma.stream.update({ where: { id: existing.id }, data: { name: s.name, tvgLogo: s.cover || null, streamMode: 'PROXY', categoryId } });
+          seriesStreamId = existing.id;
         } else {
-          await this.prisma.stream.create({
-            data: {
-              name: s.name,
-              primaryUrl,
-              streamMode: 'PROXY',
-              tvgLogo: s.cover || null,
-              categoryId,
-            },
-          });
+          const created = await this.prisma.stream.create({ data: { name: s.name, primaryUrl, streamMode: 'PROXY', tvgLogo: s.cover || null, categoryId }, select: { id: true } });
+          seriesStreamId = created.id;
         }
         count++;
       } catch {
-        // skip on error
+        continue;
       }
+
+      // Bölümleri çek (best-effort; başarısızsa dizi yine container olarak kalır)
+      try {
+        const info = await this.fetchJson<{ episodes?: Record<string, Array<{ id: number | string; episode_num?: number; title?: string; container_extension?: string; info?: { plot?: string; movie_image?: string; releasedate?: string; duration_secs?: number } }>> }>(`${playerApi}&action=get_series_info&series_id=${s.series_id}`);
+        if (info?.episodes) {
+          for (const [seasonKey, eps] of Object.entries(info.episodes)) {
+            const season = parseInt(seasonKey, 10) || 0;
+            for (const ep of (eps ?? [])) {
+              const epNum = ep.episode_num ?? 0;
+              const ext = ep.container_extension || 'mkv';
+              const epUrl = `${baseUrl}/series/${username}/${password}/${ep.id}.${ext}`;
+              await this.prisma.episode.upsert({
+                where: { seriesId_season_episode: { seriesId: seriesStreamId, season, episode: epNum } },
+                create: { seriesId: seriesStreamId, season, episode: epNum, title: ep.title ?? null, primaryUrl: epUrl, containerExtension: ext, plot: ep.info?.plot ?? null, cover: ep.info?.movie_image ?? null, releaseDate: ep.info?.releasedate ?? null, durationSecs: ep.info?.duration_secs ?? null },
+                update: { title: ep.title ?? null, primaryUrl: epUrl, containerExtension: ext },
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch { /* episode fetch başarısız — geç */ }
     }
 
     return count;
