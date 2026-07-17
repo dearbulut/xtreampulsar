@@ -133,6 +133,10 @@ export class StreamService {
     });
   }
 
+  findEpisodeByExternalId(externalId: number) {
+    return this.prisma.episode.findUnique({ where: { externalId } });
+  }
+
   async getStreamUrl(externalId: number): Promise<string> {
     const stream = await this.prisma.stream.findUnique({
       where: { externalId },

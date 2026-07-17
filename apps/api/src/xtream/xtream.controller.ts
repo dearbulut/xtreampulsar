@@ -824,6 +824,29 @@ export class XtreamController {
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
+    // Önce episode olarak çöz (yoksa aşağıdaki legacy tek-stream fallback devam eder)
+    const cleanEp = streamId.replace(/\.(mkv|mp4|avi)$/i, '');
+    const epExtId = parseInt(cleanEp, 10);
+    if (!isNaN(epExtId)) {
+      const episode = await this.streamService.findEpisodeByExternalId(epExtId);
+      if (episode) {
+        const user = await this.xtream.authenticate(username, password);
+        if (!user) { res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized'); return; }
+        const access = await this.userService.checkSubscriptionActive(user.id);
+        if (!access.allowed) { res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden'); return; }
+        if (user.role !== 'ADMIN' && user.role !== 'RESELLER') {
+          const canAccess = await this.streamService.canUserAccessStream(user.id, { streamId: episode.seriesId });
+          if (!canAccess) { res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil'); return; }
+        }
+        const ua = req.headers['user-agent'] ?? '';
+        void this.userActivityService.logActivity({ userId: user.id, action: 'STREAM_START', ip, userAgent: ua, deviceType: this.userActivityService.detectDeviceType(ua) });
+        this.proxyToUpstream(episode.primaryUrl, req, res, { onEnd: (bytes, duration) => {
+          void this.userActivityService.logActivity({ userId: user.id, action: 'STREAM_END', ip, duration, bytesTransferred: bytes, endedAt: new Date() });
+        } });
+        return;
+      }
+    }
+
     const result = await this.authorizeAndGetUrl(
       username, password, streamId, res, 'mkv|mp4|avi',
     );
