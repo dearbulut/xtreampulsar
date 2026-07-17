@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { LicenseModule } from './license/license.module';
+import { LicenseGuard } from './license/license.guard';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { ResellerModule } from './reseller/reseller.module';
@@ -82,6 +83,7 @@ import { SupportModule } from './support/support.module';
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: PanelGeoBlockGuard },
+    { provide: APP_GUARD, useClass: LicenseGuard },
   ],
 })
 export class AppModule {}

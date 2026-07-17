@@ -45,6 +45,8 @@ services:
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://license:3001}
       LICENSE_KEY: ${LICENSE_KEY:-}
+      LICENSE_ENFORCE: ${LICENSE_ENFORCE:-false}
+      LICENSE_OFFLINE_GRACE_HOURS: ${LICENSE_OFFLINE_GRACE_HOURS:-72}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       # Destek sistemi — kendi sunucumuzda (panel.xtreampulsar.com) control panel
       # kendi API'mizdir: Docker DNS ile api servisine loopback yerine servis adıyla ulaş.
