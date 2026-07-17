@@ -101,9 +101,7 @@ export class LicenseService implements OnModuleInit {
     if (cached) {
       try {
         const s = JSON.parse(cached) as LicenseStatus;
-        if (s.valid) return true;
-        if (s.gracePeriodEnds && new Date(s.gracePeriodEnds) > new Date()) return true;
-        return false; // açıkça geçersiz + grace bitti
+        return !!s.valid; // sunucu post-expiry grace'i zaten valid=true'ya katıyor; açıkça geçersiz (suspended/expired/not-found) ise blokla — offline grace'e DÜŞME
       } catch {
         /* bozuk cache → offline grace'e düş */
       }
