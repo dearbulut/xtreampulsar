@@ -289,6 +289,7 @@ model Stream {
 
 model Episode {
   id                 String   @id @default(cuid())
+  externalId         Int      @unique @default(autoincrement())
   seriesId           String
   series             Stream   @relation("SeriesEpisodes", fields: [seriesId], references: [id], onDelete: Cascade)
   season             Int

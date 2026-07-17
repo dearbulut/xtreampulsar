@@ -126,6 +126,13 @@ export class StreamService {
     });
   }
 
+  getSeriesEpisodes(seriesId: string) {
+    return this.prisma.episode.findMany({
+      where: { seriesId },
+      orderBy: [{ season: 'asc' }, { episode: 'asc' }],
+    });
+  }
+
   async getStreamUrl(externalId: number): Promise<string> {
     const stream = await this.prisma.stream.findUnique({
       where: { externalId },

@@ -185,6 +185,20 @@ export class XtreamController {
         res.json(await this.xtream.getSeries(user.id));
         break;
 
+      case 'get_series_info': {
+        const sid = parseInt(query.series_id ?? '', 10);
+        if (isNaN(sid)) { res.status(400).json({ error: 'series_id required' }); break; }
+        res.json(await this.xtream.getSeriesInfo(sid));
+        break;
+      }
+
+      case 'get_vod_info': {
+        const vid = parseInt(query.vod_id ?? '', 10);
+        if (isNaN(vid)) { res.status(400).json({ error: 'vod_id required' }); break; }
+        res.json(await this.xtream.getVodInfo(vid));
+        break;
+      }
+
       case 'get_short_epg':
       case 'get_simple_data_table': {
         const sid = query.stream_id ?? query.vod_id ?? '';

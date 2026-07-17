@@ -165,6 +165,54 @@ export class XtreamService {
     }));
   }
 
+  async getSeriesInfo(seriesExternalId: number) {
+    const series = await this.streamService.findByExternalId(seriesExternalId);
+    if (!series) return { seasons: [], info: {}, episodes: {} };
+    const eps = await this.streamService.getSeriesEpisodes(series.id);
+    const episodes: Record<string, any[]> = {};
+    for (const e of eps) {
+      const sk = String(e.season);
+      (episodes[sk] ??= []).push({
+        id: String(e.externalId), episode_num: e.episode, title: e.title ?? series.name,
+        container_extension: e.containerExtension,
+        info: { plot: e.plot ?? '', duration_secs: e.durationSecs ?? 0, duration: '',
+                rating: e.tmdbRating != null ? String(e.tmdbRating) : '0',
+                movie_image: e.cover ?? series.posterUrl ?? '', releasedate: e.releaseDate ?? '', season: e.season },
+        added: String(Math.floor(e.createdAt.getTime() / 1000)), season: e.season,
+      });
+    }
+    const seasons = Object.keys(episodes).map((s) => ({ season_number: Number(s), name: `Season ${s}`, episode_count: episodes[s].length }));
+    return {
+      seasons,
+      info: {
+        name: series.name, cover: series.posterUrl ?? series.tvgLogo ?? '', plot: series.overview ?? '',
+        cast: '', director: '', genre: (series.tmdbGenres ?? []).join(', '),
+        releaseDate: series.releaseYear ? String(series.releaseYear) : '',
+        rating: series.tmdbRating != null ? String(series.tmdbRating) : '0',
+        rating_5based: series.tmdbRating != null ? Math.round((series.tmdbRating / 2) * 10) / 10 : 0,
+        backdrop_path: series.backdropUrl ? [series.backdropUrl] : [], youtube_trailer: '',
+        episode_run_time: '0', category_id: String(series.category.externalId),
+      },
+      episodes,
+    };
+  }
+
+  async getVodInfo(vodExternalId: number) {
+    const vod = await this.streamService.findByExternalId(vodExternalId);
+    if (!vod) return { info: {}, movie_data: {} };
+    return {
+      info: {
+        movie_image: vod.posterUrl ?? vod.tvgLogo ?? '', plot: vod.overview ?? '', cast: '', director: '',
+        genre: (vod.tmdbGenres ?? []).join(', '), releasedate: vod.releaseYear ? String(vod.releaseYear) : '',
+        rating: vod.tmdbRating != null ? String(vod.tmdbRating) : '0',
+        rating_5based: vod.tmdbRating != null ? Math.round((vod.tmdbRating / 2) * 10) / 10 : 0,
+        backdrop_path: vod.backdropUrl ? [vod.backdropUrl] : [], duration_secs: 0, duration: '', container_extension: 'mp4',
+      },
+      movie_data: { stream_id: vod.externalId, name: vod.name, added: String(Math.floor(vod.createdAt.getTime() / 1000)),
+                    category_id: String(vod.category.externalId), container_extension: 'mp4' },
+    };
+  }
+
   async getSeriesCategories(userId: string): Promise<XtreamCategory[]> {
     const cats = await this.streamService.findSeriesCategories();
     return cats.map((c) => ({
