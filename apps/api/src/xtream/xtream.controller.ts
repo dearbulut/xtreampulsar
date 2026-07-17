@@ -55,6 +55,11 @@ interface GetPhpQuery {
 export class XtreamController {
   private readonly logger = new Logger(XtreamController.name);
 
+  // Xtream kimlik brute-force koruması (Redis, yalnız başarısız auth sayılır)
+  private readonly XBRUTE_MAX = 20;      // pencere içi izinli başarısız deneme
+  private readonly XBRUTE_WINDOW = 900;  // sn (15dk)
+  private readonly XBRUTE_BLOCK = 1800;  // sn (30dk blok)
+
   constructor(
     private readonly xtream: XtreamService,
     private readonly streamService: StreamService,
@@ -70,6 +75,29 @@ export class XtreamController {
     @Optional() private readonly webhookService?: WebhookService,
   ) {}
 
+  // ─── Xtream brute-force koruması ────────────────────────────────────────────
+
+  private clientIpOf(req: Request): string {
+    return (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip ?? '';
+  }
+
+  private async isXtreamBlocked(ip: string): Promise<boolean> {
+    if (!ip) return false;
+    return !!(await this.redis.get(`xbrute:block:${ip}`).catch(() => null));
+  }
+
+  private async recordXtreamFail(ip: string): Promise<void> {
+    if (!ip) return;
+    const key = `xbrute:fail:${ip}`;
+    const n = await this.redis.incr(key).catch(() => 0);
+    if (n === 1) await this.redis.expire(key, this.XBRUTE_WINDOW).catch(() => {});
+    if (n >= this.XBRUTE_MAX) {
+      await this.redis.set(`xbrute:block:${ip}`, '1', 'EX', this.XBRUTE_BLOCK).catch(() => {});
+      await this.redis.del(key).catch(() => {});
+      this.logger.warn(`Xtream brute-force block: ${ip} (${n} fails)`);
+    }
+  }
+
   // ─── Authentication + action dispatch ──────────────────────────────────────
 
   @Get('player_api.php')
@@ -80,15 +108,22 @@ export class XtreamController {
   ): Promise<void> {
     const { username = '', password = '', action } = query;
 
+    const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) {
+      res.json({ user_info: { auth: 0, message: 'Too many failed attempts. Try later.' }, server_info: await this.xtream.buildServerInfo() });
+      return;
+    }
+
     const user = await this.xtream.authenticate(username, password);
 
     if (!user) {
+      await this.recordXtreamFail(ip);
       res.json({
         user_info: {
           auth: 0,
           message: 'Invalid username or password',
         },
-        server_info: this.xtream.buildServerInfo(),
+        server_info: await this.xtream.buildServerInfo(),
       });
       return;
     }
@@ -156,12 +191,17 @@ export class XtreamController {
   @Get('get.php')
   async getM3u(
     @Query() query: GetPhpQuery,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     const { username = '', password = '', type = 'm3u_plus', output = 'm3u8' } = query;
 
+    const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) { res.status(429).send('Too many failed attempts'); return; }
+
     const user = await this.xtream.authenticate(username, password);
     if (!user) {
+      await this.recordXtreamFail(ip);
       res.status(HttpStatus.UNAUTHORIZED).send('Invalid credentials');
       return;
     }
