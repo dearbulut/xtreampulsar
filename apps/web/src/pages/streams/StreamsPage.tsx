@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  Film,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStreamHealth, useManualHealthCheck } from '@/hooks/useStreamHealth';
@@ -51,7 +52,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
-import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
+import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
 import api from '@/lib/axios';
@@ -155,10 +156,31 @@ interface CreateForm {
   serverId: string;
   tvgLogo: string;
   streamMode: 'PROXY' | 'TRANSCODE';
+  overview: string;
+  posterUrl: string;
+  backdropUrl: string;
+  releaseYear: string;
+  tmdbRating: string;
+  tmdbGenres: string;
 }
 
 const EMPTY_FORM: CreateForm = {
   name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY',
+  overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
+};
+
+interface MetaForm {
+  name: string;
+  overview: string;
+  posterUrl: string;
+  backdropUrl: string;
+  releaseYear: string;
+  tmdbRating: string;
+  tmdbGenres: string;
+}
+
+const EMPTY_META: MetaForm = {
+  name: '', overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
 };
 
 function getUrlPage(): number {
@@ -397,6 +419,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [editStream, setEditStream] = useState<Stream | null>(null);
   const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
+  const [metaStream, setMetaStream] = useState<Stream | null>(null);
+  const [metaForm, setMetaForm] = useState<MetaForm>(EMPTY_META);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
   const [bulkMoveCatId, setBulkMoveCatId] = useState('');
@@ -407,6 +431,21 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const reorderStreams = useReorderStreams();
   const bulkMoveCategory = useBulkMoveCategory();
   const updateBackupUrls = useUpdateStreamBackupUrls();
+  const updateStream = useUpdateStream();
+
+  // Meta modal açılınca formu stream'in mevcut değerleriyle doldur.
+  useEffect(() => {
+    if (!metaStream) { setMetaForm(EMPTY_META); return; }
+    setMetaForm({
+      name: metaStream.name ?? '',
+      overview: metaStream.overview ?? '',
+      posterUrl: metaStream.posterUrl ?? '',
+      backdropUrl: metaStream.backdropUrl ?? '',
+      releaseYear: metaStream.releaseYear != null ? String(metaStream.releaseYear) : '',
+      tmdbRating: metaStream.tmdbRating != null ? String(metaStream.tmdbRating) : '',
+      tmdbGenres: (metaStream.tmdbGenres ?? []).join(', '),
+    });
+  }, [metaStream]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -725,6 +764,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               loading={enrichStream.isPending && (enrichStream.variables as { id: string } | undefined)?.id === r.id}
               onClick={() => enrichStream.mutate({ id: r.id, type })}
             />
+          )}
+          {(type === 'VOD' || type === 'SERIES') && (
+            <ActionBtn icon={Film} title="Meta Düzenle" color="text-purple-400" onClick={() => setMetaStream(r)} />
           )}
         </div>
       ),
@@ -1062,6 +1104,71 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               ))}
             </div>
           </div>
+          {(type === 'VOD' || type === 'SERIES') && (
+            <div className="space-y-3 pt-3 border-t border-border">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide">Metadata (opsiyonel)</p>
+              <div>
+                <label className="label">Özet</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  placeholder="İçerik özeti…"
+                  value={createForm.overview}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, overview: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label">Poster URL</label>
+                <input
+                  className="input"
+                  placeholder="https://…"
+                  value={createForm.posterUrl}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, posterUrl: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="label">Arkaplan URL</label>
+                <input
+                  className="input"
+                  placeholder="https://…"
+                  value={createForm.backdropUrl}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, backdropUrl: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Yıl</label>
+                  <input
+                    type="number"
+                    className="input"
+                    placeholder="2024"
+                    value={createForm.releaseYear}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, releaseYear: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label">Puan</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="input"
+                    placeholder="7.5"
+                    value={createForm.tmdbRating}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, tmdbRating: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label">Türler (virgülle ayır)</label>
+                <input
+                  className="input"
+                  placeholder="Aksiyon, Dram, Bilim Kurgu"
+                  value={createForm.tmdbGenres}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, tmdbGenres: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
             <button
               onClick={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
@@ -1088,6 +1195,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   ...(createForm.backupUrl && { backupUrl: createForm.backupUrl }),
                   ...(createForm.serverId && { serverId: createForm.serverId }),
                   ...(createForm.tvgLogo && { tvgLogo: createForm.tvgLogo }),
+                  ...((type === 'VOD' || type === 'SERIES') ? {
+                    overview: createForm.overview || undefined,
+                    posterUrl: createForm.posterUrl || undefined,
+                    backdropUrl: createForm.backdropUrl || undefined,
+                    releaseYear: createForm.releaseYear ? Number(createForm.releaseYear) : undefined,
+                    tmdbRating: createForm.tmdbRating ? Number(createForm.tmdbRating) : undefined,
+                    tmdbGenres: createForm.tmdbGenres
+                      ? createForm.tmdbGenres.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+                  } : {}),
                 } as Partial<Stream>;
                 createStream.mutate(payload, {
                   onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); },
@@ -1184,6 +1300,113 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               className="btn-primary"
             >
               {updateBackupUrls.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Metadata edit modal (VOD/SERIES) */}
+      <Modal
+        open={!!metaStream}
+        onClose={() => setMetaStream(null)}
+        title={metaStream ? `Meta Düzenle — ${metaStream.name}` : ''}
+        size="md"
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="label">Ad</label>
+            <input
+              className="input"
+              value={metaForm.name}
+              onChange={(e) => setMetaForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="label">Özet</label>
+            <textarea
+              className="input"
+              rows={3}
+              placeholder="İçerik özeti…"
+              value={metaForm.overview}
+              onChange={(e) => setMetaForm((f) => ({ ...f, overview: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="label">Poster URL</label>
+            <input
+              className="input"
+              placeholder="https://…"
+              value={metaForm.posterUrl}
+              onChange={(e) => setMetaForm((f) => ({ ...f, posterUrl: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="label">Arkaplan URL</label>
+            <input
+              className="input"
+              placeholder="https://…"
+              value={metaForm.backdropUrl}
+              onChange={(e) => setMetaForm((f) => ({ ...f, backdropUrl: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">Yıl</label>
+              <input
+                type="number"
+                className="input"
+                placeholder="2024"
+                value={metaForm.releaseYear}
+                onChange={(e) => setMetaForm((f) => ({ ...f, releaseYear: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Puan</label>
+              <input
+                type="number"
+                step="0.1"
+                className="input"
+                placeholder="7.5"
+                value={metaForm.tmdbRating}
+                onChange={(e) => setMetaForm((f) => ({ ...f, tmdbRating: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Türler (virgülle ayır)</label>
+            <input
+              className="input"
+              placeholder="Aksiyon, Dram, Bilim Kurgu"
+              value={metaForm.tmdbGenres}
+              onChange={(e) => setMetaForm((f) => ({ ...f, tmdbGenres: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-3 border-t border-border">
+            <button onClick={() => setMetaStream(null)} className="btn-ghost">İptal</button>
+            <button
+              disabled={updateStream.isPending || !metaForm.name}
+              onClick={() => {
+                if (!metaStream) return;
+                updateStream.mutate(
+                  {
+                    id: metaStream.id,
+                    data: {
+                      name: metaForm.name,
+                      overview: metaForm.overview || undefined,
+                      posterUrl: metaForm.posterUrl || undefined,
+                      backdropUrl: metaForm.backdropUrl || undefined,
+                      releaseYear: metaForm.releaseYear ? Number(metaForm.releaseYear) : undefined,
+                      tmdbRating: metaForm.tmdbRating ? Number(metaForm.tmdbRating) : undefined,
+                      tmdbGenres: metaForm.tmdbGenres
+                        ? metaForm.tmdbGenres.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+                    },
+                  },
+                  { onSuccess: () => setMetaStream(null) },
+                );
+              }}
+              className="btn-primary"
+            >
+              {updateStream.isPending ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>
         </div>

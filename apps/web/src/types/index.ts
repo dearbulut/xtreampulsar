@@ -52,6 +52,13 @@ export interface Stream {
   videoCodec?: string;
   fps?: number;
   lastAnalyzedAt?: string;
+  tmdbId?: number;
+  overview?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  releaseYear?: number;
+  tmdbRating?: number;
+  tmdbGenres?: string[];
   createdAt: string;
   updatedAt: string;
   _count?: { connections: number };
