@@ -825,6 +825,20 @@ export class MigrationService implements OnModuleInit {
     return row[fallback] ?? null;
   }
 
+  // XtreamUI/XUI.ONE streams.category_id JSON dizisi olabilir ("["5"]"); catCache
+  // anahtarları düz kategori id. Diziyse ilk id alınır (modelimiz tek categoryId FK).
+  private firstCategoryId(raw: string | null): string | null {
+    if (!raw) return null;
+    const t = String(raw).trim();
+    if (t.startsWith('[')) {
+      try {
+        const arr = JSON.parse(t);
+        if (Array.isArray(arr) && arr.length) return String(arr[0]);
+      } catch { /* düz değere düş */ }
+    }
+    return t || null;
+  }
+
   private async updateJobProgress(jobId: string, processed: number, failed: number, total: number): Promise<void> {
     try {
       await this.prisma.migrationJob.update({
@@ -1091,7 +1105,8 @@ export class MigrationService implements OnModuleInit {
 
     if (!primaryUrl) return;
 
-    const categoryId = categoryIdRaw ? catCache.get(categoryIdRaw) : undefined;
+    const catKey = this.firstCategoryId(categoryIdRaw);
+    const categoryId = catKey ? catCache.get(catKey) : undefined;
     if (!categoryId) return;
 
     if (options.conflictMode === 'OVERWRITE') {
@@ -1341,7 +1356,8 @@ export class MigrationService implements OnModuleInit {
 
     if (!primaryUrl) return;
 
-    const categoryId = categoryIdRaw ? catCache.get(categoryIdRaw) : undefined;
+    const catKey = this.firstCategoryId(categoryIdRaw);
+    const categoryId = catKey ? catCache.get(catKey) : undefined;
     if (!categoryId) return;
 
     if (options.conflictMode === 'OVERWRITE') {
