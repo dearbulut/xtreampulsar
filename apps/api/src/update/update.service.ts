@@ -3,7 +3,7 @@ import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const GITHUB_REPO = 'xtreampulsar/xtreampulsar';
+const GITHUB_REPO = process.env.UPDATE_GITHUB_REPO ?? 'dearbulut/xtreampulsar';
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour cache
 
 interface GithubRelease {
@@ -81,7 +81,7 @@ export class UpdateService {
       this.cacheTime = now;
       return this.cached;
     } catch (err) {
-      this.logger.warn(`Update check failed: ${(err as Error).message}`);
+      this.logger.debug(`Update check failed: ${(err as Error).message}`);
       return {
         currentVersion,
         latestVersion: currentVersion,
