@@ -59,6 +59,8 @@ export class XtreamController {
   private readonly XBRUTE_MAX = 20;      // pencere içi izinli başarısız deneme
   private readonly XBRUTE_WINDOW = 900;  // sn (15dk)
   private readonly XBRUTE_BLOCK = 1800;  // sn (30dk blok)
+  private readonly SCAN_MAX = 30;        // pencere içi izinli geçersiz stream-ID
+  private readonly SCAN_WINDOW = 300;    // sn (5dk)
 
   constructor(
     private readonly xtream: XtreamService,
@@ -99,6 +101,18 @@ export class XtreamController {
       await this.redis.set(`xbrute:block:${ip}`, '1', 'EX', this.XBRUTE_BLOCK).catch(() => {});
       await this.redis.del(key).catch(() => {});
       this.logger.warn(`Xtream brute-force block: ${ip} (${n} fails)`);
+    }
+  }
+
+  private async recordInvalidStreamId(ip: string): Promise<void> {
+    if (!ip) return;
+    const key = `scan:invalid:${ip}`;
+    const n = await this.redis.incr(key).catch(() => 0);
+    if (n === 1) await this.redis.expire(key, this.SCAN_WINDOW).catch(() => {});
+    if (n >= this.SCAN_MAX) {
+      await this.redis.set(`xbrute:block:${ip}`, '1', 'EX', this.XBRUTE_BLOCK).catch(() => {});
+      await this.redis.del(key).catch(() => {});
+      this.logger.warn(`Stream-ID scanner block: ${ip} (${n} invalid IDs)`);
     }
   }
 
@@ -252,6 +266,8 @@ export class XtreamController {
     const ext = new RegExp(`\\.(${extension})$`, 'i');
     const externalId = parseInt(rawStreamId.replace(ext, ''), 10);
     if (isNaN(externalId)) {
+      const ip = this.clientIpOf(res.req as Request);
+      await this.recordInvalidStreamId(ip);
       res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID');
       return null;
     }
@@ -279,6 +295,8 @@ export class XtreamController {
       const url = await this.streamService.getStreamUrl(externalId);
       return { url, userId: user.id };
     } catch {
+      const ip = this.clientIpOf(res.req as Request);
+      await this.recordInvalidStreamId(ip);
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return null;
     }
@@ -427,6 +445,7 @@ export class XtreamController {
 
     // IP geo/ban check
     const clientIpRaw = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(clientIpRaw)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw);
       if (!ipCheck.allowed) {
@@ -439,6 +458,7 @@ export class XtreamController {
     const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
     const externalId = parseInt(cleanId, 10);
     if (isNaN(externalId)) {
+      await this.recordInvalidStreamId(clientIpRaw);
       res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID');
       return;
     }
@@ -448,11 +468,13 @@ export class XtreamController {
     try {
       const found = await this.streamService.findByExternalId(externalId);
       if (!found) {
+        await this.recordInvalidStreamId(clientIpRaw);
         res.status(HttpStatus.NOT_FOUND).send('Stream not found');
         return;
       }
       streamRecord = found as typeof streamRecord;
     } catch {
+      await this.recordInvalidStreamId(clientIpRaw);
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return;
     }
@@ -747,6 +769,7 @@ export class XtreamController {
     @Res() res: Response,
   ): Promise<void> {
     const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
@@ -781,6 +804,7 @@ export class XtreamController {
     @Res() res: Response,
   ): Promise<void> {
     const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
