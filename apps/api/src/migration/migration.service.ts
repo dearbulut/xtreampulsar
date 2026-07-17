@@ -1644,4 +1644,34 @@ export class MigrationService implements OnModuleInit {
       req.setTimeout(30_000, () => { req.destroy(); reject(new Error('Timeout')); });
     });
   }
+
+  private fetchBuffer(url: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const mod = url.startsWith('https') ? https : http;
+      const req = mod.get(url, (res) => {
+        if ((res.statusCode ?? 0) >= 400) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on('data', (c: Buffer) => {
+          size += c.length;
+          if (size > MigrationService.MAX_JSON_BYTES) { req.destroy(); reject(new Error('M3U too large')); return; }
+          chunks.push(c);
+        });
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+        res.on('error', reject);
+      });
+      req.on('error', reject);
+      req.setTimeout(30000, () => { req.destroy(); reject(new Error('timeout')); });
+    });
+  }
+
+  async previewM3uFromUrl(url: string) {
+    const buf = await this.fetchBuffer(url);
+    return this.previewM3u(buf);
+  }
+
+  async importM3uFromUrl(url: string, dto: ImportM3uDto) {
+    const buf = await this.fetchBuffer(url);
+    return this.importM3u(buf, dto);
+  }
 }

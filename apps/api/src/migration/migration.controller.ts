@@ -53,6 +53,18 @@ export class MigrationController {
     return this.migrationService.importM3u(file.buffer, dto);
   }
 
+  @Post('m3u/preview-url')
+  previewM3uUrl(@Body('url') url: string) {
+    if (!url) throw new BadRequestException('url required');
+    return this.migrationService.previewM3uFromUrl(url);
+  }
+
+  @Post('m3u/import-url')
+  importM3uUrl(@Body() body: ImportM3uDto & { url: string }) {
+    if (!body.url) throw new BadRequestException('url required');
+    return this.migrationService.importM3uFromUrl(body.url, body);
+  }
+
   @Post('xtream/import')
   importXtream(@Body() dto: ImportXtreamDto) {
     return this.migrationService.importXtream(dto);
