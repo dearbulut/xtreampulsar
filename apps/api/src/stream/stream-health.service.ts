@@ -81,12 +81,18 @@ export class StreamHealthService {
       this.failureCounts.set(streamId, count);
       this.logger.warn(`Stream ${stream.name} ${status} (${count}/3): ${errorMessage ?? ''}`);
 
+      const confirmedDown = count >= 3;
       await this.prisma.stream.update({
         where: { id: streamId },
-        data: { healthStatus, lastHealthCheck: new Date(), uptimePercent, lastError: errorMessage ?? null },
+        data: {
+          ...(confirmedDown ? { healthStatus: 'UNHEALTHY' } : {}),
+          lastHealthCheck: new Date(),
+          uptimePercent,
+          lastError: errorMessage ?? null,
+        },
       });
 
-      if (count >= 3) {
+      if (confirmedDown) {
         this.failureCounts.delete(streamId);
         // PROXY stream'in FFmpeg worker'ı YOK — restart anlamsız (gereksiz FFmpeg
         // spawn + exit 255 döngüsü yaratırdı). Sağlık zaten UNHEALTHY işaretlendi;

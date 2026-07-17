@@ -207,15 +207,19 @@ export class StreamWorkerService implements OnModuleDestroy {
         // Try failover to backup URL if not already using it
         const streamData = await this.prisma.stream.findUnique({
           where: { id: streamId },
-          select: { backupUrl: true },
+          select: { backupUrl: true, backupUrls: true },
         });
-        if (streamData?.backupUrl && state.activeUrl !== streamData.backupUrl) {
-          this.logger.warn(`Switching to backup URL for stream ${streamId}`);
+        const backups = streamData?.backupUrls?.length
+          ? streamData.backupUrls
+          : (streamData?.backupUrl ? [streamData.backupUrl] : []);
+        const nextBackup = backups.find((u) => u && u !== state.activeUrl);
+        if (nextBackup) {
+          this.logger.warn(`Switching to backup URL for stream ${streamId}: ${nextBackup}`);
           await this.prisma.stream.update({
             where: { id: streamId },
             data: { workerStatus: 'CRASHED', restartCount: 0 },
           });
-          setTimeout(() => void this.startWorker(streamId, streamData.backupUrl!), RESTART_DELAY_MS);
+          setTimeout(() => void this.startWorker(streamId, nextBackup), RESTART_DELAY_MS);
           return;
         }
       }
