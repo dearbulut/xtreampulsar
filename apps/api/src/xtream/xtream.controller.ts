@@ -27,6 +27,7 @@ import { UserService } from '../user/user.service';
 import { UserActivityService } from '../user/user-activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
+import { RestreamDetectorService } from '../security/restream-detector.service';
 import { LoadBalancerService } from '../server/load-balancer.service';
 import { GuardConfigService } from '../server/guard-config.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -70,6 +71,7 @@ export class XtreamController {
     private readonly userActivityService: UserActivityService,
     private readonly prisma: PrismaService,
     private readonly securityService: SecurityService,
+    private readonly restreamDetector: RestreamDetectorService,
     private readonly lbService: LoadBalancerService,
     private readonly guardConfig: GuardConfigService,
     @Optional() private readonly prefetchService: StreamPrefetchService,
@@ -314,6 +316,10 @@ export class XtreamController {
       }
 
       const url = await this.streamService.getStreamUrl(externalId);
+      void this.restreamDetector.record({
+        userId: user.id, username: user.username, ip,
+        maxConnections: user.maxConnections ?? 1, guard,
+      }).catch(() => {});
       return { url, userId: user.id };
     } catch {
       if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
@@ -576,6 +582,12 @@ export class XtreamController {
         }).catch(() => {});
       }
     } catch { /* non-fatal */ }
+
+    // Anti-restream Aşama 2: her yetkili açılışta bir kez (isNew dışında). Fire-and-forget.
+    void this.restreamDetector.record({
+      userId: user.id, username: user.username, ip: clientIp,
+      maxConnections: user.maxConnections ?? 1, guard,
+    }).catch(() => {});
 
     // ── PROXY mode: upstream'i geçir; m3u8 ise içindeki URL'leri panel proxy'sine
     //    rewrite et (aksi halde upstream'in göreli variant/segment yolları VLC'de

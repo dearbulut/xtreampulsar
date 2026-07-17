@@ -55,6 +55,8 @@ services:
       SERVER_URL: ${SERVER_URL:-http://localhost}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       MAX_CONNECTIONS_PER_IP: ${MAX_CONNECTIONS_PER_IP:-0}
+      GUARD_RESTREAM_ENFORCE: ${GUARD_RESTREAM_ENFORCE:-false}
+      RS_WINDOW: ${RS_WINDOW:-300}
       SERVER_PORT: ${SERVER_PORT:-25461}
       FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
       HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}
