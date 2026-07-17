@@ -51,6 +51,13 @@ export class UserRepository {
     });
   }
 
+  // Anti-restream: aynı IP'den GERÇEKTEN aktif (endedAt=null + taze) bağlantı sayısı.
+  countActiveConnectionsByIp(ip: string): Promise<number> {
+    return this.prisma.connection.count({
+      where: { ip, ...activeConnectionWhere() },
+    });
+  }
+
   // Zap fix: yeni bir stream açılırken, aynı kullanıcının DİĞER stream'lerdeki
   // artık geçerli olmayan açık bağlantılarını kapat. "Geçerli değil" =
   //   (a) aynı cihaz (IP + userAgent) — kanal değiştiren cihazın eski bağlantısı, VEYA

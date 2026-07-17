@@ -88,6 +88,16 @@ export class UserService {
     if (active >= user.maxConnections) {
       return { allowed: false, reason: `Max connections reached (${user.maxConnections})` };
     }
+
+    // Anti-restream: global per-IP aktif bağlantı tavanı (env, 0 = kapalı)
+    const perIpCap = parseInt(process.env.MAX_CONNECTIONS_PER_IP ?? '0', 10);
+    if (perIpCap > 0 && ip) {
+      const ipActive = await this.userRepo.countActiveConnectionsByIp(ip);
+      if (ipActive >= perIpCap) {
+        return { allowed: false, reason: `IP connection limit reached (${perIpCap})` };
+      }
+    }
+
     return { allowed: true };
   }
 

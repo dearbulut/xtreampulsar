@@ -314,6 +314,7 @@ CONTROL_JWT_SECRET=${CONTROL_JWT_SECRET}
 # ─── Server ───────────────────────────────────────────────────────────────
 SERVER_URL=${SERVER_URL}
 CORS_ORIGINS=${CORS_ORIGINS}
+MAX_CONNECTIONS_PER_IP=0
 SERVER_PORT=25461
 FFMPEG_PATH=/usr/bin/ffmpeg
 HLS_OUTPUT_PATH=/tmp/xtreampulsar/hls
