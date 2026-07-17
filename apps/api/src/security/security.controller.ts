@@ -44,4 +44,15 @@ export class SecurityController {
   getGeoStats() {
     return this.securityService.getGeoStats();
   }
+
+  @Get('xtream-blocks')
+  listXtreamBlocks() {
+    return this.securityService.listXtreamBlocks();
+  }
+
+  @Delete('xtream-blocks/:ip')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeXtreamBlock(@Param('ip') ip: string): Promise<void> {
+    await this.securityService.removeXtreamBlock(ip);
+  }
 }

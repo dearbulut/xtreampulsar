@@ -124,6 +124,29 @@ export class SecurityService {
     this.logger.log(`Unbanned IP ${ip}`);
   }
 
+  // Anti-restream blokları (xbrute:block:<ip>) — brute-force/scanner oto-blokları.
+  async listXtreamBlocks(): Promise<Array<{ ip: string; ttl: number }>> {
+    const keys: string[] = [];
+    let cursor = '0';
+    do {
+      const [next, batch] = await this.redis.scan(cursor, 'MATCH', 'xbrute:block:*', 'COUNT', 100);
+      cursor = next;
+      keys.push(...batch);
+    } while (cursor !== '0');
+    const out: Array<{ ip: string; ttl: number }> = [];
+    for (const k of keys) {
+      const ttl = await this.redis.ttl(k).catch(() => -1);
+      out.push({ ip: k.replace('xbrute:block:', ''), ttl });
+    }
+    return out;
+  }
+
+  async removeXtreamBlock(ip: string): Promise<void> {
+    await this.redis.del(`xbrute:block:${ip}`).catch(() => {});
+    await this.redis.del(`xbrute:fail:${ip}`).catch(() => {});
+    await this.redis.del(`scan:invalid:${ip}`).catch(() => {});
+  }
+
   async isIpBanned(ip: string): Promise<boolean> {
     const redisHit = await this.redis.exists(`banned:${ip}`).catch(() => 0);
     if (redisHit) return true;
