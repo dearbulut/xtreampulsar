@@ -78,7 +78,11 @@ export class XtreamController {
   // ─── Xtream brute-force koruması ────────────────────────────────────────────
 
   private clientIpOf(req: Request): string {
-    return (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip ?? '';
+    const real = (req.headers['x-real-ip'] as string | undefined)?.trim();
+    if (real) return real;
+    const xff = req.headers['x-forwarded-for'] as string | undefined;
+    if (xff) return xff.split(',').pop()!.trim(); // son hop = nginx'in eklediği gerçek IP
+    return req.ip ?? '';
   }
 
   private async isXtreamBlocked(ip: string): Promise<boolean> {
@@ -129,7 +133,7 @@ export class XtreamController {
     }
 
     if (!action) {
-      const loginIp = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.ip ?? '';
+      const loginIp = this.clientIpOf(req);
       const loginUa = req.headers['user-agent'] ?? '';
       void this.userActivityService.logActivity({
         userId: user.id,
@@ -422,9 +426,7 @@ export class XtreamController {
     }
 
     // IP geo/ban check
-    const clientIpRaw =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.ip ?? '';
+    const clientIpRaw = this.clientIpOf(req);
     try {
       const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw);
       if (!ipCheck.allowed) {
@@ -744,9 +746,7 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const ip =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.ip ?? '';
+    const ip = this.clientIpOf(req);
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
@@ -780,9 +780,7 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    const ip =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.ip ?? '';
+    const ip = this.clientIpOf(req);
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
