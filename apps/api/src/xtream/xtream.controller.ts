@@ -28,6 +28,7 @@ import { UserActivityService } from '../user/user-activity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
 import { LoadBalancerService } from '../server/load-balancer.service';
+import { GuardConfigService } from '../server/guard-config.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { EventsGateway } from '../gateway/events.gateway';
 import { WebhookService } from '../webhook/webhook.service';
@@ -70,6 +71,7 @@ export class XtreamController {
     private readonly prisma: PrismaService,
     private readonly securityService: SecurityService,
     private readonly lbService: LoadBalancerService,
+    private readonly guardConfig: GuardConfigService,
     @Optional() private readonly prefetchService: StreamPrefetchService,
     @Optional() private readonly workerService: StreamWorkerService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
@@ -277,11 +279,15 @@ export class XtreamController {
       return null;
     }
 
+    // Guard config'i çöz + whitelist bypass (yalnız anti-restream kontrollerini atlar).
+    const guard = await this.guardConfig.getEffective();
+    const ip = this.clientIpOf(res.req as Request);
+    const wl = guard.whitelistIps.includes(ip) || guard.whitelistUsernames.includes(username);
+
     const ext = new RegExp(`\\.(${extension})$`, 'i');
     const externalId = parseInt(rawStreamId.replace(ext, ''), 10);
     if (isNaN(externalId)) {
-      const ip = this.clientIpOf(res.req as Request);
-      await this.recordInvalidStreamId(ip);
+      if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
       res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID');
       return null;
     }
@@ -289,8 +295,9 @@ export class XtreamController {
     try {
       const validation = await this.userService.validateConnection(
         user.id,
-        (res.req as Request).ip ?? '',
+        ip,
         (res.req as Request).headers['user-agent'],
+        wl ? 0 : guard.maxConnsPerIp,
       );
       if (!validation.allowed) {
         res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
@@ -309,8 +316,7 @@ export class XtreamController {
       const url = await this.streamService.getStreamUrl(externalId);
       return { url, userId: user.id };
     } catch {
-      const ip = this.clientIpOf(res.req as Request);
-      await this.recordInvalidStreamId(ip);
+      if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return null;
     }
@@ -457,11 +463,15 @@ export class XtreamController {
       return;
     }
 
-    // IP geo/ban check
+    // Guard config + whitelist bypass (yalnız anti-restream kontrollerini atlar).
+    const guard = await this.guardConfig.getEffective();
     const clientIpRaw = this.clientIpOf(req);
-    if (await this.isXtreamBlocked(clientIpRaw)) { res.status(403).send('Access temporarily blocked'); return; }
+    const wl = guard.whitelistIps.includes(clientIpRaw) || guard.whitelistUsernames.includes(username);
+
+    // IP geo/ban check
+    if (!wl && await this.isXtreamBlocked(clientIpRaw)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
-      const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw);
+      const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw, guard.serverId ?? undefined);
       if (!ipCheck.allowed) {
         res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden');
         return;
@@ -472,7 +482,7 @@ export class XtreamController {
     const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
     const externalId = parseInt(cleanId, 10);
     if (isNaN(externalId)) {
-      await this.recordInvalidStreamId(clientIpRaw);
+      if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(clientIpRaw);
       res.status(HttpStatus.BAD_REQUEST).send('Invalid stream ID');
       return;
     }
@@ -482,13 +492,13 @@ export class XtreamController {
     try {
       const found = await this.streamService.findByExternalId(externalId);
       if (!found) {
-        await this.recordInvalidStreamId(clientIpRaw);
+        if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(clientIpRaw);
         res.status(HttpStatus.NOT_FOUND).send('Stream not found');
         return;
       }
       streamRecord = found as typeof streamRecord;
     } catch {
-      await this.recordInvalidStreamId(clientIpRaw);
+      if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(clientIpRaw);
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
       return;
     }
@@ -516,7 +526,7 @@ export class XtreamController {
 
     // Validate connection limits (zap temizliğinden SONRA → doğru sayım)
     try {
-      const validation = await this.userService.validateConnection(user.id, clientIp, clientUa);
+      const validation = await this.userService.validateConnection(user.id, clientIp, clientUa, wl ? 0 : guard.maxConnsPerIp);
       if (!validation.allowed) {
         res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
         return;
@@ -782,10 +792,12 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    const guard = await this.guardConfig.getEffective();
     const ip = this.clientIpOf(req);
-    if (await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
+    const wl = guard.whitelistIps.includes(ip) || guard.whitelistUsernames.includes(username);
+    if (!wl && await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
-      const ipCheck = await this.securityService.checkIpAllowed(ip);
+      const ipCheck = await this.securityService.checkIpAllowed(ip, guard.serverId ?? undefined);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
@@ -817,10 +829,12 @@ export class XtreamController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    const guard = await this.guardConfig.getEffective();
     const ip = this.clientIpOf(req);
-    if (await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
+    const wl = guard.whitelistIps.includes(ip) || guard.whitelistUsernames.includes(username);
+    if (!wl && await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
     try {
-      const ipCheck = await this.securityService.checkIpAllowed(ip);
+      const ipCheck = await this.securityService.checkIpAllowed(ip, guard.serverId ?? undefined);
       if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
