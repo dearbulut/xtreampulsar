@@ -776,9 +776,9 @@ export class AnalyticsService {
     const truncUnit = groupBy === 'week' ? 'week' : groupBy === 'month' ? 'month' : 'day';
     const growthRaw = await safe('growth', () =>
       this.prisma.$queryRaw<Array<{ bucket: Date; count: bigint }>>`
-        SELECT DATE_TRUNC(${truncUnit}, "created_at") AS bucket, COUNT(*)::bigint AS count
+        SELECT DATE_TRUNC(${truncUnit}, "createdAt") AS bucket, COUNT(*)::bigint AS count
         FROM users
-        WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND deleted_at IS NULL
+        WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} AND "deletedAt" IS NULL
         GROUP BY 1 ORDER BY 1 ASC
       `, []);
 
@@ -885,16 +885,16 @@ export class AnalyticsService {
     const [trendAdded, trendSpent] = await Promise.all([
       safe('trendAdd', () =>
         this.prisma.$queryRaw<Array<{ bucket: Date; total: bigint }>>`
-          SELECT DATE_TRUNC(${truncUnit}, created_at) AS bucket, SUM(amount)::bigint AS total
+          SELECT DATE_TRUNC(${truncUnit}, "createdAt") AS bucket, SUM(amount)::bigint AS total
           FROM reseller_credit_logs
-          WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND type = 'ADD'
+          WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} AND type = 'ADD'
           GROUP BY 1 ORDER BY 1 ASC
         `, []),
       safe('trendDed', () =>
         this.prisma.$queryRaw<Array<{ bucket: Date; total: bigint }>>`
-          SELECT DATE_TRUNC(${truncUnit}, created_at) AS bucket, SUM(amount)::bigint AS total
+          SELECT DATE_TRUNC(${truncUnit}, "createdAt") AS bucket, SUM(amount)::bigint AS total
           FROM reseller_credit_logs
-          WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND type = 'DEDUCT'
+          WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} AND type = 'DEDUCT'
           GROUP BY 1 ORDER BY 1 ASC
         `, []),
     ]);
