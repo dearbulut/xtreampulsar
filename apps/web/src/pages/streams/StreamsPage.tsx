@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   XCircle,
   Film,
+  ListVideo,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStreamHealth, useManualHealthCheck } from '@/hooks/useStreamHealth';
@@ -52,6 +53,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
+import { EpisodeManagerModal } from './EpisodeManagerModal';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
@@ -421,6 +423,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
   const [metaStream, setMetaStream] = useState<Stream | null>(null);
   const [metaForm, setMetaForm] = useState<MetaForm>(EMPTY_META);
+  const [episodeSeries, setEpisodeSeries] = useState<Stream | null>(null);
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
   const [bulkMoveCatId, setBulkMoveCatId] = useState('');
@@ -767,6 +770,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           )}
           {(type === 'VOD' || type === 'SERIES') && (
             <ActionBtn icon={Film} title="Meta Düzenle" color="text-purple-400" onClick={() => setMetaStream(r)} />
+          )}
+          {type === 'SERIES' && (
+            <ActionBtn icon={ListVideo} title="Bölümler" color="text-cyan-400" onClick={() => setEpisodeSeries(r)} />
           )}
         </div>
       ),
@@ -1419,6 +1425,11 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           streamName={healthStream.name}
           onClose={() => setHealthStream(null)}
         />
+      )}
+
+      {/* Episode manager modal (SERIES) */}
+      {episodeSeries && (
+        <EpisodeManagerModal series={episodeSeries} onClose={() => setEpisodeSeries(null)} />
       )}
     </div>
   );

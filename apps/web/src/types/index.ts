@@ -64,6 +64,24 @@ export interface Stream {
   _count?: { connections: number };
 }
 
+export interface Episode {
+  id: string;
+  externalId: number;
+  seriesId: string;
+  season: number;
+  episode: number;
+  title?: string | null;
+  primaryUrl: string;
+  containerExtension: string;
+  plot?: string | null;
+  durationSecs?: number | null;
+  tmdbRating?: number | null;
+  releaseDate?: string | null;
+  cover?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────
 
 export type UserStatus = 'ACTIVE' | 'DISABLED' | 'EXPIRED' | 'BANNED';
