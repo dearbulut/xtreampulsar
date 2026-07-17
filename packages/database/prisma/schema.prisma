@@ -282,8 +282,31 @@ model Stream {
   connections    Connection[]
   bouquetStreams BouquetStream[]
   healthLogs     StreamHealthLog[]
+  episodes       Episode[]         @relation("SeriesEpisodes")
 
   @@map("streams")
+}
+
+model Episode {
+  id                 String   @id @default(cuid())
+  seriesId           String
+  series             Stream   @relation("SeriesEpisodes", fields: [seriesId], references: [id], onDelete: Cascade)
+  season             Int
+  episode            Int
+  title              String?
+  primaryUrl         String
+  containerExtension String   @default("mkv")
+  plot               String?
+  durationSecs       Int?
+  tmdbRating         Float?
+  releaseDate        String?
+  cover              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([seriesId, season, episode])
+  @@index([seriesId])
+  @@map("episodes")
 }
 
 model BouquetStream {
