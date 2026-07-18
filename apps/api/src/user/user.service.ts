@@ -149,6 +149,11 @@ export class UserService {
     return this.userRepo.closeConnection(connectionId);
   }
 
+  // Heartbeat: uzun VOD/series proxy'si sürerken bağlantıyı canlı tut (stale-cron'a karşı).
+  async touchConnection(id: string): Promise<void> {
+    return this.userRepo.touchConnection(id);
+  }
+
   async hashPassword(plain: string): Promise<string> {
     return bcrypt.hash(plain, 12);
   }

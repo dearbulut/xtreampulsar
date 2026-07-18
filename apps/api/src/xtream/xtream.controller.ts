@@ -274,7 +274,7 @@ export class XtreamController {
     rawStreamId: string,
     res: Response,
     extension: string,
-  ): Promise<{ url: string; userId: string } | null> {
+  ): Promise<{ url: string; userId: string; streamId: string } | null> {
     const user = await this.xtream.authenticate(username, password);
     if (!user) {
       res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized');
@@ -315,12 +315,20 @@ export class XtreamController {
         }
       }
 
+      // Internal stream kaydını çöz (connection-tracking için streamId gerekli).
+      const rec = await this.streamService.findByExternalId(externalId);
+      if (!rec) {
+        if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
+        res.status(HttpStatus.NOT_FOUND).send('Stream not found');
+        return null;
+      }
+
       const url = await this.streamService.getStreamUrl(externalId);
       void this.restreamDetector.record({
         userId: user.id, username: user.username, ip,
         maxConnections: user.maxConnections ?? 1, guard,
       }).catch(() => {});
-      return { url, userId: user.id };
+      return { url, userId: user.id, streamId: rec.id };
     } catch {
       if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
       res.status(HttpStatus.NOT_FOUND).send('Stream not found');
@@ -368,12 +376,15 @@ export class XtreamController {
     res: Response,
     opts?: {
       onEnd?: (bytes: bigint, durationSeconds: number) => void;
+      onHeartbeat?: () => void;
       rewrite?: { proxyPrefix: string; upstreamOrigin: string; playlistUrl: string };
     },
   ): void {
     const onEnd = opts?.onEnd;
+    const onHeartbeat = opts?.onHeartbeat;
     const startMs = Date.now();
     let bytes = BigInt(0);
+    let lastHb = 0;
 
     const target = new URL(streamUrl);
     const client = target.protocol === 'https:' ? https : http;
@@ -423,9 +434,16 @@ export class XtreamController {
           return;
         }
 
-        // Segment/binary: ham pipe (performans).
-        if (onEnd) {
-          proxyRes.on('data', (chunk: Buffer) => { bytes += BigInt(chunk.length); });
+        // Segment/binary: ham pipe (performans). onEnd → bayt sayacı; onHeartbeat →
+        // ≥30sn'de bir bağlantıyı canlı tut (uzun VOD/series tek proxy'de stale-cron'a karşı).
+        if (onEnd || onHeartbeat) {
+          proxyRes.on('data', (chunk: Buffer) => {
+            if (onEnd) bytes += BigInt(chunk.length);
+            if (onHeartbeat) {
+              const t = Date.now();
+              if (t - lastHb > 30000) { lastHb = t; onHeartbeat(); }
+            }
+          });
         }
         const headers: Record<string, string | string[] | undefined> = {
           ...proxyRes.headers,
@@ -451,6 +469,57 @@ export class XtreamController {
     });
 
     proxyReq.end();
+  }
+
+  // VOD/series oynatımı için bağlantı yaşam döngüsü sarmalayıcı: açılışta bağlantı
+  // oluştur (per-IP/per-user cap'e sayılsın + "aktif bağlantılar"da görünsün + kick
+  // edilebilsin), heartbeat ile canlı tut (uzun tek proxy stale-cron'a takılmasın),
+  // res kapanınca kapat. STREAM_START/END aktivite log'u da burada üretilir.
+  private async proxyWithConnection(
+    streamUrl: string,
+    req: Request,
+    res: Response,
+    ctx: { userId: string; streamId: string; ip: string; ua: string },
+  ): Promise<void> {
+    let connId: string | null = null;
+    try {
+      const conn = await this.userService.findOrCreateConnection(ctx.userId, ctx.streamId, ctx.ip, ctx.ua);
+      connId = conn.id;
+      if (conn.isNew) {
+        this.gateway?.emitConnectionUpdate({
+          id: conn.id,
+          userId: ctx.userId,
+          streamId: ctx.streamId,
+          ip: ctx.ip,
+          startedAt: new Date().toISOString(),
+        });
+      }
+    } catch { /* non-fatal */ }
+
+    void this.userActivityService.logActivity({
+      userId: ctx.userId,
+      action: 'STREAM_START',
+      streamId: ctx.streamId,
+      ip: ctx.ip,
+      userAgent: ctx.ua,
+      deviceType: this.userActivityService.detectDeviceType(ctx.ua),
+    });
+
+    this.proxyToUpstream(streamUrl, req, res, {
+      onHeartbeat: () => { if (connId) void this.userService.touchConnection(connId); },
+      onEnd: (bytes, duration) => {
+        if (connId) void this.userService.closeConnection(connId);
+        void this.userActivityService.logActivity({
+          userId: ctx.userId,
+          action: 'STREAM_END',
+          streamId: ctx.streamId,
+          ip: ctx.ip,
+          duration,
+          bytesTransferred: bytes,
+          endedAt: new Date(),
+        });
+      },
+    });
   }
 
   // ─── Live stream ───────────────────────────────────────────────────────────
@@ -819,16 +888,9 @@ export class XtreamController {
     if (!result) return;
 
     const ua = req.headers['user-agent'] ?? '';
-    void this.userActivityService.logActivity({
-      userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
-      deviceType: this.userActivityService.detectDeviceType(ua),
+    await this.proxyWithConnection(result.url, req, res, {
+      userId: result.userId, streamId: result.streamId, ip, ua,
     });
-    this.proxyToUpstream(result.url, req, res, { onEnd: (bytes, duration) => {
-      void this.userActivityService.logActivity({
-        userId: result.userId, action: 'STREAM_END', ip,
-        duration, bytesTransferred: bytes, endedAt: new Date(),
-      });
-    } });
   }
 
   // ─── Series ────────────────────────────────────────────────────────────────
@@ -865,10 +927,12 @@ export class XtreamController {
           if (!canAccess) { res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil'); return; }
         }
         const ua = req.headers['user-agent'] ?? '';
-        void this.userActivityService.logActivity({ userId: user.id, action: 'STREAM_START', ip, userAgent: ua, deviceType: this.userActivityService.detectDeviceType(ua) });
-        this.proxyToUpstream(episode.primaryUrl, req, res, { onEnd: (bytes, duration) => {
-          void this.userActivityService.logActivity({ userId: user.id, action: 'STREAM_END', ip, duration, bytesTransferred: bytes, endedAt: new Date() });
-        } });
+        // Episode path'te cap enforce edilmiyordu — VOD/live ile aynı per-IP/user tavanını uygula.
+        const validation = await this.userService.validateConnection(user.id, ip, ua, wl ? 0 : guard.maxConnsPerIp);
+        if (!validation.allowed) { res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden'); return; }
+        await this.proxyWithConnection(episode.primaryUrl, req, res, {
+          userId: user.id, streamId: episode.seriesId, ip, ua,
+        });
         return;
       }
     }
@@ -879,15 +943,8 @@ export class XtreamController {
     if (!result) return;
 
     const ua = req.headers['user-agent'] ?? '';
-    void this.userActivityService.logActivity({
-      userId: result.userId, action: 'STREAM_START', ip, userAgent: ua,
-      deviceType: this.userActivityService.detectDeviceType(ua),
+    await this.proxyWithConnection(result.url, req, res, {
+      userId: result.userId, streamId: result.streamId, ip, ua,
     });
-    this.proxyToUpstream(result.url, req, res, { onEnd: (bytes, duration) => {
-      void this.userActivityService.logActivity({
-        userId: result.userId, action: 'STREAM_END', ip,
-        duration, bytesTransferred: bytes, endedAt: new Date(),
-      });
-    } });
   }
 }

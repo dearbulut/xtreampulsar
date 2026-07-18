@@ -152,6 +152,14 @@ export class UserRepository {
     });
   }
 
+  // Heartbeat: açık bağlantının updatedAt'ini tazele → stale-cron (90s) uzun VOD/series
+  // proxy'sini ortada kesmez. update hatası (kayıt kapanmış/silinmiş) yutulur.
+  async touchConnection(id: string): Promise<void> {
+    await this.prisma.connection
+      .update({ where: { id }, data: { updatedAt: new Date() } })
+      .catch(() => {});
+  }
+
   closeAllUserConnections(userId: string): Promise<{ count: number }> {
     return this.prisma.connection.updateMany({
       where: { userId, endedAt: null },
