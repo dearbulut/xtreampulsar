@@ -60,9 +60,11 @@ services:
       SERVER_PORT: ${SERVER_PORT:-25461}
       FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
       HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}
+      MIGRATION_DATA_PATH: ${MIGRATION_DATA_PATH:-/data/migrations}
       NODE_ENV: production
     volumes:
       - hls_data:/tmp/xtreampulsar/hls
+      - migration_data:/data/migrations
     restart: always
     expose:
       - "3000"
@@ -146,6 +148,7 @@ volumes:
   postgres_data:
   redis_data:
   hls_data:
+  migration_data:
 
 networks:
   internal:

@@ -603,6 +603,7 @@ model MigrationJob {
   processedRecords Int             @default(0)
   failedRecords    Int             @default(0)
   errors           Json?
+  filePath         String?
   startedAt        DateTime?
   completedAt      DateTime?
   createdAt        DateTime        @default(now())

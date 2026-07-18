@@ -571,7 +571,8 @@ export class MigrationService implements OnModuleInit {
   // ─── SQL Dump upload / preview / import ──────────────────────────────────
 
   async uploadDump(buffer: Buffer, originalName: string): Promise<{ jobId: string }> {
-    const dir = path.join(os.tmpdir(), 'xp-migrations');
+    // Kalıcı depolama: api restart/deploy'da dump kaybolmasın (volume ile mount'lu).
+    const dir = process.env.MIGRATION_DATA_PATH || path.join(os.tmpdir(), 'xp-migrations');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -590,6 +591,7 @@ export class MigrationService implements OnModuleInit {
       data: {
         source: prismaSource,
         status: 'PENDING',
+        filePath,
       },
     });
 
@@ -603,9 +605,35 @@ export class MigrationService implements OnModuleInit {
     return { jobId: job.id };
   }
 
+  // Resumable jobs: bellek cache'i (jobMeta) api restart'ta boşalır. Eksikse
+  // DB'deki kalıcı filePath'ten dump'ı yeniden tarayıp meta'yı hydrate et.
+  private async getMeta(jobId: string): Promise<{
+    filePath: string;
+    source: 'XTREAMUI' | 'XUIONE' | 'UNKNOWN';
+    tableColumns: Map<string, string[]>;
+    tableCounts: Map<string, number>;
+  }> {
+    const cached = this.jobMeta.get(jobId);
+    if (cached) return cached;
+
+    const job = await this.prisma.migrationJob.findUnique({ where: { id: jobId } });
+    if (!job?.filePath || !fs.existsSync(job.filePath)) {
+      throw new NotFoundException(`No dump metadata found for job ${jobId}`);
+    }
+
+    const scan = await this.scanDump(job.filePath);
+    const meta = {
+      filePath: job.filePath,
+      source: scan.source,
+      tableColumns: scan.tableColumns,
+      tableCounts: scan.tableCounts,
+    };
+    this.jobMeta.set(jobId, meta);
+    return meta;
+  }
+
   async previewDump(jobId: string): Promise<DumpPreview> {
-    const meta = this.jobMeta.get(jobId);
-    if (!meta) throw new NotFoundException(`No dump metadata found for job ${jobId}`);
+    const meta = await this.getMeta(jobId);
 
     const { source, tableCounts } = meta;
 
@@ -646,8 +674,7 @@ export class MigrationService implements OnModuleInit {
   }
 
   async importFromDump(jobId: string, options: DumpImportOptions): Promise<void> {
-    const meta = this.jobMeta.get(jobId);
-    if (!meta) throw new NotFoundException(`No dump metadata found for job ${jobId}`);
+    const meta = await this.getMeta(jobId);
 
     await this.prisma.migrationJob.update({
       where: { id: jobId },
