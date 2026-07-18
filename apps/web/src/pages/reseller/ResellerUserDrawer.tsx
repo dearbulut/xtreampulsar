@@ -17,14 +17,15 @@ import type { ResellerUserRow } from '@/hooks/useResellerPanel';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useSettings } from '@/hooks/useSettings';
 import { cn, daysLeft, formatDate } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
-const EXTEND_PRESETS = [
-  { label: '1 Ay', days: 30 },
-  { label: '3 Ay', days: 90 },
-  { label: '6 Ay', days: 180 },
-  { label: '1 Yıl', days: 365 },
-] as const;
+const EXTEND_PRESETS: { label: string; days: number }[] = [
+  { label: 'reseller.drawer.preset1m', days: 30 },
+  { label: 'reseller.drawer.preset3m', days: 90 },
+  { label: 'reseller.drawer.preset6m', days: 180 },
+  { label: 'reseller.drawer.preset1y', days: 365 },
+];
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -73,6 +74,7 @@ export function ResellerUserDrawer({
   onClose: () => void;
   onUpdated: () => void;
 }) {
+  const { t } = useTranslation();
   const [extendDays, setExtendDays] = useState(30);
   const [currentStatus, setCurrentStatus] = useState(user.status);
   const [newPassword, setNewPassword] = useState<string | null>(null);
@@ -103,12 +105,12 @@ export function ResellerUserDrawer({
     void navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
-    toast.success('Kopyalandı');
-  }, []);
+    toast.success(t('reseller.drawer.toastCopied'));
+  }, [t]);
 
   const handleExtend = async () => {
     await extendUser.mutateAsync({ id: user.id, days: extendDays });
-    toast.success(`${extendDays} gün uzatıldı`);
+    toast.success(t('reseller.drawer.toastExtended', { n: extendDays }));
     onUpdated();
   };
 
@@ -154,38 +156,38 @@ export function ResellerUserDrawer({
           {/* Info rows */}
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Oluşturulma</span>
+              <span className="text-muted">{t('reseller.drawer.createdAt')}</span>
               <span className="text-slate-100">{user.createdAt ? formatDate(user.createdAt) : '—'}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Bitiş Tarihi</span>
+              <span className="text-muted">{t('reseller.drawer.expiresAt')}</span>
               <span className={cn('font-medium', dl < 0 ? 'text-danger' : dl < 7 ? 'text-warning' : 'text-slate-100')}>
                 {formatDate(user.expiresAt)}
                 <span className="ml-1 text-xs text-slate-400">
-                  {dl < 0 ? '(Süresi dolmuş)' : `(${dl}g kaldı)`}
+                  {dl < 0 ? t('reseller.drawer.expired') : t('reseller.drawer.daysLeft', { n: dl })}
                 </span>
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted">Max Bağlantı</span>
+              <span className="text-muted">{t('reseller.drawer.maxConn')}</span>
               <span className="text-slate-100">{user.maxConnections ?? '—'}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted">Aktif Bağlantı</span>
+              <span className="text-muted">{t('reseller.drawer.activeConn')}</span>
               <span className="flex items-center gap-2">
                 <span className="text-slate-100">{String(user._count?.connections ?? 0)}</span>
                 {(user._count?.connections ?? 0) > 0 && (
                   <button
                     onClick={async () => {
-                      if (!confirm(`${user.username} kullanıcısının tüm aktif bağlantıları kesilecek.`)) return;
+                      if (!confirm(t('reseller.drawer.kickConfirm', { name: user.username }))) return;
                       await kickUser.mutateAsync(user.id);
-                      toast.success('Bağlantılar kesildi');
+                      toast.success(t('reseller.drawer.toastKicked'));
                       onUpdated();
                     }}
                     disabled={kickUser.isPending}
                     className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
                   >
-                    Kes
+                    {t('reseller.drawer.kick')}
                   </button>
                 )}
               </span>
@@ -197,21 +199,21 @@ export function ResellerUserDrawer({
           {/* Stream bilgileri */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted uppercase tracking-wide">Stream Bilgileri</span>
+              <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('reseller.drawer.streamInfo')}</span>
               <button
                 onClick={() => void handleResetPassword()}
                 disabled={resetPassword.isPending}
                 className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors disabled:opacity-50"
               >
                 <Key className="w-3 h-3" />
-                {resetPassword.isPending ? 'Sıfırlanıyor…' : 'Şifre Sıfırla'}
+                {resetPassword.isPending ? t('reseller.drawer.resetting') : t('reseller.drawer.resetPassword')}
               </button>
             </div>
 
             {newPassword ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="text-xs text-emerald-400">Yeni Şifre</span>
+                  <span className="text-xs text-emerald-400">{t('reseller.drawer.newPassword')}</span>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-sm text-slate-100">{newPassword}</span>
                     <button onClick={() => copy(newPassword, 'password')} className="text-muted hover:text-fg">
@@ -234,7 +236,7 @@ export function ResellerUserDrawer({
               </div>
             ) : (
               <p className="text-xs text-muted bg-surface-2 rounded-lg px-3 py-2.5">
-                Şifre sıfırlandıktan sonra M3U ve API URL'leri burada görünecek.
+                {t('reseller.drawer.resetHint')}
               </p>
             )}
           </div>
@@ -243,7 +245,7 @@ export function ResellerUserDrawer({
 
           {/* Süre Uzat */}
           <div className="space-y-2.5">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wide">Süre Uzat</span>
+            <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('reseller.drawer.extendTime')}</span>
             <div className="flex flex-wrap gap-1.5">
               {EXTEND_PRESETS.map(({ label, days }) => (
                 <button
@@ -254,7 +256,7 @@ export function ResellerUserDrawer({
                       ? 'bg-primary/20 border-primary text-primary'
                       : 'border-border text-muted hover:border-primary/40')}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
               <div className="flex items-center gap-1.5">
@@ -263,7 +265,7 @@ export function ResellerUserDrawer({
                   onChange={(e) => setExtendDays(+e.target.value)}
                   className="input w-16 text-xs py-1"
                 />
-                <span className="text-xs text-muted">gün</span>
+                <span className="text-xs text-muted">{t('reseller.drawer.daysUnit')}</span>
               </div>
             </div>
             {(() => {
@@ -273,14 +275,14 @@ export function ResellerUserDrawer({
               return (
                 <>
                   <div className="flex items-center justify-between text-xs px-1">
-                    <span className="text-muted">Bu işlem</span>
+                    <span className="text-muted">{t('reseller.drawer.thisAction')}</span>
                     <span className={cn('font-semibold', canAfford ? 'text-amber-400' : 'text-danger')}>
-                      {creditCost} kredi düşecek
+                      {t('reseller.drawer.willDeduct', { n: creditCost })}
                     </span>
                   </div>
                   {!canAfford && (
                     <p className="text-xs text-danger px-1">
-                      Yetersiz kredi — bakiye: {balance}
+                      {t('reseller.drawer.insufficient', { balance })}
                     </p>
                   )}
                   <button
@@ -289,7 +291,7 @@ export function ResellerUserDrawer({
                     className="btn-primary w-full text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <CalendarPlus className="w-4 h-4" />
-                    {extendUser.isPending ? 'Uzatılıyor…' : 'Uzat'}
+                    {extendUser.isPending ? t('reseller.drawer.extending') : t('reseller.drawer.extend')}
                   </button>
                 </>
               );
@@ -300,7 +302,7 @@ export function ResellerUserDrawer({
 
           {/* Askıya Al / Sil */}
           <div className="space-y-2">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wide">İşlemler</span>
+            <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('reseller.drawer.actions')}</span>
             <div className="flex gap-2">
               <button
                 onClick={() => void handleToggleStatus()}
@@ -311,7 +313,7 @@ export function ResellerUserDrawer({
                     : 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10')}
               >
                 <Ban className="w-3.5 h-3.5" />
-                {currentStatus === 'ACTIVE' ? 'Askıya Al' : 'Aktifleştir'}
+                {currentStatus === 'ACTIVE' ? t('reseller.drawer.suspend') : t('reseller.drawer.activate')}
               </button>
 
               {!confirmDelete ? (
@@ -319,7 +321,7 @@ export function ResellerUserDrawer({
                   onClick={() => setConfirmDelete(true)}
                   className="flex-1 text-sm py-2 rounded-lg border border-danger/40 text-danger hover:bg-danger/10 transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Sil
+                  <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                 </button>
               ) : (
                 <button
@@ -327,13 +329,13 @@ export function ResellerUserDrawer({
                   disabled={deleteUser.isPending}
                   className="flex-1 text-sm py-2 rounded-lg bg-danger/20 border border-danger text-danger font-semibold disabled:opacity-50"
                 >
-                  {deleteUser.isPending ? 'Siliniyor…' : 'Evet, Sil'}
+                  {deleteUser.isPending ? t('reseller.drawer.deleting') : t('reseller.drawer.confirmDelete')}
                 </button>
               )}
             </div>
             {confirmDelete && (
               <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted hover:text-fg w-full text-center">
-                İptal
+                {t('common.cancel')}
               </button>
             )}
           </div>
@@ -344,14 +346,14 @@ export function ResellerUserDrawer({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-muted" />
-                <span className="text-xs font-semibold text-muted uppercase tracking-wide">Bouquet'ler</span>
+                <span className="text-xs font-semibold text-muted uppercase tracking-wide">{t('reseller.drawer.bouquets')}</span>
               </div>
               {!editingBouquets && (
                 <button
                   onClick={() => { setBouquetDraft(userBouquets.map((b) => b.id)); setEditingBouquets(true); }}
                   className="flex items-center gap-1 text-xs text-muted hover:text-fg"
                 >
-                  <Pencil className="w-3 h-3" /> Düzenle
+                  <Pencil className="w-3 h-3" /> {t('common.edit')}
                 </button>
               )}
             </div>
@@ -365,7 +367,7 @@ export function ResellerUserDrawer({
                 </div>
               ) : (
                 <div className="text-xs text-danger bg-danger/10 rounded-lg p-2">
-                  Bouquet atanmamış — bu kullanıcı hiçbir kanal göremez.
+                  {t('reseller.drawer.noBouquets')}
                 </div>
               )
             ) : (
@@ -374,10 +376,10 @@ export function ResellerUserDrawer({
                   options={allBouquets.map((b) => ({ value: b.id, label: b.name }))}
                   value={bouquetDraft}
                   onChange={setBouquetDraft}
-                  placeholder="Bouquet seçin…"
+                  placeholder={t('reseller.drawer.bouquetPlaceholder')}
                 />
                 {bouquetDraft.length === 0 && (
-                  <p className="text-[11px] text-warning">Uyarı: boş bırakılırsa kullanıcı hiçbir kanal göremez.</p>
+                  <p className="text-[11px] text-warning">{t('reseller.drawer.bouquetWarning')}</p>
                 )}
                 <div className="flex gap-2">
                   <button
@@ -388,9 +390,9 @@ export function ResellerUserDrawer({
                       onUpdated();
                     }}
                   >
-                    Kaydet
+                    {t('common.save')}
                   </button>
-                  <button className="text-xs text-muted hover:text-fg" onClick={() => setEditingBouquets(false)}>İptal</button>
+                  <button className="text-xs text-muted hover:text-fg" onClick={() => setEditingBouquets(false)}>{t('common.cancel')}</button>
                 </div>
               </div>
             )}
@@ -404,7 +406,7 @@ export function ResellerUserDrawer({
                 <div className="flex items-center gap-2">
                   <ListVideo className="w-4 h-4 text-muted" />
                   <span className="text-xs font-semibold text-muted uppercase tracking-wide">
-                    Playlist'ler ({playlists.length})
+                    {t('reseller.drawer.playlists', { n: playlists.length })}
                   </span>
                 </div>
                 <div className="space-y-1.5">
@@ -414,10 +416,10 @@ export function ResellerUserDrawer({
                         <span className="text-sm text-slate-300 truncate block">{pl.name}</span>
                         <span className={cn('text-[10px] px-1 py-0.5 rounded',
                           pl.isActive ? 'text-emerald-400' : 'text-slate-400')}>
-                          {pl.isActive ? 'Aktif' : 'Pasif'} · {pl.type}
+                          {pl.isActive ? t('common.active') : t('common.inactive')} · {pl.type}
                         </span>
                       </div>
-                      <span className="text-xs text-slate-300 shrink-0 ml-2">{pl.accessCount} erişim</span>
+                      <span className="text-xs text-slate-300 shrink-0 ml-2">{t('reseller.drawer.accessCount', { n: pl.accessCount })}</span>
                     </div>
                   ))}
                 </div>

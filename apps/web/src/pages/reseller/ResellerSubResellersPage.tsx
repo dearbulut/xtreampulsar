@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, CreditCard, Users, Network } from 'lucide-react';
 import {
   useResellerMe,
@@ -18,6 +19,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export function ResellerSubResellersPage() {
+  const { t } = useTranslation();
   const { data: me } = useResellerMe();
   const { data: subs = [], isLoading } = useResellerSubResellers();
   const createSub = useResellerCreateSubReseller();
@@ -54,16 +56,16 @@ export function ResellerSubResellersPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <Network className="w-5 h-5 text-primary" />
-            Alt Bayilerim
+            {t('reseller.subs.title')}
           </h1>
-          <p className="text-sm text-muted mt-0.5">{subs.length} alt bayi</p>
+          <p className="text-sm text-muted mt-0.5">{t('reseller.subs.subtitle', { n: subs.length })}</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="btn-primary flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
-          Alt Bayi Ekle
+          {t('reseller.subs.addSub')}
         </button>
       </div>
 
@@ -72,7 +74,7 @@ export function ResellerSubResellersPage() {
         <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-3">
           <CreditCard className="w-4 h-4 text-primary" />
           <span className="text-sm text-slate-300">
-            Bakiyeniz: <span className="font-bold text-primary">{me.credits}</span> kredi
+            {t('reseller.subs.yourBalanceLabel')} <span className="font-bold text-primary">{me.credits}</span> {t('reseller.subs.creditsUnit')}
           </span>
         </div>
       )}
@@ -87,9 +89,9 @@ export function ResellerSubResellersPage() {
       ) : subs.length === 0 ? (
         <div className="card py-16 flex flex-col items-center gap-3 text-center">
           <Network className="w-10 h-10 text-muted/30" />
-          <p className="text-muted text-sm">Henüz alt bayi eklenmemiş.</p>
+          <p className="text-muted text-sm">{t('reseller.subs.noSubs')}</p>
           <button onClick={() => setShowCreate(true)} className="btn-primary text-sm">
-            İlk Alt Bayiyi Ekle
+            {t('reseller.subs.addFirstSub')}
           </button>
         </div>
       ) : (
@@ -105,55 +107,55 @@ export function ResellerSubResellersPage() {
       )}
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Alt Bayi Ekle" size="sm">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('reseller.subs.addSub')} size="sm">
         <div className="space-y-4">
           {me && (
             <div className="text-sm text-muted p-2.5 rounded-lg bg-surface-2">
-              Bakiyeniz: <span className="text-primary font-semibold">{me.credits} kredi</span>
+              {t('reseller.subs.yourBalanceLabel')} <span className="text-primary font-semibold">{me.credits} {t('reseller.subs.creditsUnit')}</span>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Kullanıcı Adı *</label>
+              <label className="label">{t('reseller.subs.usernameLabel')}</label>
               <input className="input" placeholder="altbayi1"
                 value={createForm.username}
                 onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Şifre *</label>
+              <label className="label">{t('reseller.subs.passwordLabel')}</label>
               <input className="input" type="password" placeholder="••••••••"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="label">E-posta (isteğe bağlı)</label>
+            <label className="label">{t('reseller.subs.emailLabel')}</label>
             <input className="input" type="email" placeholder="mail@example.com"
               value={createForm.email}
               onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} />
           </div>
           <div>
-            <label className="label">Başlangıç Kredisi</label>
+            <label className="label">{t('reseller.subs.startingCredits')}</label>
             <input className="input" type="number" min={0}
               value={createForm.credits}
               onChange={(e) => setCreateForm((f) => ({ ...f, credits: parseInt(e.target.value) || 0 }))} />
             {createForm.credits > 0 && (
               <p className="text-xs text-amber-400 mt-1">
-                {createForm.credits} kredi bakiyenizden düşülecek
+                {t('reseller.subs.willDeduct', { n: createForm.credits })}
                 {me && me.credits < createForm.credits && (
-                  <span className="text-danger ml-1">(Yetersiz bakiye!)</span>
+                  <span className="text-danger ml-1">{t('reseller.subs.insufficientBalance')}</span>
                 )}
               </p>
             )}
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
+            <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={createSub.isPending || !createForm.username || !createForm.password || (!!me && createForm.credits > me.credits)}
               onClick={() => void handleCreate()}
               className="btn-primary"
             >
-              {createSub.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+              {createSub.isPending ? t('reseller.subs.creating') : t('common.create')}
             </button>
           </div>
         </div>
@@ -163,20 +165,20 @@ export function ResellerSubResellersPage() {
       <Modal
         open={!!transferTarget}
         onClose={() => setTransferTarget(null)}
-        title={`Kredi Gönder — ${transferTarget?.username ?? ''}`}
+        title={t('reseller.subs.transferTitle', { name: transferTarget?.username ?? '' })}
         size="sm"
       >
         <div className="space-y-4">
           <div className="flex justify-between text-sm">
-            <span className="text-muted">Bakiyeniz</span>
-            <span className="font-semibold text-slate-100">{me?.credits ?? 0} kredi</span>
+            <span className="text-muted">{t('reseller.subs.yourBalanceShort')}</span>
+            <span className="font-semibold text-slate-100">{me?.credits ?? 0} {t('reseller.subs.creditsUnit')}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted">Alıcı mevcut bakiye</span>
-            <span className="font-semibold text-slate-100">{transferTarget?.credits ?? 0} kredi</span>
+            <span className="text-muted">{t('reseller.subs.recipientBalance')}</span>
+            <span className="font-semibold text-slate-100">{transferTarget?.credits ?? 0} {t('reseller.subs.creditsUnit')}</span>
           </div>
           <div>
-            <label className="label">Transfer Miktarı</label>
+            <label className="label">{t('reseller.subs.transferAmount')}</label>
             <input
               className="input"
               type="number"
@@ -186,16 +188,16 @@ export function ResellerSubResellersPage() {
             />
           </div>
           {me && transferAmount > me.credits && (
-            <p className="text-xs text-danger">Bakiyeniz yetersiz</p>
+            <p className="text-xs text-danger">{t('reseller.subs.insufficientBalance2')}</p>
           )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setTransferTarget(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setTransferTarget(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={transfer.isPending || transferAmount <= 0 || (!!me && transferAmount > me.credits)}
               onClick={() => void handleTransfer()}
               className="btn-primary"
             >
-              {transfer.isPending ? 'Gönderiliyor…' : `${transferAmount} Kredi Gönder`}
+              {transfer.isPending ? t('reseller.subs.sending') : t('reseller.subs.sendCreditsN', { n: transferAmount })}
             </button>
           </div>
         </div>
@@ -205,6 +207,7 @@ export function ResellerSubResellersPage() {
 }
 
 function SubCard({ sub, onTransfer }: { sub: SubReseller; onTransfer: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="card flex flex-col gap-3">
       <div className="flex items-start justify-between">
@@ -218,7 +221,7 @@ function SubCard({ sub, onTransfer }: { sub: SubReseller; onTransfer: () => void
           </span>
           <span className={cn('text-[11px] px-1.5 py-0.5 rounded font-medium',
             sub.isActive ? 'text-emerald-400 bg-emerald-500/15' : 'text-slate-400 bg-slate-500/15')}>
-            {sub.isActive ? 'Aktif' : 'Pasif'}
+            {sub.isActive ? t('common.active') : t('common.inactive')}
           </span>
         </div>
       </div>
@@ -229,12 +232,12 @@ function SubCard({ sub, onTransfer }: { sub: SubReseller; onTransfer: () => void
           <span className={cn('font-semibold tabular-nums', sub.credits < 20 ? 'text-warning' : 'text-slate-200')}>
             {sub.credits}
           </span>
-          <span className="text-xs">kredi</span>
+          <span className="text-xs">{t('reseller.subs.creditsUnit')}</span>
         </div>
         <div className="flex items-center gap-1 text-muted">
           <Users className="w-3.5 h-3.5" />
           <span className="text-slate-300">{sub._count?.users ?? 0}</span>
-          <span className="text-xs">kullanıcı</span>
+          <span className="text-xs">{t('reseller.subs.usersUnit')}</span>
         </div>
       </div>
 
@@ -245,7 +248,7 @@ function SubCard({ sub, onTransfer }: { sub: SubReseller; onTransfer: () => void
         className="mt-auto w-full text-sm py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5"
       >
         <CreditCard className="w-3.5 h-3.5" />
-        Kredi Gönder
+        {t('reseller.subs.sendCredits')}
       </button>
     </div>
   );

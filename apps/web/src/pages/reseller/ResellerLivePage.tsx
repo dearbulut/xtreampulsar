@@ -2,6 +2,7 @@ import { Radio, Wifi, Activity, Tv, UserX } from 'lucide-react';
 import { useResellerLiveConnections, useKickLiveConnection } from '@/hooks/useResellerPanel';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function formatDuration(secs: number): string {
   const h = Math.floor(secs / 3600);
@@ -13,6 +14,7 @@ function formatDuration(secs: number): string {
 }
 
 export function ResellerLivePage() {
+  const { t } = useTranslation();
   const { data: conns = [], isLoading, dataUpdatedAt } = useResellerLiveConnections();
   const kickConn = useKickLiveConnection();
   const [kickId, setKickId] = useState<string | null>(null);
@@ -22,8 +24,8 @@ export function ResellerLivePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold text-slate-100">Canlı İzleme</h1>
-        <p className="text-sm text-muted">Kullanıcılarınızın anlık bağlantıları (10 sn. güncellenir)</p>
+        <h1 className="text-lg font-semibold text-slate-100">{t('reseller.live.title')}</h1>
+        <p className="text-sm text-muted">{t('reseller.live.subtitle')}</p>
       </div>
 
       {/* Summary cards */}
@@ -33,7 +35,7 @@ export function ResellerLivePage() {
             <Wifi className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <div className="text-xs text-muted">Şu An İzleyen</div>
+            <div className="text-xs text-muted">{t('reseller.live.watchingNow')}</div>
             <div className="text-2xl font-bold text-slate-100">{isLoading ? '…' : conns.length}</div>
           </div>
         </div>
@@ -42,7 +44,7 @@ export function ResellerLivePage() {
             <Activity className="w-5 h-5 text-blue-400" />
           </div>
           <div>
-            <div className="text-xs text-muted">Aktif Stream</div>
+            <div className="text-xs text-muted">{t('reseller.live.activeStreams')}</div>
             <div className="text-2xl font-bold text-slate-100">{isLoading ? '…' : new Set(conns.map((c) => c.stream.id)).size}</div>
           </div>
         </div>
@@ -51,7 +53,7 @@ export function ResellerLivePage() {
             <Radio className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <div className="text-xs text-muted">Tahmini Bandwidth</div>
+            <div className="text-xs text-muted">{t('reseller.live.estBandwidth')}</div>
             <div className="text-2xl font-bold text-slate-100">{isLoading ? '…' : `~${totalBandwidthEst}`}<span className="text-sm text-muted ml-1">Mbps</span></div>
           </div>
         </div>
@@ -60,30 +62,30 @@ export function ResellerLivePage() {
       {/* Connections table */}
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-sm font-medium text-slate-200">Canlı Bağlantılar</span>
+          <span className="text-sm font-medium text-slate-200">{t('reseller.live.liveConnections')}</span>
           {dataUpdatedAt > 0 && (
             <span className="text-xs text-muted">
-              Son güncelleme: {new Date(dataUpdatedAt).toLocaleTimeString('tr-TR')}
+              {t('reseller.live.lastUpdate', { time: new Date(dataUpdatedAt).toLocaleTimeString('tr-TR') })}
             </span>
           )}
         </div>
 
         {isLoading ? (
-          <div className="py-12 text-center text-muted text-sm">Yükleniyor…</div>
+          <div className="py-12 text-center text-muted text-sm">{t('common.loading')}</div>
         ) : conns.length === 0 ? (
           <div className="py-14 text-center">
             <Tv className="w-10 h-10 text-muted/20 mx-auto mb-3" />
-            <p className="text-sm text-muted">Şu an aktif bağlantı yok</p>
+            <p className="text-sm text-muted">{t('reseller.live.noConnections')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Kullanıcı</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">İzlenen Kanal</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.live.colUser')}</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.live.colChannel')}</th>
                   <th className="px-4 py-3 text-xs text-muted font-semibold">IP</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Süre</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.live.colDuration')}</th>
                   <th className="px-4 py-3 text-xs text-muted font-semibold w-20" />
                 </tr>
               </thead>
@@ -103,7 +105,7 @@ export function ResellerLivePage() {
                       <button
                         onClick={() => setKickId(c.id)}
                         className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition-colors"
-                        title="Bağlantıyı Kes"
+                        title={t('reseller.live.kickTitle')}
                       >
                         <UserX className="w-3.5 h-3.5" />
                         Kick
@@ -119,9 +121,9 @@ export function ResellerLivePage() {
 
       <ConfirmDialog
         open={!!kickId}
-        title="Bağlantıyı Kes"
-        message="Bu kullanıcının bağlantısı kesilecek. Emin misiniz?"
-        confirmLabel="Kes"
+        title={t('reseller.live.kickTitle')}
+        message={t('reseller.live.kickConfirmMsg')}
+        confirmLabel={t('reseller.live.kickConfirmLabel')}
         onConfirm={() => {
           if (kickId) kickConn.mutate(kickId, { onSuccess: () => setKickId(null) });
         }}

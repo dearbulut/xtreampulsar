@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Lock, Bell, BarChart2, Loader2, CheckCircle, Palette, Upload, X } from 'lucide-react';
 import {
   useResellerMe,
@@ -27,6 +28,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: React.E
 // ─── Profile section ─────────────────────────────────────────────────────────
 
 function ProfileSection() {
+  const { t } = useTranslation();
   const { data: me, isLoading } = useResellerMe();
   const updateProfile = useResellerUpdateProfile();
   const [email, setEmail] = useState('');
@@ -42,12 +44,12 @@ function ProfileSection() {
     setDirty(false);
   };
 
-  if (isLoading) return <div className="text-sm text-muted py-2">Yükleniyor…</div>;
+  if (isLoading) return <div className="text-sm text-muted py-2">{t('common.loading')}</div>;
 
   return (
     <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
       <div>
-        <label className="text-xs font-medium text-muted block mb-1">Kullanıcı Adı</label>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.username')}</label>
         <input
           value={me?.username ?? ''}
           readOnly
@@ -55,7 +57,7 @@ function ProfileSection() {
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-muted block mb-1">E-posta</label>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.email')}</label>
         <input
           type="email"
           value={email}
@@ -71,14 +73,14 @@ function ProfileSection() {
           className="btn btn-primary text-sm"
         >
           {updateProfile.isPending ? (
-            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Kaydediliyor…</>
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('reseller.profile.saving')}</>
           ) : (
-            'Kaydet'
+            t('common.save')
           )}
         </button>
         {!dirty && !updateProfile.isPending && updateProfile.isSuccess && (
           <span className="flex items-center gap-1 text-xs text-success">
-            <CheckCircle className="w-3 h-3" /> Kaydedildi
+            <CheckCircle className="w-3 h-3" /> {t('reseller.profile.saved')}
           </span>
         )}
       </div>
@@ -89,6 +91,7 @@ function ProfileSection() {
 // ─── Password section ─────────────────────────────────────────────────────────
 
 function PasswordSection() {
+  const { t } = useTranslation();
   const changePassword = useResellerChangePassword();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -108,7 +111,7 @@ function PasswordSection() {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       <div>
-        <label className="text-xs font-medium text-muted block mb-1">Mevcut Şifre</label>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.currentPassword')}</label>
         <input
           type="password"
           value={current}
@@ -118,18 +121,18 @@ function PasswordSection() {
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-muted block mb-1">Yeni Şifre</label>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.newPassword')}</label>
         <input
           type="password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
-          placeholder="En az 6 karakter"
+          placeholder={t('reseller.profile.min6Placeholder')}
           className={cn('input w-full', tooShort && 'border-danger/50')}
         />
-        {tooShort && <p className="text-xs text-danger mt-1">En az 6 karakter olmalı</p>}
+        {tooShort && <p className="text-xs text-danger mt-1">{t('reseller.profile.min6Error')}</p>}
       </div>
       <div>
-        <label className="text-xs font-medium text-muted block mb-1">Yeni Şifre (Tekrar)</label>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.newPasswordRepeat')}</label>
         <input
           type="password"
           value={confirm}
@@ -137,7 +140,7 @@ function PasswordSection() {
           placeholder="••••••••"
           className={cn('input w-full', mismatch && 'border-danger/50')}
         />
-        {mismatch && <p className="text-xs text-danger mt-1">Şifreler eşleşmiyor</p>}
+        {mismatch && <p className="text-xs text-danger mt-1">{t('reseller.profile.passwordMismatch')}</p>}
       </div>
       <button
         type="submit"
@@ -145,9 +148,9 @@ function PasswordSection() {
         className="btn btn-primary text-sm"
       >
         {changePassword.isPending ? (
-          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Değiştiriliyor…</>
+          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('reseller.profile.changing')}</>
         ) : (
-          'Şifreyi Değiştir'
+          t('reseller.profile.changePasswordBtn')
         )}
       </button>
     </form>
@@ -157,14 +160,15 @@ function PasswordSection() {
 // ─── Notifications section (UI only) ─────────────────────────────────────────
 
 function NotificationsSection() {
+  const { t } = useTranslation();
   const [lowCredit, setLowCredit] = useState(true);
   const [expiring, setExpiring] = useState(true);
 
   return (
     <div className="space-y-3">
       {[
-        { label: 'Düşük kredi uyarısı', desc: 'Krediniz 5\'in altına düştüğünde bildirim al', value: lowCredit, set: setLowCredit },
-        { label: 'Kullanıcı süresi dolacak uyarısı', desc: '7 gün içinde süresi dolacak kullanıcılar için bildirim al', value: expiring, set: setExpiring },
+        { label: t('reseller.profile.lowCreditLabel'), desc: t('reseller.profile.lowCreditDesc'), value: lowCredit, set: setLowCredit },
+        { label: t('reseller.profile.expiringLabel'), desc: t('reseller.profile.expiringDesc'), value: expiring, set: setExpiring },
       ].map(({ label, desc, value, set }) => (
         <label key={label} className="flex items-start gap-3 cursor-pointer group">
           <div className="relative mt-0.5 flex-shrink-0">
@@ -193,7 +197,7 @@ function NotificationsSection() {
           </div>
         </label>
       ))}
-      <p className="text-[11px] text-muted/60 mt-2">Bildirim tercihleri kaydedilir (yakında e-posta entegrasyonu)</p>
+      <p className="text-[11px] text-muted/60 mt-2">{t('reseller.profile.notifFooter')}</p>
     </div>
   );
 }
@@ -201,6 +205,7 @@ function NotificationsSection() {
 // ─── Account summary section ─────────────────────────────────────────────────
 
 function AccountSummarySection() {
+  const { t } = useTranslation();
   const { data: me } = useResellerMe();
   const { data: stats } = useResellerStats();
 
@@ -216,31 +221,31 @@ function AccountSummarySection() {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="text-2xl font-bold text-slate-200">{stats?.totalUsers ?? '—'}</div>
-          <div className="text-xs text-muted mt-0.5">Toplam Kullanıcı</div>
+          <div className="text-xs text-muted mt-0.5">{t('reseller.profile.totalUsers')}</div>
         </div>
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="text-2xl font-bold text-success">{stats?.activeUsers ?? '—'}</div>
-          <div className="text-xs text-muted mt-0.5">Aktif Kullanıcı</div>
+          <div className="text-xs text-muted mt-0.5">{t('reseller.profile.activeUsers')}</div>
         </div>
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="text-2xl font-bold text-slate-200">{stats?.onlineConnections ?? '—'}</div>
-          <div className="text-xs text-muted mt-0.5">Anlık Bağlantı</div>
+          <div className="text-xs text-muted mt-0.5">{t('reseller.profile.liveConnections')}</div>
         </div>
         <div className="bg-surface-2 rounded-xl p-3">
           <div className="text-2xl font-bold text-warning">{stats?.expiredUsers ?? '—'}</div>
-          <div className="text-xs text-muted mt-0.5">Süresi Dolmuş</div>
+          <div className="text-xs text-muted mt-0.5">{t('reseller.profile.expiredUsers')}</div>
         </div>
       </div>
 
       <div className="space-y-2 text-sm">
         <div className="flex items-center justify-between py-1.5 border-b border-border/50">
-          <span className="text-muted">Üyelik Tarihi</span>
+          <span className="text-muted">{t('reseller.profile.memberSince')}</span>
           <span className="text-slate-300">
             {me?.createdAt ? new Date(me.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
           </span>
         </div>
         <div className="flex items-center justify-between py-1.5">
-          <span className="text-muted">Seviye</span>
+          <span className="text-muted">{t('reseller.profile.tier')}</span>
           <span className={cn('text-xs font-semibold px-2 py-0.5 rounded', TIER_COLORS[me?.tier ?? 'BASIC'] ?? 'text-muted')}>
             {me?.tier ?? '—'}
           </span>
@@ -253,6 +258,7 @@ function AccountSummarySection() {
 // ─── Branding section ─────────────────────────────────────────────────────────
 
 function BrandingSection() {
+  const { t } = useTranslation();
   const { data: me } = useResellerMe();
   const updateBranding = useUpdateResellerBranding();
   const uploadLogo = useUploadBrandingLogo();
@@ -293,7 +299,7 @@ function BrandingSection() {
     <div className="space-y-6">
       {/* Logo */}
       <div>
-        <label className="text-xs font-medium text-muted block mb-2">Logo</label>
+        <label className="text-xs font-medium text-muted block mb-2">{t('reseller.profile.logo')}</label>
         <div className="flex items-start gap-4">
           {/* Preview */}
           <div className="relative flex-shrink-0">
@@ -311,7 +317,7 @@ function BrandingSection() {
                   updateBranding.mutate({ brandName });
                 }}
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-danger text-white flex items-center justify-center hover:bg-danger/80 transition-colors"
-                title="Logo kaldır"
+                title={t('reseller.profile.removeLogo')}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -342,8 +348,8 @@ function BrandingSection() {
               <Upload className="w-5 h-5 text-muted" />
             )}
             <div className="text-center">
-              <p className="text-xs text-slate-300">PNG, JPEG veya WebP</p>
-              <p className="text-[11px] text-muted">Maks. 2 MB</p>
+              <p className="text-xs text-slate-300">{t('reseller.profile.fileTypes')}</p>
+              <p className="text-[11px] text-muted">{t('reseller.profile.maxSize')}</p>
             </div>
           </div>
         </div>
@@ -352,14 +358,14 @@ function BrandingSection() {
       {/* Brand name */}
       <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
         <div>
-          <label className="text-xs font-medium text-muted block mb-1">Marka Adı</label>
+          <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.brandName')}</label>
           <input
             value={brandName}
             onChange={(e) => setBrandName(e.target.value)}
-            placeholder="Bayi Paneli"
+            placeholder={t('reseller.profile.brandPlaceholder')}
             className="input w-full"
           />
-          <p className="text-[11px] text-muted mt-1">Boş bırakılırsa "Bayi Paneli" gösterilir</p>
+          <p className="text-[11px] text-muted mt-1">{t('reseller.profile.brandHint')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -369,14 +375,14 @@ function BrandingSection() {
             className="btn btn-primary text-sm"
           >
             {updateBranding.isPending ? (
-              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Kaydediliyor…</>
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('reseller.profile.saving')}</>
             ) : (
-              'Kaydet'
+              t('common.save')
             )}
           </button>
           {!updateBranding.isPending && updateBranding.isSuccess && (
             <span className="flex items-center gap-1 text-xs text-success">
-              <CheckCircle className="w-3 h-3" /> Kaydedildi
+              <CheckCircle className="w-3 h-3" /> {t('reseller.profile.saved')}
             </span>
           )}
         </div>
@@ -388,30 +394,31 @@ function BrandingSection() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ResellerProfilePage() {
+  const { t } = useTranslation();
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-slate-100">Profil & Ayarlar</h1>
-        <p className="text-sm text-muted">Hesap bilgilerinizi ve tercihlerinizi yönetin</p>
+        <h1 className="text-lg font-semibold text-slate-100">{t('reseller.profile.pageTitle')}</h1>
+        <p className="text-sm text-muted">{t('reseller.profile.pageSubtitle')}</p>
       </div>
 
-      <Section title="Marka Ayarları" icon={Palette}>
+      <Section title={t('reseller.profile.brandingTitle')} icon={Palette}>
         <BrandingSection />
       </Section>
 
-      <Section title="Profil Bilgileri" icon={User}>
+      <Section title={t('reseller.profile.profileTitle')} icon={User}>
         <ProfileSection />
       </Section>
 
-      <Section title="Şifre Değiştir" icon={Lock}>
+      <Section title={t('reseller.profile.passwordTitle')} icon={Lock}>
         <PasswordSection />
       </Section>
 
-      <Section title="Bildirim Tercihleri" icon={Bell}>
+      <Section title={t('reseller.profile.notifTitle')} icon={Bell}>
         <NotificationsSection />
       </Section>
 
-      <Section title="Hesap Özeti" icon={BarChart2}>
+      <Section title={t('reseller.profile.accountTitle')} icon={BarChart2}>
         <AccountSummarySection />
       </Section>
     </div>

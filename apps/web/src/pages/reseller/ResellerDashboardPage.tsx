@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CreditCard, Users, UserCheck, UserPlus, AlertTriangle, Clock,
   Search, X, Check, Copy, Zap, Shuffle,
@@ -83,6 +84,7 @@ function StatCard({
 // ─── QuickCreateModal → shared component in ResellerQuickCreateModal.tsx ─────
 
 function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits: number }) {
+  const { t } = useTranslation();
   const mutation = useResellerQuickCreate();
   const { data: pricingData } = useCreditPricing();
 
@@ -121,13 +123,13 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
     void navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
-    toast.success('Kopyalandı');
-  }, []);
+    toast.success(t('reseller.dashboard.toastCopied'));
+  }, [t]);
 
   const handleCreate = async () => {
     const u = randomUser ? randStr(8) : username.trim();
     const p = randomPass ? randStr(8) : password.trim();
-    if (!u || !p) { toast.error('Kullanıcı adı ve şifre gerekli'); return; }
+    if (!u || !p) { toast.error(t('reseller.dashboard.qcCredsRequired')); return; }
 
     let payload: { durationDays?: number; durationHours?: number } = {};
     if (durationKey === 'custom') {
@@ -149,13 +151,13 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
 
   if (result) {
     return (
-      <Modal open onClose={onClose} title="Kullanıcı Oluşturuldu" size="sm">
+      <Modal open onClose={onClose} title={t('reseller.dashboard.qcCreated')} size="sm">
         <div className="space-y-4">
           <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 space-y-3">
             {[
-              { label: 'Kullanıcı Adı', value: result.user.username },
-              { label: 'Şifre', value: result.user.password },
-              { label: 'Bitiş', value: formatDate(result.user.expiresAt) },
+              { label: t('reseller.dashboard.qcUsername'), value: result.user.username },
+              { label: t('reseller.dashboard.qcPassword'), value: result.user.password },
+              { label: t('reseller.dashboard.qcExpires'), value: formatDate(result.user.expiresAt) },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted">{label}</span>
@@ -194,9 +196,9 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
               onClick={() => { setResult(null); setUsername(''); setPassword(''); setNotes(''); }}
               className="btn-ghost flex-1 text-sm"
             >
-              Yeni Kullanıcı
+              {t('reseller.dashboard.qcNewUser')}
             </button>
-            <button onClick={onClose} className="btn-primary flex-1 text-sm">Kapat</button>
+            <button onClick={onClose} className="btn-primary flex-1 text-sm">{t('common.close')}</button>
           </div>
         </div>
       </Modal>
@@ -204,34 +206,34 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
   }
 
   return (
-    <Modal open onClose={onClose} title="⚡ Hızlı Hat Ekle" size="sm">
+    <Modal open onClose={onClose} title={`⚡ ${t('reseller.dashboard.qcTitle')}`} size="sm">
       <div className="space-y-4">
         {creditCost > credits && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            Yetersiz kredi. Yöneticinizle iletişime geçin.
+            {t('reseller.dashboard.qcInsufficient')}
           </div>
         )}
 
-        <p className="text-xs text-muted">Bu işlem <span className="text-primary font-medium">{creditCost} kredi</span> düşecek (mevcut: {credits})</p>
+        <p className="text-xs text-muted">{t('reseller.dashboard.qcWillDeduct', { cost: creditCost, current: credits })}</p>
 
         {/* Username */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted">Kullanıcı Adı</label>
+            <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcUsername')}</label>
             <button
               onClick={() => setRandomUser((v) => !v)}
               className={cn('flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full transition-colors',
                 randomUser ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted')}
             >
-              <Shuffle className="w-3 h-3" /> Rastgele
+              <Shuffle className="w-3 h-3" /> {t('reseller.dashboard.qcRandom')}
             </button>
           </div>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder={randomUser ? 'Otomatik oluşturulacak' : 'kullanici_adi'}
+            placeholder={randomUser ? t('reseller.dashboard.qcAutoGen') : t('reseller.dashboard.qcUserExample')}
             disabled={randomUser}
             className="input w-full disabled:opacity-40"
           />
@@ -240,20 +242,20 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
         {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted">Şifre</label>
+            <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcPassword')}</label>
             <button
               onClick={() => setRandomPass((v) => !v)}
               className={cn('flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full transition-colors',
                 randomPass ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted')}
             >
-              <Shuffle className="w-3 h-3" /> Rastgele
+              <Shuffle className="w-3 h-3" /> {t('reseller.dashboard.qcRandom')}
             </button>
           </div>
           <input
             type="text"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={randomPass ? 'Otomatik oluşturulacak' : 'sifre'}
+            placeholder={randomPass ? t('reseller.dashboard.qcAutoGen') : t('reseller.dashboard.qcPassExample')}
             disabled={randomPass}
             className="input w-full disabled:opacity-40"
           />
@@ -261,7 +263,7 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
 
         {/* Duration — Test row */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted">Süre — Test</label>
+          <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcDurationTest')}</label>
           <div className="flex flex-wrap gap-1.5">
             {pricing.testDurations.map((p) => {
               const key: DurationKey = `h:${p.hours}`;
@@ -282,7 +284,7 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
           </div>
 
           {/* Duration — Standard row */}
-          <label className="text-xs font-medium text-muted">Süre — Standart</label>
+          <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcDurationStandard')}</label>
           <div className="flex flex-wrap gap-1.5">
             {pricing.durations.map((p) => {
               const key: DurationKey = `d:${p.days}`;
@@ -306,7 +308,7 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
                   ? 'bg-primary/20 border-primary text-primary'
                   : 'border-border text-muted hover:border-primary/50')}
             >
-              Özel
+              {t('reseller.dashboard.qcCustom')}
             </button>
           </div>
           {durationKey === 'custom' && (
@@ -316,8 +318,8 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
                 onChange={(e) => setCustomDays(e.target.value)}
                 className="input w-24 text-sm"
               />
-              <span className="text-xs text-muted">gün</span>
-              <span className="text-xs text-primary font-medium">= {creditCost} kredi</span>
+              <span className="text-xs text-muted">{t('reseller.dashboard.qcDaysUnit')}</span>
+              <span className="text-xs text-primary font-medium">{t('reseller.dashboard.qcEqualsCredits', { cost: creditCost })}</span>
             </div>
           )}
         </div>
@@ -325,13 +327,13 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
         {/* Connections */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-muted">Bağlantı Sayısı</label>
+            <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcConnCount')}</label>
             <button
               onClick={() => setUseCustomConns((v) => !v)}
               className={cn('flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full transition-colors',
                 useCustomConns ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted')}
             >
-              Özel
+              {t('reseller.dashboard.qcCustom')}
             </button>
           </div>
           {useCustomConns ? (
@@ -360,23 +362,23 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
 
         {/* Notes */}
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted">Not (opsiyonel)</label>
+          <label className="text-xs font-medium text-muted">{t('reseller.dashboard.qcNotes')}</label>
           <input
             type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
-            placeholder="Müşteri notu…"
+            placeholder={t('reseller.dashboard.qcNotesPlaceholder')}
             className="input w-full text-sm"
           />
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">İptal</button>
+          <button onClick={onClose} className="btn-ghost flex-1 text-sm">{t('common.cancel')}</button>
           <button
             onClick={() => void handleCreate()}
             disabled={mutation.isPending || creditCost > credits}
             className="btn-primary flex-1 text-sm flex items-center justify-center gap-2"
           >
             {mutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            Oluştur ve Kopyala
+            {t('reseller.dashboard.qcCreateCopy')}
           </button>
         </div>
       </div>
@@ -388,6 +390,7 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function ResellerDashboardPage() {
+  const { t } = useTranslation();
   const resellerUser = useAuthStore((s) => s.resellerUser);
 
   const [search, setSearch] = useState('');
@@ -435,20 +438,20 @@ export function ResellerDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-slate-100">
-            Hoş Geldiniz, <span className="text-primary">{resellerUser?.username}</span>
+            {t('reseller.dashboard.welcome')} <span className="text-primary">{resellerUser?.username}</span>
           </h1>
-          <p className="text-sm text-muted">Bayi Kontrol Paneli</p>
+          <p className="text-sm text-muted">{t('reseller.dashboard.controlPanel')}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30">
             <CreditCard className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">{credits} Kredi</span>
+            <span className="text-sm font-semibold text-primary">{t('reseller.dashboard.creditsBadge', { n: credits })}</span>
           </div>
           <button
             onClick={() => setShowQuickCreate(true)}
             className="btn-primary flex items-center gap-2 text-sm"
           >
-            <Zap className="w-4 h-4" /> Hızlı Hat Ekle
+            <Zap className="w-4 h-4" /> {t('reseller.dashboard.quickAdd')}
           </button>
         </div>
       </div>
@@ -459,13 +462,13 @@ export function ResellerDashboardPage() {
           {credits < 10 && (
             <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-300">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              Krediniz azalıyor ({credits} kredi kaldı). Yöneticinizle iletişime geçin.
+              {t('reseller.dashboard.lowCreditWarn', { n: credits })}
             </div>
           )}
           {(dashboard?.expiringSoonCount ?? 0) > 0 && (
             <div className="flex items-center gap-2.5 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-sm text-orange-300">
               <Clock className="w-4 h-4 flex-shrink-0" />
-              {dashboard!.expiringSoonCount} kullanıcının aboneliği 7 gün içinde sona eriyor.
+              {t('reseller.dashboard.expiringWarn', { n: dashboard!.expiringSoonCount })}
             </div>
           )}
         </div>
@@ -473,9 +476,9 @@ export function ResellerDashboardPage() {
 
       {/* Stat cards — row 1 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard label="Kredi Bakiyesi" value={dashLoading ? '…' : credits} icon={CreditCard} variant="primary" />
+        <StatCard label={t('reseller.dashboard.statCredits')} value={dashLoading ? '…' : credits} icon={CreditCard} variant="primary" />
         <StatCard
-          label="Kullanıcılar"
+          label={t('reseller.dashboard.statUsers')}
           value={dashLoading ? '…' : (
             dashboard?.maxUsers
               ? `${dashboard.totalUsers} / ${dashboard.maxUsers}`
@@ -483,16 +486,16 @@ export function ResellerDashboardPage() {
           )}
           icon={Users}
         />
-        <StatCard label="Aktif Kullanıcı" value={dashLoading ? '…' : (dashboard?.activeUsers ?? 0)} icon={UserCheck} variant="success" />
-        <StatCard label="Bu Hafta Yeni" value={dashLoading ? '…' : (dashboard?.newThisWeek ?? 0)} icon={UserPlus} variant="info" />
+        <StatCard label={t('reseller.dashboard.statActiveUsers')} value={dashLoading ? '…' : (dashboard?.activeUsers ?? 0)} icon={UserCheck} variant="success" />
+        <StatCard label={t('reseller.dashboard.statNewThisWeek')} value={dashLoading ? '…' : (dashboard?.newThisWeek ?? 0)} icon={UserPlus} variant="info" />
       </div>
 
       {/* Stat cards — row 2 */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard label="Bugün Bağlantı" value={dashLoading ? '…' : (dashboard?.connectionsToday ?? 0)} icon={Activity} variant="info" />
-        <StatCard label="Bu Ay Yeni Kullanıcı" value={dashLoading ? '…' : (dashboard?.newUsersThisMonth ?? 0)} icon={CalendarDays} />
-        <StatCard label="7 Günde Dolacak" value={dashLoading ? '…' : (dashboard?.expiringSoon ?? 0)} icon={Clock} variant="warning" />
-        <StatCard label="Ort. İzleme (dk)" value={dashLoading ? '…' : (dashboard?.avgWatchMinutes ?? 0)} icon={Timer} variant="default" />
+        <StatCard label={t('reseller.dashboard.statConnToday')} value={dashLoading ? '…' : (dashboard?.connectionsToday ?? 0)} icon={Activity} variant="info" />
+        <StatCard label={t('reseller.dashboard.statNewThisMonth')} value={dashLoading ? '…' : (dashboard?.newUsersThisMonth ?? 0)} icon={CalendarDays} />
+        <StatCard label={t('reseller.dashboard.statExpiring7')} value={dashLoading ? '…' : (dashboard?.expiringSoon ?? 0)} icon={Clock} variant="warning" />
+        <StatCard label={t('reseller.dashboard.statAvgWatch')} value={dashLoading ? '…' : (dashboard?.avgWatchMinutes ?? 0)} icon={Timer} variant="default" />
       </div>
 
       {/* Mini charts */}
@@ -500,7 +503,7 @@ export function ResellerDashboardPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {/* Daily connections bar chart */}
           <div className="card p-4">
-            <div className="text-xs font-semibold text-muted mb-3">Son 7 Gün Bağlantı</div>
+            <div className="text-xs font-semibold text-muted mb-3">{t('reseller.dashboard.chartConn7d')}</div>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={dashboard.dailyConnections} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -517,14 +520,14 @@ export function ResellerDashboardPage() {
 
           {/* User status pie chart */}
           <div className="card p-4">
-            <div className="text-xs font-semibold text-muted mb-3">Kullanıcı Dağılımı</div>
+            <div className="text-xs font-semibold text-muted mb-3">{t('reseller.dashboard.chartUserDist')}</div>
             <ResponsiveContainer width="100%" height={160}>
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Aktif', value: dashboard.userStatusDistribution.active },
-                    { name: 'Süresi Dolmuş', value: dashboard.userStatusDistribution.expired },
-                    { name: 'Banlı', value: dashboard.userStatusDistribution.banned },
+                    { name: t('common.active'), value: dashboard.userStatusDistribution.active },
+                    { name: t('reseller.dashboard.statusExpired'), value: dashboard.userStatusDistribution.expired },
+                    { name: t('reseller.dashboard.statusBanned'), value: dashboard.userStatusDistribution.banned },
                   ]}
                   cx="50%"
                   cy="50%"
@@ -559,7 +562,7 @@ export function ResellerDashboardPage() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Kullanıcı ara…"
+                placeholder={t('reseller.dashboard.searchPlaceholder')}
                 className="input pl-9 w-full"
               />
               {searchInput && (
@@ -572,7 +575,7 @@ export function ResellerDashboardPage() {
                 </button>
               )}
             </div>
-            <button type="submit" className="btn-ghost text-sm px-3">Ara</button>
+            <button type="submit" className="btn-ghost text-sm px-3">{t('common.search')}</button>
           </form>
 
           {/* Status filter */}
@@ -581,32 +584,32 @@ export function ResellerDashboardPage() {
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); setSelectedIds([]); }}
             className="input text-sm w-36"
           >
-            <option value="">Tüm Durumlar</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="DISABLED">Pasif</option>
-            <option value="BANNED">Banlı</option>
+            <option value="">{t('reseller.dashboard.allStatuses')}</option>
+            <option value="ACTIVE">{t('common.active')}</option>
+            <option value="DISABLED">{t('common.inactive')}</option>
+            <option value="BANNED">{t('reseller.dashboard.statusBanned')}</option>
           </select>
         </div>
 
         {/* Bulk action toolbar */}
         {selectedIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
-            <span className="text-sm text-primary font-medium">{selectedIds.length} seçili</span>
+            <span className="text-sm text-primary font-medium">{t('reseller.dashboard.selected', { n: selectedIds.length })}</span>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted">Uzat:</span>
+                <span className="text-xs text-muted">{t('reseller.dashboard.extendLabel')}</span>
                 <input
                   type="number" min={1} max={3650} value={bulkDays}
                   onChange={(e) => setBulkDays(+e.target.value)}
                   className="input w-16 text-xs py-1"
                 />
-                <span className="text-xs text-muted">gün</span>
+                <span className="text-xs text-muted">{t('reseller.dashboard.daysUnit')}</span>
                 <button
                   onClick={() => void handleBulk('extend')}
                   disabled={bulkAction.isPending}
                   className="text-xs px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30 transition-colors"
                 >
-                  Uzat
+                  {t('reseller.dashboard.extend')}
                 </button>
               </div>
               <button
@@ -614,14 +617,14 @@ export function ResellerDashboardPage() {
                 disabled={bulkAction.isPending}
                 className="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition-colors"
               >
-                Askıya Al
+                {t('reseller.dashboard.suspend')}
               </button>
               <button
                 onClick={() => void handleBulk('activate')}
                 disabled={bulkAction.isPending}
                 className="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/40 hover:bg-blue-500/30 transition-colors"
               >
-                Aktifleştir
+                {t('reseller.dashboard.activate')}
               </button>
               <button
                 onClick={() => setSelectedIds([])}
@@ -636,11 +639,11 @@ export function ResellerDashboardPage() {
         {/* Users table */}
         <div className="card overflow-hidden">
           {usersLoading ? (
-            <div className="flex justify-center py-10 text-muted text-sm">Yükleniyor…</div>
+            <div className="flex justify-center py-10 text-muted text-sm">{t('common.loading')}</div>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-muted">
               <Users className="w-8 h-8 opacity-30" />
-              <p className="text-sm">Kullanıcı bulunamadı</p>
+              <p className="text-sm">{t('reseller.dashboard.noUsers')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -655,10 +658,10 @@ export function ResellerDashboardPage() {
                         className="w-3.5 h-3.5 accent-primary"
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">Kullanıcı</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">Durum</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">Son Tarih</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">Bağlantı</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.dashboard.colUser')}</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.dashboard.colStatus')}</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.dashboard.colExpiry')}</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.dashboard.colConnections')}</th>
                     <th className="px-4 py-3 w-20" />
                   </tr>
                 </thead>
@@ -695,7 +698,7 @@ export function ResellerDashboardPage() {
                             onClick={() => setDetailUser(u)}
                             className="text-xs text-muted hover:text-fg px-2 py-1 rounded hover:bg-surface-2 transition-colors"
                           >
-                            Detay
+                            {t('reseller.dashboard.detail')}
                           </button>
                         </td>
                       </tr>

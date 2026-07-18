@@ -14,6 +14,7 @@ import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { Modal } from '@/components/ui/Modal';
 import { cn, formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,23 +33,24 @@ function randStr(len = 8): string {
 function ResultScreen({
   result, onClose, onNew,
 }: { result: QuickCreateResult; onClose: () => void; onNew: () => void }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = useCallback((text: string, key: string) => {
     void navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
-    toast.success('Kopyalandı');
-  }, []);
+    toast.success(t('reseller.quick.toastCopied'));
+  }, [t]);
 
   return (
-    <Modal open onClose={onClose} title="Kullanıcı Oluşturuldu" size="sm">
+    <Modal open onClose={onClose} title={t('reseller.quick.createdTitle')} size="sm">
       <div className="space-y-4">
         <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 space-y-3">
           {[
-            { label: 'Kullanıcı Adı', value: result.user.username },
-            { label: 'Şifre',         value: result.user.password },
-            { label: 'Bitiş',         value: formatDate(result.user.expiresAt) },
+            { label: t('reseller.quick.username'), value: result.user.username },
+            { label: t('reseller.quick.password'), value: result.user.password },
+            { label: t('reseller.quick.expiry'),   value: formatDate(result.user.expiresAt) },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted">{label}</span>
@@ -87,8 +89,8 @@ function ResultScreen({
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button onClick={onNew} className="btn-ghost flex-1 text-sm">Yeni Kullanıcı</button>
-          <button onClick={onClose} className="btn-primary flex-1 text-sm">Kapat</button>
+          <button onClick={onNew} className="btn-ghost flex-1 text-sm">{t('reseller.quick.newUser')}</button>
+          <button onClick={onClose} className="btn-primary flex-1 text-sm">{t('common.close')}</button>
         </div>
       </div>
     </Modal>
@@ -101,6 +103,7 @@ function CredentialRow({
   label: string; value: string; random: boolean;
   onToggleRandom: () => void; onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -119,7 +122,7 @@ function CredentialRow({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={random ? 'Otomatik' : label.toLowerCase()}
+        placeholder={random ? t('reseller.quick.auto') : label.toLowerCase()}
         disabled={random}
         className="input w-full text-sm disabled:opacity-40"
       />
@@ -136,6 +139,7 @@ export function ResellerQuickCreateModal({
   onClose: () => void;
   credits: number;
 }) {
+  const { t } = useTranslation();
   const customMutation  = useResellerQuickCreate();
   const packageMutation = useResellerQuickCreateWithPackage();
   const { data: packages = [] } = useResellerPackages();
@@ -193,10 +197,10 @@ export function ResellerQuickCreateModal({
   const handleCreate = async () => {
     const u = randomUser ? randStr(8) : username.trim();
     const p = randomPass ? randStr(8) : password.trim();
-    if (!u || !p) { toast.error('Kullanıcı adı ve şifre gerekli'); return; }
+    if (!u || !p) { toast.error(t('reseller.quick.toastCredsRequired')); return; }
 
     if (tab === 'package') {
-      if (!selectedPkgId) { toast.error('Paket seçin'); return; }
+      if (!selectedPkgId) { toast.error(t('reseller.quick.toastSelectPackage')); return; }
       const data = await packageMutation.mutateAsync({
         username: u, password: p, packageId: selectedPkgId,
         notes: notes.trim() || undefined,
@@ -231,12 +235,12 @@ export function ResellerQuickCreateModal({
   }
 
   return (
-    <Modal open onClose={onClose} title="⚡ Hızlı Hat Ekle" size="sm">
+    <Modal open onClose={onClose} title={t('reseller.quick.quickAddTitle')} size="sm">
       <div className="space-y-4">
 
         {/* Tab switcher */}
         <div className="flex rounded-lg bg-surface-2 p-0.5 gap-0.5">
-          {([['package', Package, 'Paket Seç'], ['custom', Zap, 'Özel Süre']] as const).map(([key, Icon, lbl]) => (
+          {([['package', Package, 'reseller.quick.tabPackage'], ['custom', Zap, 'reseller.quick.tabCustom']] as const).map(([key, Icon, lbl]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -245,7 +249,7 @@ export function ResellerQuickCreateModal({
                 tab === key ? 'bg-primary/20 text-primary' : 'text-muted hover:text-slate-300',
               )}
             >
-              <Icon className="w-3 h-3" />{lbl}
+              <Icon className="w-3 h-3" />{t(lbl)}
             </button>
           ))}
         </div>
@@ -254,7 +258,7 @@ export function ResellerQuickCreateModal({
         {tab === 'package' && (
           <>
             {packages.length === 0 ? (
-              <p className="text-center text-sm text-muted py-4">Henüz aktif paket tanımlanmamış.</p>
+              <p className="text-center text-sm text-muted py-4">{t('reseller.quick.noPackages')}</p>
             ) : (
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
                 {packages.map((pkg) => {
@@ -279,13 +283,13 @@ export function ResellerQuickCreateModal({
                           'text-xs font-semibold px-1.5 py-0.5 rounded',
                           insufficient ? 'bg-danger/10 text-danger' : 'bg-primary/10 text-primary',
                         )}>
-                          {pkg.creditCost} kredi
+                          {t('reseller.quick.creditsN', { n: pkg.creditCost })}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted">
-                        <span>{pkg.durationDays} gün</span>
+                        <span>{t('reseller.quick.daysN', { n: pkg.durationDays })}</span>
                         <span>·</span>
-                        <span>{pkg.maxConnections} bağlantı</span>
+                        <span>{t('reseller.quick.connsN', { n: pkg.maxConnections })}</span>
                       </div>
                     </button>
                   );
@@ -296,9 +300,9 @@ export function ResellerQuickCreateModal({
             {selectedPkg && (
               <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted">
                 <span className="text-slate-300 font-medium">{selectedPkg.name}</span>
-                {' '}— {selectedPkg.durationDays} gün / {selectedPkg.maxConnections} bağlantı /{' '}
-                <span className="text-primary font-semibold">{selectedPkg.creditCost} kredi</span>
-                {pkgInsufficient && <span className="ml-2 text-danger font-semibold">Yetersiz kredi!</span>}
+                {' '}— {t('reseller.quick.daysN', { n: selectedPkg.durationDays })} / {t('reseller.quick.connsN', { n: selectedPkg.maxConnections })} /{' '}
+                <span className="text-primary font-semibold">{t('reseller.quick.creditsN', { n: selectedPkg.creditCost })}</span>
+                {pkgInsufficient && <span className="ml-2 text-danger font-semibold">{t('reseller.quick.insufficientCredit')}</span>}
               </div>
             )}
           </>
@@ -310,19 +314,17 @@ export function ResellerQuickCreateModal({
             {customInsufficient && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                Yetersiz kredi. Yöneticinizle iletişime geçin.
+                {t('reseller.quick.insufficientContact')}
               </div>
             )}
 
             <p className="text-xs text-muted">
-              Bu işlem{' '}
-              <span className="text-primary font-medium">{creditCost} kredi</span>
-              {' '}düşecek (mevcut: {credits})
+              {t('reseller.quick.willDeduct', { cost: creditCost, current: credits })}
             </p>
 
             {/* Duration — Test */}
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted">Süre — Test</label>
+              <label className="text-xs font-medium text-muted">{t('reseller.quick.durationTest')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {pricing.testDurations.map((p) => {
                   const key: DurationKey = `h:${p.hours}`;
@@ -344,7 +346,7 @@ export function ResellerQuickCreateModal({
               </div>
 
               {/* Duration — Standard */}
-              <label className="text-xs font-medium text-muted">Süre — Standart</label>
+              <label className="text-xs font-medium text-muted">{t('reseller.quick.durationStandard')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {pricing.durations.map((p) => {
                   const key: DurationKey = `d:${p.days}`;
@@ -372,7 +374,7 @@ export function ResellerQuickCreateModal({
                       : 'border-border text-muted hover:border-primary/50',
                   )}
                 >
-                  Özel
+                  {t('reseller.quick.custom')}
                 </button>
               </div>
 
@@ -383,8 +385,8 @@ export function ResellerQuickCreateModal({
                     onChange={(e) => setCustomDays(e.target.value)}
                     className="input w-24 text-sm"
                   />
-                  <span className="text-xs text-muted">gün</span>
-                  <span className="text-xs text-primary font-medium">= {creditCost} kredi</span>
+                  <span className="text-xs text-muted">{t('reseller.quick.daysUnit')}</span>
+                  <span className="text-xs text-primary font-medium">{t('reseller.quick.eqCredits', { n: creditCost })}</span>
                 </div>
               )}
             </div>
@@ -392,7 +394,7 @@ export function ResellerQuickCreateModal({
             {/* Connections */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted">Bağlantı Sayısı</label>
+                <label className="text-xs font-medium text-muted">{t('reseller.quick.connCount')}</label>
                 <button
                   onClick={() => setUseCustomConns((v) => !v)}
                   className={cn(
@@ -400,7 +402,7 @@ export function ResellerQuickCreateModal({
                     useCustomConns ? 'bg-primary/20 text-primary' : 'bg-surface-2 text-muted',
                   )}
                 >
-                  Özel
+                  {t('reseller.quick.custom')}
                 </button>
               </div>
               {useCustomConns ? (
@@ -434,21 +436,21 @@ export function ResellerQuickCreateModal({
         {/* Bouquet bilgisi — reseller quick-create bouquet seçtirmez; backend atar */}
         <p className="text-xs text-muted">
           {tab === 'package'
-            ? 'Kullanıcı, paketin bouquet’lerini otomatik alır (paket bouquet içermiyorsa varsayılan atanır).'
-            : 'Kullanıcıya varsayılan bouquet atanır (playlist boş kalmaz).'}
+            ? t('reseller.quick.bouquetInfoPackage')
+            : t('reseller.quick.bouquetInfoCustom')}
         </p>
 
         {/* Credentials — always shown */}
         <div className="grid grid-cols-2 gap-3">
           <CredentialRow
-            label="Kullanıcı Adı"
+            label={t('reseller.quick.username')}
             value={username}
             random={randomUser}
             onToggleRandom={() => setRandomUser((v) => !v)}
             onChange={setUsername}
           />
           <CredentialRow
-            label="Şifre"
+            label={t('reseller.quick.password')}
             value={password}
             random={randomPass}
             onToggleRandom={() => setRandomPass((v) => !v)}
@@ -457,17 +459,17 @@ export function ResellerQuickCreateModal({
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted">Not (opsiyonel)</label>
+          <label className="text-xs font-medium text-muted">{t('reseller.quick.notesLabel')}</label>
           <input
             type="text" value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Müşteri notu…"
+            placeholder={t('reseller.quick.notesPlaceholder')}
             className="input w-full text-sm"
           />
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="btn-ghost flex-1 text-sm">İptal</button>
+          <button onClick={onClose} className="btn-ghost flex-1 text-sm">{t('common.cancel')}</button>
           <button
             onClick={() => void handleCreate()}
             disabled={disabled}
@@ -476,7 +478,7 @@ export function ResellerQuickCreateModal({
             {isPending
               ? <RefreshCw className="w-4 h-4 animate-spin" />
               : <Zap className="w-4 h-4" />}
-            Oluştur
+            {t('common.create')}
           </button>
         </div>
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 import { useResellerCreateUser, useResellerPackages } from '@/hooks/useResellerPanel';
@@ -6,6 +7,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export function ResellerCreateUserPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const resellerUser = useAuthStore((s) => s.resellerUser);
   const { data: packages, isLoading: pkgLoading } = useResellerPackages();
@@ -52,8 +54,8 @@ export function ResellerCreateUserPage() {
   return (
     <div className="max-w-lg space-y-5">
       <div>
-        <h1 className="text-lg font-semibold text-slate-100">Yeni Kullanıcı Oluştur</h1>
-        <p className="text-sm text-muted">Mevcut kredit: <span className="text-slate-300 font-medium">{resellerUser?.credits ?? 0}</span></p>
+        <h1 className="text-lg font-semibold text-slate-100">{t('reseller.createUser.title')}</h1>
+        <p className="text-sm text-muted">{t('reseller.createUser.currentCredit')} <span className="text-slate-300 font-medium">{resellerUser?.credits ?? 0}</span></p>
       </div>
 
       {pkgLoading ? (
@@ -63,22 +65,22 @@ export function ResellerCreateUserPage() {
           {/* Package selector */}
           {packages && packages.length > 0 && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted">Paket (opsiyonel)</label>
+              <label className="text-xs font-medium text-muted">{t('reseller.createUser.packageLabel')}</label>
               <select
                 value={selectedPkg}
                 onChange={(e) => handlePackageChange(e.target.value)}
                 className="input w-full"
               >
-                <option value="">Paket seçme (manuel gir)</option>
+                <option value="">{t('reseller.createUser.noPackageOption')}</option>
                 {packages.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {p.durationDays} gün, {p.maxConnections} bağlantı ({p.creditCost} kredi)
+                    {t('reseller.createUser.packageOption', { name: p.name, days: p.durationDays, conns: p.maxConnections, cost: p.creditCost })}
                   </option>
                 ))}
               </select>
               {pkg && (
                 <p className="text-xs text-muted">
-                  Bu paket <span className="text-primary font-medium">{pkg.creditCost}</span> kredi düşecek
+                  {t('reseller.createUser.packageWillDeduct', { cost: pkg.creditCost })}
                 </p>
               )}
             </div>
@@ -88,29 +90,29 @@ export function ResellerCreateUserPage() {
           {insufficientCredits && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              Yetersiz kredi. Bu işlem için {creditCost} kredi gerekli, bakiyeniz {resellerUser?.credits ?? 0}.
+              {t('reseller.createUser.insufficient', { cost: creditCost, balance: resellerUser?.credits ?? 0 })}
             </div>
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Kullanıcı Adı</label>
+            <label className="text-xs font-medium text-muted">{t('reseller.createUser.username')}</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="kullanici_adi"
+              placeholder={t('reseller.createUser.usernamePlaceholder')}
               className="input w-full"
               required
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Şifre</label>
+            <label className="text-xs font-medium text-muted">{t('reseller.createUser.password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="En az 4 karakter"
+              placeholder={t('reseller.createUser.min4Placeholder')}
               className="input w-full"
               minLength={4}
               required
@@ -119,7 +121,7 @@ export function ResellerCreateUserPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted">Max Bağlantı</label>
+              <label className="text-xs font-medium text-muted">{t('reseller.createUser.maxConn')}</label>
               <input
                 type="number"
                 min={1}
@@ -131,7 +133,7 @@ export function ResellerCreateUserPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted">Bitiş Tarihi</label>
+              <label className="text-xs font-medium text-muted">{t('reseller.createUser.expiresAt')}</label>
               <input
                 type="date"
                 value={expiresAt}
@@ -148,14 +150,14 @@ export function ResellerCreateUserPage() {
               onClick={() => void navigate({ to: '/reseller/users' })}
               className="btn-ghost flex-1"
             >
-              İptal
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={createUser.isPending || insufficientCredits || !username || !password}
               className="btn-primary flex-1"
             >
-              {createUser.isPending ? 'Oluşturuluyor…' : 'Kullanıcı Oluştur'}
+              {createUser.isPending ? t('reseller.createUser.creating') : t('reseller.createUser.createUser')}
             </button>
           </div>
         </form>

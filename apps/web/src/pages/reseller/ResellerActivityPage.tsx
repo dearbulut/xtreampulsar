@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Clock, Users, TrendingUp, Search } from 'lucide-react';
 import { useResellerActivity } from '@/hooks/useResellerPanel';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,7 @@ function toDateStr(d: Date): string {
 }
 
 export function ResellerActivityPage() {
+  const { t } = useTranslation();
   const [rangeKey, setRangeKey] = useState<RangeKey>('week');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -61,7 +63,7 @@ export function ResellerActivityPage() {
 
   const handleExport = () => {
     if (!items.length) return;
-    const header = 'Tarih,Kullanıcı,Aksiyon,IP,Ülke,Süre(sn)';
+    const header = t('reseller.activity.csvHeader');
     const rows = items.map((i) =>
       [i.createdAt, i.user?.username ?? '', i.action, i.ip ?? '', i.country ?? '', i.duration ?? ''].join(','),
     );
@@ -79,20 +81,20 @@ export function ResellerActivityPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Aktivite</h1>
-          <p className="text-sm text-muted">Kullanıcı oturum ve izleme geçmişi</p>
+          <h1 className="text-lg font-semibold text-slate-100">{t('reseller.activity.title')}</h1>
+          <p className="text-sm text-muted">{t('reseller.activity.subtitle')}</p>
         </div>
         <button onClick={handleExport} disabled={!items.length} className="btn-secondary flex items-center gap-2 text-sm">
           <Download className="w-4 h-4" />
-          CSV İndir
+          {t('reseller.activity.exportCsv')}
         </button>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Toplam Oturum" value={summary?.totalSessions ?? 0} icon={TrendingUp} />
-        <SummaryCard label="Toplam İzleme" value={`${summary?.totalWatchMinutes ?? 0} dk`} icon={Clock} />
-        <SummaryCard label="En Aktif Kullanıcı" value={summary?.mostActiveUser ?? '—'} icon={Users} />
+        <SummaryCard label={t('reseller.activity.totalSessions')} value={summary?.totalSessions ?? 0} icon={TrendingUp} />
+        <SummaryCard label={t('reseller.activity.totalWatch')} value={t('reseller.activity.minutesShort', { n: summary?.totalWatchMinutes ?? 0 })} icon={Clock} />
+        <SummaryCard label={t('reseller.activity.mostActiveUser')} value={summary?.mostActiveUser ?? '—'} icon={Users} />
       </div>
 
       {/* Filters */}
@@ -106,7 +108,7 @@ export function ResellerActivityPage() {
                 ? 'bg-primary/20 border-primary text-primary'
                 : 'border-border text-muted hover:text-fg hover:border-border/80')}
             >
-              {k === 'week' ? 'Bu Hafta' : k === 'month' ? 'Bu Ay' : 'Özel'}
+              {k === 'week' ? t('reseller.activity.weekRange') : k === 'month' ? t('reseller.activity.monthRange') : t('reseller.activity.customRange')}
             </button>
           ))}
         </div>
@@ -121,7 +123,7 @@ export function ResellerActivityPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
           <input
             className="input pl-8 h-8 text-sm w-44"
-            placeholder="Kullanıcı ara…"
+            placeholder={t('reseller.activity.searchPlaceholder')}
             value={userSearch}
             onChange={(e) => setUserSearch(e.target.value)}
           />
@@ -131,23 +133,23 @@ export function ResellerActivityPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="py-12 text-center text-muted text-sm">Yükleniyor…</div>
+          <div className="py-12 text-center text-muted text-sm">{t('common.loading')}</div>
         ) : items.length === 0 ? (
           <div className="py-14 text-center text-muted">
             <Clock className="w-8 h-8 opacity-20 mx-auto mb-2" />
-            <p className="text-sm">Bu dönemde aktivite kaydı bulunamadı</p>
+            <p className="text-sm">{t('reseller.activity.noActivity')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Tarih</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Kullanıcı</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Aksiyon</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.activity.colDate')}</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.activity.colUser')}</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.activity.colAction')}</th>
                   <th className="px-4 py-3 text-xs text-muted font-semibold">IP</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Ülke</th>
-                  <th className="px-4 py-3 text-xs text-muted font-semibold">Süre</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.activity.colCountry')}</th>
+                  <th className="px-4 py-3 text-xs text-muted font-semibold">{t('reseller.activity.colDuration')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CreditCard, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useResellerCreditHistory, useResellerDashboard } from '@/hooks/useResellerPanel';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,10 +8,10 @@ import { cn, formatDate } from '@/lib/utils';
 type Period = '1w' | '1m' | '3m' | 'all';
 
 const PERIODS: { key: Period; label: string; days: number | null }[] = [
-  { key: '1w', label: 'Bu Hafta', days: 7 },
-  { key: '1m', label: 'Bu Ay', days: 30 },
-  { key: '3m', label: 'Son 3 Ay', days: 90 },
-  { key: 'all', label: 'Tümü', days: null },
+  { key: '1w', label: 'reseller.credits.period1w', days: 7 },
+  { key: '1m', label: 'reseller.credits.period1m', days: 30 },
+  { key: '3m', label: 'reseller.credits.period3m', days: 90 },
+  { key: 'all', label: 'reseller.credits.periodAll', days: null },
 ];
 
 function getStartDate(days: number | null): string | undefined {
@@ -20,6 +21,7 @@ function getStartDate(days: number | null): string | undefined {
 }
 
 export function ResellerCreditsPage() {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<Period>('1m');
   const [page, setPage] = useState(1);
 
@@ -46,8 +48,8 @@ export function ResellerCreditsPage() {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold text-slate-100">Kredi Hareketleri</h1>
-        <p className="text-sm text-muted">Kredi geçmişinizi takip edin</p>
+        <h1 className="text-lg font-semibold text-slate-100">{t('reseller.credits.title')}</h1>
+        <p className="text-sm text-muted">{t('reseller.credits.subtitle')}</p>
       </div>
 
       {/* Balance + summary cards */}
@@ -57,7 +59,7 @@ export function ResellerCreditsPage() {
             <CreditCard className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-muted">Mevcut Bakiye</div>
+            <div className="text-xs text-muted">{t('reseller.credits.currentBalance')}</div>
             <div className="text-3xl font-bold text-primary">{credits}</div>
           </div>
         </div>
@@ -67,7 +69,7 @@ export function ResellerCreditsPage() {
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-muted">Dönemde Eklenen</div>
+            <div className="text-xs text-muted">{t('reseller.credits.addedInPeriod')}</div>
             <div className="text-2xl font-bold text-emerald-400">+{data?.summary.added ?? 0}</div>
           </div>
         </div>
@@ -77,7 +79,7 @@ export function ResellerCreditsPage() {
             <TrendingDown className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-muted">Dönemde Harcanan</div>
+            <div className="text-xs text-muted">{t('reseller.credits.spentInPeriod')}</div>
             <div className="text-2xl font-bold text-red-400">-{data?.summary.spent ?? 0}</div>
           </div>
         </div>
@@ -94,7 +96,7 @@ export function ResellerCreditsPage() {
                 ? 'bg-primary/20 border-primary text-primary'
                 : 'border-border text-muted hover:border-primary/40 hover:text-slate-300')}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
@@ -103,34 +105,34 @@ export function ResellerCreditsPage() {
       <div className="card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-muted text-sm">
-            <RefreshCw className="w-4 h-4 animate-spin" /> Yükleniyor…
+            <RefreshCw className="w-4 h-4 animate-spin" /> {t('common.loading')}
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center gap-3 py-10">
             <AlertTriangle className="w-8 h-8 text-amber-400 opacity-70" />
-            <p className="text-sm text-muted">Veriler yüklenemedi</p>
+            <p className="text-sm text-muted">{t('reseller.credits.loadFailed')}</p>
             <button
               onClick={handleRetry}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Yeniden Dene
+              <RefreshCw className="w-3.5 h-3.5" /> {t('reseller.credits.retry')}
             </button>
           </div>
         ) : !data?.items.length ? (
           <div className="flex flex-col items-center gap-2 py-10 text-muted">
             <CreditCard className="w-8 h-8 opacity-30" />
-            <p className="text-sm">Bu dönemde hareket yok</p>
+            <p className="text-sm">{t('reseller.credits.noTransactions')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">Tarih</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">Tür</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">Açıklama</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-muted">Miktar</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-muted">Bakiye</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.credits.colDate')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.credits.colType')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.credits.colDescription')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-muted">{t('reseller.credits.colAmount')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-muted">{t('reseller.credits.colBalance')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +144,7 @@ export function ResellerCreditsPage() {
                       <td className="px-4 py-3">
                         <span className={cn('text-[11px] px-1.5 py-0.5 rounded font-medium',
                           isAdd ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400')}>
-                          {isAdd ? 'Eklendi' : 'Harcandı'}
+                          {isAdd ? t('reseller.credits.typeAdded') : t('reseller.credits.typeSpent')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-300 max-w-xs truncate">

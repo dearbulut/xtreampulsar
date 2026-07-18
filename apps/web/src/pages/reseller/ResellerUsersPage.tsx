@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Search, X, ChevronLeft, ChevronRight, Download,
   Users, ChevronUp, ChevronDown, ChevronsUpDown, Zap,
@@ -62,6 +63,7 @@ function SortHeader({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function ResellerUsersPage() {
+  const { t } = useTranslation();
   const resellerUser = useAuthStore((s) => s.resellerUser);
 
   const [page, setPage] = useState(1);
@@ -115,7 +117,14 @@ export function ResellerUsersPage() {
   };
 
   const exportCSV = () => {
-    const header = ['Kullanıcı Adı', 'Durum', 'Bitiş Tarihi', 'Kalan Gün', 'Max Bağlantı', 'Oluşturulma'];
+    const header = [
+      t('reseller.users.csvUsername'),
+      t('reseller.users.csvStatus'),
+      t('reseller.users.csvExpiry'),
+      t('reseller.users.csvDaysLeft'),
+      t('reseller.users.csvMaxConn'),
+      t('reseller.users.csvCreated'),
+    ];
     const rows = items.map((u) => [
       u.username, u.status,
       new Date(u.expiresAt).toLocaleDateString('tr-TR'),
@@ -138,15 +147,15 @@ export function ResellerUsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Kullanıcılarım</h1>
-          <p className="text-sm text-muted">{users?.total ?? 0} kullanıcı</p>
+          <h1 className="text-lg font-semibold text-slate-100">{t('reseller.users.title')}</h1>
+          <p className="text-sm text-muted">{t('reseller.users.subtitle', { n: users?.total ?? 0 })}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportCSV} className="btn-ghost flex items-center gap-1.5 text-sm px-3">
             <Download className="w-4 h-4" /> CSV
           </button>
           <button onClick={() => setShowQuickCreate(true)} className="btn-primary flex items-center gap-2 text-sm">
-            <Zap className="w-4 h-4" /> Hızlı Hat Ekle
+            <Zap className="w-4 h-4" /> {t('reseller.users.quickAdd')}
           </button>
         </div>
       </div>
@@ -159,7 +168,7 @@ export function ResellerUsersPage() {
             <input
               type="text" value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Kullanıcı ara…"
+              placeholder={t('reseller.users.searchPlaceholder')}
               className="input pl-9 w-full"
             />
             {searchInput && (
@@ -169,46 +178,46 @@ export function ResellerUsersPage() {
               </button>
             )}
           </div>
-          <button type="submit" className="btn-ghost text-sm px-3">Ara</button>
+          <button type="submit" className="btn-ghost text-sm px-3">{t('common.search')}</button>
         </form>
 
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); setSelectedIds([]); }} className="input text-sm w-36">
-          <option value="">Tüm Durumlar</option>
-          <option value="ACTIVE">Aktif</option>
-          <option value="DISABLED">Pasif</option>
-          <option value="BANNED">Banlı</option>
+          <option value="">{t('reseller.users.allStatuses')}</option>
+          <option value="ACTIVE">{t('common.active')}</option>
+          <option value="DISABLED">{t('common.inactive')}</option>
+          <option value="BANNED">{t('reseller.users.banned')}</option>
         </select>
 
         <select value={expiryFilter} onChange={(e) => { setExpiryFilter(e.target.value); setPage(1); setSelectedIds([]); }} className="input text-sm w-40">
-          <option value="">Tüm Bitiş</option>
-          <option value="active">Aktif (süresi dolmamış)</option>
-          <option value="expired">Süresi Dolmuş</option>
-          <option value="thisWeek">7 Gün İçinde Bitiyor</option>
-          <option value="thisMonth">30 Gün İçinde Bitiyor</option>
+          <option value="">{t('reseller.users.allExpiry')}</option>
+          <option value="active">{t('reseller.users.expiryActive')}</option>
+          <option value="expired">{t('reseller.users.expired')}</option>
+          <option value="thisWeek">{t('reseller.users.expiring7')}</option>
+          <option value="thisMonth">{t('reseller.users.expiring30')}</option>
         </select>
       </div>
 
       {/* Bulk toolbar */}
       {selectedIds.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
-          <span className="text-sm text-primary font-medium">{selectedIds.length} seçili</span>
+          <span className="text-sm text-primary font-medium">{t('reseller.users.selected', { n: selectedIds.length })}</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted">Uzat:</span>
+              <span className="text-xs text-muted">{t('reseller.users.extendLabel')}</span>
               <input type="number" min={1} max={3650} value={bulkDays} onChange={(e) => setBulkDays(+e.target.value)} className="input w-16 text-xs py-1" />
-              <span className="text-xs text-muted">gün</span>
+              <span className="text-xs text-muted">{t('reseller.users.daysUnit')}</span>
               <button onClick={() => void handleBulk('extend')} disabled={bulkAction.isPending}
                 className="text-xs px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30 transition-colors">
-                Uzat
+                {t('reseller.users.extend')}
               </button>
             </div>
             <button onClick={() => void handleBulk('suspend')} disabled={bulkAction.isPending}
               className="text-xs px-2 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition-colors">
-              Askıya Al
+              {t('reseller.users.suspend')}
             </button>
             <button onClick={() => void handleBulk('activate')} disabled={bulkAction.isPending}
               className="text-xs px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/40 hover:bg-blue-500/30 transition-colors">
-              Aktifleştir
+              {t('reseller.users.activate')}
             </button>
             <button onClick={() => setSelectedIds([])} className="text-muted hover:text-fg">
               <X className="w-4 h-4" />
@@ -220,11 +229,11 @@ export function ResellerUsersPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="flex justify-center py-10 text-muted text-sm">Yükleniyor…</div>
+          <div className="flex justify-center py-10 text-muted text-sm">{t('common.loading')}</div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-muted">
             <Users className="w-8 h-8 opacity-30" />
-            <p className="text-sm">Kullanıcı bulunamadı</p>
+            <p className="text-sm">{t('reseller.users.noUsers')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -235,15 +244,15 @@ export function ResellerUsersPage() {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 accent-primary" />
                   </th>
                   <th className="text-left px-4 py-3">
-                    <SortHeader field="username" label="Kullanıcı" current={sortBy} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader field="username" label={t('reseller.users.colUser')} current={sortBy} dir={sortDir} onSort={toggleSort} />
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">Durum</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.users.colStatus')}</th>
                   <th className="text-left px-4 py-3">
-                    <SortHeader field="expiresAt" label="Bitiş" current={sortBy} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader field="expiresAt" label={t('reseller.users.colExpiry')} current={sortBy} dir={sortDir} onSort={toggleSort} />
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">Bağlantı</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('reseller.users.colConnections')}</th>
                   <th className="text-left px-4 py-3">
-                    <SortHeader field="createdAt" label="Oluşturulma" current={sortBy} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader field="createdAt" label={t('reseller.users.colCreated')} current={sortBy} dir={sortDir} onSort={toggleSort} />
                   </th>
                 </tr>
               </thead>
@@ -264,7 +273,7 @@ export function ResellerUsersPage() {
                       <td className="px-4 py-3">
                         <span className={cn('text-xs', dl < 0 ? 'text-danger' : dl < 7 ? 'text-warning' : 'text-muted')}>
                           {formatDate(u.expiresAt)}
-                          <span className="ml-1 opacity-70">({dl < 0 ? 'Dolmuş' : `${dl}g`})</span>
+                          <span className="ml-1 opacity-70">({dl < 0 ? t('reseller.users.expiredShort') : `${dl}g`})</span>
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted">
@@ -283,7 +292,7 @@ export function ResellerUsersPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted">{users?.total ?? 0} toplam, sayfa {page}/{totalPages}</span>
+          <span className="text-xs text-muted">{t('reseller.users.paginationInfo', { total: users?.total ?? 0, page, pages: totalPages })}</span>
           <div className="flex items-center gap-2">
             <button disabled={page <= 1} onClick={() => { setPage((p) => p - 1); setSelectedIds([]); }} className="btn-ghost p-1.5">
               <ChevronLeft className="w-4 h-4" />

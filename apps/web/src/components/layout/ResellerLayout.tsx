@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet, Link, useNavigate } from '@tanstack/react-router';
 import {
   Tv2, LayoutDashboard, Users, LogOut, CreditCard, Settings, Network,
@@ -17,14 +18,14 @@ import {
 } from '@/hooks/useResellerPanel';
 
 const NAV = [
-  { to: '/reseller/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/reseller/live', label: 'Canlı İzleme', icon: Radio },
-  { to: '/reseller/users', label: 'Kullanıcılar', icon: Users },
-  { to: '/reseller/sub-resellers', label: 'Alt Bayilerim', icon: Network },
-  { to: '/reseller/credits', label: 'Kredi Hareketleri', icon: CreditCard },
-  { to: '/reseller/activity', label: 'Aktivite', icon: Activity },
-  { to: '/reseller/notifications', label: 'Bildirimler', icon: Bell },
-  { to: '/reseller/profile', label: 'Profil / Ayarlar', icon: Settings },
+  { to: '/reseller/dashboard', label: 'reseller.nav.dashboard', icon: LayoutDashboard },
+  { to: '/reseller/live', label: 'reseller.nav.live', icon: Radio },
+  { to: '/reseller/users', label: 'reseller.nav.users', icon: Users },
+  { to: '/reseller/sub-resellers', label: 'reseller.nav.subResellers', icon: Network },
+  { to: '/reseller/credits', label: 'reseller.nav.credits', icon: CreditCard },
+  { to: '/reseller/activity', label: 'reseller.nav.activity', icon: Activity },
+  { to: '/reseller/notifications', label: 'reseller.nav.notifications', icon: Bell },
+  { to: '/reseller/profile', label: 'reseller.nav.profile', icon: Settings },
 ];
 
 // ─── Relative time helper ────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ function NotifIcon({ type }: { type: string }) {
 // ─── Notification dropdown ───────────────────────────────────────────────────
 
 function NotificationDropdown({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const { data: notifications = [], isLoading } = useResellerNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
@@ -71,7 +73,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
     <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-slate-200">Bildirimler</span>
+        <span className="text-sm font-semibold text-slate-200">{t('reseller.nav.notifTitle')}</span>
         <div className="flex items-center gap-2">
           {notifications.some((n) => !n.isRead) && (
             <button
@@ -80,7 +82,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
               className="flex items-center gap-1 text-xs text-primary hover:text-primary-light transition-colors"
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              Tümünü okundu işaretle
+              {t('reseller.nav.markAllRead')}
             </button>
           )}
           <button onClick={onClose} className="text-muted hover:text-fg">
@@ -92,11 +94,11 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
       {/* List */}
       <div className="max-h-[380px] overflow-y-auto">
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted">Yükleniyor…</div>
+          <div className="py-8 text-center text-sm text-muted">{t('common.loading')}</div>
         ) : recent.length === 0 ? (
           <div className="py-8 text-center">
             <Bell className="w-8 h-8 text-muted/30 mx-auto mb-2" />
-            <p className="text-sm text-muted">Bildirim yok</p>
+            <p className="text-sm text-muted">{t('reseller.nav.noNotifications')}</p>
           </div>
         ) : (
           recent.map((n) => (
@@ -128,7 +130,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
 
       {notifications.length === 0 ? null : (
         <div className="px-4 py-2 border-t border-border text-[11px] text-muted/60 text-center">
-          Son {Math.min(notifications.length, 10)} bildirim gösteriliyor
+          {t('reseller.nav.showingRecent', { n: Math.min(notifications.length, 10) })}
         </div>
       )}
     </div>
@@ -138,6 +140,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
 // ─── Bell button ─────────────────────────────────────────────────────────────
 
 function NotificationBell() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { data: count = 0 } = useResellerUnreadCount();
@@ -160,7 +163,7 @@ function NotificationBell() {
           'relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
           open ? 'bg-primary/15 text-primary' : 'text-muted hover:text-slate-300 hover:bg-surface-2',
         )}
-        aria-label="Bildirimler"
+        aria-label={t('reseller.nav.notifAria')}
       >
         <Bell className="w-4 h-4" />
         {count > 0 && (
@@ -178,6 +181,7 @@ function NotificationBell() {
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export function ResellerLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const resellerUser = useAuthStore((s) => s.resellerUser);
   const resellerLogout = useAuthStore((s) => s.resellerLogout);
@@ -189,7 +193,7 @@ export function ResellerLayout() {
     void navigate({ to: '/reseller/login' });
   };
 
-  const brandName = me?.brandName || 'Bayi Paneli';
+  const brandName = me?.brandName || t('reseller.nav.brandFallback');
   const logoUrl = me?.logoUrl ?? null;
 
   return (
@@ -208,7 +212,7 @@ export function ResellerLayout() {
           {resellerUser && (
             <div className="mt-2 text-xs text-muted">
               <div className="text-slate-300 font-medium">{resellerUser.username}</div>
-              <div>Kredi: <span className="text-primary">{resellerUser.credits}</span></div>
+              <div>{t('reseller.nav.creditLabel')} <span className="text-primary">{resellerUser.credits}</span></div>
             </div>
           )}
         </div>
@@ -226,7 +230,7 @@ export function ResellerLayout() {
               )}
             >
               <Icon className="w-4 h-4" />
-              {label}
+              {t(label)}
             </Link>
           ))}
         </nav>
@@ -237,7 +241,7 @@ export function ResellerLayout() {
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors w-full"
           >
             <LogOut className="w-4 h-4" />
-            Çıkış Yap
+            {t('reseller.nav.logout')}
           </button>
         </div>
       </aside>

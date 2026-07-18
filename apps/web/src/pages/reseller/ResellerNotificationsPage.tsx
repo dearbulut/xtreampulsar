@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bell, CheckCheck, CreditCard, Clock, Info } from 'lucide-react';
 import {
   useResellerNotifications,
@@ -67,6 +68,7 @@ function NotifRow({ n, onRead }: { n: ResellerNotification; onRead: (id: string)
 }
 
 export function ResellerNotificationsPage() {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<FilterKey>('all');
   const { data: all = [], isLoading } = useResellerNotifications();
   const markRead = useMarkNotificationRead();
@@ -81,18 +83,18 @@ export function ResellerNotificationsPage() {
   const unreadCount = all.filter((n) => !n.isRead).length;
 
   const FILTERS: { key: FilterKey; label: string }[] = [
-    { key: 'all', label: 'Tümü' },
-    { key: 'unread', label: `Okunmamış (${unreadCount})` },
-    { key: 'LOW_CREDIT', label: 'Kredi' },
-    { key: 'USER_EXPIRING', label: 'Süre Uyarısı' },
+    { key: 'all', label: t('reseller.notifications.filterAll') },
+    { key: 'unread', label: t('reseller.notifications.filterUnread', { n: unreadCount }) },
+    { key: 'LOW_CREDIT', label: t('reseller.notifications.filterCredit') },
+    { key: 'USER_EXPIRING', label: t('reseller.notifications.filterExpiring') },
   ];
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Bildirimler</h1>
-          <p className="text-sm text-muted">{all.length} bildirim · {unreadCount} okunmamış</p>
+          <h1 className="text-lg font-semibold text-slate-100">{t('reseller.notifications.title')}</h1>
+          <p className="text-sm text-muted">{t('reseller.notifications.subtitle', { total: all.length, unread: unreadCount })}</p>
         </div>
         {unreadCount > 0 && (
           <button
@@ -101,7 +103,7 @@ export function ResellerNotificationsPage() {
             className="btn-secondary flex items-center gap-2 text-sm"
           >
             <CheckCheck className="w-4 h-4" />
-            Tümünü Okundu İşaretle
+            {t('reseller.notifications.markAllRead')}
           </button>
         )}
       </div>
@@ -127,11 +129,11 @@ export function ResellerNotificationsPage() {
       {/* List */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="py-12 text-center text-muted text-sm">Yükleniyor…</div>
+          <div className="py-12 text-center text-muted text-sm">{t('common.loading')}</div>
         ) : filtered.length === 0 ? (
           <div className="py-14 text-center">
             <Bell className="w-10 h-10 text-muted/20 mx-auto mb-3" />
-            <p className="text-sm text-muted">Bildirim yok</p>
+            <p className="text-sm text-muted">{t('reseller.notifications.noNotifications')}</p>
           </div>
         ) : (
           filtered.map((n) => (
