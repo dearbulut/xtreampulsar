@@ -330,7 +330,9 @@
     "preset1y": "1 Year",
     "preset2y": "2 Years",
     "userCount_one": "{{count}} user",
-    "userCount_other": "{{count}} users"
+    "userCount_other": "{{count}} users",
+    "connectionUrls": "Connection URLs",
+    "noPasswordForUrls": "This user's password isn't stored (legacy) — change the password to reveal the URLs."
   },
   "streams": {
     "title": "Channels",

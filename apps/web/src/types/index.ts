@@ -100,6 +100,7 @@ export interface User {
   notes?: string;
   isTrial?: boolean;
   trialEndsAt?: string | null;
+  plainPassword?: string | null;
   _count?: { connections: number };
 }
 

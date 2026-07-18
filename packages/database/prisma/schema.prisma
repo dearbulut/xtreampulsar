@@ -473,6 +473,7 @@ model User {
   id               String     @id @default(cuid())
   username         String     @unique
   password         String
+  plainPassword    String?
   role             UserRole   @default(USER)
   maxConnections   Int        @default(1)
   status           UserStatus @default(ACTIVE)

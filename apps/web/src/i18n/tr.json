@@ -330,7 +330,9 @@
     "preset1y": "1 Yıl",
     "preset2y": "2 Yıl",
     "userCount_one": "{{count}} kullanıcı",
-    "userCount_other": "{{count}} kullanıcı"
+    "userCount_other": "{{count}} kullanıcı",
+    "connectionUrls": "Bağlantı URL'leri",
+    "noPasswordForUrls": "Bu kullanıcının şifresi kayıtlı değil (eski kayıt) — URL'ler için şifreyi değiştirin."
   },
   "streams": {
     "title": "Kanallar",

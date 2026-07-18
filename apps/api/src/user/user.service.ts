@@ -185,6 +185,7 @@ export class UserService {
         select: {
           id: true, username: true, role: true, status: true,
           maxConnections: true, expiresAt: true, notes: true,
+          plainPassword: true,
           createdAt: true, resellerId: true,
           // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
           _count: { select: { connections: { where: activeConnectionWhere() } } },
@@ -240,6 +241,7 @@ export class UserService {
         data: {
           ...rest,
           password: hashed,
+          plainPassword: dto.password,
           expiresAt: resolvedExpiresAt,
           maxConnections: resolvedMaxConnections,
           role: (dto.role ?? 'USER') as 'ADMIN' | 'RESELLER' | 'USER',
@@ -283,6 +285,7 @@ export class UserService {
     const data: Record<string, unknown> = { ...updateFields };
     if (dto.password) {
       data.password = await bcrypt.hash(dto.password, 12);
+      data.plainPassword = dto.password;
     }
     if (dto.expiresAt) {
       data.expiresAt = new Date(dto.expiresAt);
@@ -490,7 +493,7 @@ export class UserService {
         for (const u of users) {
           const newPassword = this.makeRandomPassword();
           const hashed = await bcrypt.hash(newPassword, 12);
-          await this.prisma.user.update({ where: { id: u.id }, data: { password: hashed } });
+          await this.prisma.user.update({ where: { id: u.id }, data: { password: hashed, plainPassword: newPassword } });
           results.push({ userId: u.id, username: u.username, newPassword });
         }
         return { affected: users.length, results };
@@ -626,6 +629,7 @@ export class UserService {
       data: {
         username: finalUsername,
         password: hashed,
+        plainPassword: rawPassword,
         maxConnections: dto.maxConnections,
         expiresAt,
         status: 'ACTIVE',
@@ -688,6 +692,7 @@ export class UserService {
       data: {
         username: finalUsername,
         password: hashed,
+        plainPassword: rawPassword,
         maxConnections: trialMaxConn,
         expiresAt,
         trialEndsAt: expiresAt,

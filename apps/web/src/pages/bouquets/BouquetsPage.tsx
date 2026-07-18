@@ -127,10 +127,10 @@ export function BouquetsPage() {
           >
             <Copy className="w-3.5 h-3.5 text-emerald-400" />
           </button>
-          <button className="btn btn-ghost p-1.5" onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
+          <button className="btn btn-ghost p-1.5" title={t('common.edit')} onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
             <Edit2 className="w-3.5 h-3.5" />
           </button>
-          <button className="btn btn-ghost p-1.5 hover:text-danger" onClick={(e) => { e.stopPropagation(); void handleDelete(row.id); }}>
+          <button className="btn btn-ghost p-1.5 hover:text-danger" title={t('common.delete')} onClick={(e) => { e.stopPropagation(); void handleDelete(row.id); }}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>

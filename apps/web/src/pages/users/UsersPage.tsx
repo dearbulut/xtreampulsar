@@ -980,6 +980,17 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
   const kickUser = useKickUser();
+  const settings = useSettings();
+  const xtreamBaseUrl = (() => {
+    const rawUrl = settings?.general?.serverUrl?.trim();
+    const port = settings?.xtream?.port ?? 25461;
+    if (rawUrl) {
+      const host = rawUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').split(':')[0];
+      return `http://${host}:${port}`;
+    }
+    return `http://${window.location.hostname}:${port}`;
+  })();
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   if (!user) return null;
 
@@ -1096,6 +1107,34 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                   {t('common.cancel')}
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Bağlantı URL'leri — kimlik-bazlı (Xtream) */}
+          <div className="border-t border-border pt-4">
+            <div className="text-xs text-muted mb-2">{t('users.connectionUrls')}</div>
+            {user.plainPassword ? (
+              <div className="space-y-1.5">
+                {([
+                  { label: 'M3U+', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u_plus` },
+                  { label: 'M3U', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u` },
+                  { label: 'TS', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u_plus&output=ts` },
+                  { label: 'Player API', suffix: `player_api.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}` },
+                ]).map(({ label, suffix }) => {
+                  const url = `${xtreamBaseUrl}/${suffix}`;
+                  return (
+                    <div key={label} className="flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5">
+                      <span className="text-[10px] font-semibold text-primary-light w-16 shrink-0">{label}</span>
+                      <span className="font-mono text-[11px] text-slate-300 truncate flex-1" title={url}>{url}</span>
+                      <button onClick={() => { void navigator.clipboard.writeText(url); setCopiedUrl(label); setTimeout(() => setCopiedUrl(null), 1500); }} className="btn-ghost p-1 shrink-0" title={t('users.copy')}>
+                        {copiedUrl === label ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted">{t('users.noPasswordForUrls')}</p>
             )}
           </div>
 

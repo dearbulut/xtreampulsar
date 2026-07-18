@@ -44,7 +44,7 @@ import { ClientModule } from './client/client.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 600 }]),
     AppConfigModule,
     PrismaModule,
     RedisModule,
