@@ -1377,7 +1377,7 @@
     "conflictSkip": "Atla",
     "conflictSkipDesc": "Mevcut kayıtları koru, yeni olanları ekle",
     "conflictMerge": "Birleştir",
-    "conflictMergeDesc": "Yeni ekle, eskiyi güncelleme",
+    "conflictMergeDesc": "Yeni ekle; mevcutta boş alanları doldur (üzerine yazmaz)",
     "conflictOverwrite": "Üzerine yaz",
     "conflictOverwriteDesc": "Mevcut kayıtları güncelle",
     "defaultPassword": "Varsayılan şifre",

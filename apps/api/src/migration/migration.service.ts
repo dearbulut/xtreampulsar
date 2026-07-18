@@ -1246,6 +1246,22 @@ export class MigrationService implements OnModuleInit {
         const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
         streamId = created.id;
       }
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true, name: true, tvgLogo: true, categoryId: true, tvgId: true } });
+      if (existing) {
+        const patch: Record<string, unknown> = {};
+        if (!existing.name && name) patch.name = name;
+        if (!existing.tvgLogo && tvgLogo) patch.tvgLogo = tvgLogo;
+        if (!existing.tvgId && tvgId) patch.tvgId = tvgId;
+        if (!existing.categoryId && categoryId) patch.categoryId = categoryId;
+        if (Object.keys(patch).length > 0) {
+          await this.prisma.stream.update({ where: { id: existing.id }, data: patch as Parameters<typeof this.prisma.stream.update>[0]['data'] });
+        }
+        streamId = existing.id;
+      } else {
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
+        streamId = created.id;
+      }
     } else {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (existing) {
@@ -1257,6 +1273,17 @@ export class MigrationService implements OnModuleInit {
     }
 
     if (dumpId && streamId) streamIdCache.set(dumpId, streamId);
+  }
+
+  // MERGE (gap-fill): yalnız existing'de BOŞ olan alanları data'dan doldur (skip'tekiler hariç).
+  private mergeGapFill(existing: Record<string, unknown>, data: Record<string, unknown>, skip: string[] = []): Record<string, unknown> {
+    const patch: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (skip.includes(k)) continue;
+      const cur = existing[k];
+      if ((cur === null || cur === undefined || cur === '') && v !== null && v !== undefined && v !== '') patch[k] = v;
+    }
+    return patch;
   }
 
   private async importXtreamUIUser(
@@ -1307,6 +1334,18 @@ export class MigrationService implements OnModuleInit {
         create: { username, ...data },
         update: data,
       });
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.user.findUnique({ where: { username } });
+      if (!existing) {
+        await this.prisma.user.create({ data: { username, ...data } });
+      } else {
+        const patch = this.mergeGapFill(existing as unknown as Record<string, unknown>, data as unknown as Record<string, unknown>, ['expiresAt', 'maxConnections']);
+        if (expiresAt && (!existing.expiresAt || expiresAt > existing.expiresAt)) patch.expiresAt = expiresAt;
+        if (typeof maxConnections === 'number' && (existing.maxConnections == null || maxConnections > existing.maxConnections)) patch.maxConnections = maxConnections;
+        if (Object.keys(patch).length > 0) {
+          await this.prisma.user.update({ where: { username }, data: patch as Parameters<typeof this.prisma.user.update>[0]['data'] });
+        }
+      }
     } else {
       const existing = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
       if (!existing) {
@@ -1381,6 +1420,13 @@ export class MigrationService implements OnModuleInit {
         create: { username, email, ...data },
         update: data,
       });
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true, email: true } });
+      if (!existing) {
+        await this.prisma.reseller.create({ data: { username, email, ...data } });
+      } else if (!existing.email && email) {
+        await this.prisma.reseller.update({ where: { username }, data: { email } });
+      }
     } else {
       const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true } });
       if (!existing) {
@@ -1572,6 +1618,22 @@ export class MigrationService implements OnModuleInit {
         const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
         streamId = created.id;
       }
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true, name: true, tvgLogo: true, categoryId: true, tvgId: true } });
+      if (existing) {
+        const patch: Record<string, unknown> = {};
+        if (!existing.name && name) patch.name = name;
+        if (!existing.tvgLogo && tvgLogo) patch.tvgLogo = tvgLogo;
+        if (!existing.tvgId && tvgId) patch.tvgId = tvgId;
+        if (!existing.categoryId && categoryId) patch.categoryId = categoryId;
+        if (Object.keys(patch).length > 0) {
+          await this.prisma.stream.update({ where: { id: existing.id }, data: patch as Parameters<typeof this.prisma.stream.update>[0]['data'] });
+        }
+        streamId = existing.id;
+      } else {
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
+        streamId = created.id;
+      }
     } else {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (existing) {
@@ -1629,6 +1691,18 @@ export class MigrationService implements OnModuleInit {
         create: { username, ...data },
         update: data,
       });
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.user.findUnique({ where: { username } });
+      if (!existing) {
+        await this.prisma.user.create({ data: { username, ...data } });
+      } else {
+        const patch = this.mergeGapFill(existing as unknown as Record<string, unknown>, data as unknown as Record<string, unknown>, ['expiresAt', 'maxConnections']);
+        if (expiresAt && (!existing.expiresAt || expiresAt > existing.expiresAt)) patch.expiresAt = expiresAt;
+        if (typeof maxConnections === 'number' && (existing.maxConnections == null || maxConnections > existing.maxConnections)) patch.maxConnections = maxConnections;
+        if (Object.keys(patch).length > 0) {
+          await this.prisma.user.update({ where: { username }, data: patch as Parameters<typeof this.prisma.user.update>[0]['data'] });
+        }
+      }
     } else {
       const existing = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
       if (!existing) {
@@ -1683,6 +1757,13 @@ export class MigrationService implements OnModuleInit {
         create: { username, email, ...data },
         update: data,
       });
+    } else if (options.conflictMode === 'MERGE') {
+      const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true, email: true } });
+      if (!existing) {
+        await this.prisma.reseller.create({ data: { username, email, ...data } });
+      } else if (!existing.email && email) {
+        await this.prisma.reseller.update({ where: { username }, data: { email } });
+      }
     } else {
       const existing = await this.prisma.reseller.findUnique({ where: { username }, select: { id: true } });
       if (!existing) {

@@ -1377,7 +1377,7 @@
     "conflictSkip": "Skip",
     "conflictSkipDesc": "Keep existing records, add new ones",
     "conflictMerge": "Merge",
-    "conflictMergeDesc": "Add new, don't update existing",
+    "conflictMergeDesc": "Add new; fill empty fields on existing (no overwrite)",
     "conflictOverwrite": "Overwrite",
     "conflictOverwriteDesc": "Update existing records",
     "defaultPassword": "Default password",
