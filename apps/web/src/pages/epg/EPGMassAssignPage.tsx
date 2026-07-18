@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, Loader2, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import { TagInput } from '@/components/ui/TagInput';
 import { useEPGSources, useMassAssignEPG, useMassAssignJobStatus } from '@/hooks/useEPG';
 import { cn } from '@/lib/utils';
 
 export function EPGMassAssignPage() {
+  const { t } = useTranslation();
   const { data: sources = [] } = useEPGSources();
   const massAssign = useMassAssignEPG();
 
@@ -32,23 +34,23 @@ export function EPGMassAssignPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Toplu EPG Eşleştirme</h1>
+        <h1 className="text-2xl font-bold text-slate-100">{t('epg.massAssign.title')}</h1>
         <p className="text-sm text-muted mt-0.5">
-          Kanal adlarını akıllı benzerlik algoritmasıyla otomatik eşleştir
+          {t('epg.massAssign.subtitle')}
         </p>
       </div>
 
       <div className="card p-6 space-y-5">
         {/* Source */}
         <div>
-          <label className="label">EPG Kaynağı</label>
+          <label className="label">{t('epg.massAssign.sourceLabel')}</label>
           <select
             className="input"
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
             disabled={isProcessing}
           >
-            <option value="">Kaynak seçin…</option>
+            <option value="">{t('epg.massAssign.selectSource')}</option>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -60,7 +62,7 @@ export function EPGMassAssignPage() {
         {/* Similarity slider */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="label mb-0">Minimum Benzerlik</label>
+            <label className="label mb-0">{t('epg.massAssign.minSimilarity')}</label>
             <span className="text-sm font-semibold text-primary-light">%{similarity}</span>
           </div>
           <input
@@ -74,21 +76,21 @@ export function EPGMassAssignPage() {
             className="w-full accent-primary"
           />
           <div className="flex justify-between text-[10px] text-muted mt-0.5">
-            <span>%30 (Gevşek)</span>
-            <span>%100 (Kesin)</span>
+            <span>{t('epg.massAssign.sliderLoose')}</span>
+            <span>{t('epg.massAssign.sliderStrict')}</span>
           </div>
         </div>
 
         {/* Prefix strip */}
         <div>
-          <label className="label">Kaldırılacak Önekler</label>
+          <label className="label">{t('epg.massAssign.stripPrefixesLabel')}</label>
           <TagInput
             value={stripPrefixes}
             onChange={setStripPrefixes}
-            placeholder="Ör: TR|, TR:, [TR]"
+            placeholder={t('epg.massAssign.stripPrefixesPlaceholder')}
           />
           <p className="text-xs text-muted mt-1">
-            Kanal adlarından kaldırılacak önekler (eşleştirme öncesi temizlenir)
+            {t('epg.massAssign.stripPrefixesHint')}
           </p>
         </div>
 
@@ -98,9 +100,9 @@ export function EPGMassAssignPage() {
           className="btn btn-primary w-full"
         >
           {isProcessing ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> İşleniyor…</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> {t('epg.massAssign.processing')}</>
           ) : (
-            <><CheckCircle className="w-4 h-4" /> Eşleştirmeyi Başlat</>
+            <><CheckCircle className="w-4 h-4" /> {t('epg.massAssign.startMatch')}</>
           )}
         </button>
       </div>
@@ -126,15 +128,15 @@ export function EPGMassAssignPage() {
             </div>
             <div>
               <div className="font-semibold text-slate-200">
-                {isDone && 'Eşleştirme Tamamlandı'}
-                {isFailed && 'Eşleştirme Başarısız'}
-                {isProcessing && 'Arka Planda İşleniyor…'}
+                {isDone && t('epg.massAssign.doneTitle')}
+                {isFailed && t('epg.massAssign.failedTitle')}
+                {isProcessing && t('epg.massAssign.processingBg')}
               </div>
               <div className="text-sm text-muted">
-                {isDone && `${job.total ?? 0} akıştan ${job.matched ?? 0} tanesi eşleştirildi`}
-                {isFailed && (job.error ?? 'Bilinmeyen hata')}
-                {isProcessing && job.total != null && `${job.matched ?? 0} / ${job.total} işlendi`}
-                {isProcessing && job.total == null && 'Veriler yükleniyor…'}
+                {isDone && t('epg.massAssign.doneStats', { total: job.total ?? 0, matched: job.matched ?? 0 })}
+                {isFailed && (job.error ?? t('epg.massAssign.unknownError'))}
+                {isProcessing && job.total != null && t('epg.massAssign.processingStats', { matched: job.matched ?? 0, total: job.total })}
+                {isProcessing && job.total == null && t('epg.massAssign.loadingData')}
               </div>
             </div>
           </div>
@@ -148,24 +150,24 @@ export function EPGMassAssignPage() {
                 />
               </div>
               <div className="flex justify-between text-xs text-muted mt-1.5">
-                <span>{job.matched ?? 0} eşleşti</span>
-                <span>{(job.total ?? 0) - (job.matched ?? 0)} eşleşmedi</span>
+                <span>{t('epg.massAssign.matchedCount', { n: job.matched ?? 0 })}</span>
+                <span>{t('epg.massAssign.unmatchedCount', { n: (job.total ?? 0) - (job.matched ?? 0) })}</span>
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-3 text-center">
                 <div className="bg-surface-2 rounded-xl p-3">
                   <div className="text-xl font-bold text-slate-200">{job.total ?? 0}</div>
-                  <div className="text-xs text-muted">Toplam Akış</div>
+                  <div className="text-xs text-muted">{t('epg.massAssign.totalStreams')}</div>
                 </div>
                 <div className="bg-success/10 rounded-xl p-3">
                   <div className="text-xl font-bold text-success">{job.matched ?? 0}</div>
-                  <div className="text-xs text-muted">Eşleşti</div>
+                  <div className="text-xs text-muted">{t('epg.massAssign.matchedStat')}</div>
                 </div>
                 <div className="bg-surface-2 rounded-xl p-3">
                   <div className="text-xl font-bold text-slate-200">
                     {(job.total ?? 0) > 0 ? Math.round(((job.matched ?? 0) / (job.total ?? 1)) * 100) : 0}%
                   </div>
-                  <div className="text-xs text-muted">Başarı</div>
+                  <div className="text-xs text-muted">{t('epg.massAssign.successStat')}</div>
                 </div>
               </div>
             </>
@@ -185,7 +187,7 @@ export function EPGMassAssignPage() {
           {job.finishedAt && (
             <div className="flex items-center gap-1 mt-3 text-xs text-muted">
               <Clock className="w-3 h-3" />
-              {new Date(job.finishedAt).toLocaleTimeString('tr-TR')} tamamlandı
+              {t('epg.massAssign.finishedAt', { time: new Date(job.finishedAt).toLocaleTimeString('tr-TR') })}
             </div>
           )}
         </div>
@@ -193,13 +195,13 @@ export function EPGMassAssignPage() {
 
       {/* How it works */}
       <div className="card p-5">
-        <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Nasıl Çalışır?</div>
+        <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">{t('epg.massAssign.howItWorks')}</div>
         <div className="space-y-2">
           {[
-            'Eşleştirme arka planda başlar, sayfa bloklanmaz',
-            'Aktif akışlar 500\'erli gruplar hâlinde işlenir',
-            'EPG kanallarıyla Levenshtein mesafesi hesaplanır',
-            'Belirlediğiniz eşiğin üzerindeki eşleşmeler otomatik kaydedilir',
+            t('epg.massAssign.step1'),
+            t('epg.massAssign.step2'),
+            t('epg.massAssign.step3'),
+            t('epg.massAssign.step4'),
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2 text-sm text-slate-400">
               <ChevronRight className="w-3.5 h-3.5 text-primary-light mt-0.5 flex-shrink-0" />

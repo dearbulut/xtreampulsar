@@ -27,6 +27,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -71,14 +72,15 @@ const ACTIVITY_ICON: Record<string, typeof LogIn> = {
 const HEALTH_COLORS = ['#22c55e', '#ef4444', '#f59e0b'];
 
 const PERIODS: { label: string; value: 24 | 48 | 168 }[] = [
-  { label: '24s', value: 24 },
-  { label: '48s', value: 48 },
-  { label: '7g', value: 168 },
+  { label: 'dashboard.period24h', value: 24 },
+  { label: 'dashboard.period48h', value: 48 },
+  { label: 'dashboard.period7d', value: 168 },
 ];
 
 // ─── Main ────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const [chartHours, setChartHours] = useState<24 | 48 | 168>(24);
 
   const { connected } = useSocket();
@@ -95,9 +97,9 @@ export function DashboardPage() {
   const totalUsers = live?.users?.total ?? stats?.totalUsers ?? 0;
 
   const healthPie = [
-    { name: 'Çalışıyor', value: stats?.streamsUp ?? 0 },
-    { name: 'Çökmüş', value: stats?.streamsDown ?? 0 },
-    { name: 'Yavaş', value: stats?.streamsDegraded ?? 0 },
+    { name: t('dashboard.running'), value: stats?.streamsUp ?? 0 },
+    { name: t('dashboard.down'), value: stats?.streamsDown ?? 0 },
+    { name: t('dashboard.slow'), value: stats?.streamsDegraded ?? 0 },
   ].filter((d) => d.value > 0);
 
   const maxViewers = Math.max(...topStreams.map((s) => s.connections ?? 0), 1);
@@ -107,47 +109,47 @@ export function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-fg">Dashboard</h1>
-          <p className="text-sm text-muted mt-0.5">Gerçek zamanlı sistem izleme</p>
+          <h1 className="text-2xl font-bold text-fg">{t('dashboard.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('dashboard.subtitle')}</p>
         </div>
         <div className={cn('flex items-center gap-2 text-sm', connected ? 'text-success' : 'text-danger')}>
           <span className={cn('w-2 h-2 rounded-full', connected ? 'bg-success animate-pulse' : 'bg-danger')} />
-          {connected ? 'Canlı' : 'Bağlantı Yok'}
+          {connected ? t('dashboard.liveBadge') : t('dashboard.disconnected')}
         </div>
       </div>
 
       {/* Row 1 — Big live stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Aktif Bağlantı"
+          title={t('dashboard.activeConnections')}
           value={activeConns.toLocaleString('tr')}
           icon={Users}
           variant="success"
           live={connected}
-          subtitle="Son 30 saniye"
+          subtitle={t('dashboard.last30s')}
         />
         <StatCard
-          title="Canlı Stream"
+          title={t('dashboard.liveStream')}
           value={activeStreams.toLocaleString('tr')}
           icon={Tv}
           variant="info"
           live={connected}
-          subtitle="Şu an izlenen"
+          subtitle={t('dashboard.watchingNow')}
         />
         <StatCard
-          title="Anlık Bandwidth"
+          title={t('dashboard.instantBandwidth')}
           value={fmtMbps(bandwidthMbps)}
           icon={Activity}
           variant="primary"
           live={connected}
-          subtitle="Bu saat tahmini"
+          subtitle={t('dashboard.thisHourEstimate')}
         />
         <StatCard
-          title="Toplam Kullanıcı"
+          title={t('dashboard.totalUsers')}
           value={totalUsers.toLocaleString('tr')}
           icon={Database}
           variant="default"
-          subtitle={stats ? `${stats.activeUsers.toLocaleString('tr')} aktif` : undefined}
+          subtitle={stats ? t('dashboard.nActive', { n: stats.activeUsers.toLocaleString('tr') }) : undefined}
         />
       </div>
 
@@ -155,32 +157,32 @@ export function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SmallCard
           icon={UserPlus}
-          label="Bugün Yeni Kullanıcı"
+          label={t('dashboard.newUsersToday')}
           value={stats?.newUsersToday ?? '—'}
           color="text-success"
           loading={statsLoading}
         />
         <SmallCard
           icon={Link2}
-          label="Bugün Bağlantı"
+          label={t('dashboard.connectionsTodayShort')}
           value={stats?.connectionsToday != null ? stats.connectionsToday.toLocaleString('tr') : '—'}
           color="text-info"
           loading={statsLoading}
         />
         <SmallCard
           icon={UserX}
-          label="Süresi Dolmuş"
+          label={t('dashboard.expiredUsers')}
           value={stats?.expiredUsers != null ? stats.expiredUsers.toLocaleString('tr') : '—'}
           color="text-warning"
           loading={statsLoading}
         />
         <SmallCard
           icon={ShieldCheck}
-          label="Stream Sağlık"
+          label={t('dashboard.streamHealth')}
           value={stats ? `${stats.streamsUp}/${stats.totalStreams}` : '—'}
           color={stats && stats.streamsDown > 0 ? 'text-danger' : 'text-success'}
           loading={statsLoading}
-          sub={stats?.streamsDown ? `${stats.streamsDown} çökmüş` : 'Tümü iyi'}
+          sub={stats?.streamsDown ? t('dashboard.nDown', { n: stats.streamsDown }) : t('dashboard.allGood')}
         />
       </div>
 
@@ -190,8 +192,8 @@ export function DashboardPage() {
         <div className="lg:col-span-2 card p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-fg">Bağlantı Grafiği</h2>
-              <p className="text-xs text-muted mt-0.5">Saatlik bağlantı ve bant genişliği</p>
+              <h2 className="font-semibold text-fg">{t('dashboard.connectionChart')}</h2>
+              <p className="text-xs text-muted mt-0.5">{t('dashboard.hourlyConnBandwidth')}</p>
             </div>
             <div className="flex gap-1">
               {PERIODS.map((p) => (
@@ -205,7 +207,7 @@ export function DashboardPage() {
                       : 'bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  {p.label}
+                  {t(p.label)}
                 </button>
               ))}
             </div>
@@ -262,8 +264,8 @@ export function DashboardPage() {
                   labelFormatter={(v: string) => fmtHour(v)}
                   formatter={(val: number, name: string) =>
                     name === 'connections'
-                      ? [`${val} bağlantı`, 'Bağlantı']
-                      : [`${val} MB`, 'Bant Genişliği']
+                      ? [t('dashboard.nConnections', { n: val }), t('dashboard.connections')]
+                      : [`${val} MB`, t('dashboard.bandwidth')]
                   }
                 />
                 <Area
@@ -291,8 +293,8 @@ export function DashboardPage() {
 
         {/* Health pie (1/3) */}
         <div className="card p-5">
-          <h2 className="font-semibold text-fg mb-1">Stream Sağlık</h2>
-          <p className="text-xs text-muted mb-4">Anlık durum dağılımı</p>
+          <h2 className="font-semibold text-fg mb-1">{t('dashboard.streamHealth')}</h2>
+          <p className="text-xs text-muted mb-4">{t('dashboard.instantStatusDistribution')}</p>
 
           {statsLoading ? (
             <div className="h-52 flex items-center justify-center">
@@ -301,7 +303,7 @@ export function DashboardPage() {
           ) : healthPie.length === 0 ? (
             <div className="h-52 flex flex-col items-center justify-center gap-2 text-muted text-sm">
               <ShieldCheck className="w-8 h-8 text-success opacity-60" />
-              <span>Tüm streamler normal</span>
+              <span>{t('dashboard.allStreamsNormal')}</span>
             </div>
           ) : (
             <>
@@ -331,16 +333,16 @@ export function DashboardPage() {
                       border: '1px solid var(--border)',
                       borderRadius: 8,
                     }}
-                    formatter={(val: number) => [`${val} stream`, '']}
+                    formatter={(val: number) => [t('dashboard.nStreams', { n: val }), '']}
                   />
                 </PieChart>
               </ResponsiveContainer>
 
               <div className="mt-3 space-y-2">
                 {[
-                  { label: 'Çalışıyor', value: stats?.streamsUp ?? 0, color: 'text-success' },
-                  { label: 'Çökmüş', value: stats?.streamsDown ?? 0, color: 'text-danger' },
-                  { label: 'Yavaş', value: stats?.streamsDegraded ?? 0, color: 'text-warning' },
+                  { label: t('dashboard.running'), value: stats?.streamsUp ?? 0, color: 'text-success' },
+                  { label: t('dashboard.down'), value: stats?.streamsDown ?? 0, color: 'text-danger' },
+                  { label: t('dashboard.slow'), value: stats?.streamsDegraded ?? 0, color: 'text-warning' },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between text-sm">
                     <span className="text-muted">{row.label}</span>
@@ -357,15 +359,15 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top streams */}
         <div className="card p-5 flex flex-col max-h-[480px]">
-          <h2 className="font-semibold text-fg mb-1">En Çok İzlenen Streamler</h2>
-          <p className="text-xs text-muted mb-4">Son 24 saat, bağlantı sayısına göre</p>
+          <h2 className="font-semibold text-fg mb-1">{t('dashboard.topStreams')}</h2>
+          <p className="text-xs text-muted mb-4">{t('dashboard.last24hByConnections')}</p>
 
           {streamsLoading ? (
             <div className="h-40 flex items-center justify-center">
               <LoadingSpinner />
             </div>
           ) : topStreams.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted text-sm">Veri yok</div>
+            <div className="h-40 flex items-center justify-center text-muted text-sm">{t('dashboard.noData')}</div>
           ) : (
             <div className="overflow-y-auto space-y-3 pr-1">
               {topStreams.map((entry, i) => {
@@ -403,15 +405,15 @@ export function DashboardPage() {
 
         {/* Recent activity */}
         <div className="card p-5 flex flex-col max-h-[480px]">
-          <h2 className="font-semibold text-fg mb-1">Son Aktiviteler</h2>
-          <p className="text-xs text-muted mb-4">Kullanıcı işlem geçmişi</p>
+          <h2 className="font-semibold text-fg mb-1">{t('dashboard.recentActivity')}</h2>
+          <p className="text-xs text-muted mb-4">{t('dashboard.userActionHistory')}</p>
 
           {activityLoading ? (
             <div className="h-40 flex items-center justify-center">
               <LoadingSpinner />
             </div>
           ) : activity.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted text-sm">Aktivite yok</div>
+            <div className="h-40 flex items-center justify-center text-muted text-sm">{t('dashboard.noActivity')}</div>
           ) : (
             <div className="overflow-y-auto space-y-1 pr-1">
               {activity.map((entry) => {

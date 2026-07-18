@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Pencil, Search, Tv } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
@@ -19,6 +20,7 @@ function formatDate(d: string | null | undefined) {
 }
 
 export function MagDevicesPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -66,10 +68,10 @@ export function MagDevicesPage() {
 
   const UserSelector = (
     <div>
-      <label className="label">Kullanıcı <span className="text-muted text-xs">(opsiyonel)</span></label>
+      <label className="label">{t('mag.user')} <span className="text-muted text-xs">{t('mag.optional')}</span></label>
       <input
         className="input mb-2"
-        placeholder="Kullanıcı adı ara…"
+        placeholder={t('mag.searchUsername')}
         value={userSearch}
         onChange={(e) => setUserSearch(e.target.value)}
       />
@@ -79,7 +81,7 @@ export function MagDevicesPage() {
         onChange={(e) => setSelectedUserId(e.target.value)}
         size={4}
       >
-        <option value="">— Atanmamış —</option>
+        <option value="">{t('mag.unassignedOption')}</option>
         {users.map((u) => (
           <option key={u.id} value={u.id}>{u.username}</option>
         ))}
@@ -90,12 +92,12 @@ export function MagDevicesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="MAG Cihazlar"
-        description="Stalker/MAG protokolü kullanan cihazları yönet"
+        title={t('mag.title')}
+        description={t('mag.description')}
         actions={
           <button onClick={() => { setShowCreate(true); setMacInput(''); setSelectedUserId(''); setUserSearch(''); }} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Cihaz Ekle
+            {t('mag.addDevice')}
           </button>
         }
       />
@@ -104,27 +106,27 @@ export function MagDevicesPage() {
       <div className="card p-3">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-          <input className="input pl-9 h-9" placeholder="MAC adresi ara…" value={search} onChange={(e) => handleSearch(e.target.value)} />
+          <input className="input pl-9 h-9" placeholder={t('mag.searchMac')} value={search} onChange={(e) => handleSearch(e.target.value)} />
         </div>
       </div>
 
       {/* Table */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="text-center text-muted py-12">Yükleniyor…</div>
+          <div className="text-center text-muted py-12">{t('common.loading')}</div>
         ) : devices.length === 0 ? (
           <div className="text-center py-12 text-muted">
             <Tv className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p>Kayıtlı MAG cihazı yok.</p>
+            <p>{t('mag.empty')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="px-4 py-3 text-xs text-muted font-semibold">MAC Adresi</th>
-                <th className="px-4 py-3 text-xs text-muted font-semibold">Kullanıcı</th>
-                <th className="px-4 py-3 text-xs text-muted font-semibold">Son Görülme</th>
-                <th className="px-4 py-3 text-xs text-muted font-semibold w-28">İşlemler</th>
+                <th className="px-4 py-3 text-xs text-muted font-semibold">{t('mag.macAddress')}</th>
+                <th className="px-4 py-3 text-xs text-muted font-semibold">{t('mag.user')}</th>
+                <th className="px-4 py-3 text-xs text-muted font-semibold">{t('mag.lastSeen')}</th>
+                <th className="px-4 py-3 text-xs text-muted font-semibold w-28">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -138,16 +140,16 @@ export function MagDevicesPage() {
                         <span className={cn('ml-2 text-xs', d.user.status === 'ACTIVE' ? 'text-emerald-400' : 'text-muted')}>{d.user.status}</span>
                       </div>
                     ) : (
-                      <span className="text-muted text-xs italic">Atanmamış</span>
+                      <span className="text-muted text-xs italic">{t('mag.unassigned')}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">{formatDate(d.lastSeen)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(d)} className="p-1.5 rounded hover:bg-surface-2 text-muted hover:text-blue-400 transition-colors" title="Kullanıcı Değiştir">
+                      <button onClick={() => openEdit(d)} className="p-1.5 rounded hover:bg-surface-2 text-muted hover:text-blue-400 transition-colors" title={t('mag.changeUser')}>
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => setDeleteId(d.id)} className="p-1.5 rounded hover:bg-surface-2 text-muted hover:text-danger transition-colors" title="Sil">
+                      <button onClick={() => setDeleteId(d.id)} className="p-1.5 rounded hover:bg-surface-2 text-muted hover:text-danger transition-colors" title={t('common.delete')}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -160,30 +162,30 @@ export function MagDevicesPage() {
       </div>
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Cihaz Ekle" size="sm">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('mag.addDevice')} size="sm">
         <div className="space-y-4">
           <div>
-            <label className="label">MAC Adresi *</label>
+            <label className="label">{t('mag.macAddressRequired')}</label>
             <input className="input font-mono uppercase" placeholder="AA:BB:CC:DD:EE:FF" value={macInput} onChange={(e) => setMacInput(e.target.value)} />
           </div>
           {UserSelector}
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
-            <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
+            <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
             <button onClick={handleCreate} disabled={createDevice.isPending || !macInput.trim()} className="btn-primary">
-              {createDevice.isPending ? 'Ekleniyor…' : 'Ekle'}
+              {createDevice.isPending ? t('mag.adding') : t('common.add')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Edit modal */}
-      <Modal open={!!editDevice} onClose={() => setEditDevice(null)} title={`Kullanıcı Değiştir — ${editDevice?.mac ?? ''}`} size="sm">
+      <Modal open={!!editDevice} onClose={() => setEditDevice(null)} title={t('mag.changeUserTitle', { mac: editDevice?.mac ?? '' })} size="sm">
         <div className="space-y-4">
           {UserSelector}
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
-            <button onClick={() => setEditDevice(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setEditDevice(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button onClick={handleUpdate} disabled={updateDevice.isPending} className="btn-primary">
-              {updateDevice.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {updateDevice.isPending ? t('mag.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -192,9 +194,9 @@ export function MagDevicesPage() {
       {/* Delete confirm */}
       <ConfirmDialog
         open={!!deleteId}
-        title="Cihazı Sil"
-        message="Bu MAG cihazı listeden kalıcı olarak silinecek."
-        confirmLabel="Sil"
+        title={t('mag.deleteDevice')}
+        message={t('mag.deleteConfirm')}
+        confirmLabel={t('common.delete')}
         onConfirm={() => {
           if (deleteId) deleteDevice.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
         }}

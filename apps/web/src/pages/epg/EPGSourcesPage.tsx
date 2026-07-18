@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, RefreshCw, CheckCircle, XCircle, Radio } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 
 export function EPGSourcesPage() {
+  const { t } = useTranslation();
   const { data: sources = [], isLoading } = useEPGSources();
   const createSource = useCreateEPGSource();
   const deleteSource = useDeleteEPGSource();
@@ -41,7 +43,7 @@ export function EPGSourcesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('EPG kaynağı silinsin mi?')) return;
+    if (!confirm(t('epg.sources.confirmDelete'))) return;
     await deleteSource.mutateAsync(id);
   };
 
@@ -52,7 +54,7 @@ export function EPGSourcesPage() {
   const columns: Column<EPGSource>[] = [
     {
       key: 'name',
-      header: 'Kaynak',
+      header: t('epg.sources.colSource'),
       render: (row) => (
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -67,21 +69,21 @@ export function EPGSourcesPage() {
     },
     {
       key: 'status',
-      header: 'Durum',
+      header: t('common.status'),
       render: (row) => (
         <span className={cn('badge', row.isActive ? 'badge-success' : 'badge-gray')}>
-          {row.isActive ? 'Aktif' : 'Pasif'}
+          {row.isActive ? t('common.active') : t('common.inactive')}
         </span>
       ),
     },
     {
       key: 'daysToKeep',
-      header: 'Saklama',
-      render: (row) => <span className="text-sm">{row.daysToKeep ?? 7} gün</span>,
+      header: t('epg.sources.colRetention'),
+      render: (row) => <span className="text-sm">{t('epg.sources.daysValue', { n: row.daysToKeep ?? 7 })}</span>,
     },
     {
       key: 'updatedAt',
-      header: 'Son Güncelleme',
+      header: t('epg.sources.colUpdatedAt'),
       render: (row) =>
         row.updatedAt
           ? new Date(row.updatedAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -105,7 +107,7 @@ export function EPGSourcesPage() {
             onClick={() => void handleMassAssign(row.id)}
             disabled={massAssign.isPending}
             className="btn btn-ghost py-1 px-2 text-xs"
-            title="Toplu Eşleştir"
+            title={t('epg.sources.massAssign')}
           >
             <CheckCircle className="w-3.5 h-3.5 text-success" />
           </button>
@@ -113,7 +115,7 @@ export function EPGSourcesPage() {
             onClick={() => void handleDelete(row.id)}
             disabled={deleteSource.isPending}
             className="btn btn-ghost py-1 px-2 text-xs"
-            title="Sil"
+            title={t('common.delete')}
           >
             <XCircle className="w-3.5 h-3.5 text-danger" />
           </button>
@@ -126,45 +128,45 @@ export function EPGSourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">EPG Kaynakları</h1>
-          <p className="text-sm text-muted mt-0.5">XMLTV kaynaklarını yönet ve eşleştir</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('nav.epgSources')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('epg.sources.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/epg/mass-assign" className="btn btn-ghost text-sm">
-            <CheckCircle className="w-4 h-4" /> Toplu Eşleştir
+            <CheckCircle className="w-4 h-4" /> {t('epg.sources.massAssign')}
           </Link>
           <button
             onClick={() => void parseAll.mutateAsync()}
             disabled={parseAll.isPending}
             className="btn btn-ghost text-sm"
           >
-            <RefreshCw className={cn('w-4 h-4', parseAll.isPending && 'animate-spin')} /> Tümünü Güncelle
+            <RefreshCw className={cn('w-4 h-4', parseAll.isPending && 'animate-spin')} /> {t('epg.sources.updateAll')}
           </button>
           <button onClick={() => setShowAdd(true)} className="btn btn-primary">
-            <Plus className="w-4 h-4" /> Kaynak Ekle
+            <Plus className="w-4 h-4" /> {t('epg.sources.addSource')}
           </button>
         </div>
       </div>
 
-      <DataTable columns={columns} data={sources} isLoading={isLoading} emptyMessage="EPG kaynağı bulunamadı" />
+      <DataTable columns={columns} data={sources} isLoading={isLoading} emptyMessage={t('epg.sources.empty')} />
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="EPG Kaynağı Ekle" size="md">
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title={t('epg.sources.addSourceTitle')} size="md">
         <form onSubmit={(e) => { void handleCreate(e); }} className="space-y-4 p-6">
           <div>
-            <label className="label">Kaynak Adı</label>
-            <input required className="input" value={form.name} onChange={f('name')} placeholder="XMLTV Turkey" />
+            <label className="label">{t('epg.sources.sourceName')}</label>
+            <input required className="input" value={form.name} onChange={f('name')} placeholder={t('epg.sources.sourceNamePlaceholder')} />
           </div>
           <div>
             <label className="label">XMLTV URL</label>
             <input required className="input" value={form.xmltvUrl} onChange={f('xmltvUrl')} placeholder="http://example.com/epg.xml" />
           </div>
           <div>
-            <label className="label">Saklama Süresi (gün)</label>
+            <label className="label">{t('epg.sources.retentionDays')}</label>
             <input type="number" className="input" value={form.daysToKeep} onChange={f('daysToKeep')} min="1" max="30" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>İptal</button>
-            <button type="submit" className="btn btn-primary" disabled={createSource.isPending}>Ekle</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>{t('common.cancel')}</button>
+            <button type="submit" className="btn btn-primary" disabled={createSource.isPending}>{t('common.add')}</button>
           </div>
         </form>
       </Modal>

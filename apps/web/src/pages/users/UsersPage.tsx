@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Search, Copy, Check, Clock, Wifi, Ban, Trash2, Pencil, QrCode, Download, RefreshCw, Activity, SlidersHorizontal, ChevronDown, ChevronUp, BarChart2, User as UserIcon, Timer, Database, Globe, Monitor, Smartphone, Tv, ChevronLeft, ChevronRight, Key, UserCheck, UserX, Shield, Hash, X, Zap, Shuffle, Link, ListVideo, ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react';
 import type { ActivityFilters } from '@/hooks/useUserActivity';
 import { useBulkAction } from '@/hooks/useBulkAction';
@@ -86,6 +87,7 @@ function setParam(key: string, value: string) {
 }
 
 export function UsersPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState(() => getParam('search'));
   const [status, setStatus] = useState(() => getParam('status'));
@@ -168,7 +170,7 @@ export function UsersPage() {
       if (action === 'reset-password' && result.results) {
         setBulkPasswordResults(result.results);
       } else {
-        toast.success(`${result.affected} kullanıcı güncellendi`);
+        toast.success(t('users.toastUsersUpdated', { n: result.affected }));
       }
       setBulkActionType(null);
       setBulkValueInput('');
@@ -185,8 +187,8 @@ export function UsersPage() {
 
   const exportCsv = () => {
     const rows = data?.items ?? [];
-    if (!rows.length) { toast.error('Dışa aktarılacak veri yok'); return; }
-    const header = ['Kullanıcı Adı', 'Durum', 'Paket', 'Bitiş Tarihi', 'Maks Bağlantı', 'Oluşturulma'];
+    if (!rows.length) { toast.error(t('users.noExportData')); return; }
+    const header = [t('users.username'), t('users.status'), t('users.package'), t('users.expiresAt'), t('users.maxConnections'), t('users.createdAt')];
     const lines = rows.map((u: User) => [
       u.username,
       u.status,
@@ -208,7 +210,7 @@ export function UsersPage() {
   const columns: Column<User>[] = [
     {
       key: 'username',
-      header: 'Kullanıcı',
+      header: t('users.colUser'),
       render: (r) => (
         <div className="flex items-center gap-2">
           <div>
@@ -223,7 +225,7 @@ export function UsersPage() {
           <button
             onClick={(e) => { e.stopPropagation(); copyCredentials(r.username, r.id); }}
             className="text-muted hover:text-slate-200 transition-colors"
-            title="Kopyala"
+            title={t('users.copy')}
           >
             {copiedId === r.id ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
           </button>
@@ -232,19 +234,19 @@ export function UsersPage() {
     },
     {
       key: 'status',
-      header: 'Durum',
+      header: t('users.status'),
       render: (r) => <StatusBadge status={r.status} />,
     },
     {
       key: 'expiresAt',
-      header: 'Son Tarih',
+      header: t('users.colExpiry'),
       render: (r) => {
         const days = daysLeft(r.expiresAt);
         return (
           <div>
             <div className="text-sm text-slate-300">{formatDate(r.expiresAt)}</div>
             <div className={cn('text-xs', days < 7 ? 'text-danger' : days < 30 ? 'text-warning' : 'text-muted')}>
-              {days < 0 ? 'Süresi doldu' : `${days} gün kaldı`}
+              {days < 0 ? t('users.expired') : t('users.daysLeft', { days })}
             </div>
           </div>
         );
@@ -252,7 +254,7 @@ export function UsersPage() {
     },
     {
       key: 'maxConnections',
-      header: 'Bağlantı',
+      header: t('users.connections'),
       className: 'text-center w-24',
       headerClassName: 'text-center',
       render: (r) => (
@@ -266,30 +268,30 @@ export function UsersPage() {
     },
     {
       key: 'role',
-      header: 'Rol',
+      header: t('users.role'),
       render: (r) => (
         <span className="badge bg-primary/10 text-primary-light">{r.role}</span>
       ),
     },
     {
       key: 'actions',
-      header: 'İşlemler',
+      header: t('common.actions'),
       className: 'w-44',
       render: (r) => (
         <div className="flex items-center gap-1">
-          <ActionBtn icon={Clock} title="Süre uzat" color="text-info"
+          <ActionBtn icon={Clock} title={t('users.actionExtend')} color="text-info"
             onClick={() => { setExtendId(r.id); setExtendDays(30); }} />
-          <ActionBtn icon={Pencil} title="Düzenle" color="text-muted" onClick={() => setDetailUserId(r.id)} />
-          <ActionBtn icon={Wifi} title="Bağlantıları kes" color="text-warning"
+          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-muted" onClick={() => setDetailUserId(r.id)} />
+          <ActionBtn icon={Wifi} title={t('users.actionKick')} color="text-warning"
             onClick={() => setKickId(r.id)} />
           {r.status === 'BANNED' ? (
-            <ActionBtn icon={Check} title="Yasağı kaldır" color="text-success"
+            <ActionBtn icon={Check} title={t('users.unban')} color="text-success"
               onClick={() => unbanUser.mutate(r.id)} />
           ) : (
-            <ActionBtn icon={Ban} title="Yasakla" color="text-warning"
+            <ActionBtn icon={Ban} title={t('users.ban')} color="text-warning"
               onClick={() => setBanId(r.id)} />
           )}
-          <ActionBtn icon={QrCode} title="QR Kod" color="text-info"
+          <ActionBtn icon={QrCode} title={t('users.qrCode')} color="text-info"
             onClick={async () => {
               setQrUserId(r.id);
               setQrLoading(true);
@@ -297,15 +299,15 @@ export function UsersPage() {
                 const res = await api.get<{ success: boolean; data: { qrCodeImage: string; serverUrl: string; username: string } }>(`/users/${r.id}/qr`);
                 setQrData(res.data.data);
               } catch {
-                toast.error('QR kod alınamadı');
+                toast.error(t('users.qrFailed'));
                 setQrUserId(null);
               } finally {
                 setQrLoading(false);
               }
             }} />
-          <ActionBtn icon={Activity} title="Aktivite" color="text-primary"
+          <ActionBtn icon={Activity} title={t('users.activity')} color="text-primary"
             onClick={() => setActivityUserId(r.id)} />
-          <ActionBtn icon={Trash2} title="Sil" color="text-danger"
+          <ActionBtn icon={Trash2} title={t('common.delete')} color="text-danger"
             onClick={() => setDeleteId(r.id)} />
         </div>
       ),
@@ -315,25 +317,25 @@ export function UsersPage() {
   return (
     <div>
       <PageHeader
-        title="Kullanıcılar"
-        description={`${data?.total ?? 0} kullanıcı`}
+        title={t('users.title')}
+        description={t('users.userCount', { n: data?.total ?? 0 })}
         actions={
           <>
-            <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title="CSV İndir">
+            <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title={t('users.downloadCsv')}>
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Rapor İndir</span>
+              <span className="hidden sm:inline">{t('users.downloadReport')}</span>
             </button>
             <button onClick={() => setShowTrialCreate(true)} className="btn-secondary flex items-center gap-1.5 text-sm text-amber-300 border-amber-300/30 hover:border-amber-300/60">
               <Timer className="w-4 h-4" />
-              <span className="hidden sm:inline">Trial Ekle</span>
+              <span className="hidden sm:inline">{t('users.addTrial')}</span>
             </button>
             <button onClick={() => setShowQuickCreate(true)} className="btn-secondary flex items-center gap-1.5 text-sm text-amber-400 border-amber-400/30 hover:border-amber-400/60">
               <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">Hızlı Ekle</span>
+              <span className="hidden sm:inline">{t('users.quickAdd')}</span>
             </button>
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Kullanıcı Ekle</span>
+              <span className="hidden sm:inline">{t('users.addUser')}</span>
             </button>
           </>
         }
@@ -343,8 +345,8 @@ export function UsersPage() {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 mb-3 bg-primary/10 border border-primary/20 rounded-xl">
           <div className="flex items-center gap-2 mr-2">
-            <span className="text-sm font-semibold text-primary">{selectedIds.size} kullanıcı seçildi</span>
-            <button onClick={() => setSelectedIds(new Set())} className="text-muted hover:text-fg transition-colors" title="Seçimi temizle">
+            <span className="text-sm font-semibold text-primary">{t('users.usersSelected', { n: selectedIds.size })}</span>
+            <button onClick={() => setSelectedIds(new Set())} className="text-muted hover:text-fg transition-colors" title={t('users.clearSelection')}>
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -352,31 +354,31 @@ export function UsersPage() {
           <div className="flex flex-wrap gap-1.5">
             <button onClick={() => { setBulkValueInput('30'); setBulkActionType('extend'); }}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
-              <Clock className="w-3 h-3" /> Uzat
+              <Clock className="w-3 h-3" /> {t('users.extend')}
             </button>
             <button onClick={() => setBulkActionType('suspend')}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-warning/10 hover:bg-warning/20 text-warning transition-colors">
-              <Shield className="w-3 h-3" /> Askıya Al
+              <Shield className="w-3 h-3" /> {t('users.suspend')}
             </button>
             <button onClick={() => setBulkActionType('activate')}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-success/10 hover:bg-success/20 text-success transition-colors">
-              <UserCheck className="w-3 h-3" /> Aktifleştir
+              <UserCheck className="w-3 h-3" /> {t('users.activate')}
             </button>
             <button onClick={() => setBulkActionType('delete')}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger transition-colors">
-              <UserX className="w-3 h-3" /> Sil
+              <UserX className="w-3 h-3" /> {t('common.delete')}
             </button>
             <button onClick={() => setBulkActionType('reset-password')}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
-              <Key className="w-3 h-3" /> Şifre Sıfırla
+              <Key className="w-3 h-3" /> {t('users.resetPassword')}
             </button>
             <button onClick={() => { setBulkValueInput('1'); setBulkActionType('max-connections'); }}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
-              <Hash className="w-3 h-3" /> Max Bağlantı
+              <Hash className="w-3 h-3" /> {t('users.maxConnShort')}
             </button>
             <button onClick={() => setShowBulkRenew(true)}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-slate-300 transition-colors">
-              <RefreshCw className="w-3 h-3" /> Paket Yenile
+              <RefreshCw className="w-3 h-3" /> {t('users.renewPackage')}
             </button>
           </div>
         </div>
@@ -390,7 +392,7 @@ export function UsersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
             <input
               className="input pl-9 h-9"
-              placeholder="Kullanıcı adı ara…"
+              placeholder={t('users.searchPlaceholder')}
               value={search}
               onChange={(e) => updateFilter(setSearch, 'search')(e.target.value)}
             />
@@ -400,18 +402,18 @@ export function UsersPage() {
             value={status}
             onChange={(e) => updateFilter(setStatus, 'status')(e.target.value)}
           >
-            <option value="">Tüm Durumlar</option>
-            <option value="ACTIVE">Aktif</option>
-            <option value="EXPIRED">Süresi Doldu</option>
-            <option value="BANNED">Yasaklı</option>
-            <option value="DISABLED">Devre Dışı</option>
+            <option value="">{t('users.allStatuses')}</option>
+            <option value="ACTIVE">{t('common.active')}</option>
+            <option value="EXPIRED">{t('users.statusExpired')}</option>
+            <option value="BANNED">{t('users.statusBanned')}</option>
+            <option value="DISABLED">{t('users.statusDisabled')}</option>
           </select>
           <button
             onClick={() => setShowFilters((v) => !v)}
             className={cn('btn-ghost h-9 flex items-center gap-1.5 text-sm', showFilters && 'text-primary')}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            Gelişmiş Filtre
+            {t('users.advancedFilter')}
             {showFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
@@ -424,7 +426,7 @@ export function UsersPage() {
               value={resellerId}
               onChange={(e) => updateFilter(setResellerId, 'resellerId')(e.target.value)}
             >
-              <option value="">Tüm Resellerlar</option>
+              <option value="">{t('users.allResellers')}</option>
               {resellers.map((r: { id: string; username: string }) => (
                 <option key={r.id} value={r.id}>{r.username}</option>
               ))}
@@ -434,7 +436,7 @@ export function UsersPage() {
               value={packageId}
               onChange={(e) => updateFilter(setPackageId, 'packageId')(e.target.value)}
             >
-              <option value="">Tüm Paketler</option>
+              <option value="">{t('users.allPackages')}</option>
               {packages.map((p: { id: string; name: string }) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -444,10 +446,10 @@ export function UsersPage() {
               value={expiresInDays}
               onChange={(e) => updateFilter(setExpiresInDays, 'expiresInDays')(e.target.value)}
             >
-              <option value="">Bitiş — Tümü</option>
-              <option value="7">7 gün içinde bitiyor</option>
-              <option value="14">14 gün içinde bitiyor</option>
-              <option value="30">30 gün içinde bitiyor</option>
+              <option value="">{t('users.expiryAll')}</option>
+              <option value="7">{t('users.expiring7')}</option>
+              <option value="14">{t('users.expiring14')}</option>
+              <option value="30">{t('users.expiring30')}</option>
             </select>
             <select
               className="input h-9 w-auto min-w-40"
@@ -460,9 +462,9 @@ export function UsersPage() {
                 setPage(1);
               }}
             >
-              <option value="">Tüm Hesaplar</option>
-              <option value="true">Trial Hesaplar</option>
-              <option value="false">Normal Hesaplar</option>
+              <option value="">{t('users.allAccounts')}</option>
+              <option value="true">{t('users.trialAccounts')}</option>
+              <option value="false">{t('users.normalAccounts')}</option>
             </select>
             {(resellerId || packageId || expiresInDays) && (
               <button
@@ -473,7 +475,7 @@ export function UsersPage() {
                 }}
                 className="btn-ghost h-9 text-sm text-red-400"
               >
-                Temizle
+                {t('users.clear')}
               </button>
             )}
           </div>
@@ -495,18 +497,18 @@ export function UsersPage() {
           selectedIds={selectedIds}
           onSelectId={handleSelectId}
           onSelectAll={handleSelectAll}
-          emptyTitle="Kullanıcı bulunamadı"
-          emptyDescription="Arama kriterlerinize uygun kullanıcı yok."
+          emptyTitle={t('users.noUsers')}
+          emptyDescription={t('users.noUsersDesc')}
         />
       </div>
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Yeni Kullanıcı" size="md">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('users.newUser')} size="md">
         <div className="space-y-4">
           {/* Package selector */}
           {packages.length > 0 && (
             <div>
-              <label className="label">Paket</label>
+              <label className="label">{t('users.package')}</label>
               <select
                 className="input"
                 value={createForm.packageId}
@@ -527,30 +529,30 @@ export function UsersPage() {
                   }
                 }}
               >
-                <option value="">Paket seçin (isteğe bağlı)…</option>
+                <option value="">{t('users.selectPackageOptional')}</option>
                 {packages.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {p.durationDays}g / {p.maxConnections} bağlantı / {p.creditCost} kredi
+                    {t('users.packageOption', { name: p.name, days: p.durationDays, conns: p.maxConnections, cost: p.creditCost })}
                   </option>
                 ))}
               </select>
               {createForm.packageId && (() => {
                 const pkg = packages.find((p) => p.id === createForm.packageId);
                 return pkg ? (
-                  <p className="text-xs text-warning mt-1">Bu kullanıcı {pkg.creditCost} kredi harcayacak</p>
+                  <p className="text-xs text-warning mt-1">{t('users.willSpendCredits', { cost: pkg.creditCost })}</p>
                 ) : null;
               })()}
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Kullanıcı Adı</label>
+              <label className="label">{t('users.username')}</label>
               <input className="input" placeholder="user123"
                 value={createForm.username}
                 onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Şifre</label>
+              <label className="label">{t('users.password')}</label>
               <input className="input" type="password" placeholder="••••••"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} />
@@ -558,32 +560,32 @@ export function UsersPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Maks. Bağlantı</label>
+              <label className="label">{t('users.maxConnLabel')}</label>
               <input className="input" type="number" min={1} max={100}
                 value={createForm.maxConnections}
                 onChange={(e) => setCreateForm((f) => ({ ...f, maxConnections: parseInt(e.target.value) || 1 }))} />
             </div>
             <div>
-              <label className="label">Son Tarih</label>
+              <label className="label">{t('users.colExpiry')}</label>
               <input className="input" type="date"
                 value={createForm.expiresAt}
                 onChange={(e) => setCreateForm((f) => ({ ...f, expiresAt: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="label">Notlar (isteğe bağlı)</label>
-            <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
+            <label className="label">{t('users.notesOptional')}</label>
+            <textarea className="input min-h-[60px] resize-none" placeholder={t('users.addNote')}
               value={createForm.notes}
               onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
           {bouquets.length > 0 && (
             <div>
-              <label className="label">Bouquet'ler (isteğe bağlı)</label>
+              <label className="label">{t('users.bouquetsOptional')}</label>
               <MultiSelect
                 options={bouquets.map((b) => ({ value: b.id, label: b.name }))}
                 value={createForm.bouquetIds}
                 onChange={(v) => setCreateForm((f) => ({ ...f, bouquetIds: v }))}
-                placeholder="Bouquet seçin…"
+                placeholder={t('users.selectBouquet')}
               />
               {createForm.bouquetIds.length === 0 && (() => {
                 const pkg = packages.find((p) => p.id === createForm.packageId);
@@ -591,20 +593,20 @@ export function UsersPage() {
                 if (pkg && pkgBouquets.length > 0) {
                   return (
                     <p className="text-xs text-info mt-1.5">
-                      Bu paket şu bouquet'leri içerir: {pkgBouquets.map((b) => b.name).join(', ')}
+                      {t('users.packageBouquets', { list: pkgBouquets.map((b) => b.name).join(', ') })}
                     </p>
                   );
                 }
                 return (
                   <p className="text-xs text-muted mt-1.5">
-                    Hiçbir şey seçilmezse kullanıcıya varsayılan bouquet atanır (playlist boş kalmaz).
+                    {t('users.defaultBouquetHint')}
                   </p>
                 );
               })()}
             </div>
           )}
           <div className="flex gap-2 justify-end pt-2">
-            <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
+            <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={createUser.isPending}
               onClick={() => {
@@ -623,22 +625,22 @@ export function UsersPage() {
                     { onSuccess: () => { setShowCreate(false); const d2 = new Date(); d2.setDate(d2.getDate() + 30); setCreateForm({ username: '', password: '', maxConnections: 1, expiresAt: d2.toISOString().split('T')[0], notes: '', bouquetIds: [], packageId: '' }); } },
                   );
                 } else {
-                  toast.error('Kullanıcı adı ve şifre zorunludur');
+                  toast.error(t('users.credsRequired'));
                 }
               }}
               className="btn-primary"
             >
-              {createUser.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {createUser.isPending ? t('users.saving') : t('common.save')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Extend modal */}
-      <Modal open={!!extendId} onClose={() => setExtendId(null)} title="Süre Uzat" size="sm">
+      <Modal open={!!extendId} onClose={() => setExtendId(null)} title={t('users.extendTime')} size="sm">
         <div className="space-y-4">
           <div>
-            <label className="label">Kaç gün uzatılsın?</label>
+            <label className="label">{t('users.howManyDays')}</label>
             <input
               className="input"
               type="number"
@@ -648,7 +650,7 @@ export function UsersPage() {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setExtendId(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setExtendId(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={extendUser.isPending}
               onClick={() => {
@@ -660,31 +662,31 @@ export function UsersPage() {
               }}
               className="btn-primary"
             >
-              {extendUser.isPending ? 'Uzatılıyor…' : 'Uzat'}
+              {extendUser.isPending ? t('users.extending') : t('users.extend')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Bulk Renew Modal */}
-      <Modal open={showBulkRenew} onClose={() => setShowBulkRenew(false)} title={`${selectedIds.size} Kullanıcıyı Yenile`} size="sm">
+      <Modal open={showBulkRenew} onClose={() => setShowBulkRenew(false)} title={t('users.renewNUsers', { n: selectedIds.size })} size="sm">
         <div className="space-y-4">
           <div>
-            <label className="label">Paket Seç</label>
+            <label className="label">{t('users.selectPackage')}</label>
             <select className="input" value={bulkPackageId} onChange={(e) => setBulkPackageId(e.target.value)}>
-              <option value="">— Paket seçin —</option>
+              <option value="">{t('users.selectPackageDash')}</option>
               {packages.map((p) => (
-                <option key={p.id} value={p.id}>{p.name} ({p.durationDays} gün, {p.creditCost} kredi)</option>
+                <option key={p.id} value={p.id}>{t('users.packageOptionShort', { name: p.name, days: p.durationDays, cost: p.creditCost })}</option>
               ))}
             </select>
           </div>
           {bulkPackageId && (
             <p className="text-xs text-muted">
-              Seçilen {selectedIds.size} kullanıcı {packages.find((p) => p.id === bulkPackageId)?.durationDays ?? 0} gün uzatılacak.
+              {t('users.renewInfo', { n: selectedIds.size, days: packages.find((p) => p.id === bulkPackageId)?.durationDays ?? 0 })}
             </p>
           )}
           <div className="flex gap-2 justify-end">
-            <button className="btn-ghost" onClick={() => setShowBulkRenew(false)}>İptal</button>
+            <button className="btn-ghost" onClick={() => setShowBulkRenew(false)}>{t('common.cancel')}</button>
             <button
               className="btn-primary flex items-center gap-2"
               disabled={!bulkPackageId || bulkRenew.isPending}
@@ -697,7 +699,7 @@ export function UsersPage() {
               }}
             >
               <RefreshCw className="w-4 h-4" />
-              {bulkRenew.isPending ? 'Yenileniyor…' : 'Yenile'}
+              {bulkRenew.isPending ? t('users.renewing') : t('users.renew')}
             </button>
           </div>
         </div>
@@ -708,9 +710,9 @@ export function UsersPage() {
         open={!!banId}
         onClose={() => setBanId(null)}
         onConfirm={() => { if (banId) banUser.mutate(banId, { onSuccess: () => setBanId(null) }); }}
-        title="Kullanıcıyı Yasakla"
-        message="Bu kullanıcı yasaklanacak ve aktif bağlantıları kesilecek."
-        confirmLabel="Yasakla"
+        title={t('users.banUserTitle')}
+        message={t('users.banUserMsg')}
+        confirmLabel={t('users.ban')}
         loading={banUser.isPending}
       />
 
@@ -718,9 +720,9 @@ export function UsersPage() {
         open={!!kickId}
         onClose={() => setKickId(null)}
         onConfirm={() => { if (kickId) kickUser.mutate(kickId, { onSuccess: () => setKickId(null) }); }}
-        title="Bağlantıları Kes"
-        message="Bu kullanıcının tüm aktif bağlantıları kesilecek (hesap kapatılmaz)."
-        confirmLabel="Bağlantıları Kes"
+        title={t('users.kickConnections')}
+        message={t('users.kickMsg')}
+        confirmLabel={t('users.kickConnections')}
         loading={kickUser.isPending}
       />
 
@@ -729,32 +731,32 @@ export function UsersPage() {
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={() => { if (deleteId) deleteUser.mutate(deleteId, { onSuccess: () => setDeleteId(null) }); }}
-        title="Kullanıcıyı Sil"
-        message="Bu kullanıcı devre dışı bırakılacak (DISABLED). Gerçek silme yapılmaz."
-        confirmLabel="Sil"
+        title={t('users.deleteUserTitle')}
+        message={t('users.deleteUserMsg')}
+        confirmLabel={t('common.delete')}
         loading={deleteUser.isPending}
       />
 
       {/* QR Code Modal */}
-      <Modal open={!!qrUserId} onClose={() => { setQrUserId(null); setQrData(null); }} title="Kullanıcı QR Kodu" size="sm">
+      <Modal open={!!qrUserId} onClose={() => { setQrUserId(null); setQrData(null); }} title={t('users.userQrCode')} size="sm">
         <div className="space-y-4 py-2">
-          {qrLoading && <p className="text-muted text-sm text-center">Yükleniyor…</p>}
+          {qrLoading && <p className="text-muted text-sm text-center">{t('common.loading')}</p>}
           {qrData && (
             <>
               <div className="flex flex-col items-center gap-3">
-                <img src={qrData.qrCodeImage} alt="QR Kod" className="w-52 h-52 rounded-xl border border-border" />
-                <p className="text-xs text-muted text-center">IPTV Smarters ile tarayın</p>
+                <img src={qrData.qrCodeImage} alt={t('users.qrCode')} className="w-52 h-52 rounded-xl border border-border" />
+                <p className="text-xs text-muted text-center">{t('users.scanWithSmarters')}</p>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted">Kullanıcı adı</span>
+                  <span className="text-muted">{t('users.usernameLower')}</span>
                   <span className="text-slate-200 font-mono">{qrData.username}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">Sunucu URL</span>
+                  <span className="text-muted">{t('users.serverUrl')}</span>
                   <span className="text-slate-200 font-mono text-xs">{qrData.serverUrl}</span>
                 </div>
-                <p className="text-xs text-yellow-400">Şifreyi IPTV Smarters'a manuel girin.</p>
+                <p className="text-xs text-yellow-400">{t('users.enterPasswordManually')}</p>
               </div>
               <button
                 className="btn-secondary w-full flex items-center justify-center gap-2 text-sm"
@@ -765,7 +767,7 @@ export function UsersPage() {
                   a.click();
                 }}
               >
-                <Download className="w-4 h-4" /> PNG İndir
+                <Download className="w-4 h-4" /> {t('users.downloadPng')}
               </button>
             </>
           )}
@@ -777,9 +779,9 @@ export function UsersPage() {
         open={bulkActionType === 'suspend'}
         onClose={() => setBulkActionType(null)}
         onConfirm={() => void executeBulkAction('suspend')}
-        title={`${selectedIds.size} Kullanıcıyı Askıya Al`}
-        message="Seçilen kullanıcılar yasaklanacak (BANNED). Aktif bağlantıları kesilmeyecek."
-        confirmLabel="Askıya Al"
+        title={t('users.suspendNUsers', { n: selectedIds.size })}
+        message={t('users.suspendMsg')}
+        confirmLabel={t('users.suspend')}
         loading={bulkActionMut.isPending}
       />
 
@@ -788,9 +790,9 @@ export function UsersPage() {
         open={bulkActionType === 'activate'}
         onClose={() => setBulkActionType(null)}
         onConfirm={() => void executeBulkAction('activate')}
-        title={`${selectedIds.size} Kullanıcıyı Aktifleştir`}
-        message="Seçilen kullanıcıların durumu ACTIVE yapılacak."
-        confirmLabel="Aktifleştir"
+        title={t('users.activateNUsers', { n: selectedIds.size })}
+        message={t('users.activateMsg')}
+        confirmLabel={t('users.activate')}
         loading={bulkActionMut.isPending}
       />
 
@@ -799,9 +801,9 @@ export function UsersPage() {
         open={bulkActionType === 'delete'}
         onClose={() => setBulkActionType(null)}
         onConfirm={() => void executeBulkAction('delete')}
-        title={`${selectedIds.size} Kullanıcıyı Sil`}
-        message="Seçilen kullanıcılar devre dışı bırakılacak (DISABLED). Gerçek silme yapılmaz."
-        confirmLabel="Sil"
+        title={t('users.deleteNUsers', { n: selectedIds.size })}
+        message={t('users.deleteUserMsg')}
+        confirmLabel={t('common.delete')}
         loading={bulkActionMut.isPending}
       />
 
@@ -810,17 +812,17 @@ export function UsersPage() {
         open={bulkActionType === 'reset-password'}
         onClose={() => setBulkActionType(null)}
         onConfirm={() => void executeBulkAction('reset-password')}
-        title={`${selectedIds.size} Kullanıcının Şifresini Sıfırla`}
-        message="Her kullanıcı için rastgele 8 karakterlik yeni şifre üretilecek. Mevcut şifreler geçersiz olacak."
-        confirmLabel="Sıfırla"
+        title={t('users.resetPasswordNUsers', { n: selectedIds.size })}
+        message={t('users.resetPasswordMsg')}
+        confirmLabel={t('users.reset')}
         loading={bulkActionMut.isPending}
       />
 
       {/* Bulk: Uzat */}
-      <Modal open={bulkActionType === 'extend'} onClose={() => setBulkActionType(null)} title={`${selectedIds.size} Kullanıcı Süresini Uzat`} size="sm">
+      <Modal open={bulkActionType === 'extend'} onClose={() => setBulkActionType(null)} title={t('users.extendNUsers', { n: selectedIds.size })} size="sm">
         <div className="space-y-4">
           <div>
-            <label className="label">Kaç gün uzatılsın?</label>
+            <label className="label">{t('users.howManyDays')}</label>
             <input type="number" min={1} max={3650} className="input"
               value={bulkValueInput}
               onChange={(e) => setBulkValueInput(e.target.value)}
@@ -828,24 +830,24 @@ export function UsersPage() {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>İptal</button>
+            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>{t('common.cancel')}</button>
             <button
               className="btn-primary flex items-center gap-2"
               disabled={!bulkValueInput || parseInt(bulkValueInput) < 1 || bulkActionMut.isPending}
               onClick={() => void executeBulkAction('extend', parseInt(bulkValueInput))}
             >
               <Clock className="w-4 h-4" />
-              {bulkActionMut.isPending ? 'Uzatılıyor…' : 'Uzat'}
+              {bulkActionMut.isPending ? t('users.extending') : t('users.extend')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Bulk: Max Bağlantı */}
-      <Modal open={bulkActionType === 'max-connections'} onClose={() => setBulkActionType(null)} title={`${selectedIds.size} Kullanıcı Maks. Bağlantı`} size="sm">
+      <Modal open={bulkActionType === 'max-connections'} onClose={() => setBulkActionType(null)} title={t('users.maxConnNUsers', { n: selectedIds.size })} size="sm">
         <div className="space-y-4">
           <div>
-            <label className="label">Yeni maks. bağlantı sayısı</label>
+            <label className="label">{t('users.newMaxConn')}</label>
             <input type="number" min={1} max={100} className="input"
               value={bulkValueInput}
               onChange={(e) => setBulkValueInput(e.target.value)}
@@ -853,30 +855,30 @@ export function UsersPage() {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>İptal</button>
+            <button className="btn-ghost" onClick={() => setBulkActionType(null)}>{t('common.cancel')}</button>
             <button
               className="btn-primary flex items-center gap-2"
               disabled={!bulkValueInput || parseInt(bulkValueInput) < 1 || bulkActionMut.isPending}
               onClick={() => void executeBulkAction('max-connections', parseInt(bulkValueInput))}
             >
               <Hash className="w-4 h-4" />
-              {bulkActionMut.isPending ? 'Uygulanıyor…' : 'Uygula'}
+              {bulkActionMut.isPending ? t('users.applying') : t('users.apply')}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Bulk: Şifre Sıfırlama Sonuçları */}
-      <Modal open={!!bulkPasswordResults} onClose={() => setBulkPasswordResults(undefined)} title="Yeni Şifreler" size="md">
+      <Modal open={!!bulkPasswordResults} onClose={() => setBulkPasswordResults(undefined)} title={t('users.newPasswords')} size="md">
         {bulkPasswordResults && (
           <div className="space-y-3">
-            <p className="text-xs text-warning">Bu şifreler bir daha görüntülenemez. Şimdi kopyalayın veya not alın.</p>
+            <p className="text-xs text-warning">{t('users.passwordsWarning')}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-2 text-muted font-medium text-xs">Kullanıcı</th>
-                    <th className="text-left py-2 text-muted font-medium text-xs">Yeni Şifre</th>
+                    <th className="text-left py-2 text-muted font-medium text-xs">{t('users.colUser')}</th>
+                    <th className="text-left py-2 text-muted font-medium text-xs">{t('users.newPassword')}</th>
                     <th className="w-8" />
                   </tr>
                 </thead>
@@ -888,10 +890,10 @@ export function UsersPage() {
                       <td className="py-2">
                         <button
                           className="text-muted hover:text-slate-200 transition-colors p-1"
-                          title="Kopyala"
+                          title={t('users.copy')}
                           onClick={() => {
                             void navigator.clipboard.writeText(r.newPassword);
-                            toast.success(`${r.username} şifresi kopyalandı`);
+                            toast.success(t('users.passwordCopied', { username: r.username }));
                           }}
                         >
                           <Copy className="w-3.5 h-3.5" />
@@ -908,12 +910,12 @@ export function UsersPage() {
                 onClick={() => {
                   const text = bulkPasswordResults.map((r) => `${r.username}\t${r.newPassword}`).join('\n');
                   void navigator.clipboard.writeText(text);
-                  toast.success('Tümü kopyalandı');
+                  toast.success(t('users.allCopied'));
                 }}
               >
-                <Copy className="w-3.5 h-3.5" /> Tümünü Kopyala
+                <Copy className="w-3.5 h-3.5" /> {t('users.copyAll')}
               </button>
-              <button className="btn-primary text-sm" onClick={() => setBulkPasswordResults(undefined)}>Kapat</button>
+              <button className="btn-primary text-sm" onClick={() => setBulkPasswordResults(undefined)}>{t('common.close')}</button>
             </div>
           </div>
         )}
@@ -963,6 +965,7 @@ interface UserDetailModalProps {
 }
 
 function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDetailModalProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'general' | 'activity' | 'stats' | 'playlists'>('general');
   const [editPassword, setEditPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -983,14 +986,14 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const days = daysLeft(user.expiresAt);
 
   return (
-    <Modal open onClose={onClose} title={`Kullanıcı: ${user.username}`} size="lg">
+    <Modal open onClose={onClose} title={t('users.userTitle', { username: user.username })} size="lg">
       {/* Tabs */}
       <div className="flex border-b border-border">
         {([
-          { key: 'general',   label: 'Genel',        icon: UserIcon },
-          { key: 'playlists', label: "Playlist'ler",  icon: ListVideo },
-          { key: 'activity',  label: 'Aktivite',      icon: Activity },
-          { key: 'stats',     label: 'İstatistikler', icon: BarChart2 },
+          { key: 'general',   label: t('users.tabGeneral'),   icon: UserIcon },
+          { key: 'playlists', label: t('users.tabPlaylists'), icon: ListVideo },
+          { key: 'activity',  label: t('users.activity'),     icon: Activity },
+          { key: 'stats',     label: t('users.tabStats'),     icon: BarChart2 },
         ] as { key: 'general' | 'activity' | 'stats' | 'playlists'; label: string; icon: React.ElementType }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -1010,19 +1013,19 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs text-muted mb-1">Kullanıcı Adı</div>
+              <div className="text-xs text-muted mb-1">{t('users.username')}</div>
               <div className="font-mono text-sm text-slate-200">{user.username}</div>
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Durum</div>
+              <div className="text-xs text-muted mb-1">{t('users.status')}</div>
               <StatusBadge status={user.status} />
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Rol</div>
+              <div className="text-xs text-muted mb-1">{t('users.role')}</div>
               <span className="badge bg-primary/10 text-primary-light">{user.role}</span>
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Bağlantı (aktif / maks)</div>
+              <div className="text-xs text-muted mb-1">{t('users.connActiveMax')}</div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-200 font-semibold">
                   {user._count?.connections ?? 0} / {user.maxConnections}
@@ -1032,45 +1035,45 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                     onClick={() => kickUser.mutate(user.id)}
                     disabled={kickUser.isPending}
                     className="text-[11px] px-2 py-0.5 rounded bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
-                    title="Aktif bağlantıları kes"
+                    title={t('users.kickActiveConnections')}
                   >
-                    Bağlantıları Kes
+                    {t('users.kickConnections')}
                   </button>
                 )}
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Başlangıç</div>
+              <div className="text-xs text-muted mb-1">{t('users.startDate')}</div>
               <div className="text-sm text-slate-300">{formatDate(user.createdAt)}</div>
             </div>
             <div>
-              <div className="text-xs text-muted mb-1">Bitiş</div>
+              <div className="text-xs text-muted mb-1">{t('users.endDate')}</div>
               <div className="text-sm text-slate-300">{formatDate(user.expiresAt)}</div>
               <div className={cn('text-xs mt-0.5', days < 7 ? 'text-danger' : days < 30 ? 'text-warning' : 'text-muted')}>
-                {days < 0 ? 'Süresi doldu' : `${days} gün kaldı`}
+                {days < 0 ? t('users.expired') : t('users.daysLeft', { days })}
               </div>
             </div>
           </div>
 
           {user.notes && (
             <div>
-              <div className="text-xs text-muted mb-1">Notlar</div>
+              <div className="text-xs text-muted mb-1">{t('users.notes')}</div>
               <div className="text-sm text-slate-300 bg-surface-2 rounded-lg p-2">{user.notes}</div>
             </div>
           )}
 
           <div className="border-t border-border pt-4">
-            <div className="text-xs text-muted mb-2">Şifre</div>
+            <div className="text-xs text-muted mb-2">{t('users.password')}</div>
             {!editPassword ? (
               <button onClick={() => setEditPassword(true)} className="btn-secondary text-sm flex items-center gap-2">
-                <Pencil className="w-3.5 h-3.5" /> Şifre Değiştir
+                <Pencil className="w-3.5 h-3.5" /> {t('users.changePassword')}
               </button>
             ) : (
               <div className="flex gap-2">
                 <input
                   type="password"
                   className="input flex-1"
-                  placeholder="Yeni şifre"
+                  placeholder={t('users.newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoFocus
@@ -1083,14 +1086,14 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                       setEditPassword(false);
                       setNewPassword('');
                     } else {
-                      toast.error('Şifre en az 4 karakter olmalı');
+                      toast.error(t('users.passwordMin4'));
                     }
                   }}
                 >
-                  Kaydet
+                  {t('common.save')}
                 </button>
                 <button className="btn-ghost text-sm" onClick={() => { setEditPassword(false); setNewPassword(''); }}>
-                  İptal
+                  {t('common.cancel')}
                 </button>
               </div>
             )}
@@ -1099,13 +1102,13 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
           {/* Bouquet'ler — görünürlük + düzenleme */}
           <div className="border-t border-border pt-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-xs text-muted">Bouquet'ler</div>
+              <div className="text-xs text-muted">{t('users.bouquets')}</div>
               {!editingBouquets && (
                 <button
                   onClick={() => { setBouquetDraft(userBouquets.map((b) => b.id)); setEditingBouquets(true); }}
                   className="btn-secondary text-sm flex items-center gap-2"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Düzenle
+                  <Pencil className="w-3.5 h-3.5" /> {t('common.edit')}
                 </button>
               )}
             </div>
@@ -1119,7 +1122,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 </div>
               ) : (
                 <div className="text-xs text-danger bg-danger/10 rounded-lg p-2">
-                  Bouquet atanmamış — bu kullanıcı hiçbir kanal göremez.
+                  {t('users.noBouquets')}
                 </div>
               )
             ) : (
@@ -1128,19 +1131,19 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                   options={allBouquets.map((b) => ({ value: b.id, label: b.name }))}
                   value={bouquetDraft}
                   onChange={setBouquetDraft}
-                  placeholder="Bouquet seçin…"
+                  placeholder={t('users.selectBouquet')}
                 />
                 {bouquetDraft.length === 0 && (
-                  <p className="text-xs text-warning">Uyarı: boş bırakılırsa kullanıcı hiçbir kanal göremez.</p>
+                  <p className="text-xs text-warning">{t('users.bouquetWarning')}</p>
                 )}
                 <div className="flex gap-2">
                   <button
                     className="btn-primary text-sm"
                     onClick={() => { onUpdate(userId, { bouquetIds: bouquetDraft }); setEditingBouquets(false); }}
                   >
-                    Kaydet
+                    {t('common.save')}
                   </button>
-                  <button className="btn-ghost text-sm" onClick={() => setEditingBouquets(false)}>İptal</button>
+                  <button className="btn-ghost text-sm" onClick={() => setEditingBouquets(false)}>{t('common.cancel')}</button>
                 </div>
               </div>
             )}
@@ -1152,25 +1155,25 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
       {tab === 'activity' && (
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Stat cards */}
-          {statsLoading && <div className="grid grid-cols-4 gap-3"><div className="card p-4 col-span-4 text-center text-muted text-sm">Yükleniyor…</div></div>}
+          {statsLoading && <div className="grid grid-cols-4 gap-3"><div className="card p-4 col-span-4 text-center text-muted text-sm">{t('common.loading')}</div></div>}
           {stats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="card p-3 flex flex-col items-center gap-1 text-center">
                 <Timer className="w-4 h-4 text-primary mb-0.5" />
                 <div className="text-lg font-bold text-slate-100">{formatWatchTime(stats.totalDurationSeconds)}</div>
-                <div className="text-[11px] text-muted">Toplam İzleme</div>
+                <div className="text-[11px] text-muted">{t('users.totalWatch')}</div>
               </div>
               <div className="card p-3 flex flex-col items-center gap-1 text-center">
                 <Database className="w-4 h-4 text-success mb-0.5" />
                 <div className="text-lg font-bold text-slate-100">{formatBytes(Number(stats.totalBytesTransferred))}</div>
-                <div className="text-[11px] text-muted">Toplam Veri</div>
+                <div className="text-[11px] text-muted">{t('users.totalData')}</div>
               </div>
               <div className="card p-3 flex flex-col items-center gap-1 text-center">
                 <Clock className="w-4 h-4 text-warning mb-0.5" />
                 <div className="text-sm font-semibold text-slate-100 leading-tight">
                   {stats.lastActivity ? new Date(stats.lastActivity.createdAt).toLocaleDateString('tr-TR') : '-'}
                 </div>
-                <div className="text-[11px] text-muted">Son Aktivite</div>
+                <div className="text-[11px] text-muted">{t('users.lastActivity')}</div>
               </div>
               <div className="card p-3 flex flex-col items-center gap-1 text-center">
                 {(() => {
@@ -1180,7 +1183,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                     <>
                       <Icon className="w-4 h-4 text-slate-400 mb-0.5" />
                       <div className="text-sm font-semibold text-slate-100 capitalize">{topDevice}</div>
-                      <div className="text-[11px] text-muted">Ana Cihaz</div>
+                      <div className="text-[11px] text-muted">{t('users.mainDevice')}</div>
                     </>
                   );
                 })()}
@@ -1191,7 +1194,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
           {/* Filters */}
           <div className="flex flex-wrap gap-2 items-end">
             <div>
-              <div className="text-[11px] text-muted mb-1">Başlangıç</div>
+              <div className="text-[11px] text-muted mb-1">{t('users.startDate')}</div>
               <input
                 type="date"
                 className="input text-xs py-1.5 px-2 h-8"
@@ -1200,7 +1203,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
               />
             </div>
             <div>
-              <div className="text-[11px] text-muted mb-1">Bitiş</div>
+              <div className="text-[11px] text-muted mb-1">{t('users.endDate')}</div>
               <input
                 type="date"
                 className="input text-xs py-1.5 px-2 h-8"
@@ -1209,13 +1212,13 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
               />
             </div>
             <div>
-              <div className="text-[11px] text-muted mb-1">Aksiyon</div>
+              <div className="text-[11px] text-muted mb-1">{t('users.action')}</div>
               <select
                 className="input text-xs py-1.5 px-2 h-8"
                 value={filterDraft.action}
                 onChange={(e) => setFilterDraft((f) => ({ ...f, action: e.target.value }))}
               >
-                <option value="">Tümü</option>
+                <option value="">{t('users.all')}</option>
                 {['LOGIN', 'STREAM_START', 'STREAM_STOP', 'PASSWORD_CHANGE'].map((a) => (
                   <option key={a} value={a}>{a}</option>
                 ))}
@@ -1232,14 +1235,14 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 });
               }}
             >
-              Filtrele
+              {t('common.filter')}
             </button>
             {(activityFilters.startDate || activityFilters.endDate || activityFilters.action) && (
               <button
                 className="btn-ghost text-xs px-3 h-8"
                 onClick={() => { setFilterDraft({ startDate: '', endDate: '', action: '' }); setActivityFilters({}); setActivityPage(1); }}
               >
-                Temizle
+                {t('users.clear')}
               </button>
             )}
           </div>
@@ -1249,20 +1252,20 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted border-b border-border">
-                  <th className="text-left py-2 px-2 font-medium">Tarih/Saat</th>
-                  <th className="text-left py-2 px-2 font-medium">Aksiyon</th>
+                  <th className="text-left py-2 px-2 font-medium">{t('users.dateTime')}</th>
+                  <th className="text-left py-2 px-2 font-medium">{t('users.action')}</th>
                   <th className="text-left py-2 px-2 font-medium">IP</th>
-                  <th className="text-left py-2 px-2 font-medium">Ülke</th>
-                  <th className="text-left py-2 px-2 font-medium">Cihaz</th>
-                  <th className="text-left py-2 px-2 font-medium">Süre</th>
+                  <th className="text-left py-2 px-2 font-medium">{t('users.country')}</th>
+                  <th className="text-left py-2 px-2 font-medium">{t('users.device')}</th>
+                  <th className="text-left py-2 px-2 font-medium">{t('users.duration')}</th>
                 </tr>
               </thead>
               <tbody>
                 {activityLoading && (
-                  <tr><td colSpan={6} className="text-center text-muted py-8">Yükleniyor…</td></tr>
+                  <tr><td colSpan={6} className="text-center text-muted py-8">{t('common.loading')}</td></tr>
                 )}
                 {!activityLoading && (!activityData?.items || activityData.items.length === 0) && (
-                  <tr><td colSpan={6} className="text-center text-muted py-8">Kayıt bulunamadı</td></tr>
+                  <tr><td colSpan={6} className="text-center text-muted py-8">{t('users.noRecords')}</td></tr>
                 )}
                 {activityData?.items.map((log) => {
                   const DeviceIcon = DEVICE_ICON[log.deviceType ?? 'unknown'] ?? Monitor;
@@ -1296,7 +1299,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
           {activityData && activityData.totalPages > 1 && (
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-muted">
-                {activityData.total} kayıt — Sayfa {activityData.page}/{activityData.totalPages}
+                {t('users.recordsPagination', { total: activityData.total, page: activityData.page, pages: activityData.totalPages })}
               </span>
               <div className="flex gap-1">
                 <button
@@ -1322,23 +1325,23 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
       {/* Tab: Stats */}
       {tab === 'stats' && (
         <div className="p-5 space-y-5">
-          {statsLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
+          {statsLoading && <p className="text-muted text-sm text-center py-6">{t('common.loading')}</p>}
           {stats && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="card p-4 text-center">
                   <div className="text-xl font-bold text-primary">{formatWatchTime(stats.totalDurationSeconds)}</div>
-                  <div className="text-xs text-muted mt-1">Toplam İzleme</div>
+                  <div className="text-xs text-muted mt-1">{t('users.totalWatch')}</div>
                 </div>
                 <div className="card p-4 text-center">
                   <div className="text-xl font-bold text-success">{formatBytes(Number(stats.totalBytesTransferred))}</div>
-                  <div className="text-xs text-muted mt-1">Toplam Veri</div>
+                  <div className="text-xs text-muted mt-1">{t('users.totalData')}</div>
                 </div>
               </div>
 
               {Object.keys(stats.actionBreakdown).length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-slate-300 mb-2">Aksiyon Dağılımı</div>
+                  <div className="text-sm font-medium text-slate-300 mb-2">{t('users.actionBreakdown')}</div>
                   <div className="space-y-1.5">
                     {Object.entries(stats.actionBreakdown).map(([action, count]) => (
                       <div key={action} className="flex items-center gap-2">
@@ -1360,7 +1363,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
 
               {Object.keys(stats.deviceBreakdown).length > 0 && (
                 <div>
-                  <div className="text-sm font-medium text-slate-300 mb-2">Cihaz Dağılımı</div>
+                  <div className="text-sm font-medium text-slate-300 mb-2">{t('users.deviceBreakdown')}</div>
                   <div className="flex gap-3 flex-wrap">
                     {Object.entries(stats.deviceBreakdown).map(([device, count]) => {
                       const Icon = DEVICE_ICON[device] ?? Monitor;
@@ -1378,7 +1381,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
 
               {stats.lastActivity && (
                 <div className="card p-3">
-                  <div className="text-xs text-muted mb-1">Son Aktivite</div>
+                  <div className="text-xs text-muted mb-1">{t('users.lastActivity')}</div>
                   <div className="flex items-center gap-2">
                     <span className={cn('text-xs px-2 py-0.5 rounded font-medium', ACTION_BADGE[stats.lastActivity.action] ?? 'bg-surface-2 text-muted')}>
                       {stats.lastActivity.action}
@@ -1413,14 +1416,15 @@ const ACTION_BADGE: Record<string, string> = {
 };
 
 function ActivityModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useUserActivity(userId);
 
   return (
-    <Modal open onClose={onClose} title="Kullanıcı Aktivitesi" size="lg">
+    <Modal open onClose={onClose} title={t('users.userActivity')} size="lg">
       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-        {isLoading && <p className="text-muted text-sm text-center py-6">Yükleniyor…</p>}
+        {isLoading && <p className="text-muted text-sm text-center py-6">{t('common.loading')}</p>}
         {!isLoading && (!data?.items || data.items.length === 0) && (
-          <p className="text-muted text-sm text-center py-6">Aktivite kaydı yok</p>
+          <p className="text-muted text-sm text-center py-6">{t('users.noActivity')}</p>
         )}
         {data?.items.map((log) => (
           <div key={log.id} className="flex items-start gap-3 text-sm py-2 border-b border-border/30">
@@ -1472,6 +1476,7 @@ function getServerUrl(): string {
 }
 
 function PlaylistTab({ userId, username }: { userId: string; username: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: playlists = [], isLoading } = useUserPlaylists(userId);
   const settings = useSettings();
@@ -1494,7 +1499,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
     void navigator.clipboard.writeText(url);
     setCopiedKey(`token:${token}`);
     setTimeout(() => setCopiedKey(null), 1500);
-    toast.success('Playlist URL kopyalandı');
+    toast.success(t('users.playlistUrlCopied'));
   };
 
   const copyStdUrl = (token: string) => {
@@ -1502,7 +1507,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
     void navigator.clipboard.writeText(url);
     setCopiedKey(`std:${token}`);
     setTimeout(() => setCopiedKey(null), 1500);
-    toast.success('Standart URL kopyalandı');
+    toast.success(t('users.standardUrlCopied'));
   };
 
   const toggleActive = async (pl: UserPlaylist) => {
@@ -1513,7 +1518,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
   const deletePl = async (id: string) => {
     await api.delete(`/users/playlists/${id}`);
     void qc.invalidateQueries({ queryKey: ['user-playlists', userId] });
-    toast.success('Playlist silindi');
+    toast.success(t('users.playlistDeleted'));
   };
 
   const editing = editingId ? playlists.find((p) => p.id === editingId) ?? null : null;
@@ -1521,17 +1526,17 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted">{playlists.length} playlist</p>
+        <p className="text-xs text-muted">{t('users.playlistCount', { n: playlists.length })}</p>
         <button onClick={() => setShowCreate(true)} className="btn-primary text-xs flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Yeni Playlist
+          <Plus className="w-3.5 h-3.5" /> {t('users.newPlaylist')}
         </button>
       </div>
 
-      {isLoading && <p className="text-center text-muted text-sm py-6">Yükleniyor…</p>}
+      {isLoading && <p className="text-center text-muted text-sm py-6">{t('common.loading')}</p>}
       {!isLoading && playlists.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-8 text-muted">
           <ListVideo className="w-10 h-10 opacity-30" />
-          <p className="text-sm">Henüz playlist yok</p>
+          <p className="text-sm">{t('users.noPlaylists')}</p>
         </div>
       )}
 
@@ -1552,10 +1557,10 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Token URL</span>
                 <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
                   <span className="text-xs text-muted font-mono truncate flex-1">{url}</span>
-                  <button onClick={() => copyUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Kopyala">
+                  <button onClick={() => copyUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title={t('users.copy')}>
                     {copiedKey === `token:${pl.token}` ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
-                  <a href={url} target="_blank" rel="noreferrer" className="text-muted hover:text-fg shrink-0 transition-colors" title="Aç">
+                  <a href={url} target="_blank" rel="noreferrer" className="text-muted hover:text-fg shrink-0 transition-colors" title={t('users.open')}>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -1563,12 +1568,12 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
 
               {/* Standard Xtream URL */}
               <div className="space-y-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Standart</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">{t('users.standard')}</span>
                 <div className="flex items-center gap-1.5 bg-surface-2 rounded-lg px-2.5 py-1.5">
                   <span className="text-xs text-muted font-mono truncate flex-1">
                     {`${xtreamBaseUrl}/get.php?username=${encodeURIComponent(username)}&password=***&type=m3u_plus`}
                   </span>
-                  <button onClick={() => copyStdUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title="Standart URL Kopyala">
+                  <button onClick={() => copyStdUrl(pl.token)} className="text-muted hover:text-fg shrink-0 transition-colors" title={t('users.copyStandardUrl')}>
                     {copiedKey === `std:${pl.token}` ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -1577,15 +1582,15 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
               {/* Filters summary */}
               {pl.filters && (pl.filters.onlyLive || pl.filters.onlyVod) && (
                 <p className="text-[11px] text-muted">
-                  Filtre: {pl.filters.onlyLive ? 'Sadece Canlı' : 'Sadece VOD'}
+                  {t('users.filterSummary', { value: pl.filters.onlyLive ? t('users.onlyLive') : t('users.onlyVod') })}
                 </p>
               )}
 
               {/* Meta */}
               <div className="flex items-center gap-3 text-[11px] text-muted">
-                <span>{pl.accessCount} erişim</span>
-                {pl.lastAccessed && <span>Son: {new Date(pl.lastAccessed).toLocaleDateString('tr-TR')}</span>}
-                {pl.expiresAt && <span className="text-warning">Bitiş: {new Date(pl.expiresAt).toLocaleDateString('tr-TR')}</span>}
+                <span>{t('users.accessCount', { n: pl.accessCount })}</span>
+                {pl.lastAccessed && <span>{t('users.lastAccess', { date: new Date(pl.lastAccessed).toLocaleDateString('tr-TR') })}</span>}
+                {pl.expiresAt && <span className="text-warning">{t('users.expiryDate', { date: new Date(pl.expiresAt).toLocaleDateString('tr-TR') })}</span>}
               </div>
 
               {/* Actions */}
@@ -1593,16 +1598,16 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
                 <button
                   onClick={() => void toggleActive(pl)}
                   className={cn('flex items-center gap-1 text-[11px] transition-colors', pl.isActive ? 'text-success' : 'text-muted')}
-                  title={pl.isActive ? 'Pasif yap' : 'Aktif yap'}
+                  title={pl.isActive ? t('users.makeInactive') : t('users.makeActive')}
                 >
                   {pl.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                  {pl.isActive ? 'Aktif' : 'Pasif'}
+                  {pl.isActive ? t('common.active') : t('common.inactive')}
                 </button>
                 <div className="ml-auto flex gap-1">
-                  <button onClick={() => setEditingId(pl.id)} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted hover:text-fg transition-colors" title="Düzenle">
+                  <button onClick={() => setEditingId(pl.id)} className="p-1.5 rounded-lg hover:bg-surface-2 text-muted hover:text-fg transition-colors" title={t('common.edit')}>
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => void deletePl(pl.id)} className="p-1.5 rounded-lg hover:bg-danger/10 text-muted hover:text-danger transition-colors" title="Sil">
+                  <button onClick={() => void deletePl(pl.id)} className="p-1.5 rounded-lg hover:bg-danger/10 text-muted hover:text-danger transition-colors" title={t('common.delete')}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1633,6 +1638,7 @@ interface PlaylistFormModalProps {
 }
 
 function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormModalProps) {
+  const { t } = useTranslation();
   const [name, setName]       = useState(existing?.name ?? '');
   const [type, setType]       = useState(existing?.type ?? 'm3u_plus');
   const [filter, setFilter]   = useState<'all' | 'live' | 'vod'>(
@@ -1643,7 +1649,7 @@ function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormM
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
-    if (!name.trim()) { toast.error('İsim zorunlu'); return; }
+    if (!name.trim()) { toast.error(t('users.nameRequired')); return; }
     setLoading(true);
     try {
       const body = {
@@ -1654,29 +1660,29 @@ function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormM
       };
       if (existing) {
         await api.put(`/users/playlists/${existing.id}`, body);
-        toast.success('Playlist güncellendi');
+        toast.success(t('users.playlistUpdated'));
       } else {
         await api.post(`/users/${userId}/playlists`, body);
-        toast.success('Playlist oluşturuldu');
+        toast.success(t('users.playlistCreated'));
       }
       onSaved();
     } catch {
-      toast.error('Kayıt başarısız');
+      toast.error(t('users.saveFailed'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Modal open onClose={onClose} title={existing ? 'Playlist Düzenle' : 'Yeni Playlist'} size="sm">
+    <Modal open onClose={onClose} title={existing ? t('users.editPlaylist') : t('users.newPlaylist')} size="sm">
       <div className="space-y-4">
         <div>
-          <label className="label">İsim</label>
-          <input className="input" placeholder="Ana Liste, TV vb." value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <label className="label">{t('users.name')}</label>
+          <input className="input" placeholder={t('users.playlistNamePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         </div>
 
         <div>
-          <label className="label">Tip</label>
+          <label className="label">{t('users.type')}</label>
           <div className="flex gap-1.5">
             {[['m3u_plus', 'M3U+'], ['m3u', 'M3U'], ['ts', 'TS']] .map(([v, lbl]) => (
               <button key={v} type="button" onClick={() => setType(v)}
@@ -1688,9 +1694,9 @@ function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormM
         </div>
 
         <div>
-          <label className="label">İçerik Filtresi</label>
+          <label className="label">{t('users.contentFilter')}</label>
           <div className="flex gap-1.5">
-            {[['all', 'Tümü'], ['live', 'Sadece Canlı'], ['vod', 'Sadece VOD']] .map(([v, lbl]) => (
+            {[['all', t('users.all')], ['live', t('users.onlyLive')], ['vod', t('users.onlyVod')]] .map(([v, lbl]) => (
               <button key={v} type="button" onClick={() => setFilter(v as 'all' | 'live' | 'vod')}
                 className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', filter === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
                 {lbl}
@@ -1700,9 +1706,9 @@ function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormM
         </div>
 
         <div>
-          <label className="label">Geçerlilik</label>
+          <label className="label">{t('users.validity')}</label>
           <div className="flex gap-1.5 mb-2">
-            {[['unlimited', 'Sınırsız'], ['date', 'Tarih Seç']] .map(([v, lbl]) => (
+            {[['unlimited', t('users.unlimited')], ['date', t('users.selectDate')]] .map(([v, lbl]) => (
               <button key={v} type="button" onClick={() => setExpiry(v as 'unlimited' | 'date')}
                 className={cn('px-3 py-1.5 text-xs rounded-lg transition-colors', expiry === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
                 {lbl}
@@ -1715,9 +1721,9 @@ function PlaylistFormModal({ userId, existing, onClose, onSaved }: PlaylistFormM
         </div>
 
         <div className="flex gap-2 justify-end pt-1">
-          <button type="button" onClick={onClose} className="btn-ghost">İptal</button>
+          <button type="button" onClick={onClose} className="btn-ghost">{t('common.cancel')}</button>
           <button type="button" onClick={() => void handleSave()} disabled={loading} className="btn-primary">
-            {loading ? 'Kaydediliyor…' : 'Kaydet'}
+            {loading ? t('users.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -1733,20 +1739,20 @@ function randomStr(len = 8): string {
 }
 
 const TEST_PRESETS = [
-  { label: '1 Saat',  hours: 1 },
-  { label: '3 Saat',  hours: 3 },
-  { label: '6 Saat',  hours: 6 },
-  { label: '12 Saat', hours: 12 },
-  { label: '24 Saat', hours: 24 },
+  { labelKey: 'users.preset1h',  hours: 1 },
+  { labelKey: 'users.preset3h',  hours: 3 },
+  { labelKey: 'users.preset6h',  hours: 6 },
+  { labelKey: 'users.preset12h', hours: 12 },
+  { labelKey: 'users.preset24h', hours: 24 },
 ] as const;
 
 const STANDARD_PRESETS = [
-  { label: '1 Ay',  days: 30 },
-  { label: '3 Ay',  days: 90 },
-  { label: '6 Ay',  days: 180 },
-  { label: '9 Ay',  days: 270 },
-  { label: '1 Yıl', days: 365 },
-  { label: '2 Yıl', days: 730 },
+  { labelKey: 'users.preset1mo', days: 30 },
+  { labelKey: 'users.preset3mo', days: 90 },
+  { labelKey: 'users.preset6mo', days: 180 },
+  { labelKey: 'users.preset9mo', days: 270 },
+  { labelKey: 'users.preset1y',  days: 365 },
+  { labelKey: 'users.preset2y',  days: 730 },
 ] as const;
 
 const CONN_PRESETS = [1, 2, 3, 5] as const;
@@ -1760,6 +1766,7 @@ interface QuickCreateModalProps {
 type DurationKey = `h:${number}` | `d:${number}` | 'custom';
 
 function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [durationKey, setDurationKey] = useState<DurationKey>('d:30');
@@ -1805,15 +1812,15 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
   function handleCopy() {
     if (!result) return;
     const text = [
-      `Kullanıcı Adı: ${result.user.username}`,
-      `Şifre: ${result.user.password}`,
-      `Bitiş: ${new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}`,
+      `${t('users.username')}: ${result.user.username}`,
+      `${t('users.password')}: ${result.user.password}`,
+      `${t('users.expiry')}: ${new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}`,
       `M3U URL: ${result.m3uUrl}`,
     ].join('\n');
     void navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success('Bilgiler panoya kopyalandı');
+    toast.success(t('users.infoCopied'));
   }
 
   function handleReset() {
@@ -1830,12 +1837,12 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Hızlı Kullanıcı Oluştur" size="sm">
+    <Modal open onClose={onClose} title={t('users.quickCreateTitle')} size="sm">
       {!result ? (
         <div className="space-y-4">
           {/* Kullanıcı adı */}
           <div>
-            <label className="label">Kullanıcı Adı <span className="text-muted font-normal">(boş bırakılırsa otomatik)</span></label>
+            <label className="label">{t('users.username')} <span className="text-muted font-normal">{t('users.autoIfEmpty')}</span></label>
             <div className="flex gap-2">
               <input
                 className="input flex-1"
@@ -1846,7 +1853,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
               <button
                 type="button"
                 className="btn-ghost px-2.5 text-muted hover:text-fg"
-                title="Rastgele üret"
+                title={t('users.generateRandom')}
                 onClick={() => setUsername(randomStr(8))}
               >
                 <Shuffle className="w-4 h-4" />
@@ -1856,7 +1863,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
 
           {/* Şifre */}
           <div>
-            <label className="label">Şifre <span className="text-muted font-normal">(boş bırakılırsa otomatik)</span></label>
+            <label className="label">{t('users.password')} <span className="text-muted font-normal">{t('users.autoIfEmpty')}</span></label>
             <div className="flex gap-2">
               <input
                 className="input flex-1 font-mono"
@@ -1867,7 +1874,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
               <button
                 type="button"
                 className="btn-ghost px-2.5 text-muted hover:text-fg"
-                title="Rastgele üret"
+                title={t('users.generateRandom')}
                 onClick={() => setPassword(randomStr(8))}
               >
                 <Shuffle className="w-4 h-4" />
@@ -1877,13 +1884,13 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
 
           {/* Süre */}
           <div className="space-y-2">
-            <label className="label">Süre</label>
+            <label className="label">{t('users.duration')}</label>
 
             {/* Test satırı */}
             <div className="space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Test</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">{t('users.test')}</span>
               <div className="flex flex-wrap gap-1.5">
-                {TEST_PRESETS.map(({ label, hours }) => {
+                {TEST_PRESETS.map(({ labelKey, hours }) => {
                   const key: DurationKey = `h:${hours}`;
                   return (
                     <button
@@ -1895,7 +1902,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                         durationKey === key ? 'bg-amber-500 text-white' : 'bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {label}
+                      {t(labelKey)}
                     </button>
                   );
                 })}
@@ -1904,9 +1911,9 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
 
             {/* Standart satırı */}
             <div className="space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Standart</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">{t('users.standard')}</span>
               <div className="flex flex-wrap gap-1.5">
-                {STANDARD_PRESETS.map(({ label, days }) => {
+                {STANDARD_PRESETS.map(({ labelKey, days }) => {
                   const key: DurationKey = `d:${days}`;
                   return (
                     <button
@@ -1918,7 +1925,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                         durationKey === key ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {label}
+                      {t(labelKey)}
                     </button>
                   );
                 })}
@@ -1930,7 +1937,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                     durationKey === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  Özel
+                  {t('users.custom')}
                 </button>
               </div>
               {durationKey === 'custom' && (
@@ -1939,7 +1946,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                   min={1}
                   max={3650}
                   className="input mt-1 w-32 text-sm"
-                  placeholder="Gün sayısı"
+                  placeholder={t('users.dayCount')}
                   value={customDays}
                   onChange={(e) => setCustomDays(e.target.value)}
                   autoFocus
@@ -1947,12 +1954,12 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
               )}
             </div>
 
-            <p className="text-xs text-muted">Bitiş: {expiresLabel}</p>
+            <p className="text-xs text-muted">{t('users.expiry')}: {expiresLabel}</p>
           </div>
 
           {/* Max Bağlantı */}
           <div>
-            <label className="label">Maks. Bağlantı</label>
+            <label className="label">{t('users.maxConnLabel')}</label>
             <div className="flex flex-wrap gap-1.5">
               {CONN_PRESETS.map((n) => (
                 <button
@@ -1975,7 +1982,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                   connsPreset === 'custom' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                Özel
+                {t('users.custom')}
               </button>
             </div>
             {connsPreset === 'custom' && (
@@ -1984,7 +1991,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
                 min={1}
                 max={100}
                 className="input mt-2 w-24 text-sm"
-                placeholder="Adet"
+                placeholder={t('users.count')}
                 value={customConns}
                 onChange={(e) => setCustomConns(e.target.value)}
               />
@@ -1993,17 +2000,17 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
 
           {/* Notlar */}
           <div>
-            <label className="label">Notlar <span className="text-muted font-normal">(isteğe bağlı)</span></label>
+            <label className="label">{t('users.notes')} <span className="text-muted font-normal">{t('users.optional')}</span></label>
             <input
               className="input"
-              placeholder="Müşteri adı, not vb."
+              placeholder={t('users.customerNotePlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
 
           <div className="flex gap-2 justify-end pt-1">
-            <button type="button" onClick={onClose} className="btn-ghost">İptal</button>
+            <button type="button" onClick={onClose} className="btn-ghost">{t('common.cancel')}</button>
             <button
               type="button"
               disabled={mutation.isPending}
@@ -2011,7 +2018,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
               className="btn-primary flex items-center gap-2"
             >
               <Zap className="w-4 h-4" />
-              {mutation.isPending ? 'Oluşturuluyor…' : 'Oluştur ve Kopyala'}
+              {mutation.isPending ? t('users.creating') : t('users.createAndCopy')}
             </button>
           </div>
         </div>
@@ -2020,14 +2027,14 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
         <div className="space-y-4">
           <div className="rounded-xl bg-success/10 border border-success/20 p-4 space-y-3">
             <div className="flex items-center gap-2 text-success font-semibold text-sm">
-              <Check className="w-4 h-4" /> Kullanıcı oluşturuldu
+              <Check className="w-4 h-4" /> {t('users.userCreated')}
             </div>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
-              <span className="text-muted">Kullanıcı Adı</span>
+              <span className="text-muted">{t('users.username')}</span>
               <span className="font-mono text-slate-200 font-medium">{result.user.username}</span>
-              <span className="text-muted">Şifre</span>
+              <span className="text-muted">{t('users.password')}</span>
               <span className="font-mono text-slate-200 font-medium">{result.user.password}</span>
-              <span className="text-muted">Bitiş</span>
+              <span className="text-muted">{t('users.expiry')}</span>
               <span className="text-slate-200">{new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}</span>
             </div>
           </div>
@@ -2046,16 +2053,16 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
               className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Kopyalandı!' : 'Kopyala'}
+              {copied ? t('users.copied') : t('users.copy')}
             </button>
             <button
               type="button"
               onClick={handleReset}
               className="btn-secondary flex items-center gap-2 text-sm"
             >
-              <Zap className="w-4 h-4" /> Yeni Hat
+              <Zap className="w-4 h-4" /> {t('users.newLine')}
             </button>
-            <button type="button" onClick={onClose} className="btn-ghost text-sm">Kapat</button>
+            <button type="button" onClick={onClose} className="btn-ghost text-sm">{t('common.close')}</button>
           </div>
         </div>
       )}
@@ -2069,6 +2076,7 @@ interface TrialCreateModalProps {
 }
 
 function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [durationDays, setDurationDays] = useState(7);
@@ -2084,21 +2092,21 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
   };
 
   if (result) {
-    const text = `Kullanıcı Adı: ${result.user.username}\nŞifre: ${result.user.password}\nM3U URL: ${result.m3uUrl}`;
+    const text = `${t('users.username')}: ${result.user.username}\n${t('users.password')}: ${result.user.password}\nM3U URL: ${result.m3uUrl}`;
     return (
-      <Modal open onClose={onClose} title="⏱ Trial Hesap Oluşturuldu" size="md">
+      <Modal open onClose={onClose} title={t('users.trialCreatedTitle')} size="md">
         <div className="space-y-4">
           <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 space-y-2">
             <div className="flex justify-between text-xs">
-              <span className="text-muted">Kullanıcı Adı</span>
+              <span className="text-muted">{t('users.username')}</span>
               <span className="font-mono text-amber-300">{result.user.username}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted">Şifre</span>
+              <span className="text-muted">{t('users.password')}</span>
               <span className="font-mono text-amber-300">{result.user.password}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted">Süre</span>
+              <span className="text-muted">{t('users.duration')}</span>
               <span className="font-mono">{new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}</span>
             </div>
           </div>
@@ -2111,10 +2119,10 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
               onClick={() => { void navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
               className="btn-secondary text-sm flex-1"
             >
-              {copied ? 'Kopyalandı!' : 'Kopyala'}
+              {copied ? t('users.copied') : t('users.copy')}
             </button>
-            <button onClick={() => { setResult(null); setUsername(''); setPassword(''); }} className="btn-ghost text-sm">Yeni</button>
-            <button onClick={onClose} className="btn-ghost text-sm">Kapat</button>
+            <button onClick={() => { setResult(null); setUsername(''); setPassword(''); }} className="btn-ghost text-sm">{t('users.new')}</button>
+            <button onClick={onClose} className="btn-ghost text-sm">{t('common.close')}</button>
           </div>
         </div>
       </Modal>
@@ -2122,18 +2130,18 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
   }
 
   return (
-    <Modal open onClose={onClose} title="⏱ Trial Hesap Ekle" size="sm">
+    <Modal open onClose={onClose} title={t('users.trialAddTitle')} size="sm">
       <div className="space-y-4">
         <div>
-          <label className="label">Kullanıcı Adı <span className="text-muted text-xs">(boş bırakılırsa otomatik)</span></label>
+          <label className="label">{t('users.username')} <span className="text-muted text-xs">{t('users.autoIfEmpty')}</span></label>
           <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="trial_..." />
         </div>
         <div>
-          <label className="label">Şifre <span className="text-muted text-xs">(boş bırakılırsa otomatik)</span></label>
-          <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Otomatik üretilir" />
+          <label className="label">{t('users.password')} <span className="text-muted text-xs">{t('users.autoIfEmpty')}</span></label>
+          <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('users.autoGenerated')} />
         </div>
         <div>
-          <label className="label">Süre</label>
+          <label className="label">{t('users.duration')}</label>
           <div className="grid grid-cols-4 gap-2">
             {[1, 3, 7, 14].map((d) => (
               <button
@@ -2141,13 +2149,13 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
                 onClick={() => setDurationDays(d)}
                 className={cn('py-2 rounded-lg text-sm font-medium border transition-colors', durationDays === d ? 'bg-primary text-white border-primary' : 'border-border text-muted hover:text-fg hover:border-border/80')}
               >
-                {d} Gün
+                {t('users.daysN', { n: d })}
               </button>
             ))}
           </div>
         </div>
         <div>
-          <label className="label">Max Bağlantı</label>
+          <label className="label">{t('users.maxConnShort')}</label>
           <div className="grid grid-cols-2 gap-2">
             {[1, 2].map((n) => (
               <button
@@ -2155,15 +2163,15 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
                 onClick={() => setMaxConnections(n)}
                 className={cn('py-2 rounded-lg text-sm font-medium border transition-colors', maxConnections === n ? 'bg-primary text-white border-primary' : 'border-border text-muted hover:text-fg')}
               >
-                {n} Bağlantı
+                {t('users.connectionsN', { n })}
               </button>
             ))}
           </div>
         </div>
         <div className="flex gap-2 justify-end pt-2 border-t border-border">
-          <button onClick={onClose} className="btn-ghost">İptal</button>
+          <button onClick={onClose} className="btn-ghost">{t('common.cancel')}</button>
           <button onClick={handleCreate} disabled={mutation.isPending} className="btn-primary">
-            {mutation.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+            {mutation.isPending ? t('users.creating') : t('common.create')}
           </button>
         </div>
       </div>

@@ -12,14 +12,15 @@ import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys
 import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
-const SETTINGS_TABS: TabItem[] = [
-  { id: 'general', label: 'Genel', icon: Globe },
+const getSettingsTabs = (t: (key: string) => string): TabItem[] => [
+  { id: 'general', label: t('settings.tabGeneral'), icon: Globe },
   { id: 'xtream', label: 'Xtream', icon: Tv },
   { id: 'reseller', label: 'Reseller', icon: Users },
   { id: 'streaming', label: 'Streaming', icon: Radio },
-  { id: 'security', label: 'Güvenlik', icon: Shield },
-  { id: 'database', label: 'Veritabanı', icon: Database },
+  { id: 'security', label: t('nav.security'), icon: Shield },
+  { id: 'database', label: t('settings.tabDatabase'), icon: Database },
   { id: 'api', label: 'API', icon: Key },
   { id: 'white-label', label: 'White-Label', icon: Palette },
 ];
@@ -55,6 +56,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 function TwoFactorSection() {
+  const { t } = useTranslation();
   const [showSetup, setShowSetup] = useState(false);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -84,28 +86,28 @@ function TwoFactorSection() {
 
   return (
     <div className="mt-2">
-      <SectionTitle>İki Faktörlü Doğrulama (2FA)</SectionTitle>
+      <SectionTitle>{t('settings.twoFactorTitle')}</SectionTitle>
       <div className="space-y-4">
         {status.isLoading ? (
-          <p className="text-muted text-sm">Durum yükleniyor…</p>
+          <p className="text-muted text-sm">{t('settings.statusLoading')}</p>
         ) : !enabled ? (
           <>
             {!showSetup ? (
               <button className="btn-secondary text-sm" onClick={() => setShowSetup(true)}>
-                2FA Kurulumunu Başlat
+                {t('settings.start2faSetup')}
               </button>
             ) : (
               <div className="space-y-4 p-4 rounded-xl bg-surface border border-border">
-                {setup.isLoading && <p className="text-muted text-sm">QR kodu yükleniyor…</p>}
+                {setup.isLoading && <p className="text-muted text-sm">{t('settings.qrLoading')}</p>}
                 {setup.data && (
                   <>
-                    <p className="text-sm text-slate-300">Authenticator uygulamanızla QR kodu tarayın:</p>
+                    <p className="text-sm text-slate-300">{t('settings.scanQr')}</p>
                     <img src={setup.data.qrCodeImage} alt="2FA QR" className="w-44 h-44 rounded-lg" />
                     <p className="text-xs text-muted font-mono break-all">{setup.data.secret}</p>
                     <div className="flex gap-2">
                       <input
                         className="input flex-1"
-                        placeholder="6 haneli kod"
+                        placeholder={t('settings.sixDigitCode')}
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         maxLength={6}
@@ -115,23 +117,23 @@ function TwoFactorSection() {
                         disabled={enableMut.isPending || code.length !== 6}
                         onClick={() => void handleEnable()}
                       >
-                        Onayla
+                        {t('common.confirm')}
                       </button>
                     </div>
                   </>
                 )}
-                <button className="text-sm text-muted hover:text-slate-300" onClick={() => setShowSetup(false)}>İptal</button>
+                <button className="text-sm text-muted hover:text-slate-300" onClick={() => setShowSetup(false)}>{t('common.cancel')}</button>
               </div>
             )}
           </>
         ) : (
           <div className="space-y-3 p-4 rounded-xl bg-surface border border-border">
-            <p className="text-sm text-green-400">2FA etkin</p>
+            <p className="text-sm text-green-400">{t('settings.twoFaEnabled')}</p>
             <div className="flex gap-2">
               <input
                 className="input flex-1"
                 type="password"
-                placeholder="Şifrenizi girin"
+                placeholder={t('settings.enterPassword')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -140,7 +142,7 @@ function TwoFactorSection() {
                 disabled={disableMut.isPending}
                 onClick={() => void handleDisable()}
               >
-                Devre Dışı Bırak
+                {t('settings.disable2fa')}
               </button>
             </div>
           </div>
@@ -151,6 +153,7 @@ function TwoFactorSection() {
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('general');
   const [deleteBackupFile, setDeleteBackupFile] = useState<string | null>(null);
   const settings = useSettings();
@@ -170,33 +173,33 @@ export function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Ayarlar</h1>
-          <p className="text-sm text-muted mt-0.5">Panel ve sistem yapılandırması</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('settings.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('settings.subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-ghost" onClick={() => toast('Varsayılanlara döndürüldü', { icon: '↺' })}>
-            <RotateCcw className="w-4 h-4" /> Sıfırla
+          <button className="btn btn-ghost" onClick={() => toast(t('settings.resetToDefaults'), { icon: '↺' })}>
+            <RotateCcw className="w-4 h-4" /> {t('settings.reset')}
           </button>
           <button className="btn btn-primary" onClick={save} disabled={saveSettings.isPending}>
-            <Save className="w-4 h-4" /> {saveSettings.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            <Save className="w-4 h-4" /> {saveSettings.isPending ? t('settings.saving') : t('common.save')}
           </button>
         </div>
       </div>
 
-      <Tabs tabs={SETTINGS_TABS} active={activeTab} onChange={setActiveTab} />
+      <Tabs tabs={getSettingsTabs(t)} active={activeTab} onChange={setActiveTab} />
 
       <div className="card p-6 space-y-6">
 
         {/* === GENERAL === */}
         {activeTab === 'general' && (
           <>
-            <SectionTitle>Panel Ayarları</SectionTitle>
+            <SectionTitle>{t('settings.panelSettings')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Panel Adı" hint="Tarayıcı sekmesinde görünür">
+              <Field label={t('settings.panelName')} hint={t('settings.panelNameHint')}>
                 <input className="input" value={settings.general.panelName}
                   onChange={(e) => updateSettings('general', { panelName: e.target.value })} />
               </Field>
-              <Field label="Saat Dilimi">
+              <Field label={t('settings.timezone')}>
                 <select className="input" value={settings.general.timezone}
                   onChange={(e) => updateSettings('general', { timezone: e.target.value })}>
                   {['Europe/Istanbul', 'UTC', 'Europe/London', 'America/New_York'].map((tz) => (
@@ -207,8 +210,8 @@ export function SettingsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-slate-200">Sunucu URL Listesi</span>
-                    <p className="text-xs text-muted mt-0.5">Birden fazla URL ekleyin; birincil çevrimdışı olursa yedek devreye girer</p>
+                    <span className="text-sm font-medium text-slate-200">{t('settings.serverUrlList')}</span>
+                    <p className="text-xs text-muted mt-0.5">{t('settings.serverUrlListHint')}</p>
                   </div>
                   <button
                     type="button"
@@ -216,13 +219,13 @@ export function SettingsPage() {
                     onClick={() => updateSettings('general', { serverUrls: [...(settings.general.serverUrls ?? []), ''] })}
                     className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <Plus className="w-3.5 h-3.5" /> URL Ekle
+                    <Plus className="w-3.5 h-3.5" /> {t('settings.addUrl')}
                   </button>
                 </div>
                 {(settings.general.serverUrls ?? []).length === 0 ? (
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
                     <AlertCircle className="w-4 h-4 shrink-0" />
-                    Henüz URL eklenmedi. Playlist ve Xtream Kodları için en az bir URL gerekli.
+                    {t('settings.noUrlWarning')}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -232,7 +235,7 @@ export function SettingsPage() {
                         <div key={idx} className={`flex items-center gap-2 p-2.5 rounded-lg border transition-colors ${isPrimary ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-border bg-surface-2/30'}`}>
                           <button
                             type="button"
-                            title="Birincil Yap"
+                            title={t('settings.makePrimary')}
                             onClick={() => updateSettings('general', { primaryUrlIndex: idx })}
                             className={`shrink-0 transition-colors ${isPrimary ? 'text-emerald-400' : 'text-muted hover:text-slate-300'}`}
                           >
@@ -249,7 +252,7 @@ export function SettingsPage() {
                             }}
                           />
                           {isPrimary && (
-                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">Aktif</span>
+                            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">{t('common.active')}</span>
                           )}
                           <button
                             type="button"
@@ -267,78 +270,78 @@ export function SettingsPage() {
                     })}
                   </div>
                 )}
-                <Field label="Otomatik Geçiş" hint="Birincil URL çevrimdışı olduğunda yedek URL'e otomatik geç">
+                <Field label={t('settings.autoSwitch')} hint={t('settings.autoSwitchHint')}>
                   <Toggle checked={settings.general.urlHealthCheck ?? true}
                     onChange={(v) => updateSettings('general', { urlHealthCheck: v })} />
                 </Field>
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  URL değişikliği sonrası tüm aktif playlist bağlantıları otomatik güncellenir.
+                  {t('settings.urlChangeInfo')}
                 </div>
               </div>
-              <Field label="Logo URL">
+              <Field label={t('settings.logoUrl')}>
                 <input className="input" value={settings.general.logoUrl}
                   onChange={(e) => updateSettings('general', { logoUrl: e.target.value })}
                   placeholder="https://..." />
               </Field>
             </div>
-            <SectionTitle>Bildirimler</SectionTitle>
+            <SectionTitle>{t('settings.notifications')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Admin E-posta" hint="Stream çöküş bildirimleri bu adrese gönderilir">
+              <Field label={t('settings.adminEmail')} hint={t('settings.adminEmailHint')}>
                 <input className="input" type="email" value={settings.general.adminEmail}
                   onChange={(e) => updateSettings('general', { adminEmail: e.target.value })}
                   placeholder="admin@example.com" />
               </Field>
-              <Field label="Stream Çöküş Uyarısı" hint="Stream CRASHED olduğunda e-posta gönder">
+              <Field label={t('settings.streamDownAlert')} hint={t('settings.streamDownAlertHint')}>
                 <Toggle checked={settings.general.streamDownAlert}
                   onChange={(v) => updateSettings('general', { streamDownAlert: v })} />
               </Field>
-              <Field label="Reseller Sona Erme Bildirimi" hint="Kullanıcı 3 gün içinde dolacaksa reseller'a bildir">
+              <Field label={t('settings.resellerExpiryNotify')} hint={t('settings.resellerExpiryNotifyHint')}>
                 <Toggle checked={settings.general.resellerNotifyExpiry}
                   onChange={(v) => updateSettings('general', { resellerNotifyExpiry: v })} />
               </Field>
             </div>
-            <SectionTitle>Discord Bildirimleri</SectionTitle>
+            <SectionTitle>{t('settings.discordNotifications')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Discord Webhook URL">
+              <Field label={t('settings.discordWebhookUrl')}>
                 <input className="input" value={settings.general.discordWebhookUrl}
                   onChange={(e) => updateSettings('general', { discordWebhookUrl: e.target.value })}
                   placeholder="https://discord.com/api/webhooks/..." />
               </Field>
-              <Field label="Discord Alarmları Aktif">
+              <Field label={t('settings.discordAlertsActive')}>
                 <Toggle checked={settings.general.discordAlerts}
                   onChange={(v) => updateSettings('general', { discordAlerts: v })} />
               </Field>
               <button
                 type="button"
                 className="btn-secondary text-sm"
-                onClick={() => api.post('/notifications/test-discord').then(() => toast.success('Discord test gönderildi')).catch(() => toast.error('Discord test başarısız'))}
+                onClick={() => api.post('/notifications/test-discord').then(() => toast.success(t('settings.discordTestSuccess'))).catch(() => toast.error(t('settings.discordTestFail')))}
               >
-                Discord Test Gönder
+                {t('settings.discordTestSend')}
               </button>
             </div>
-            <SectionTitle>Telegram Bildirimleri</SectionTitle>
+            <SectionTitle>{t('settings.telegramNotifications')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Telegram Bot Token">
+              <Field label={t('settings.telegramBotToken')}>
                 <input className="input" value={settings.general.telegramBotToken}
                   onChange={(e) => updateSettings('general', { telegramBotToken: e.target.value })}
                   placeholder="123456789:ABC..." />
               </Field>
-              <Field label="Telegram Chat ID">
+              <Field label={t('settings.telegramChatId')}>
                 <input className="input" value={settings.general.telegramChatId}
                   onChange={(e) => updateSettings('general', { telegramChatId: e.target.value })}
                   placeholder="-1001234567890" />
               </Field>
-              <Field label="Telegram Alarmları Aktif">
+              <Field label={t('settings.telegramAlertsActive')}>
                 <Toggle checked={settings.general.telegramAlerts}
                   onChange={(v) => updateSettings('general', { telegramAlerts: v })} />
               </Field>
               <button
                 type="button"
                 className="btn-secondary text-sm"
-                onClick={() => api.post('/notifications/test-telegram').then(() => toast.success('Telegram test gönderildi')).catch(() => toast.error('Telegram test başarısız'))}
+                onClick={() => api.post('/notifications/test-telegram').then(() => toast.success(t('settings.telegramTestSuccess'))).catch(() => toast.error(t('settings.telegramTestFail')))}
               >
-                Telegram Test Gönder
+                {t('settings.telegramTestSend')}
               </button>
             </div>
           </>
@@ -347,36 +350,36 @@ export function SettingsPage() {
         {/* === XTREAM === */}
         {activeTab === 'xtream' && (
           <>
-            <SectionTitle>Xtream Kodları API</SectionTitle>
+            <SectionTitle>{t('settings.xtreamCodesApi')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="HTTP Port">
+              <Field label={t('settings.httpPort')}>
                 <input type="number" className="input" value={settings.xtream.port}
                   onChange={(e) => updateSettings('xtream', { port: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="HTTPS Port">
+              <Field label={t('settings.httpsPort')}>
                 <input type="number" className="input" value={settings.xtream.httpsPort}
                   onChange={(e) => updateSettings('xtream', { httpsPort: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Çıkış Formatları" hint="Desteklenen oynatma formatları">
+              <Field label={t('settings.outputFormats')} hint={t('settings.outputFormatsHint')}>
                 <TagInput
                   value={settings.xtream.outputFormats}
                   onChange={(v) => updateSettings('xtream', { outputFormats: v })}
                   placeholder="m3u8, ts, rtmp…"
                 />
               </Field>
-              <Field label="Deneme Kullanıcı Limiti" hint="0 = sınırsız">
+              <Field label={t('settings.trialUserLimit')} hint={t('settings.trialUserLimitHint')}>
                 <input type="number" className="input" value={settings.xtream.trialUserLimit}
                   onChange={(e) => updateSettings('xtream', { trialUserLimit: parseInt(e.target.value, 10) })} />
               </Field>
             </div>
 
-            <SectionTitle>Trial Ayarları</SectionTitle>
+            <SectionTitle>{t('settings.trialSettings')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Varsayılan Trial Süresi (gün)" hint="'Trial Ekle' butonunda varsayılan süre">
+              <Field label={t('settings.defaultTrialDuration')} hint={t('settings.defaultTrialDurationHint')}>
                 <input type="number" min={1} max={90} className="input" value={settings.xtream.trialDays}
                   onChange={(e) => updateSettings('xtream', { trialDays: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Varsayılan Max Bağlantı" hint="Trial hesaplar için maksimum eş zamanlı bağlantı">
+              <Field label={t('settings.defaultMaxConn')} hint={t('settings.defaultMaxConnHint')}>
                 <input type="number" min={1} max={5} className="input" value={settings.xtream.trialMaxConnections}
                   onChange={(e) => updateSettings('xtream', { trialMaxConnections: parseInt(e.target.value, 10) })} />
               </Field>
@@ -392,75 +395,75 @@ export function SettingsPage() {
         {/* === STREAMING === */}
         {activeTab === 'streaming' && (
           <>
-            <SectionTitle>FFmpeg & HLS</SectionTitle>
+            <SectionTitle>{t('settings.ffmpegHls')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="FFmpeg Yolu">
+              <Field label={t('settings.ffmpegPath')}>
                 <input className="input font-mono" value={settings.streaming.ffmpegPath}
                   onChange={(e) => updateSettings('streaming', { ffmpegPath: e.target.value })} />
               </Field>
-              <Field label="HLS Segment Süresi (s)">
+              <Field label={t('settings.hlsSegmentDuration')}>
                 <input type="number" className="input" value={settings.streaming.hlsTime}
                   onChange={(e) => updateSettings('streaming', { hlsTime: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="HLS Liste Boyutu">
+              <Field label={t('settings.hlsListSize')}>
                 <input type="number" className="input" value={settings.streaming.hlsListSize}
                   onChange={(e) => updateSettings('streaming', { hlsListSize: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Buffer Boyutu (KB)">
+              <Field label={t('settings.bufferSize')}>
                 <input type="number" className="input" value={settings.streaming.bufferSize}
                   onChange={(e) => updateSettings('streaming', { bufferSize: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="VOD İndirme Hızı">
+              <Field label={t('settings.vodDownloadSpeed')}>
                 <input type="number" className="input" value={settings.streaming.vodDownloadSpeed}
                   onChange={(e) => updateSettings('streaming', { vodDownloadSpeed: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="VOD İndirme Limiti">
+              <Field label={t('settings.vodDownloadLimit')}>
                 <input type="number" className="input" value={settings.streaming.vodDownloadLimit}
                   onChange={(e) => updateSettings('streaming', { vodDownloadLimit: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="VPN Engelle">
+              <Field label={t('settings.blockVpn')}>
                 <Toggle checked={settings.streaming.blockVPN}
                   onChange={(v) => updateSettings('streaming', { blockVPN: v })} />
               </Field>
-              <Field label="Öncelikli Yedek Stream">
+              <Field label={t('settings.priorityBackupStream')}>
                 <Toggle checked={settings.streaming.priorityBackupStream}
                   onChange={(v) => updateSettings('streaming', { priorityBackupStream: v })} />
               </Field>
-              <Field label="Admin Streaming IP'leri">
+              <Field label={t('settings.adminStreamingIps')}>
                 <TagInput value={settings.streaming.adminStreamingIps}
                   onChange={(v) => updateSettings('streaming', { adminStreamingIps: v })}
                   placeholder="192.168.1.1..." />
               </Field>
-              <Field label="Anlık Bağlantı Kapat">
+              <Field label={t('settings.instantCloseConn')}>
                 <Toggle checked={settings.streaming.instantCloseConn}
                   onChange={(v) => updateSettings('streaming', { instantCloseConn: v })} />
               </Field>
-              <Field label="Bağlantı Aşım Log">
+              <Field label={t('settings.connExceedLog')}>
                 <Toggle checked={settings.streaming.enableConxExceedLog}
                   onChange={(v) => updateSettings('streaming', { enableConxExceedLog: v })} />
               </Field>
-              <SectionTitle>Video Yönlendirmeleri</SectionTitle>
-              <Field label="Stream Çevrimdışı URL">
+              <SectionTitle>{t('settings.videoRedirects')}</SectionTitle>
+              <Field label={t('settings.streamDownUrl')}>
                 <input className="input" value={settings.streaming.streamDownUrl}
                   onChange={(e) => updateSettings('streaming', { streamDownUrl: e.target.value })}
                   placeholder="https://..." />
               </Field>
-              <Field label="Banlı Kullanıcı URL">
+              <Field label={t('settings.bannedUserUrl')}>
                 <input className="input" value={settings.streaming.bannedUserUrl}
                   onChange={(e) => updateSettings('streaming', { bannedUserUrl: e.target.value })}
                   placeholder="https://..." />
               </Field>
-              <Field label="Süresi Dolmuş URL">
+              <Field label={t('settings.expiredUrl')}>
                 <input className="input" value={settings.streaming.expiredUserUrl}
                   onChange={(e) => updateSettings('streaming', { expiredUserUrl: e.target.value })}
                   placeholder="https://..." />
               </Field>
-              <Field label="Ülke Kısıtlama URL">
+              <Field label={t('settings.countryLockUrl')}>
                 <input className="input" value={settings.streaming.countryLockVideo}
                   onChange={(e) => updateSettings('streaming', { countryLockVideo: e.target.value })}
                   placeholder="https://..." />
               </Field>
-              <Field label="Maks Bağlantı Aşım URL">
+              <Field label={t('settings.maxConnExceedUrl')}>
                 <input className="input" value={settings.streaming.maxConxExceedVideo}
                   onChange={(e) => updateSettings('streaming', { maxConxExceedVideo: e.target.value })}
                   placeholder="https://..." />
@@ -472,56 +475,56 @@ export function SettingsPage() {
         {/* === SECURITY === */}
         {activeTab === 'security' && (
           <>
-            <SectionTitle>Server Guard</SectionTitle>
+            <SectionTitle>{t('settings.serverGuard')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Guard Etkin" hint="Otomatik IP bloklama">
+              <Field label={t('settings.guardEnabled')} hint={t('settings.guardEnabledHint')}>
                 <Toggle checked={settings.security.enableGuard}
                   onChange={(v) => updateSettings('security', { enableGuard: v })} />
               </Field>
-              <Field label="Blok Süresi (dk)">
+              <Field label={t('settings.blockDuration')}>
                 <input type="number" className="input" value={settings.security.blockDuration}
                   onChange={(e) => updateSettings('security', { blockDuration: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Normal Hit Limiti">
+              <Field label={t('settings.normalHitLimit')}>
                 <input type="number" className="input" value={settings.security.maxHitsNormal}
                   onChange={(e) => updateSettings('security', { maxHitsNormal: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Restreamer Hit Limiti">
+              <Field label={t('settings.restreamerHitLimit')}>
                 <input type="number" className="input" value={settings.security.maxHitsRestreamer}
                   onChange={(e) => updateSettings('security', { maxHitsRestreamer: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="IP Başına Maks Bağlantı">
+              <Field label={t('settings.maxConnPerIp')}>
                 <input type="number" className="input" value={settings.security.maxConnsPerIp}
                   onChange={(e) => updateSettings('security', { maxConnsPerIp: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Geçersiz Stream ID'yi Engelle">
+              <Field label={t('settings.denyInvalidStreamIds')}>
                 <Toggle checked={settings.security.denyInvalidStreamIds}
                   onChange={(v) => updateSettings('security', { denyInvalidStreamIds: v })} />
               </Field>
-              <Field label="Hassas Portlar" hint="Guard'ın koruyacağı portlar">
+              <Field label={t('settings.sensitivePorts')} hint={t('settings.sensitivePortsHint')}>
                 <TagInput value={settings.security.sensitivePorts}
                   onChange={(v) => updateSettings('security', { sensitivePorts: v })} />
               </Field>
-              <Field label="Açık Portlar" hint="İzin verilen portlar">
+              <Field label={t('settings.openPorts')} hint={t('settings.openPortsHint')}>
                 <TagInput value={settings.security.openPorts}
                   onChange={(v) => updateSettings('security', { openPorts: v })} />
               </Field>
-              <Field label="Whitelist IP'ler" hint="Asla engellenmeyen IP'ler">
+              <Field label={t('settings.whitelistIps')} hint={t('settings.whitelistIpsHint')}>
                 <TagInput value={settings.security.whitelistIPs}
                   onChange={(v) => updateSettings('security', { whitelistIPs: v })}
                   placeholder="192.168.1.1, 10.0.0.0/8" />
               </Field>
             </div>
-            <SectionTitle>Panel Coğrafi Erişim Kısıtlaması</SectionTitle>
+            <SectionTitle>{t('settings.panelGeoRestriction')}</SectionTitle>
             <div className="space-y-5">
               <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning">
-                ⚠ Bu ayar yalnızca admin panelini etkiler. Kendi ülkeni mutlaka listeye ekle; yoksa panelden kilitlenirsin!
+                {t('settings.geoWarning')}
               </div>
-              <Field label="Coğrafi Engelleme Aktif" hint="Admin paneline sadece izin verilen ülkelerden erişilsin">
+              <Field label={t('settings.geoBlockEnabled')} hint={t('settings.geoBlockEnabledHint')}>
                 <Toggle checked={settings.security.geoBlockEnabled}
                   onChange={(v) => updateSettings('security', { geoBlockEnabled: v })} />
               </Field>
-              <Field label="İzin Verilen Ülkeler" hint="ISO 3166-1 alfa-2 kodları (TR, US, DE…)">
+              <Field label={t('settings.allowedCountries')} hint={t('settings.allowedCountriesHint')}>
                 <TagInput
                   value={settings.security.allowedCountries}
                   onChange={(v) => updateSettings('security', { allowedCountries: v.map((c) => c.toUpperCase()) })}
@@ -536,30 +539,30 @@ export function SettingsPage() {
         {/* === DATABASE === */}
         {activeTab === 'database' && (
           <>
-            <SectionTitle>Yerel Yedekleme</SectionTitle>
+            <SectionTitle>{t('settings.localBackup')}</SectionTitle>
             <div className="space-y-5">
-              <Field label="Yerel Yedekleme Etkin">
+              <Field label={t('settings.localBackupEnabled')}>
                 <Toggle checked={settings.database.enableLocalBackups}
                   onChange={(v) => updateSettings('database', { enableLocalBackups: v })} />
               </Field>
-              <Field label="Yedekleme Dizini">
+              <Field label={t('settings.backupDir')}>
                 <input className="input font-mono" value={settings.database.localBackupDir}
                   onChange={(e) => updateSettings('database', { localBackupDir: e.target.value })} />
               </Field>
-              <Field label="Otomatik Yedek Aralığı (saat)">
+              <Field label={t('settings.autoBackupInterval')}>
                 <input type="number" className="input" value={settings.database.autoBackupIntervalHours}
                   onChange={(e) => updateSettings('database', { autoBackupIntervalHours: parseInt(e.target.value, 10) })} />
               </Field>
-              <Field label="Saklanacak Yedek Sayısı">
+              <Field label={t('settings.backupsToKeep')}>
                 <input type="number" className="input" value={settings.database.backupsToKeep}
                   onChange={(e) => updateSettings('database', { backupsToKeep: parseInt(e.target.value, 10) })} />
               </Field>
-              <SectionTitle>Uzak Yedekleme</SectionTitle>
-              <Field label="Dropbox Yedekleme">
+              <SectionTitle>{t('settings.remoteBackup')}</SectionTitle>
+              <Field label={t('settings.dropboxBackup')}>
                 <Toggle checked={settings.database.enableRemoteBackup}
                   onChange={(v) => updateSettings('database', { enableRemoteBackup: v })} />
               </Field>
-              <Field label="Dropbox API Anahtarı">
+              <Field label={t('settings.dropboxApiKey')}>
                 <input type="password" className="input font-mono" value={settings.database.dropboxApiKey}
                   onChange={(e) => updateSettings('database', { dropboxApiKey: e.target.value })}
                   placeholder="••••••••••••••••" />
@@ -568,30 +571,30 @@ export function SettingsPage() {
 
             <div className="pt-4 border-t border-border">
               <div className="flex items-center justify-between mb-4">
-                <SectionTitle>Yedekler</SectionTitle>
+                <SectionTitle>{t('settings.backups')}</SectionTitle>
                 <button
                   className="btn btn-primary flex items-center gap-2"
                   onClick={() => createBackup.mutate()}
                   disabled={createBackup.isPending}
                 >
                   <HardDrive className="w-4 h-4" />
-                  {createBackup.isPending ? 'Yedekleniyor…' : 'Şimdi Yedekle'}
+                  {createBackup.isPending ? t('settings.backingUp') : t('settings.backupNow')}
                 </button>
               </div>
 
               {backupsLoading ? (
-                <div className="text-sm text-muted text-center py-6">Yükleniyor…</div>
+                <div className="text-sm text-muted text-center py-6">{t('common.loading')}</div>
               ) : backupList.length === 0 ? (
-                <div className="text-sm text-muted text-center py-6">Henüz yedek yok.</div>
+                <div className="text-sm text-muted text-center py-6">{t('settings.noBackups')}</div>
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs text-muted uppercase tracking-wider">
-                        <th className="px-4 py-2">Dosya Adı</th>
-                        <th className="px-4 py-2">Boyut</th>
-                        <th className="px-4 py-2">Tarih</th>
-                        <th className="px-4 py-2 text-right">İşlemler</th>
+                        <th className="px-4 py-2">{t('settings.colFileName')}</th>
+                        <th className="px-4 py-2">{t('settings.colSize')}</th>
+                        <th className="px-4 py-2">{t('settings.colDate')}</th>
+                        <th className="px-4 py-2 text-right">{t('common.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -606,7 +609,7 @@ export function SettingsPage() {
                             <div className="flex items-center gap-1 justify-end">
                               {settings.database.enableRemoteBackup && settings.database.dropboxApiKey && (
                                 <button
-                                  title="Dropbox'a Yükle"
+                                  title={t('settings.uploadToDropbox')}
                                   onClick={() => uploadDropbox.mutate(b.filename)}
                                   disabled={uploadDropbox.isPending}
                                   className="p-1.5 rounded hover:bg-blue-500/10 text-blue-400 transition-colors disabled:opacity-50"
@@ -615,14 +618,14 @@ export function SettingsPage() {
                                 </button>
                               )}
                               <button
-                                title="İndir"
+                                title={t('settings.download')}
                                 onClick={() => { void downloadBackup(b.filename); }}
                                 className="p-1.5 rounded hover:bg-emerald-500/10 text-emerald-400 transition-colors"
                               >
                                 <Download className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                title="Sil"
+                                title={t('common.delete')}
                                 onClick={() => setDeleteBackupFile(b.filename)}
                                 className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
                               >
@@ -640,12 +643,12 @@ export function SettingsPage() {
               {deleteBackupFile && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
                   <div className="card p-6 max-w-sm w-full mx-4 space-y-4">
-                    <h3 className="font-semibold text-slate-100">Yedeği Sil</h3>
+                    <h3 className="font-semibold text-slate-100">{t('settings.deleteBackupTitle')}</h3>
                     <p className="text-sm text-muted">
-                      <span className="font-mono text-slate-300">{deleteBackupFile}</span> kalıcı olarak silinecek.
+                      <span className="font-mono text-slate-300">{deleteBackupFile}</span> {t('settings.willBePermanentlyDeleted')}
                     </p>
                     <div className="flex gap-2 justify-end">
-                      <button className="btn btn-ghost" onClick={() => setDeleteBackupFile(null)}>İptal</button>
+                      <button className="btn btn-ghost" onClick={() => setDeleteBackupFile(null)}>{t('common.cancel')}</button>
                       <button
                         className="btn btn-primary bg-red-600 hover:bg-red-700"
                         disabled={deleteBackup.isPending}
@@ -655,7 +658,7 @@ export function SettingsPage() {
                           });
                         }}
                       >
-                        {deleteBackup.isPending ? 'Siliniyor…' : 'Sil'}
+                        {deleteBackup.isPending ? t('settings.deleting') : t('common.delete')}
                       </button>
                     </div>
                   </div>
@@ -678,6 +681,7 @@ export function SettingsPage() {
 const PERM_OPTIONS = ['read', 'write', 'admin'];
 
 function ApiKeyTab() {
+  const { t } = useTranslation();
   const { data: keys } = useApiKeys();
   const createKey = useCreateApiKey();
   const deleteKey = useDeleteApiKey();
@@ -706,22 +710,22 @@ function ApiKeyTab() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <SectionTitle>API Anahtarları</SectionTitle>
+        <SectionTitle>{t('settings.apiKeys')}</SectionTitle>
         <button className="btn-primary text-sm px-3 py-1.5" onClick={() => setShowCreate(true)}>
-          + Yeni Anahtar
+          + {t('settings.newKey')}
         </button>
       </div>
 
       {newKey && (
         <div className="mb-6 p-4 rounded-xl border border-green-500/30 bg-green-500/5 space-y-2">
-          <p className="text-sm text-green-400 font-semibold">Yeni API Anahtarınız (bir kez gösterilir):</p>
+          <p className="text-sm text-green-400 font-semibold">{t('settings.newApiKeyShown')}</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs font-mono text-slate-200 bg-surface p-2 rounded-lg break-all">{newKey}</code>
             <button onClick={handleCopy} className="p-2 rounded-lg hover:bg-surface-2 text-muted">
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <button className="text-xs text-muted hover:text-slate-300" onClick={() => setNewKey(null)}>Kapat</button>
+          <button className="text-xs text-muted hover:text-slate-300" onClick={() => setNewKey(null)}>{t('common.close')}</button>
         </div>
       )}
 
@@ -739,33 +743,33 @@ function ApiKeyTab() {
               </div>
             </div>
             <div className="text-right text-xs text-muted space-y-0.5">
-              <div>Oluşturuldu: {new Date(k.createdAt).toLocaleDateString('tr-TR')}</div>
-              {k.lastUsedAt && <div>Son kullanım: {new Date(k.lastUsedAt).toLocaleDateString('tr-TR')}</div>}
+              <div>{t('settings.createdColon')} {new Date(k.createdAt).toLocaleDateString('tr-TR')}</div>
+              {k.lastUsedAt && <div>{t('settings.lastUsedColon')} {new Date(k.lastUsedAt).toLocaleDateString('tr-TR')}</div>}
             </div>
             <button
               onClick={() => deleteKey.mutate(k.id)}
               className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors"
-              title="Sil"
+              title={t('common.delete')}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
         {(!keys || keys.length === 0) && (
-          <div className="text-center text-muted text-sm py-8">Henüz API anahtarı yok</div>
+          <div className="text-center text-muted text-sm py-8">{t('settings.noApiKeys')}</div>
         )}
       </div>
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="card p-6 max-w-sm w-full mx-4 space-y-4">
-            <h3 className="font-semibold text-slate-100">Yeni API Anahtarı</h3>
+            <h3 className="font-semibold text-slate-100">{t('settings.newApiKeyTitle')}</h3>
             <div>
-              <label className="label">Ad</label>
-              <input className="input" placeholder="CI/CD entegrasyonu" value={name} onChange={(e) => setName(e.target.value)} />
+              <label className="label">{t('common.name')}</label>
+              <input className="input" placeholder={t('settings.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
-              <label className="label">İzinler</label>
+              <label className="label">{t('settings.permissions')}</label>
               <div className="flex gap-2 flex-wrap mt-1">
                 {PERM_OPTIONS.map((p) => (
                   <label key={p} className="flex items-center gap-1.5 cursor-pointer text-sm">
@@ -781,13 +785,13 @@ function ApiKeyTab() {
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button className="btn-ghost" onClick={() => setShowCreate(false)}>İptal</button>
+              <button className="btn-ghost" onClick={() => setShowCreate(false)}>{t('common.cancel')}</button>
               <button
                 className="btn-primary"
                 disabled={!name || createKey.isPending}
                 onClick={() => void handleCreate()}
               >
-                {createKey.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+                {createKey.isPending ? t('settings.creating') : t('common.create')}
               </button>
             </div>
           </div>
@@ -800,6 +804,7 @@ function ApiKeyTab() {
 // ─── White-Label Tab ──────────────────────────────────────────────────────────
 
 function WhiteLabelTab() {
+  const { t } = useTranslation();
   const { data: config } = useWhiteLabel();
   const updateWl = useUpdateWhiteLabel();
   const uploadLogo = useUploadLogo();
@@ -836,10 +841,10 @@ function WhiteLabelTab() {
 
   return (
     <>
-      <SectionTitle>White-Label Ayarları</SectionTitle>
+      <SectionTitle>{t('settings.whiteLabelSettings')}</SectionTitle>
 
       <div className="mb-6">
-        <label className="label mb-2">Logo</label>
+        <label className="label mb-2">{t('settings.logo')}</label>
         <div
           className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
           onClick={() => fileRef.current?.click()}
@@ -851,8 +856,8 @@ function WhiteLabelTab() {
           ) : (
             <ImageIcon className="w-8 h-8 text-muted mx-auto mb-2" />
           )}
-          <p className="text-sm text-muted">Sürükle & bırak veya tıkla (max 2MB)</p>
-          {uploadLogo.isPending && <p className="text-xs text-primary mt-1">Yükleniyor…</p>}
+          <p className="text-sm text-muted">{t('settings.dragDropHint')}</p>
+          {uploadLogo.isPending && <p className="text-xs text-primary mt-1">{t('common.loading')}</p>}
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadLogo.mutate(file); }} />
@@ -860,40 +865,40 @@ function WhiteLabelTab() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label className="label">Panel Adı</label>
+          <div><label className="label">{t('settings.panelName')}</label>
             <input className="input" value={form.panelName} onChange={f('panelName')} placeholder="XtreamPulsar" /></div>
-          <div><label className="label">Özel Domain</label>
+          <div><label className="label">{t('settings.customDomain')}</label>
             <input className="input" value={form.customDomain} onChange={f('customDomain')} placeholder="panel.sirketniz.com" /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="label">Birincil Renk</label>
+          <div><label className="label">{t('settings.primaryColor')}</label>
             <div className="flex items-center gap-2">
               <input type="color" value={form.primaryColor} onChange={f('primaryColor')} className="h-9 w-12 rounded cursor-pointer border border-border bg-transparent" />
               <input className="input flex-1 font-mono" value={form.primaryColor} onChange={f('primaryColor')} />
             </div></div>
-          <div><label className="label">İkincil Renk</label>
+          <div><label className="label">{t('settings.secondaryColor')}</label>
             <div className="flex items-center gap-2">
               <input type="color" value={form.secondaryColor} onChange={f('secondaryColor')} className="h-9 w-12 rounded cursor-pointer border border-border bg-transparent" />
               <input className="input flex-1 font-mono" value={form.secondaryColor} onChange={f('secondaryColor')} />
             </div></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label className="label">Destek E-posta</label>
+          <div><label className="label">{t('settings.supportEmail')}</label>
             <input className="input" value={form.supportEmail} onChange={f('supportEmail')} /></div>
-          <div><label className="label">Destek URL</label>
+          <div><label className="label">{t('settings.supportUrl')}</label>
             <input className="input" value={form.supportUrl} onChange={f('supportUrl')} /></div>
         </div>
-        <div><label className="label">Footer Metni</label>
+        <div><label className="label">{t('settings.footerText')}</label>
           <input className="input" value={form.footerText} onChange={f('footerText')} /></div>
-        <div><label className="label">Özel CSS</label>
+        <div><label className="label">{t('settings.customCss')}</label>
           <textarea className="input font-mono text-xs resize-y" rows={4} value={form.customCss} onChange={f('customCss')}
             placeholder=":root { --color-primary: #6366f1; }" /></div>
 
         <div className="flex gap-2 pt-2">
-          <button className="btn-ghost" onClick={() => setShowPreview(true)}>Önizle</button>
+          <button className="btn-ghost" onClick={() => setShowPreview(true)}>{t('settings.preview')}</button>
           <button className="btn-primary flex items-center gap-2" disabled={updateWl.isPending} onClick={() => updateWl.mutate(form)}>
             <Save className="w-4 h-4" />
-            {updateWl.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            {updateWl.isPending ? t('settings.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -901,7 +906,7 @@ function WhiteLabelTab() {
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowPreview(false)}>
           <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-4" style={{ color: form.primaryColor }}>{form.panelName || 'Panel Adı'}</h3>
+            <h3 className="font-semibold mb-4" style={{ color: form.primaryColor }}>{form.panelName || t('settings.panelName')}</h3>
             <div className="space-y-2">
               <div className="h-8 rounded-lg" style={{ background: form.primaryColor, opacity: 0.8 }} />
               <div className="h-4 rounded" style={{ background: form.secondaryColor, opacity: 0.5, width: '60%' }} />
@@ -909,7 +914,7 @@ function WhiteLabelTab() {
             </div>
             {config?.logoUrl && <img src={config.logoUrl} alt="preview" className="h-10 object-contain mt-4" />}
             <p className="text-xs text-muted mt-4 text-center">{form.footerText}</p>
-            <button className="mt-4 text-xs text-muted hover:text-fg" onClick={() => setShowPreview(false)}>Kapat</button>
+            <button className="mt-4 text-xs text-muted hover:text-fg" onClick={() => setShowPreview(false)}>{t('common.close')}</button>
           </div>
         </div>
       )}
@@ -926,6 +931,7 @@ function ResellerTab({
   settings: ReturnType<typeof useSettings>;
   updateSettings: <K extends keyof ReturnType<typeof useSettings>>(tab: K, values: Partial<ReturnType<typeof useSettings>[K]>) => void;
 }) {
+  const { t } = useTranslation();
   const cp = settings.reseller.creditPricing ?? DEFAULT_CREDIT_PRICING;
 
   function updateDurationCredits(index: number, credits: number) {
@@ -948,15 +954,15 @@ function ResellerTab({
 
   return (
     <>
-      <SectionTitle>Reseller Yönetimi</SectionTitle>
+      <SectionTitle>{t('settings.resellerManagement')}</SectionTitle>
       <div className="space-y-5">
-        <Field label="Kayıt Açık" hint="Yeni reseller kaydına izin ver">
+        <Field label={t('settings.registrationOpen')} hint={t('settings.registrationOpenHint')}>
           <Toggle
             checked={settings.reseller.registrationOpen}
             onChange={(v) => updateSettings('reseller', { registrationOpen: v })}
           />
         </Field>
-        <Field label="Min Kredi Uyarısı" hint="Bu değerin altına düşünce uyarı">
+        <Field label={t('settings.minCreditWarning')} hint={t('settings.minCreditWarningHint')}>
           <input
             type="number"
             className="input"
@@ -966,13 +972,13 @@ function ResellerTab({
         </Field>
       </div>
 
-      <SectionTitle>Tier Bazlı Kredi Çarpanı</SectionTitle>
+      <SectionTitle>{t('settings.tierCreditMultiplier')}</SectionTitle>
       <div className="space-y-5">
         <p className="text-xs text-muted">
-          Reseller'ın tier'ına göre işlem başına düşülecek kredi miktarı çarpılır. 1 = standart, 2 = 2 kat kredi.
+          {t('settings.tierMultiplierDesc')}
         </p>
         {(['BASIC', 'SILVER', 'GOLD', 'PLATINUM'] as const).map((tier) => (
-          <Field key={tier} label={`${tier} Çarpanı`}>
+          <Field key={tier} label={t('settings.tierMultiplierLabel', { tier })}>
             <input
               type="number"
               className="input"
@@ -989,21 +995,20 @@ function ResellerTab({
         ))}
       </div>
 
-      <SectionTitle>Kredi Fiyatlandırması</SectionTitle>
+      <SectionTitle>{t('settings.creditPricing')}</SectionTitle>
 
       <p className="text-xs text-muted mb-4">
-        Reseller'ların kullanıcı oluşturma/uzatma işlemlerinde hangi süre için kaç kredi düşüleceğini belirler.
-        Tier çarpanı bu değerlere ayrıca uygulanır.
+        {t('settings.creditPricingDesc')}
       </p>
 
       <div className="mb-6">
-        <h4 className="text-sm font-medium mb-3">Standart Süreler</h4>
+        <h4 className="text-sm font-medium mb-3">{t('settings.standardDurations')}</h4>
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-2">
-                <th className="text-left px-4 py-2 text-muted font-normal">Süre</th>
-                <th className="text-left px-4 py-2 text-muted font-normal">Kredi</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">{t('settings.colDuration')}</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">{t('settings.colCredit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1028,13 +1033,13 @@ function ResellerTab({
       </div>
 
       <div className="mb-6">
-        <h4 className="text-sm font-medium mb-3">Test Süreleri</h4>
+        <h4 className="text-sm font-medium mb-3">{t('settings.testDurations')}</h4>
         <div className="rounded-xl border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-2">
-                <th className="text-left px-4 py-2 text-muted font-normal">Süre</th>
-                <th className="text-left px-4 py-2 text-muted font-normal">Kredi</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">{t('settings.colDuration')}</th>
+                <th className="text-left px-4 py-2 text-muted font-normal">{t('settings.colCredit')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1059,15 +1064,15 @@ function ResellerTab({
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-medium">Özel Fiyatlandırma</h4>
-        <Field label="Özel fiyatlandırma aktif" hint="Listede olmayan süreler için gün bazlı hesaplanır">
+        <h4 className="text-sm font-medium">{t('settings.customPricing')}</h4>
+        <Field label={t('settings.customPricingActive')} hint={t('settings.customPricingActiveHint')}>
           <Toggle
             checked={cp.customPricing?.enabled ?? false}
             onChange={(v) => updateCustomPricing({ enabled: v })}
           />
         </Field>
         {cp.customPricing?.enabled && (
-          <Field label="Gün Başına Kredi" hint="Örn: 0.1 → 25 gün = 3 kredi">
+          <Field label={t('settings.creditsPerDay')} hint={t('settings.creditsPerDayHint')}>
             <div className="flex items-center gap-3">
               <input
                 type="number"
@@ -1077,7 +1082,7 @@ function ResellerTab({
                 value={cp.customPricing.creditsPerDay ?? 0.1}
                 onChange={(e) => updateCustomPricing({ creditsPerDay: parseFloat(e.target.value) || 0.1 })}
               />
-              <span className="text-xs text-muted">25 gün = {customDaysPreview} kredi</span>
+              <span className="text-xs text-muted">{t('settings.daysPreview', { n: customDaysPreview })}</span>
             </div>
           </Field>
         )}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '@/lib/axios';
 import {
   MessageSquare, Plus, X, Send, ChevronRight, Loader2, RefreshCw,
@@ -40,22 +41,23 @@ const STATUS_BADGE: Record<string, string> = {
   RESOLVED: 'bg-green-500/20 text-green-400 border-green-500/30',
   CLOSED: 'bg-gray-700 text-gray-400 border-gray-600',
 };
-const STATUS_TR: Record<string, string> = {
-  OPEN: 'Açık', IN_PROGRESS: 'İşlemde', RESOLVED: 'Çözüldü', CLOSED: 'Kapalı',
+const STATUS_KEY: Record<string, string> = {
+  OPEN: 'support.statusOpen', IN_PROGRESS: 'support.statusInProgress', RESOLVED: 'support.statusResolved', CLOSED: 'support.statusClosed',
 };
 const PRIORITY_COLOR: Record<string, string> = {
   LOW: 'text-gray-400', MEDIUM: 'text-yellow-400', HIGH: 'text-orange-400', CRITICAL: 'text-red-400',
 };
-const PRIORITY_TR: Record<string, string> = {
-  LOW: 'Düşük', MEDIUM: 'Orta', HIGH: 'Yüksek', CRITICAL: 'Kritik',
+const PRIORITY_KEY: Record<string, string> = {
+  LOW: 'support.priorityLow', MEDIUM: 'support.priorityMedium', HIGH: 'support.priorityHigh', CRITICAL: 'support.priorityCritical',
 };
-const CATEGORY_TR: Record<string, string> = {
-  GENERAL: 'Genel', BILLING: 'Fatura', TECHNICAL: 'Teknik', FEATURE: 'Özellik İsteği',
+const CATEGORY_KEY: Record<string, string> = {
+  GENERAL: 'support.categoryGeneral', BILLING: 'support.categoryBilling', TECHNICAL: 'support.categoryTechnical', FEATURE: 'support.categoryFeature',
 };
 
 const EMPTY_FORM = { subject: '', message: '', category: 'TECHNICAL', priority: 'MEDIUM' };
 
 export function SupportPage() {
+  const { t } = useTranslation();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -119,7 +121,7 @@ export function SupportPage() {
 
   async function handleClose() {
     if (!selected) return;
-    if (!confirm('Bu talebi kapatmak istiyor musunuz?')) return;
+    if (!confirm(t('support.closeConfirm'))) return;
     setClosing(true);
     try {
       await api.post(`/support/tickets/${selected.id}/close`);
@@ -139,14 +141,14 @@ export function SupportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Destek Merkezi</h1>
-          <p className="text-sm text-muted mt-0.5">Destek taleplerinizi buradan yönetin</p>
+          <h1 className="text-xl font-bold">{t('support.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('support.subtitle')}</p>
         </div>
         <button
           onClick={() => setCreateOpen(true)}
           className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-2 rounded-lg transition-colors"
         >
-          <Plus size={15} /> Yeni Talep Aç
+          <Plus size={15} /> {t('support.newTicket')}
         </button>
       </div>
 
@@ -155,43 +157,43 @@ export function SupportPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">No</th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">Konu</th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">Kategori</th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">Öncelik</th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">Durum</th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3">Tarih</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('support.colNo')}</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('support.subject')}</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('support.category')}</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('support.priority')}</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('common.status')}</th>
+              <th className="text-left text-xs text-muted font-medium px-4 py-3">{t('support.date')}</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-muted text-sm">Yükleniyor…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-muted text-sm">{t('common.loading')}</td></tr>
             ) : tickets.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center">
                   <MessageSquare size={32} className="text-muted mx-auto mb-2 opacity-40" />
-                  <p className="text-muted text-sm">Destek talebiniz yok</p>
+                  <p className="text-muted text-sm">{t('support.noTickets')}</p>
                 </td>
               </tr>
-            ) : tickets.map((t) => (
+            ) : tickets.map((tk) => (
               <tr
-                key={t.ticketId}
-                onClick={() => { void loadDetail(t.ticketId); }}
+                key={tk.ticketId}
+                onClick={() => { void loadDetail(tk.ticketId); }}
                 className="border-b border-border last:border-0 hover:bg-surface-2 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-3 font-mono text-xs text-muted">{t.ticketNo}</td>
-                <td className="px-4 py-3 font-medium">{t.subject}</td>
-                <td className="px-4 py-3 text-muted text-xs">{CATEGORY_TR[t.category] ?? t.category}</td>
-                <td className={`px-4 py-3 text-xs font-semibold ${PRIORITY_COLOR[t.priority] ?? 'text-muted'}`}>
-                  {PRIORITY_TR[t.priority] ?? t.priority}
+                <td className="px-4 py-3 font-mono text-xs text-muted">{tk.ticketNo}</td>
+                <td className="px-4 py-3 font-medium">{tk.subject}</td>
+                <td className="px-4 py-3 text-muted text-xs">{CATEGORY_KEY[tk.category] ? t(CATEGORY_KEY[tk.category]) : tk.category}</td>
+                <td className={`px-4 py-3 text-xs font-semibold ${PRIORITY_COLOR[tk.priority] ?? 'text-muted'}`}>
+                  {PRIORITY_KEY[tk.priority] ? t(PRIORITY_KEY[tk.priority]) : tk.priority}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_BADGE[t.status] ?? 'bg-gray-700 text-muted border-gray-600'}`}>
-                    {STATUS_TR[t.status] ?? t.status}
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_BADGE[tk.status] ?? 'bg-gray-700 text-muted border-gray-600'}`}>
+                    {STATUS_KEY[tk.status] ? t(STATUS_KEY[tk.status]) : tk.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-muted">{new Date(t.createdAt).toLocaleDateString('tr-TR')}</td>
+                <td className="px-4 py-3 text-xs text-muted">{new Date(tk.createdAt).toLocaleDateString('tr-TR')}</td>
                 <td className="px-4 py-3 text-muted"><ChevronRight size={15} /></td>
               </tr>
             ))}
@@ -215,7 +217,7 @@ export function SupportPage() {
                   onClick={() => { void loadDetail(selected.id); }}
                   disabled={detailLoading}
                   className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors"
-                  title="Yenile"
+                  title={t('support.refresh')}
                 >
                   <RefreshCw size={13} className={detailLoading ? 'animate-spin' : ''} />
                 </button>
@@ -225,7 +227,7 @@ export function SupportPage() {
                     disabled={closing}
                     className="text-xs text-danger hover:text-danger/80 bg-danger/10 hover:bg-danger/20 px-3 py-1.5 rounded-lg transition-colors"
                   >
-                    Talebi Kapat
+                    {t('support.closeTicket')}
                   </button>
                 )}
                 <button onClick={() => setSelected(null)} className="p-1.5 text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors">
@@ -236,18 +238,18 @@ export function SupportPage() {
 
             {/* Ticket meta */}
             <div className="flex gap-4 px-5 py-3 border-b border-border shrink-0">
-              <MetaTag label="Durum">
+              <MetaTag label={t('common.status')}>
                 <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_BADGE[selected.status] ?? ''}`}>
-                  {STATUS_TR[selected.status] ?? selected.status}
+                  {STATUS_KEY[selected.status] ? t(STATUS_KEY[selected.status]) : selected.status}
                 </span>
               </MetaTag>
-              <MetaTag label="Öncelik">
+              <MetaTag label={t('support.priority')}>
                 <span className={`text-xs font-semibold ${PRIORITY_COLOR[selected.priority] ?? 'text-muted'}`}>
-                  {PRIORITY_TR[selected.priority] ?? selected.priority}
+                  {PRIORITY_KEY[selected.priority] ? t(PRIORITY_KEY[selected.priority]) : selected.priority}
                 </span>
               </MetaTag>
-              <MetaTag label="Kategori">
-                <span className="text-xs text-muted">{CATEGORY_TR[selected.category] ?? selected.category}</span>
+              <MetaTag label={t('support.category')}>
+                <span className="text-xs text-muted">{CATEGORY_KEY[selected.category] ? t(CATEGORY_KEY[selected.category]) : selected.category}</span>
               </MetaTag>
             </div>
 
@@ -265,7 +267,7 @@ export function SupportPage() {
                       : 'bg-primary/10 border border-primary/40'
                   }`}>
                     <p className="text-xs text-muted mb-1">
-                      {m.isStaff ? (m.authorName ?? 'XtreamPulsar Destek') : 'Siz'} · {new Date(m.createdAt).toLocaleString('tr-TR')}
+                      {m.isStaff ? (m.authorName ?? t('support.staffName')) : t('support.you')} · {new Date(m.createdAt).toLocaleString('tr-TR')}
                     </p>
                     <p className="text-sm text-fg whitespace-pre-wrap">{m.content}</p>
                   </div>
@@ -283,60 +285,60 @@ export function SupportPage() {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setCreateOpen(false)} />
           <div className="relative bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h2 className="text-sm font-semibold">Yeni Destek Talebi</h2>
+              <h2 className="text-sm font-semibold">{t('support.newTicketTitle')}</h2>
               <button onClick={() => setCreateOpen(false)} className="text-muted hover:text-fg p-1 rounded-lg hover:bg-surface-2 transition-colors">
                 <X size={15} />
               </button>
             </div>
             <form onSubmit={(e) => { void handleCreate(e); }} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1.5">Konu <span className="text-danger">*</span></label>
+                <label className="block text-xs font-medium text-muted mb-1.5">{t('support.subject')} <span className="text-danger">*</span></label>
                 <input
                   name="subject"
                   value={form.subject}
                   onChange={handleField}
-                  placeholder="Sorununuzu kısaca açıklayın"
+                  placeholder={t('support.subjectPlaceholder')}
                   className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">Kategori</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">{t('support.category')}</label>
                   <select name="category" value={form.category} onChange={handleField} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="TECHNICAL">Teknik</option>
-                    <option value="BILLING">Fatura</option>
-                    <option value="GENERAL">Genel</option>
-                    <option value="FEATURE">Özellik İsteği</option>
+                    <option value="TECHNICAL">{t('support.categoryTechnical')}</option>
+                    <option value="BILLING">{t('support.categoryBilling')}</option>
+                    <option value="GENERAL">{t('support.categoryGeneral')}</option>
+                    <option value="FEATURE">{t('support.categoryFeature')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">Öncelik</label>
+                  <label className="block text-xs font-medium text-muted mb-1.5">{t('support.priority')}</label>
                   <select name="priority" value={form.priority} onChange={handleField} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="LOW">Düşük</option>
-                    <option value="MEDIUM">Orta</option>
-                    <option value="HIGH">Yüksek</option>
-                    <option value="CRITICAL">Kritik</option>
+                    <option value="LOW">{t('support.priorityLow')}</option>
+                    <option value="MEDIUM">{t('support.priorityMedium')}</option>
+                    <option value="HIGH">{t('support.priorityHigh')}</option>
+                    <option value="CRITICAL">{t('support.priorityCritical')}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted mb-1.5">Mesaj <span className="text-danger">*</span></label>
+                <label className="block text-xs font-medium text-muted mb-1.5">{t('support.message')} <span className="text-danger">*</span></label>
                 <textarea
                   name="message"
                   value={form.message}
                   onChange={handleField}
                   rows={4}
-                  placeholder="Sorununuzu detaylı açıklayın…"
+                  placeholder={t('support.messagePlaceholder')}
                   className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   required
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors">İptal</button>
+                <button type="button" onClick={() => setCreateOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-fg rounded-lg hover:bg-surface-2 transition-colors">{t('common.cancel')}</button>
                 <button type="submit" disabled={submitting} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg transition-colors">
                   {submitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                  Gönder
+                  {t('support.send')}
                 </button>
               </div>
             </form>

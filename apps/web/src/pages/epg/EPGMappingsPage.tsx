@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Link2, Link2Off, Loader2, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import {
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 import type { Stream } from '@/types';
 
 export function EPGMappingsPage() {
+  const { t } = useTranslation();
   const [selectedSource, setSelectedSource] = useState('');
   const [streamSearch, setStreamSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -55,45 +57,45 @@ export function EPGMappingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Manuel EPG Eşleştirme</h1>
-        <p className="text-sm text-muted mt-0.5">Her stream için EPG kanalını elle seçin</p>
+        <h1 className="text-2xl font-bold text-slate-100">{t('epg.mappings.title')}</h1>
+        <p className="text-sm text-muted mt-0.5">{t('epg.mappings.subtitle')}</p>
       </div>
 
       {/* Controls */}
       <div className="card p-4 flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-48">
-          <label className="label text-xs">EPG Kaynağı</label>
+          <label className="label text-xs">{t('epg.mappings.epgSource')}</label>
           <select
             className="input"
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
           >
-            <option value="">Kaynak seçin…</option>
+            <option value="">{t('epg.mappings.selectSource')}</option>
             {sources.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>
         <div className="flex-1 min-w-48">
-          <label className="label text-xs">Kategori</label>
+          <label className="label text-xs">{t('epg.mappings.category')}</label>
           <select
             className="input"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
-            <option value="">Tüm Kategoriler</option>
+            <option value="">{t('epg.mappings.allCategories')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
         <div className="relative flex-1 min-w-48">
-          <label className="label text-xs">Stream Ara</label>
+          <label className="label text-xs">{t('epg.mappings.streamSearch')}</label>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
             <input
               className="input pl-8"
-              placeholder="Kanal adı…"
+              placeholder={t('epg.mappings.channelNamePlaceholder')}
               value={streamSearch}
               onChange={(e) => setStreamSearch(e.target.value)}
             />
@@ -105,17 +107,17 @@ export function EPGMappingsPage() {
       <div className="card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-muted text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor…
+            <Loader2 className="w-4 h-4 animate-spin" /> {t('common.loading')}
           </div>
         ) : streams.length === 0 ? (
-          <div className="py-10 text-center text-muted text-sm">Kanal bulunamadı</div>
+          <div className="py-10 text-center text-muted text-sm">{t('epg.mappings.noChannels')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted">Kanal</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted">Kategori</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted">EPG Eşleştirmesi</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('epg.mappings.channel')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('epg.mappings.category')}</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted">{t('epg.mappings.epgMapping')}</th>
                 <th className="px-4 py-3 w-24" />
               </tr>
             </thead>
@@ -149,7 +151,7 @@ export function EPGMappingsPage() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-muted">Eşleştirilmedi</span>
+                        <span className="text-xs text-muted">{t('epg.mappings.notMapped')}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -159,7 +161,7 @@ export function EPGMappingsPage() {
                             onClick={() => void handleRemove(mapping.id)}
                             disabled={deleteMapping.isPending}
                             className="btn btn-ghost py-1 px-2 text-xs text-danger"
-                            title="Eşleştirmeyi Kaldır"
+                            title={t('epg.mappings.removeMapping')}
                           >
                             <Link2Off className="w-3.5 h-3.5" />
                           </button>
@@ -171,7 +173,7 @@ export function EPGMappingsPage() {
                             'btn btn-ghost py-1 px-2 text-xs',
                             !selectedSource ? 'opacity-40 cursor-not-allowed' : 'text-primary',
                           )}
-                          title={!selectedSource ? 'Önce EPG kaynağı seçin' : 'Eşleştir'}
+                          title={!selectedSource ? t('epg.mappings.selectSourceFirst') : t('epg.mappings.map')}
                         >
                           <Link2 className="w-3.5 h-3.5" />
                         </button>
@@ -187,7 +189,7 @@ export function EPGMappingsPage() {
 
       {!selectedSource && (
         <p className="text-xs text-amber-400 text-center">
-          Eşleştirme yapmak için önce üstten bir EPG kaynağı seçin.
+          {t('epg.mappings.selectSourceWarning')}
         </p>
       )}
 
@@ -195,7 +197,7 @@ export function EPGMappingsPage() {
       <Modal
         open={!!mappingTarget}
         onClose={() => { setMappingTarget(null); setEpgSearch(''); }}
-        title={`EPG Eşleştir — ${mappingTarget?.stream.name ?? ''}`}
+        title={t('epg.mappings.mapModalTitle', { name: mappingTarget?.stream.name ?? '' })}
         size="md"
       >
         <div className="space-y-4 p-4">
@@ -203,7 +205,7 @@ export function EPGMappingsPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
             <input
               className="input pl-8"
-              placeholder="EPG kanalı ara…"
+              placeholder={t('epg.mappings.epgChannelSearchPlaceholder')}
               value={epgSearch}
               onChange={(e) => setEpgSearch(e.target.value)}
               autoFocus
@@ -212,11 +214,11 @@ export function EPGMappingsPage() {
 
           {loadingChannels ? (
             <div className="flex items-center justify-center gap-2 py-6 text-muted text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> Kanallar yükleniyor…
+              <Loader2 className="w-4 h-4 animate-spin" /> {t('epg.mappings.channelsLoading')}
             </div>
           ) : epgChannels.length === 0 ? (
             <div className="py-6 text-center text-muted text-sm">
-              {epgSearch ? 'Sonuç bulunamadı' : 'Bu kaynakta kanal yok (önce parse edin)'}
+              {epgSearch ? t('epg.mappings.noResults') : t('epg.mappings.noChannelsInSource')}
             </div>
           ) : (
             <div className="max-h-72 overflow-y-auto space-y-1">
@@ -242,7 +244,7 @@ export function EPGMappingsPage() {
               onClick={() => { setMappingTarget(null); setEpgSearch(''); }}
               className="btn btn-ghost text-sm flex items-center gap-1"
             >
-              <X className="w-3.5 h-3.5" /> Kapat
+              <X className="w-3.5 h-3.5" /> {t('common.close')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   AreaChart,
@@ -81,8 +82,8 @@ const PIE_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b
 
 type Preset = 'week' | 'month' | '3months' | 'custom';
 
-const PRESET_LABELS: Record<Preset, string> = {
-  week: 'Bu Hafta', month: 'Bu Ay', '3months': 'Son 3 Ay', custom: 'Özel',
+const PRESET_KEYS: Record<Preset, string> = {
+  week: 'analytics.presetWeek', month: 'analytics.presetMonth', '3months': 'analytics.preset3Months', custom: 'analytics.presetCustom',
 };
 
 function presetDates(p: Preset): { start: string; end: string } {
@@ -96,30 +97,35 @@ function presetDates(p: Preset): { start: string; end: string } {
 
 // ─── CSV export ───────────────────────────────────────────────────────────
 
-function exportCsv(report: RevenueReport, start: string, end: string) {
+function exportCsv(
+  report: RevenueReport,
+  start: string,
+  end: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   const s = report.summary;
   const rows: (string | number)[][] = [
-    [`Gelir Raporu — ${start} / ${end}`],
+    [t('analytics.csvTitle', { start, end })],
     [],
-    ['Özet'],
-    ['Toplam Kredi Eklendi', s.totalCreditsAdded],
-    ['Toplam Kredi Harcandı', s.totalCreditsSpent],
-    ['Net Bakiye', s.totalCreditsAdded - s.totalCreditsSpent],
-    ['Toplam Reseller', s.totalResellers],
-    ['Aktif Reseller', s.activeResellers],
-    ['Reseller Başı Ortalama', s.avgCreditPerReseller],
+    [t('analytics.csvSummary')],
+    [t('analytics.totalCreditsAdded'), s.totalCreditsAdded],
+    [t('analytics.totalCreditsSpent'), s.totalCreditsSpent],
+    [t('analytics.netBalance'), s.totalCreditsAdded - s.totalCreditsSpent],
+    [t('analytics.totalResellers'), s.totalResellers],
+    [t('analytics.activeResellers'), s.activeResellers],
+    [t('analytics.avgPerReseller'), s.avgCreditPerReseller],
     [],
-    ['Kredi Trendi'],
-    ['Tarih', 'Eklenen', 'Harcanan'],
-    ...report.trend.map((t) => [t.date, t.creditsAdded, t.creditsSpent]),
+    [t('analytics.creditTrend')],
+    [t('analytics.date'), t('analytics.csvAdded'), t('analytics.csvSpent')],
+    ...report.trend.map((row) => [row.date, row.creditsAdded, row.creditsSpent]),
     [],
-    ['Reseller Özeti'],
-    ['Reseller', 'Eklendi', 'Harcandı', 'Bakiye', 'Kullanıcı'],
+    [t('analytics.csvResellerSummary')],
+    [t('analytics.reseller'), t('analytics.added'), t('analytics.spent'), t('analytics.balance'), t('analytics.user')],
     ...report.byReseller.map((r) => [r.resellerName, r.creditsAdded, r.creditsSpent, r.balance, r.userCount]),
     [],
-    ['Son İşlemler'],
-    ['Tarih', 'Reseller', 'Tür', 'Miktar', 'Açıklama'],
-    ...report.recentTransactions.map((t) => [fmtDateTime(t.createdAt), t.resellerName, t.type === 'add' ? 'Eklendi' : 'Harcandı', t.amount, t.description]),
+    [t('analytics.recentTransactions')],
+    [t('analytics.date'), t('analytics.reseller'), t('analytics.type'), t('analytics.amount'), t('common.description')],
+    ...report.recentTransactions.map((tx) => [fmtDateTime(tx.createdAt), tx.resellerName, tx.type === 'add' ? t('analytics.added') : t('analytics.spent'), tx.amount, tx.description]),
   ];
   const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -149,6 +155,7 @@ function useRevenueReport(start: string, end: string, groupBy: 'day' | 'week' | 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export function RevenuePage() {
+  const { t } = useTranslation();
   const [preset, setPreset]           = useState<Preset>('month');
   const [customStart, setCustomStart] = useState(() => new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10));
   const [customEnd, setCustomEnd]     = useState(() => new Date().toISOString().slice(0, 10));
@@ -164,16 +171,16 @@ export function RevenuePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-fg">Gelir Raporu</h1>
-          <p className="text-sm text-muted mt-0.5">Reseller kredi hareketleri ve paket dağılımı</p>
+          <h1 className="text-2xl font-bold text-fg">{t('nav.revenueReport')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('analytics.subtitle')}</p>
         </div>
         <button
-          onClick={() => report && exportCsv(report, start, end)}
+          onClick={() => report && exportCsv(report, start, end, t)}
           disabled={!report}
           className="btn btn-secondary flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          CSV İndir
+          {t('analytics.exportCsv')}
         </button>
       </div>
 
@@ -189,7 +196,7 @@ export function RevenuePage() {
                 preset === p ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
               )}
             >
-              {PRESET_LABELS[p]}
+              {t(PRESET_KEYS[p])}
             </button>
           ))}
         </div>
@@ -203,9 +210,9 @@ export function RevenuePage() {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted">Grupla:</span>
+          <span className="text-xs text-muted">{t('analytics.groupBy')}</span>
           <div className="flex gap-1">
-            {([['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık']] as const).map(([v, label]) => (
+            {([['day', 'analytics.groupDaily'], ['week', 'analytics.groupWeekly'], ['month', 'analytics.groupMonthly']] as const).map(([v, label]) => (
               <button
                 key={v}
                 onClick={() => setGroupBy(v)}
@@ -214,7 +221,7 @@ export function RevenuePage() {
                   groupBy === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
@@ -232,45 +239,45 @@ export function RevenuePage() {
           {/* 6 summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
-              title="Toplam Kredi Eklendi"
+              title={t('analytics.totalCreditsAdded')}
               value={report.summary.totalCreditsAdded.toLocaleString('tr')}
               icon={TrendingUp}
               variant="success"
               subtitle={`${start} — ${end}`}
             />
             <StatCard
-              title="Toplam Kredi Harcandı"
+              title={t('analytics.totalCreditsSpent')}
               value={report.summary.totalCreditsSpent.toLocaleString('tr')}
               icon={TrendingDown}
               variant="danger"
-              subtitle="Kullanıcı oluşturma"
+              subtitle={t('analytics.subtitleUserCreation')}
             />
             <StatCard
-              title="Net Bakiye"
+              title={t('analytics.netBalance')}
               value={net.toLocaleString('tr')}
               icon={CreditCard}
               variant={net >= 0 ? 'info' : 'warning'}
-              subtitle="Eklenen − Harcanan"
+              subtitle={t('analytics.subtitleAddedMinusSpent')}
             />
             <StatCard
-              title="Toplam Reseller"
+              title={t('analytics.totalResellers')}
               value={report.summary.totalResellers.toLocaleString('tr')}
               icon={Users}
               variant="default"
             />
             <StatCard
-              title="Aktif Reseller"
+              title={t('analytics.activeResellers')}
               value={report.summary.activeResellers.toLocaleString('tr')}
               icon={UserCheck}
               variant="primary"
-              subtitle="Dönemde işlem yapan"
+              subtitle={t('analytics.subtitleActiveInPeriod')}
             />
             <StatCard
-              title="Reseller Başı Ortalama"
+              title={t('analytics.avgPerReseller')}
               value={report.summary.avgCreditPerReseller.toLocaleString('tr')}
               icon={BarChart2}
               variant="default"
-              subtitle="Eklenen kredi"
+              subtitle={t('analytics.subtitleAddedCredits')}
             />
           </div>
 
@@ -278,10 +285,10 @@ export function RevenuePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Kredi trend */}
             <div className="card p-5">
-              <h2 className="font-semibold text-fg mb-1">Kredi Trendi</h2>
-              <p className="text-xs text-muted mb-4">Eklenen ve harcanan kredi karşılaştırması</p>
+              <h2 className="font-semibold text-fg mb-1">{t('analytics.creditTrend')}</h2>
+              <p className="text-xs text-muted mb-4">{t('analytics.creditTrendDesc')}</p>
               {report.trend.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-muted text-sm">Bu dönemde işlem yok</div>
+                <div className="h-52 flex items-center justify-center text-muted text-sm">{t('analytics.noTransactionsInPeriod')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={210}>
                   <AreaChart data={report.trend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -309,7 +316,9 @@ export function RevenuePage() {
                       contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
                       labelStyle={{ color: 'var(--fg)' }}
                       formatter={(val: number, name: string) =>
-                        name === 'creditsAdded' ? [`${val} kredi`, 'Eklendi'] : [`${val} kredi`, 'Harcandı']
+                        name === 'creditsAdded'
+                          ? [t('analytics.creditsAmount', { val }), t('analytics.added')]
+                          : [t('analytics.creditsAmount', { val }), t('analytics.spent')]
                       }
                     />
                     <Area type="monotone" dataKey="creditsAdded" stroke="#22c55e" strokeWidth={2} fill="url(#addGrad)"   dot={false} />
@@ -321,10 +330,10 @@ export function RevenuePage() {
 
             {/* Paket dağılımı */}
             <div className="card p-5">
-              <h2 className="font-semibold text-fg mb-1">Paket Dağılımı</h2>
-              <p className="text-xs text-muted mb-4">Kullanıcıların aktif paket dağılımı</p>
+              <h2 className="font-semibold text-fg mb-1">{t('analytics.packageDistribution')}</h2>
+              <p className="text-xs text-muted mb-4">{t('analytics.packageDistributionDesc')}</p>
               {report.packageDistribution.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-muted text-sm">Veri yok</div>
+                <div className="h-52 flex items-center justify-center text-muted text-sm">{t('analytics.noData')}</div>
               ) : (
                 <>
                   <ResponsiveContainer width="100%" height={160}>
@@ -350,7 +359,7 @@ export function RevenuePage() {
                       />
                       <Tooltip
                         contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                        formatter={(val: number, name: string) => [`${val} kullanıcı`, name]}
+                        formatter={(val: number, name: string) => [t('analytics.usersAmount', { val }), name]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -376,17 +385,17 @@ export function RevenuePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Reseller summary */}
             <div className="card p-5 max-h-[480px] flex flex-col">
-              <h2 className="font-semibold text-fg mb-1">Reseller Bazlı Özet</h2>
-              <p className="text-xs text-muted mb-4">Dönem içi kredi hareketleri</p>
+              <h2 className="font-semibold text-fg mb-1">{t('analytics.resellerSummary')}</h2>
+              <p className="text-xs text-muted mb-4">{t('analytics.resellerSummaryDesc')}</p>
               <div className="overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-surface">
                     <tr className="border-b border-border">
-                      <th className="text-left  text-xs text-muted py-2 pr-2">Reseller</th>
-                      <th className="text-right text-xs text-muted py-2 pr-2">Eklendi</th>
-                      <th className="text-right text-xs text-muted py-2 pr-2">Harcandı</th>
-                      <th className="text-right text-xs text-muted py-2 pr-2">Bakiye</th>
-                      <th className="text-right text-xs text-muted py-2">Kullanıcı</th>
+                      <th className="text-left  text-xs text-muted py-2 pr-2">{t('analytics.reseller')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-2">{t('analytics.added')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-2">{t('analytics.spent')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-2">{t('analytics.balance')}</th>
+                      <th className="text-right text-xs text-muted py-2">{t('analytics.user')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -402,7 +411,7 @@ export function RevenuePage() {
                       </tr>
                     ))}
                     {report.byReseller.length === 0 && (
-                      <tr><td colSpan={5} className="py-8 text-center text-muted text-sm">Veri yok</td></tr>
+                      <tr><td colSpan={5} className="py-8 text-center text-muted text-sm">{t('analytics.noData')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -411,38 +420,38 @@ export function RevenuePage() {
 
             {/* Recent transactions */}
             <div className="card p-5 max-h-[480px] flex flex-col">
-              <h2 className="font-semibold text-fg mb-1">Son İşlemler</h2>
-              <p className="text-xs text-muted mb-4">Dönem içi son 20 kredi hareketi</p>
+              <h2 className="font-semibold text-fg mb-1">{t('analytics.recentTransactions')}</h2>
+              <p className="text-xs text-muted mb-4">{t('analytics.recentTransactionsDesc')}</p>
               <div className="overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-surface">
                     <tr className="border-b border-border">
-                      <th className="text-left  text-xs text-muted py-2 pr-2">Tarih</th>
-                      <th className="text-left  text-xs text-muted py-2 pr-2">Reseller</th>
-                      <th className="text-right text-xs text-muted py-2 pr-2">Tür</th>
-                      <th className="text-right text-xs text-muted py-2">Miktar</th>
+                      <th className="text-left  text-xs text-muted py-2 pr-2">{t('analytics.date')}</th>
+                      <th className="text-left  text-xs text-muted py-2 pr-2">{t('analytics.reseller')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-2">{t('analytics.type')}</th>
+                      <th className="text-right text-xs text-muted py-2">{t('analytics.amount')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {report.recentTransactions.map((t) => (
-                      <tr key={t.id} className="border-b border-border/30 hover:bg-surface-2/30">
-                        <td className="py-2.5 pr-2 text-xs text-muted whitespace-nowrap">{fmtDateTime(t.createdAt)}</td>
-                        <td className="py-2.5 pr-2 text-fg truncate max-w-[100px]">{t.resellerName}</td>
+                    {report.recentTransactions.map((tx) => (
+                      <tr key={tx.id} className="border-b border-border/30 hover:bg-surface-2/30">
+                        <td className="py-2.5 pr-2 text-xs text-muted whitespace-nowrap">{fmtDateTime(tx.createdAt)}</td>
+                        <td className="py-2.5 pr-2 text-fg truncate max-w-[100px]">{tx.resellerName}</td>
                         <td className="py-2.5 pr-2 text-right">
-                          <span className={cn('inline-flex items-center gap-1 text-xs font-medium', t.type === 'add' ? 'text-success' : 'text-danger')}>
-                            {t.type === 'add'
+                          <span className={cn('inline-flex items-center gap-1 text-xs font-medium', tx.type === 'add' ? 'text-success' : 'text-danger')}>
+                            {tx.type === 'add'
                               ? <ArrowUpCircle className="w-3 h-3" />
                               : <ArrowDownCircle className="w-3 h-3" />}
-                            {t.type === 'add' ? 'Eklendi' : 'Harcandı'}
+                            {tx.type === 'add' ? t('analytics.added') : t('analytics.spent')}
                           </span>
                         </td>
-                        <td className={cn('py-2.5 text-right tabular-nums font-semibold', t.type === 'add' ? 'text-success' : 'text-danger')}>
-                          {t.type === 'add' ? '+' : '−'}{t.amount.toLocaleString('tr')}
+                        <td className={cn('py-2.5 text-right tabular-nums font-semibold', tx.type === 'add' ? 'text-success' : 'text-danger')}>
+                          {tx.type === 'add' ? '+' : '−'}{tx.amount.toLocaleString('tr')}
                         </td>
                       </tr>
                     ))}
                     {report.recentTransactions.length === 0 && (
-                      <tr><td colSpan={4} className="py-8 text-center text-muted text-sm">Bu dönemde işlem yok</td></tr>
+                      <tr><td colSpan={4} className="py-8 text-center text-muted text-sm">{t('analytics.noTransactionsInPeriod')}</td></tr>
                     )}
                   </tbody>
                 </table>

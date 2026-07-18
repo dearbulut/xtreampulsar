@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Check, ChevronDown, X, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 export interface SelectOption {
@@ -21,10 +22,11 @@ export function MultiSelect({
   options,
   value,
   onChange,
-  placeholder = 'Seçin…',
+  placeholder,
   searchable = true,
   className,
 }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -58,10 +60,10 @@ export function MultiSelect({
       >
         <span className={cn('flex-1 truncate text-sm', value.length === 0 ? 'text-muted' : 'text-slate-200')}>
           {value.length === 0
-            ? placeholder
+            ? (placeholder ?? t('ui.selectPlaceholder'))
             : value.length === 1
             ? selectedLabels[0]
-            : `${value.length} seçildi`}
+            : t('ui.nSelected', { n: value.length })}
         </span>
         <div className="flex items-center gap-1 flex-shrink-0">
           {value.length > 0 && (
@@ -87,7 +89,7 @@ export function MultiSelect({
                   autoFocus
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Ara…"
+                  placeholder={t('ui.searchPlaceholder')}
                   className="input pl-7 py-1.5 text-xs"
                 />
               </div>
@@ -95,7 +97,7 @@ export function MultiSelect({
           )}
           <div className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-muted">Bulunamadı</div>
+              <div className="px-3 py-4 text-center text-xs text-muted">{t('ui.notFound')}</div>
             ) : (
               filtered.map((opt) => (
                 <button
@@ -131,7 +133,7 @@ export function MultiSelect({
                 onClick={() => onChange([])}
                 className="text-xs text-muted hover:text-danger transition-colors"
               >
-                Tümünü kaldır
+                {t('ui.clearAll')}
               </button>
             </div>
           )}

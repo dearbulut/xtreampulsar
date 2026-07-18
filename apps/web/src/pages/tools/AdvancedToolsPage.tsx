@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Users,
   Download,
@@ -125,20 +126,18 @@ function StatGauge({ label, value, unit = '%' }: { label: string; value: number;
 // ─── Panel: Fix Users Output ─────────────────────────────────────────────────
 
 function FixUsersPanel() {
+  const { t } = useTranslation();
   const mutation = useFixUsersOutput();
 
   return (
     <div>
       <PanelTitle icon={Users}>Fix Users Output</PanelTitle>
-      <PanelDesc>
-        Tüm kullanıcıların output sayılarını veritabanındaki aktif bağlantı sayılarına göre
-        yeniden hesaplar ve düzeltir.
-      </PanelDesc>
+      <PanelDesc>{t('tools.fixUsersDesc')}</PanelDesc>
       <RunButton onClick={() => void mutation.mutateAsync()} loading={mutation.isPending}>
-        Düzelt
+        {t('tools.fixUsersRun')}
       </RunButton>
       {mutation.isSuccess && mutation.data && (
-        <SuccessBox>{mutation.data.fixed} kullanıcı düzeltildi</SuccessBox>
+        <SuccessBox>{t('tools.fixUsersSuccess', { count: mutation.data.fixed })}</SuccessBox>
       )}
     </div>
   );
@@ -147,27 +146,26 @@ function FixUsersPanel() {
 // ─── Panel: Streams to JSON ──────────────────────────────────────────────────
 
 function StreamsJsonPanel() {
+  const { t } = useTranslation();
   const [streamType, setStreamType] = useState('ALL');
   const mutation = useStreamsToJson();
 
   return (
     <div>
       <PanelTitle icon={Download}>Streams URL to JSON</PanelTitle>
-      <PanelDesc>
-        Seçili stream tipine göre tüm stream URL'lerini JSON formatında dışa aktarır.
-      </PanelDesc>
+      <PanelDesc>{t('tools.streamsJsonDesc')}</PanelDesc>
       <div className="space-y-4">
         <div>
-          <label className="block text-xs text-muted mb-1">Stream Tipi</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.streamType')}</label>
           <select
             value={streamType}
             onChange={(e) => setStreamType(e.target.value)}
             className="w-48 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="ALL">Tümü</option>
-            <option value="LIVE">Canlı (LIVE)</option>
+            <option value="ALL">{t('tools.typeAll')}</option>
+            <option value="LIVE">{t('tools.typeLive')}</option>
             <option value="VOD">VOD</option>
-            <option value="SERIES">Dizi (SERIES)</option>
+            <option value="SERIES">{t('tools.typeSeries')}</option>
           </select>
         </div>
         <RunButton
@@ -175,7 +173,7 @@ function StreamsJsonPanel() {
           loading={mutation.isPending}
         >
           <Download className="w-4 h-4" />
-          JSON İndir
+          {t('tools.jsonDownload')}
         </RunButton>
       </div>
     </div>
@@ -185,6 +183,7 @@ function StreamsJsonPanel() {
 // ─── Panel: Set Stream Server ────────────────────────────────────────────────
 
 function SetStreamServerPanel() {
+  const { t } = useTranslation();
   const { data: servers = [] } = useServers();
   const [serverId, setServerId] = useState('');
   const [streamType, setStreamType] = useState('ALL');
@@ -207,18 +206,16 @@ function SetStreamServerPanel() {
   return (
     <div>
       <PanelTitle icon={Server}>Set Stream Server</PanelTitle>
-      <PanelDesc>
-        Seçili stream'leri veya tüm stream'leri belirli bir sunucuya atar.
-      </PanelDesc>
+      <PanelDesc>{t('tools.setServerDesc')}</PanelDesc>
       <div className="space-y-4 max-w-md">
         <div>
-          <label className="block text-xs text-muted mb-1">Sunucu</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.server')}</label>
           <select
             value={serverId}
             onChange={(e) => setServerId(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="">-- Sunucu seçin --</option>
+            <option value="">{t('tools.selectServer')}</option>
             {servers.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} ({s.ip})
@@ -227,20 +224,20 @@ function SetStreamServerPanel() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-muted mb-1">Stream Tipi</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.streamType')}</label>
           <select
             value={streamType}
             onChange={(e) => setStreamType(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="ALL">Tümü</option>
-            <option value="LIVE">Canlı (LIVE)</option>
+            <option value="ALL">{t('tools.typeAll')}</option>
+            <option value="LIVE">{t('tools.typeLive')}</option>
             <option value="VOD">VOD</option>
-            <option value="SERIES">Dizi (SERIES)</option>
+            <option value="SERIES">{t('tools.typeSeries')}</option>
           </select>
         </div>
         <div className="space-y-2">
-          <label className="block text-xs text-muted">Kapsam</label>
+          <label className="block text-xs text-muted">{t('tools.scope')}</label>
           <label className="flex items-center gap-2 cursor-pointer text-sm text-fg">
             <input
               type="radio"
@@ -248,7 +245,7 @@ function SetStreamServerPanel() {
               onChange={() => setMode('all')}
               className="accent-primary"
             />
-            Tüm Stream'ler
+            {t('tools.allStreams')}
           </label>
           <label className="flex items-center gap-2 cursor-pointer text-sm text-fg">
             <input
@@ -257,13 +254,13 @@ function SetStreamServerPanel() {
               onChange={() => setMode('selected')}
               className="accent-primary"
             />
-            Seçili Stream'ler
+            {t('tools.selectedStreams')}
           </label>
         </div>
         {mode === 'selected' && (
           <div>
             <label className="block text-xs text-muted mb-1">
-              Stream ID'leri (virgülle ayırın)
+              {t('tools.streamIdsLabel')}
             </label>
             <textarea
               value={idsText}
@@ -275,10 +272,10 @@ function SetStreamServerPanel() {
           </div>
         )}
         <RunButton onClick={handleApply} loading={mutation.isPending} disabled={!serverId}>
-          Uygula
+          {t('tools.apply')}
         </RunButton>
         {mutation.isSuccess && mutation.data && (
-          <SuccessBox>{mutation.data.updated} stream güncellendi</SuccessBox>
+          <SuccessBox>{t('tools.setServerSuccess', { count: mutation.data.updated })}</SuccessBox>
         )}
       </div>
     </div>
@@ -287,15 +284,16 @@ function SetStreamServerPanel() {
 
 // ─── Panel: Clean Database ───────────────────────────────────────────────────
 
-const CLEAN_TARGETS: { key: string; label: string }[] = [
-  { key: 'orphan_streams', label: "Sahipsiz Stream'ler (kategorisi olmayan)" },
-  { key: 'dead_connections', label: 'Ölü Bağlantılar (24 saatten eski)' },
-  { key: 'old_logs', label: 'Eski Loglar (30 günden eski)' },
-  { key: 'empty_categories', label: 'Boş Kategoriler' },
-  { key: 'unused_epg', label: 'Kullanılmayan EPG Kanalları' },
+const CLEAN_TARGETS: { key: string; labelKey: string }[] = [
+  { key: 'orphan_streams', labelKey: 'tools.cleanOrphanStreams' },
+  { key: 'dead_connections', labelKey: 'tools.cleanDeadConnections' },
+  { key: 'old_logs', labelKey: 'tools.cleanOldLogs' },
+  { key: 'empty_categories', labelKey: 'tools.cleanEmptyCategories' },
+  { key: 'unused_epg', labelKey: 'tools.cleanUnusedEpg' },
 ];
 
 function CleanDatabasePanel() {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const mutation = useCleanDatabase();
 
@@ -307,7 +305,7 @@ function CleanDatabasePanel() {
   const handleRun = () => {
     if (selected.length === 0) return;
     const ok = window.confirm(
-      `${selected.length} hedef temizlenecek. Devam etmek istiyor musunuz?`,
+      t('tools.cleanConfirm', { count: selected.length }),
     );
     if (!ok) return;
     void mutation.mutateAsync({ targets: selected });
@@ -316,32 +314,30 @@ function CleanDatabasePanel() {
   return (
     <div>
       <PanelTitle icon={Database}>Clean Database</PanelTitle>
-      <PanelDesc>
-        Veritabanındaki gereksiz ve sahipsiz kayıtları temizler. İşlem geri alınamaz.
-      </PanelDesc>
+      <PanelDesc>{t('tools.cleanDbDesc')}</PanelDesc>
       <div className="space-y-2 mb-5">
-        {CLEAN_TARGETS.map((t) => (
+        {CLEAN_TARGETS.map((target) => (
           <label
-            key={t.key}
+            key={target.key}
             className="flex items-center gap-3 cursor-pointer text-sm text-fg"
           >
             <input
               type="checkbox"
-              checked={selected.includes(t.key)}
-              onChange={() => toggle(t.key)}
+              checked={selected.includes(target.key)}
+              onChange={() => toggle(target.key)}
               className="accent-primary w-4 h-4"
             />
-            {t.label}
+            {t(target.labelKey)}
           </label>
         ))}
       </div>
       <RunButton onClick={handleRun} loading={mutation.isPending} disabled={selected.length === 0}>
-        Temizle
+        {t('tools.clean')}
       </RunButton>
       {mutation.isSuccess && mutation.data && (
         <div className="mt-4 rounded-lg border border-border bg-surface-2 p-4 space-y-1">
           <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-            Silinen Kayıtlar
+            {t('tools.deletedRecords')}
           </p>
           {Object.entries(mutation.data.deleted).map(([key, count]) => (
             <div key={key} className="flex justify-between text-sm">
@@ -358,21 +354,17 @@ function CleanDatabasePanel() {
 // ─── Panel: Restart All Streams ──────────────────────────────────────────────
 
 function RestartStreamsPanel() {
+  const { t } = useTranslation();
   const [confirmed, setConfirmed] = useState(false);
   const mutation = useRestartAllStreams();
 
   return (
     <div>
       <PanelTitle icon={RotateCcw}>Restart All Streams</PanelTitle>
-      <PanelDesc>
-        Tüm aktif stream worker'larını durdurur ve yeniden başlatır.
-      </PanelDesc>
+      <PanelDesc>{t('tools.restartDesc')}</PanelDesc>
       <div className="mb-5 flex items-start gap-3 px-4 py-3 rounded-lg bg-warning/10 border border-warning/30">
         <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-warning">
-          Tüm aktif stream worker'ları yeniden başlatılacak. Bu işlem sırasında kısa süreli
-          kesinti yaşanabilir.
-        </p>
+        <p className="text-sm text-warning">{t('tools.restartWarning')}</p>
       </div>
       <label className="flex items-center gap-2 cursor-pointer text-sm text-fg mb-4">
         <input
@@ -381,7 +373,7 @@ function RestartStreamsPanel() {
           onChange={(e) => setConfirmed(e.target.checked)}
           className="accent-primary w-4 h-4"
         />
-        Evet, tüm stream'leri yeniden başlat
+        {t('tools.restartConfirmCheck')}
       </label>
       <RunButton
         onClick={() => void mutation.mutateAsync()}
@@ -389,10 +381,10 @@ function RestartStreamsPanel() {
         disabled={!confirmed}
       >
         <RotateCcw className="w-4 h-4" />
-        Yeniden Başlat
+        {t('tools.restart')}
       </RunButton>
       {mutation.isSuccess && mutation.data && (
-        <SuccessBox>{mutation.data.restarted} worker yeniden başlatıldı</SuccessBox>
+        <SuccessBox>{t('tools.restartSuccess', { count: mutation.data.restarted })}</SuccessBox>
       )}
     </div>
   );
@@ -400,15 +392,16 @@ function RestartStreamsPanel() {
 
 // ─── Panel: ReEncode VODs ────────────────────────────────────────────────────
 
-const REENCODE_MODES: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tümünü Yeniden Encode Et' },
-  { value: 'category', label: 'Kategoriye Göre' },
-  { value: 'by_server', label: 'Sunucuya Göre' },
-  { value: 'down_only', label: 'Yalnızca Çevrimdışı Olanlar' },
-  { value: 'ready_only', label: 'Yalnızca Hazır Olanlar' },
+const REENCODE_MODES: { value: string; labelKey: string }[] = [
+  { value: 'all', labelKey: 'tools.reencodeModeAll' },
+  { value: 'category', labelKey: 'tools.reencodeModeCategory' },
+  { value: 'by_server', labelKey: 'tools.reencodeModeServer' },
+  { value: 'down_only', labelKey: 'tools.reencodeModeDownOnly' },
+  { value: 'ready_only', labelKey: 'tools.reencodeModeReadyOnly' },
 ];
 
 function ReencodeVodsPanel() {
+  const { t } = useTranslation();
   const { data: servers = [] } = useServers();
   const { data: categories = [] } = useCategories('VOD');
   const [mode, setMode] = useState('all');
@@ -427,10 +420,10 @@ function ReencodeVodsPanel() {
   return (
     <div>
       <PanelTitle icon={Film}>ReEncode VODs</PanelTitle>
-      <PanelDesc>VOD içeriklerini yeniden encode kuyruğuna ekler.</PanelDesc>
+      <PanelDesc>{t('tools.reencodeDesc')}</PanelDesc>
       <div className="space-y-4 max-w-md">
         <div>
-          <label className="block text-xs text-muted mb-1">Mod</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.mode')}</label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value)}
@@ -438,20 +431,20 @@ function ReencodeVodsPanel() {
           >
             {REENCODE_MODES.map((m) => (
               <option key={m.value} value={m.value}>
-                {m.label}
+                {t(m.labelKey)}
               </option>
             ))}
           </select>
         </div>
         {mode === 'category' && (
           <div>
-            <label className="block text-xs text-muted mb-1">Kategori</label>
+            <label className="block text-xs text-muted mb-1">{t('tools.category')}</label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="">-- Kategori seçin --</option>
+              <option value="">{t('tools.selectCategory')}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -462,13 +455,13 @@ function ReencodeVodsPanel() {
         )}
         {mode === 'by_server' && (
           <div>
-            <label className="block text-xs text-muted mb-1">Sunucu</label>
+            <label className="block text-xs text-muted mb-1">{t('tools.server')}</label>
             <select
               value={serverId}
               onChange={(e) => setServerId(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="">-- Sunucu seçin --</option>
+              <option value="">{t('tools.selectServer')}</option>
               {servers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} ({s.ip})
@@ -478,10 +471,10 @@ function ReencodeVodsPanel() {
           </div>
         )}
         <RunButton onClick={handleRun} loading={mutation.isPending}>
-          Kuyruğa Ekle
+          {t('tools.addToQueue')}
         </RunButton>
         {mutation.isSuccess && mutation.data && (
-          <SuccessBox>{mutation.data.queued} VOD kuyruğa eklendi</SuccessBox>
+          <SuccessBox>{t('tools.reencodeSuccess', { count: mutation.data.queued })}</SuccessBox>
         )}
       </div>
     </div>
@@ -491,6 +484,7 @@ function ReencodeVodsPanel() {
 // ─── Panel: Bulk Series Import ───────────────────────────────────────────────
 
 function BulkSeriesImportPanel() {
+  const { t } = useTranslation();
   const { data: categories = [] } = useCategories('SERIES');
   const [categoryId, setCategoryId] = useState('');
   const [folderPath, setFolderPath] = useState('');
@@ -507,18 +501,16 @@ function BulkSeriesImportPanel() {
   return (
     <div>
       <PanelTitle icon={Package}>Bulk Series Import</PanelTitle>
-      <PanelDesc>
-        Belirtilen klasördeki dizi dosyalarını seçili kategoriye toplu olarak aktarır.
-      </PanelDesc>
+      <PanelDesc>{t('tools.bulkSeriesDesc')}</PanelDesc>
       <div className="space-y-4 max-w-md">
         <div>
-          <label className="block text-xs text-muted mb-1">Kategori</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.category')}</label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="">-- Kategori seçin --</option>
+            <option value="">{t('tools.selectCategory')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -527,7 +519,7 @@ function BulkSeriesImportPanel() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-muted mb-1">Klasör Yolu</label>
+          <label className="block text-xs text-muted mb-1">{t('tools.folderPath')}</label>
           <input
             type="text"
             value={folderPath}
@@ -543,7 +535,7 @@ function BulkSeriesImportPanel() {
             onChange={(e) => setSpecialCharEncoding(e.target.checked)}
             className="accent-primary w-4 h-4"
           />
-          Özel karakter encoding kullan
+          {t('tools.specialCharEncoding')}
         </label>
         <RunButton
           onClick={handleImport}
@@ -551,15 +543,15 @@ function BulkSeriesImportPanel() {
           disabled={!categoryId || !folderPath}
         >
           <Package className="w-4 h-4" />
-          İçe Aktar
+          {t('tools.import')}
         </RunButton>
         {mutation.isSuccess && mutation.data && (
           <div className="flex gap-4 text-sm">
             <span className="text-muted">
-              Bulunan: <span className="font-bold text-fg">{mutation.data.found}</span>
+              {t('tools.found')} <span className="font-bold text-fg">{mutation.data.found}</span>
             </span>
             <span className="text-muted">
-              Aktarılan: <span className="font-bold text-success">{mutation.data.imported}</span>
+              {t('tools.imported')} <span className="font-bold text-success">{mutation.data.imported}</span>
             </span>
           </div>
         )}
@@ -568,7 +560,7 @@ function BulkSeriesImportPanel() {
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-1 text-xs text-muted">
             <Terminal className="w-3 h-3" />
-            <span>Loglar</span>
+            <span>{t('tools.logs')}</span>
           </div>
           <div className="bg-black rounded-lg p-4 font-mono text-xs text-green-400 h-48 overflow-y-auto space-y-0.5">
             {logs.map((line, i) => (
@@ -583,18 +575,19 @@ function BulkSeriesImportPanel() {
 
 // ─── Panel: System Stats ─────────────────────────────────────────────────────
 
-function formatUptime(seconds: number): string {
+function formatUptime(seconds: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const parts: string[] = [];
-  if (d > 0) parts.push(`${d} gün`);
-  if (h > 0) parts.push(`${h} saat`);
-  parts.push(`${m} dak`);
+  if (d > 0) parts.push(t('tools.uptimeDays', { n: d }));
+  if (h > 0) parts.push(t('tools.uptimeHours', { n: h }));
+  parts.push(t('tools.uptimeMinutes', { n: m }));
   return parts.join(' ');
 }
 
 function SystemStatsPanel() {
+  const { t } = useTranslation();
   const { data: stats, isLoading, refetch, isFetching } = useSystemStats();
 
   if (isLoading) {
@@ -615,29 +608,29 @@ function SystemStatsPanel() {
           className="flex items-center gap-1 text-xs text-muted hover:text-fg transition-colors"
         >
           <RefreshCw className={cn('w-3 h-3', isFetching && 'animate-spin')} />
-          Yenile
+          {t('tools.refresh')}
         </button>
       </div>
-      <PanelDesc>Sistem kaynakları her 10 saniyede otomatik yenilenir.</PanelDesc>
+      <PanelDesc>{t('tools.systemStatsDesc')}</PanelDesc>
 
       {stats ? (
         <div className="space-y-6 max-w-sm">
           {/* Gauges */}
           <div className="space-y-3">
-            <StatGauge label="CPU Yükü" value={stats.cpuLoad} />
-            <StatGauge label="RAM Kullanımı" value={stats.memUsedPct} />
+            <StatGauge label={t('tools.cpuLoad')} value={stats.cpuLoad} />
+            <StatGauge label={t('tools.ramUsage')} value={stats.memUsedPct} />
           </div>
 
           {/* Memory detail */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border bg-surface-2 p-3">
-              <p className="text-xs text-muted mb-0.5">Toplam RAM</p>
+              <p className="text-xs text-muted mb-0.5">{t('tools.totalRam')}</p>
               <p className="text-sm font-bold font-mono">
                 {(stats.totalMemMb / 1024).toFixed(1)} GB
               </p>
             </div>
             <div className="rounded-lg border border-border bg-surface-2 p-3">
-              <p className="text-xs text-muted mb-0.5">Boş RAM</p>
+              <p className="text-xs text-muted mb-0.5">{t('tools.freeRam')}</p>
               <p className="text-sm font-bold font-mono">
                 {(stats.freeMemMb / 1024).toFixed(1)} GB
               </p>
@@ -647,20 +640,20 @@ function SystemStatsPanel() {
           {/* Misc stats */}
           <div className="rounded-lg border border-border bg-surface-2 divide-y divide-border">
             <div className="flex justify-between items-center px-4 py-3 text-sm">
-              <span className="text-muted">Çalışan Worker'lar</span>
+              <span className="text-muted">{t('tools.runningWorkers')}</span>
               <span className="font-mono font-bold">{stats.runningWorkers}</span>
             </div>
             <div className="flex justify-between items-center px-4 py-3 text-sm">
-              <span className="text-muted">Veritabanı</span>
+              <span className="text-muted">{t('tools.database')}</span>
               {stats.dbConnected ? (
                 <span className="flex items-center gap-1 text-success text-xs font-medium">
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Bağlı
+                  {t('tools.connected')}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-danger text-xs font-medium">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  Bağlı Değil
+                  {t('tools.notConnected')}
                 </span>
               )}
             </div>
@@ -669,25 +662,25 @@ function SystemStatsPanel() {
               {stats.redisConnected ? (
                 <span className="flex items-center gap-1 text-success text-xs font-medium">
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Bağlı
+                  {t('tools.connected')}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-danger text-xs font-medium">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  Bağlı Değil
+                  {t('tools.notConnected')}
                 </span>
               )}
             </div>
             <div className="flex justify-between items-center px-4 py-3 text-sm">
               <span className="text-muted">Uptime</span>
               <span className="font-mono font-bold">
-                {stats.uptimeFormatted ?? formatUptime(stats.uptime)}
+                {stats.uptimeFormatted ?? formatUptime(stats.uptime, t)}
               </span>
             </div>
           </div>
         </div>
       ) : (
-        <p className="text-sm text-muted">Veri alınamadı.</p>
+        <p className="text-sm text-muted">{t('tools.dataFetchFailed')}</p>
       )}
     </div>
   );

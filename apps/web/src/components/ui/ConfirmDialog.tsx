@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { cn } from '@/lib/utils';
 
@@ -19,10 +20,11 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = 'Onayla',
+  confirmLabel,
   variant = 'danger',
   loading,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm">
       <div className="flex gap-3 mb-6">
@@ -39,7 +41,7 @@ export function ConfirmDialog({
 
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="btn-ghost">
-          İptal
+          {t('common.cancel')}
         </button>
         <button
           onClick={onConfirm}
@@ -51,7 +53,7 @@ export function ConfirmDialog({
               : 'bg-warning hover:bg-amber-500 text-black',
           )}
         >
-          {loading ? 'İşleniyor…' : confirmLabel}
+          {loading ? t('ui.processing') : (confirmLabel ?? t('common.confirm'))}
         </button>
       </div>
     </Modal>

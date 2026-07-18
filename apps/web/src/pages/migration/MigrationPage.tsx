@@ -35,6 +35,7 @@ import {
   type DumpImportOptions,
 } from '@/hooks/useMigration';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,16 +52,17 @@ interface XtreamForm {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+// Values are i18n keys; resolved via t() at render.
 const STEPS: WizardStep[] = [
-  { label: 'Kaynak', description: 'Panel tipi' },
-  { label: 'Bağlantı', description: 'Dosya/URL' },
-  { label: 'Önizleme', description: 'İçeriği gözden geçir' },
-  { label: 'Import', description: 'İçe aktar' },
+  { label: 'migration.stepSource', description: 'migration.stepSourceDesc' },
+  { label: 'migration.stepConnection', description: 'migration.stepConnectionDesc' },
+  { label: 'migration.stepPreview', description: 'migration.stepPreviewDesc' },
+  { label: 'migration.stepImport', description: 'migration.stepImportDesc' },
 ];
 
 const PAGE_TABS: TabItem[] = [
-  { id: 'wizard', label: 'Yeni Import' },
-  { id: 'history', label: 'İş Geçmişi' },
+  { id: 'wizard', label: 'migration.tabNewImport' },
+  { id: 'history', label: 'migration.tabHistory' },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -71,50 +73,53 @@ const STATUS_BADGE: Record<string, string> = {
   CANCELLED: 'badge-warning',
 };
 
+// Values are i18n keys; resolved via t() at render.
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Bekliyor',
-  RUNNING: 'Çalışıyor',
-  COMPLETED: 'Tamamlandı',
-  FAILED: 'Hata',
-  CANCELLED: 'İptal',
+  PENDING: 'migration.statusPending',
+  RUNNING: 'migration.statusRunning',
+  COMPLETED: 'migration.statusCompleted',
+  FAILED: 'migration.statusFailed',
+  CANCELLED: 'migration.statusCancelled',
 };
 
 // ─── Source card config ───────────────────────────────────────────────────────
 
+// title/subtitle/tags hold i18n keys (or brand literals for title); resolved via t() at render.
 const SOURCES: { id: SourceType; icon: React.ElementType; title: string; subtitle: string; tags: string[] }[] = [
   {
     id: 'xtreamui',
     icon: Database,
     title: 'XtreamUI',
-    subtitle: 'MySQL dump (.sql)',
-    tags: ['Kanallar', 'Kullanıcılar', 'Reseller\'lar', 'Paketler', 'Bouquet\'ler', 'EPG'],
+    subtitle: 'migration.sourceMysqlDump',
+    tags: ['nav.channels', 'nav.users', 'nav.resellers', 'nav.packages', 'migration.tagBouquets', 'migration.tagEpg'],
   },
   {
     id: 'xuione',
     icon: Database,
     title: 'XUI.ONE',
-    subtitle: 'MySQL dump (.sql)',
-    tags: ['Kanallar', 'Kullanıcılar', 'Reseller\'lar', 'Paketler', 'Bouquet\'ler'],
+    subtitle: 'migration.sourceMysqlDump',
+    tags: ['nav.channels', 'nav.users', 'nav.resellers', 'nav.packages', 'migration.tagBouquets'],
   },
   {
     id: 'xtream_api',
     icon: Link2,
     title: 'Xtream API',
-    subtitle: 'URL + kullanıcı adı + şifre',
-    tags: ['Kanallar', 'VOD', 'Diziler', 'Kategoriler'],
+    subtitle: 'migration.sourceXtreamApiSub',
+    tags: ['nav.channels', 'nav.vod', 'nav.series', 'nav.categories'],
   },
   {
     id: 'm3u',
     icon: FileText,
-    title: 'M3U Dosyası',
-    subtitle: '.m3u / .m3u8',
-    tags: ['Kanallar', 'Kategoriler'],
+    title: 'migration.sourceM3uTitle',
+    subtitle: 'migration.sourceM3uSub',
+    tags: ['nav.channels', 'nav.categories'],
   },
 ];
 
 // ─── Helper components ────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -126,7 +131,7 @@ function CopyButton({ text }: { text: string }) {
       className="flex items-center gap-1.5 text-xs text-muted hover:text-fg transition-colors"
     >
       {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? 'Kopyalandı' : 'Kopyala'}
+      {copied ? t('client.copied') : t('migration.copy')}
     </button>
   );
 }
@@ -171,6 +176,7 @@ const DEFAULT_OPTIONS: DumpImportOptions = {
 };
 
 export function MigrationPage() {
+  const { t } = useTranslation();
   const [pageTab, setPageTab] = useState('wizard');
   const [step, setStep] = useState(1);
   const [source, setSource] = useState<SourceType>('xtreamui');
@@ -277,7 +283,7 @@ export function MigrationPage() {
   const jobColumns: Column<MigrationJob>[] = [
     {
       key: 'source',
-      header: 'Kaynak',
+      header: t('streams.source'),
       render: (row) => {
         const icon = row.source === 'M3U' ? FileText : row.source === 'XTREAM_API' ? Link2 : Database;
         const Icon = icon;
@@ -292,12 +298,12 @@ export function MigrationPage() {
     },
     {
       key: 'status',
-      header: 'Durum',
-      render: (row) => <span className={cn('badge', STATUS_BADGE[row.status])}>{STATUS_LABEL[row.status]}</span>,
+      header: t('common.status'),
+      render: (row) => <span className={cn('badge', STATUS_BADGE[row.status])}>{t(STATUS_LABEL[row.status])}</span>,
     },
     {
       key: 'progress',
-      header: 'İlerleme',
+      header: t('migration.colProgress'),
       render: (row) => (
         <div className="w-32">
           <ProgressBar
@@ -311,12 +317,12 @@ export function MigrationPage() {
     },
     {
       key: 'records',
-      header: 'Kayıt',
+      header: t('migration.colRecords'),
       render: (row) => <span className="text-sm">{row.processedRecords.toLocaleString('tr-TR')} / {row.totalRecords.toLocaleString('tr-TR')}</span>,
     },
     {
       key: 'failedRecords',
-      header: 'Hata',
+      header: t('migration.colError'),
       render: (row) =>
         row.failedRecords > 0 ? (
           <span className="text-xs text-danger">{row.failedRecords}</span>
@@ -326,7 +332,7 @@ export function MigrationPage() {
     },
     {
       key: 'createdAt',
-      header: 'Başlangıç',
+      header: t('migration.colStarted'),
       render: (row) =>
         new Date(row.createdAt).toLocaleDateString('tr-TR', {
           day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
@@ -338,18 +344,18 @@ export function MigrationPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs tabs={PAGE_TABS} active={pageTab} onChange={setPageTab} />
+      <Tabs tabs={PAGE_TABS.map((tab) => ({ ...tab, label: t(tab.label) }))} active={pageTab} onChange={setPageTab} />
 
       {/* ── WIZARD TAB ───────────────────────────────────────────────────── */}
       {pageTab === 'wizard' && (
         <div className="card p-6 space-y-8 max-w-3xl">
-          <Wizard steps={STEPS} current={step} />
+          <Wizard steps={STEPS.map((s) => ({ label: t(s.label), description: s.description ? t(s.description) : undefined }))} current={step} />
 
           {/* ── Step 1: Source selection ──────────────────────────────────── */}
           {step === 1 && (
             <div className="space-y-3">
               <div className="text-sm font-medium mb-4" style={{ color: 'var(--color-fg)' }}>
-                Kaynak panel tipi seçin
+                {t('migration.selectSourcePanel')}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {SOURCES.map(({ id, icon: Icon, title, subtitle, tags }) => (
@@ -369,12 +375,12 @@ export function MigrationPage() {
                       {source === id && <CheckCircle className="w-4 h-4 text-primary-light" />}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm" style={{ color: 'var(--color-fg)' }}>{title}</div>
-                      <div className="text-xs text-muted">{subtitle}</div>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--color-fg)' }}>{title.startsWith('migration.') ? t(title) : title}</div>
+                      <div className="text-xs text-muted">{t(subtitle)}</div>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {tags.map((tag) => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-muted">{tag}</span>
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-muted">{t(tag)}</span>
                       ))}
                     </div>
                   </button>
@@ -387,13 +393,13 @@ export function MigrationPage() {
           {step === 2 && isDumpSource && (
             <div className="space-y-4">
               <div className="text-sm font-medium mb-1" style={{ color: 'var(--color-fg)' }}>
-                {source === 'xtreamui' ? 'XtreamUI' : 'XUI.ONE'} MySQL Dump
+                {source === 'xtreamui' ? 'XtreamUI' : 'XUI.ONE'} {t('migration.mysqlDumpLabel')}
               </div>
 
               {/* mysqldump command hint */}
               <div className="rounded-xl border border-border bg-surface-2 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted font-medium">Dump komutunu kopyala</span>
+                  <span className="text-xs text-muted font-medium">{t('migration.copyDumpCommand')}</span>
                   <CopyButton text={mysqldumpCmd} />
                 </div>
                 <code className="text-xs font-mono" style={{ color: 'var(--color-fg)' }}>{mysqldumpCmd}</code>
@@ -405,26 +411,25 @@ export function MigrationPage() {
                 file={dumpFile}
                 onFile={setDumpFile}
                 onClear={() => setDumpFile(null)}
-                sublabel="SQL dump dosyası, maks 500 MB"
+                sublabel={t('migration.sqlDumpSublabel')}
               />
             </div>
           )}
 
           {step === 2 && source === 'xtream_api' && (
             <div className="space-y-4">
-              <div className="text-sm font-medium mb-1" style={{ color: 'var(--color-fg)' }}>Xtream API Bağlantısı</div>
+              <div className="text-sm font-medium mb-1" style={{ color: 'var(--color-fg)' }}>{t('migration.xtreamApiConnection')}</div>
 
               {/* User warning */}
               <div className="flex items-start gap-3 p-3 bg-warning/5 border border-warning/20 rounded-xl">
                 <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-muted">
-                  Xtream API üzerinden <strong className="text-warning">kullanıcı ve reseller bilgileri taşınamaz</strong>.
-                  Yalnızca içerik (kanal, VOD, dizi) ve kategoriler import edilir.
+                  {t('migration.xtreamWarnPre')}<strong className="text-warning">{t('migration.xtreamWarnStrong')}</strong>{t('migration.xtreamWarnPost')}
                 </p>
               </div>
 
               <div>
-                <label className="label">Sunucu URL</label>
+                <label className="label">{t('migration.serverUrl')}</label>
                 <input
                   className="input"
                   value={xtreamForm.serverUrl}
@@ -434,7 +439,7 @@ export function MigrationPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Kullanıcı Adı</label>
+                  <label className="label">{t('users.username')}</label>
                   <input
                     className="input"
                     value={xtreamForm.username}
@@ -442,7 +447,7 @@ export function MigrationPage() {
                   />
                 </div>
                 <div>
-                  <label className="label">Şifre</label>
+                  <label className="label">{t('users.password')}</label>
                   <input
                     type="password"
                     className="input"
@@ -452,9 +457,9 @@ export function MigrationPage() {
                 </div>
               </div>
               <div>
-                <label className="label mb-2">İçerik seçimi</label>
+                <label className="label mb-2">{t('migration.contentSelection')}</label>
                 <div className="flex gap-5">
-                  {[{ key: 'live', label: 'Canlı' }, { key: 'vod', label: 'VOD' }, { key: 'series', label: 'Dizi' }].map(({ key, label }) => (
+                  {[{ key: 'live', labelKey: 'categories.live' }, { key: 'vod', labelKey: 'nav.vod' }, { key: 'series', labelKey: 'categories.series' }].map(({ key, labelKey }) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -462,7 +467,7 @@ export function MigrationPage() {
                         checked={xtreamForm[key as keyof typeof xtreamForm] as boolean}
                         onChange={(e) => setXtreamForm((p) => ({ ...p, [key]: e.target.checked }))}
                       />
-                      <span className="text-sm">{label}</span>
+                      <span className="text-sm">{t(labelKey)}</span>
                     </label>
                   ))}
                 </div>
@@ -472,14 +477,14 @@ export function MigrationPage() {
 
           {step === 2 && source === 'm3u' && (
             <div>
-              <div className="text-sm font-medium mb-3" style={{ color: 'var(--color-fg)' }}>M3U Dosyası</div>
+              <div className="text-sm font-medium mb-3" style={{ color: 'var(--color-fg)' }}>{t('migration.sourceM3uTitle')}</div>
               <FileUpload
                 accept=".m3u,.m3u8,text/plain"
                 maxSizeMB={100}
                 file={m3uFile}
                 onFile={setM3uFile}
                 onClear={() => setM3uFile(null)}
-                sublabel="M3U veya M3U8 formatında, maks 100 MB"
+                sublabel={t('migration.m3uSublabel')}
               />
             </div>
           )}
@@ -490,7 +495,7 @@ export function MigrationPage() {
               {previewDump.isPending || uploadDump.isPending ? (
                 <div className="flex items-center justify-center py-12 gap-3 text-muted">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Dosya analiz ediliyor…</span>
+                  <span>{t('migration.analyzingFile')}</span>
                 </div>
               ) : isDumpSource && preview ? (
                 <>
@@ -499,37 +504,37 @@ export function MigrationPage() {
                     <CheckCircle className="w-4 h-4 text-success" />
                     <div>
                       <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>
-                        Dump başarıyla analiz edildi
+                        {t('migration.dumpAnalyzed')}
                       </div>
                       <div className="text-xs text-muted">
-                        Tespit edilen panel: <strong>{preview.source === 'XTREAMUI' ? 'XtreamUI' : preview.source === 'XUIONE' ? 'XUI.ONE' : 'Bilinmiyor'}</strong>
+                        {t('migration.detectedPanel')}<strong>{preview.source === 'XTREAMUI' ? 'XtreamUI' : preview.source === 'XUIONE' ? 'XUI.ONE' : t('migration.panelUnknown')}</strong>
                       </div>
                     </div>
                   </div>
 
                   {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                    <PreviewStat icon={Tv} label="Kanal" value={preview.streams.total} />
-                    <PreviewStat icon={Users} label="Kullanıcı" value={preview.users.total} />
-                    <PreviewStat icon={Store} label="Reseller" value={preview.resellers.total} />
-                    <PreviewStat icon={Package} label="Paket" value={preview.packages.total} />
-                    <PreviewStat icon={BookMarked} label="Bouquet" value={preview.bouquets.total} />
-                    <PreviewStat icon={Radio} label="EPG Eşleme" value={preview.epgMappings.total} />
+                    <PreviewStat icon={Tv} label={t('migration.statChannel')} value={preview.streams.total} />
+                    <PreviewStat icon={Users} label={t('migration.statUser')} value={preview.users.total} />
+                    <PreviewStat icon={Store} label={t('migration.statReseller')} value={preview.resellers.total} />
+                    <PreviewStat icon={Package} label={t('migration.statPackage')} value={preview.packages.total} />
+                    <PreviewStat icon={BookMarked} label={t('migration.statBouquet')} value={preview.bouquets.total} />
+                    <PreviewStat icon={Radio} label={t('migration.statEpgMapping')} value={preview.epgMappings.total} />
                   </div>
 
                   {/* Import options */}
                   <div className="border border-border rounded-xl p-4 space-y-4">
-                    <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>Neyi taşıyalım?</div>
+                    <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>{t('migration.whatToMigrate')}</div>
                     <div className="space-y-2.5">
                       {[
-                        { key: 'importStreams', label: `Kanallar (${preview.streams.total.toLocaleString('tr-TR')})`, always: true },
-                        { key: 'importCategories', label: `Kategoriler (${preview.categories.total.toLocaleString('tr-TR')})`, always: true },
-                        { key: 'importUsers', label: `Kullanıcılar (${preview.users.total.toLocaleString('tr-TR')})`, dumpOnly: true },
-                        { key: 'importResellers', label: `Reseller'lar (${preview.resellers.total.toLocaleString('tr-TR')})`, dumpOnly: true },
-                        { key: 'importPackages', label: `Paketler (${preview.packages.total.toLocaleString('tr-TR')})`, dumpOnly: true },
-                        { key: 'importBouquets', label: `Bouquet'ler (${preview.bouquets.total.toLocaleString('tr-TR')})`, dumpOnly: true },
-                        { key: 'importEpgMappings', label: `EPG Eşleşmeleri (${preview.epgMappings.total.toLocaleString('tr-TR')})`, dumpOnly: true },
-                      ].map(({ key, label }) => (
+                        { key: 'importStreams', labelKey: 'migration.optStreams', count: preview.streams.total, always: true },
+                        { key: 'importCategories', labelKey: 'migration.optCategories', count: preview.categories.total, always: true },
+                        { key: 'importUsers', labelKey: 'migration.optUsers', count: preview.users.total, dumpOnly: true },
+                        { key: 'importResellers', labelKey: 'migration.optResellers', count: preview.resellers.total, dumpOnly: true },
+                        { key: 'importPackages', labelKey: 'migration.optPackages', count: preview.packages.total, dumpOnly: true },
+                        { key: 'importBouquets', labelKey: 'migration.optBouquets', count: preview.bouquets.total, dumpOnly: true },
+                        { key: 'importEpgMappings', labelKey: 'migration.optEpgMappings', count: preview.epgMappings.total, dumpOnly: true },
+                      ].map(({ key, labelKey, count }) => (
                         <label key={key} className="flex items-center gap-2.5 cursor-pointer">
                           <input
                             type="checkbox"
@@ -537,18 +542,18 @@ export function MigrationPage() {
                             checked={importOptions[key as keyof DumpImportOptions] as boolean}
                             onChange={(e) => setImportOptions((o) => ({ ...o, [key]: e.target.checked }))}
                           />
-                          <span className="text-sm">{label}</span>
+                          <span className="text-sm">{t(labelKey, { n: count.toLocaleString('tr-TR') })}</span>
                         </label>
                       ))}
                     </div>
 
                     <div className="pt-3 border-t border-border space-y-2">
-                      <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>Çakışma modu</div>
+                      <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>{t('migration.conflictTitle')}</div>
                       {[
-                        { value: 'SKIP', label: 'Atla', desc: 'Mevcut kayıtları koru, yeni olanları ekle' },
-                        { value: 'MERGE', label: 'Birleştir', desc: 'Yeni ekle, eskiyi güncelleme' },
-                        { value: 'OVERWRITE', label: 'Üzerine yaz', desc: 'Mevcut kayıtları güncelle' },
-                      ].map(({ value, label, desc }) => (
+                        { value: 'SKIP', labelKey: 'migration.conflictSkip', descKey: 'migration.conflictSkipDesc' },
+                        { value: 'MERGE', labelKey: 'migration.conflictMerge', descKey: 'migration.conflictMergeDesc' },
+                        { value: 'OVERWRITE', labelKey: 'migration.conflictOverwrite', descKey: 'migration.conflictOverwriteDesc' },
+                      ].map(({ value, labelKey, descKey }) => (
                         <label key={value} className="flex items-start gap-2.5 cursor-pointer">
                           <input
                             type="radio"
@@ -559,19 +564,19 @@ export function MigrationPage() {
                             onChange={() => setImportOptions((o) => ({ ...o, conflictMode: value as DumpImportOptions['conflictMode'] }))}
                           />
                           <div>
-                            <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>{label}</div>
-                            <div className="text-xs text-muted">{desc}</div>
+                            <div className="text-sm font-medium" style={{ color: 'var(--color-fg)' }}>{t(labelKey)}</div>
+                            <div className="text-xs text-muted">{t(descKey)}</div>
                           </div>
                         </label>
                       ))}
                     </div>
 
                     <div className="pt-3 border-t border-border">
-                      <label className="label">Varsayılan şifre <span className="text-muted font-normal">(şifre hash bulunamazsa)</span></label>
+                      <label className="label">{t('migration.defaultPassword')} <span className="text-muted font-normal">{t('migration.defaultPasswordHint')}</span></label>
                       <input
                         type="password"
                         className="input"
-                        placeholder="Boş bırakılırsa 'changeme' kullanılır"
+                        placeholder={t('migration.defaultPasswordPlaceholder')}
                         value={importOptions.defaultPassword ?? ''}
                         onChange={(e) => setImportOptions((o) => ({ ...o, defaultPassword: e.target.value }))}
                       />
@@ -580,11 +585,11 @@ export function MigrationPage() {
                 </>
               ) : source === 'xtream_api' ? (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-sm text-muted">
-                  Xtream API bağlantısı kurulacak ve içerik import edilecek. İlerlemeyi bir sonraki adımda takip edebilirsiniz.
+                  {t('migration.xtreamApiNote')}
                 </div>
               ) : source === 'm3u' ? (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl text-sm text-muted">
-                  M3U dosyası import edilecek. İlerlemeyi bir sonraki adımda takip edebilirsiniz.
+                  {t('migration.m3uNote')}
                 </div>
               ) : null}
             </div>
@@ -596,14 +601,14 @@ export function MigrationPage() {
               {isBusy && !activeJob ? (
                 <div className="flex items-center gap-3 text-muted py-8 justify-center">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Import başlatılıyor…</span>
+                  <span>{t('migration.startingImport')}</span>
                 </div>
               ) : activeJob ? (
                 <>
                   {/* Overall progress */}
                   <ProgressBar
-                    label="Toplam İlerleme"
-                    sublabel={`${activeJob.processedRecords.toLocaleString('tr-TR')} / ${activeJob.totalRecords.toLocaleString('tr-TR')} kayıt işlendi`}
+                    label={t('migration.overallProgress')}
+                    sublabel={t('migration.recordsProcessed', { processed: activeJob.processedRecords.toLocaleString('tr-TR'), total: activeJob.totalRecords.toLocaleString('tr-TR') })}
                     value={activeJob.processedRecords}
                     max={Math.max(activeJob.totalRecords, 1)}
                     variant={activeJob.status === 'FAILED' ? 'danger' : activeJob.status === 'COMPLETED' ? 'success' : 'default'}
@@ -612,16 +617,16 @@ export function MigrationPage() {
 
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className={cn('badge', STATUS_BADGE[activeJob.status])}>
-                      {STATUS_LABEL[activeJob.status]}
+                      {t(STATUS_LABEL[activeJob.status])}
                     </span>
                     {activeJob.status === 'RUNNING' && (
                       <span className="text-xs text-muted flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" /> İşleniyor…
+                        <Loader2 className="w-3 h-3 animate-spin" /> {t('migration.processing')}
                       </span>
                     )}
                     {activeJob.failedRecords > 0 && (
                       <span className="text-xs text-danger flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> {activeJob.failedRecords} hata
+                        <AlertTriangle className="w-3 h-3" /> {t('migration.errorsCount', { n: activeJob.failedRecords })}
                       </span>
                     )}
                   </div>
@@ -631,11 +636,11 @@ export function MigrationPage() {
                     <div className="p-4 bg-success/5 border border-success/20 rounded-xl space-y-2">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-success" />
-                        <span className="text-sm font-medium text-success">Import tamamlandı</span>
+                        <span className="text-sm font-medium text-success">{t('migration.importCompleted')}</span>
                       </div>
                       <div className="text-xs text-muted">
-                        {activeJob.processedRecords.toLocaleString('tr-TR')} kayıt başarıyla import edildi.
-                        {activeJob.failedRecords > 0 && ` ${activeJob.failedRecords} kayıt atlandı.`}
+                        {t('migration.recordsImported', { n: activeJob.processedRecords.toLocaleString('tr-TR') })}
+                        {activeJob.failedRecords > 0 && t('migration.recordsSkipped', { n: activeJob.failedRecords })}
                       </div>
                     </div>
                   )}
@@ -644,18 +649,18 @@ export function MigrationPage() {
                     <div className="p-4 bg-danger/5 border border-danger/20 rounded-xl">
                       <div className="flex items-center gap-2 mb-1">
                         <AlertTriangle className="w-4 h-4 text-danger" />
-                        <span className="text-sm font-medium text-danger">Import başarısız</span>
+                        <span className="text-sm font-medium text-danger">{t('migration.importFailed')}</span>
                       </div>
-                      <div className="text-xs text-muted">Lütfen log kayıtlarını kontrol edin.</div>
+                      <div className="text-xs text-muted">{t('migration.checkLogs')}</div>
                     </div>
                   )}
 
                   {(activeJob.status === 'COMPLETED' || activeJob.status === 'FAILED') && (
-                    <button className="btn-primary" onClick={reset}>Yeni Import</button>
+                    <button className="btn-primary" onClick={reset}>{t('migration.tabNewImport')}</button>
                   )}
                 </>
               ) : (
-                <div className="text-center py-8 text-muted text-sm">Import durumu bulunamadı</div>
+                <div className="text-center py-8 text-muted text-sm">{t('migration.importStatusNotFound')}</div>
               )}
             </div>
           )}
@@ -669,7 +674,7 @@ export function MigrationPage() {
                 disabled={step === 1 || isBusy}
                 className="btn btn-ghost disabled:opacity-40 flex items-center gap-1.5"
               >
-                <ArrowLeft className="w-4 h-4" /> Geri
+                <ArrowLeft className="w-4 h-4" /> {t('common.back')}
               </button>
               <button
                 type="button"
@@ -678,7 +683,7 @@ export function MigrationPage() {
                 className="btn btn-primary flex items-center gap-1.5"
               >
                 {isBusy && <Loader2 className="w-4 h-4 animate-spin" />}
-                {step === 2 && isDumpSource ? 'Analiz Et' : step === 3 ? 'Import Başlat' : 'Devam'}
+                {step === 2 && isDumpSource ? t('migration.analyze') : step === 3 ? t('migration.startImport') : t('migration.continue')}
                 {!isBusy && <ArrowRight className="w-4 h-4" />}
               </button>
             </div>
@@ -693,7 +698,7 @@ export function MigrationPage() {
             columns={jobColumns}
             data={jobs}
             isLoading={jobsLoading}
-            emptyMessage="Henüz migration işi yok"
+            emptyMessage={t('migration.noMigrationJobs')}
           />
         </div>
       )}

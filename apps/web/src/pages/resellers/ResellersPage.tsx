@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, CreditCard, Trash2, Users, Pencil, Network } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -23,6 +24,7 @@ const TIER_COLORS: Record<string, string> = {
 const TIERS = ['BASIC', 'SILVER', 'GOLD', 'PLATINUM'];
 
 export function ResellersPage() {
+  const { t } = useTranslation();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [creditReseller, setCreditReseller] = useState<Reseller | null>(null);
   const [creditAmount, setCreditAmount] = useState(100);
@@ -56,7 +58,7 @@ export function ResellersPage() {
   const columns: Column<Reseller>[] = [
     {
       key: 'username',
-      header: 'Kullanıcı Adı',
+      header: t('resellersAdmin.username'),
       render: (r) => (
         <div>
           <div className="flex items-center gap-1.5">
@@ -74,14 +76,14 @@ export function ResellersPage() {
     },
     {
       key: 'parent',
-      header: 'Üst Bayi',
+      header: t('resellersAdmin.parentReseller'),
       render: (r) => r.parent
         ? <span className="text-xs text-slate-300 font-mono">{r.parent.username}</span>
         : <span className="text-xs text-muted">—</span>,
     },
     {
       key: 'tier',
-      header: 'Tip',
+      header: t('resellersAdmin.tier'),
       render: (r) => (
         <span className={cn('badge', TIER_COLORS[r.tier] ?? 'text-muted bg-muted/10')}>
           {r.tier}
@@ -90,12 +92,12 @@ export function ResellersPage() {
     },
     {
       key: 'isActive',
-      header: 'Durum',
+      header: t('common.status'),
       render: (r) => <StatusBadge status={r.isActive ? 'ACTIVE' : 'DISABLED'} />,
     },
     {
       key: 'credits',
-      header: 'Kredi',
+      header: t('resellersAdmin.credit'),
       render: (r) => (
         <span className={cn('text-sm font-semibold tabular-nums', r.credits < 20 ? 'text-warning' : 'text-slate-200')}>
           {r.credits.toLocaleString()}
@@ -104,7 +106,7 @@ export function ResellersPage() {
     },
     {
       key: 'users',
-      header: 'Kullanıcılar',
+      header: t('nav.users'),
       className: 'text-center w-24',
       headerClassName: 'text-center',
       render: (r) => (
@@ -116,33 +118,33 @@ export function ResellersPage() {
     },
     {
       key: 'createdAt',
-      header: 'Kayıt Tarihi',
+      header: t('common.createdAt'),
       render: (r) => <span className="text-sm text-muted">{formatDate(r.createdAt)}</span>,
     },
     {
       key: 'actions',
-      header: 'İşlemler',
+      header: t('common.actions'),
       className: 'w-32',
       render: (r) => (
         <div className="flex items-center gap-1">
           <button
             onClick={() => openEdit(r)}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-muted hover:text-slate-300 transition-colors"
-            title="Düzenle"
+            title={t('common.edit')}
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => { setCreditReseller(r); setCreditAmount(100); setCreditReason(''); }}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-success transition-colors"
-            title="Kredi Ekle"
+            title={t('resellersAdmin.addCredit')}
           >
             <CreditCard className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setDeleteId(r.id)}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-danger transition-colors"
-            title="Sil"
+            title={t('common.delete')}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -156,12 +158,12 @@ export function ResellersPage() {
   return (
     <div>
       <PageHeader
-        title="Reseller'lar"
-        description={`${resellers?.length ?? 0} reseller`}
+        title={t('nav.resellers')}
+        description={t('resellersAdmin.resellerCount', { n: resellers?.length ?? 0 })}
         actions={
           <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Reseller Ekle</span>
+            <span className="hidden sm:inline">{t('resellersAdmin.addReseller')}</span>
           </button>
         }
       />
@@ -172,8 +174,8 @@ export function ResellersPage() {
           data={resellers ?? []}
           keyExtractor={(r) => r.id}
           isLoading={isLoading}
-          emptyTitle="Reseller bulunamadı"
-          emptyDescription="Henüz reseller eklenmemiş."
+          emptyTitle={t('resellersAdmin.emptyTitle')}
+          emptyDescription={t('resellersAdmin.emptyDescription')}
         />
       </div>
 
@@ -181,18 +183,18 @@ export function ResellersPage() {
       <Modal
         open={!!creditReseller}
         onClose={() => setCreditReseller(null)}
-        title={`Kredi Ekle — ${creditReseller?.username ?? ''}`}
+        title={t('resellersAdmin.addCreditTitle', { name: creditReseller?.username ?? '' })}
         size="sm"
       >
         <div className="space-y-4">
           <div>
-            <div className="text-sm text-muted mb-1">Mevcut kredi</div>
+            <div className="text-sm text-muted mb-1">{t('resellersAdmin.currentCredit')}</div>
             <div className="text-2xl font-bold text-slate-100">
               {creditReseller?.credits.toLocaleString() ?? 0}
             </div>
           </div>
           <div>
-            <label className="label">Eklenecek Miktar</label>
+            <label className="label">{t('resellersAdmin.amountToAdd')}</label>
             <input
               className="input"
               type="number"
@@ -202,16 +204,16 @@ export function ResellersPage() {
             />
           </div>
           <div>
-            <label className="label">Neden (isteğe bağlı)</label>
+            <label className="label">{t('resellersAdmin.reasonOptional')}</label>
             <input
               className="input"
-              placeholder="Ödeme, hediye…"
+              placeholder={t('resellersAdmin.reasonPlaceholder')}
               value={creditReason}
               onChange={(e) => setCreditReason(e.target.value)}
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setCreditReseller(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setCreditReseller(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={addCredits.isPending || creditAmount <= 0}
               onClick={() => {
@@ -224,24 +226,24 @@ export function ResellersPage() {
               }}
               className="btn-primary"
             >
-              {addCredits.isPending ? 'Ekleniyor…' : `${creditAmount} Kredi Ekle`}
+              {addCredits.isPending ? t('resellersAdmin.adding') : t('resellersAdmin.addCreditsAmount', { n: creditAmount })}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Yeni Reseller" size="md">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('resellersAdmin.newReseller')} size="md">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Kullanıcı Adı</label>
+              <label className="label">{t('resellersAdmin.username')}</label>
               <input className="input" placeholder="reseller1"
                 value={createForm.username}
                 onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} />
             </div>
             <div>
-              <label className="label">E-posta (isteğe bağlı)</label>
+              <label className="label">{t('resellersAdmin.emailOptional')}</label>
               <input className="input" type="email" placeholder="mail@example.com"
                 value={createForm.email}
                 onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} />
@@ -249,13 +251,13 @@ export function ResellersPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Şifre</label>
+              <label className="label">{t('resellersAdmin.password')}</label>
               <input className="input" type="password" placeholder="••••••••"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Başlangıç Kredisi</label>
+              <label className="label">{t('resellersAdmin.startingCredits')}</label>
               <input className="input" type="number" min={0}
                 value={createForm.credits}
                 onChange={(e) => setCreateForm((f) => ({ ...f, credits: parseInt(e.target.value) || 0 }))} />
@@ -270,10 +272,10 @@ export function ResellersPage() {
               </select>
             </div>
             <div>
-              <label className="label">Üst Bayi (isteğe bağlı)</label>
+              <label className="label">{t('resellersAdmin.parentResellerOptional')}</label>
               <select className="input" value={createForm.parentId}
                 onChange={(e) => setCreateForm((f) => ({ ...f, parentId: e.target.value }))}>
-                <option value="">— Yok (Bağımsız) —</option>
+                <option value="">{t('resellersAdmin.noneIndependent')}</option>
                 {rootResellers.map((r) => (
                   <option key={r.id} value={r.id}>{r.username}</option>
                 ))}
@@ -281,18 +283,18 @@ export function ResellersPage() {
             </div>
           </div>
           <div>
-            <label className="label">Not (isteğe bağlı)</label>
-            <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
+            <label className="label">{t('resellersAdmin.noteOptional')}</label>
+            <textarea className="input min-h-[60px] resize-none" placeholder={t('resellersAdmin.notePlaceholder')}
               value={createForm.notes}
               onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
+            <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={createReseller.isPending}
               onClick={() => {
                 if (!createForm.username || !createForm.password) {
-                  toast.error('Kullanıcı adı ve şifre zorunludur');
+                  toast.error(t('resellersAdmin.usernamePasswordRequired'));
                   return;
                 }
                 createReseller.mutate(
@@ -315,7 +317,7 @@ export function ResellersPage() {
               }}
               className="btn-primary"
             >
-              {createReseller.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {createReseller.isPending ? t('resellersAdmin.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -325,7 +327,7 @@ export function ResellersPage() {
       <Modal
         open={!!editReseller}
         onClose={() => setEditReseller(null)}
-        title={`Düzenle — ${editReseller?.username ?? ''}`}
+        title={t('resellersAdmin.editTitle', { name: editReseller?.username ?? '' })}
         size="sm"
       >
         <div className="space-y-4">
@@ -337,38 +339,38 @@ export function ResellersPage() {
             </select>
           </div>
           <div>
-            <label className="label">Durum</label>
+            <label className="label">{t('common.status')}</label>
             <select className="input" value={editForm.isActive ? 'active' : 'disabled'}
               onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.value === 'active' }))}>
-              <option value="active">Aktif</option>
-              <option value="disabled">Pasif</option>
+              <option value="active">{t('common.active')}</option>
+              <option value="disabled">{t('common.inactive')}</option>
             </select>
           </div>
           <div>
-            <label className="label">Üst Bayi</label>
+            <label className="label">{t('resellersAdmin.parentReseller')}</label>
             <select className="input" value={editForm.parentId}
               onChange={(e) => setEditForm((f) => ({ ...f, parentId: e.target.value }))}>
-              <option value="">— Yok (Bağımsız) —</option>
+              <option value="">{t('resellersAdmin.noneIndependent')}</option>
               {(resellers ?? [])
                 .filter((r) => r.id !== editReseller?.id)
                 .map((r) => <option key={r.id} value={r.id}>{r.username}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Maks Kullanıcı</label>
+            <label className="label">{t('resellersAdmin.maxUsers')}</label>
             <input type="number" className="input" min={0}
               value={editForm.maxUsers}
               onChange={(e) => setEditForm((f) => ({ ...f, maxUsers: parseInt(e.target.value) || 0 }))} />
-            <p className="text-xs text-muted mt-1">0 = sınırsız</p>
+            <p className="text-xs text-muted mt-1">{t('resellersAdmin.zeroUnlimited')}</p>
           </div>
           <div>
-            <label className="label">Not</label>
-            <textarea className="input min-h-[60px] resize-none" placeholder="Not ekle…"
+            <label className="label">{t('resellersAdmin.note')}</label>
+            <textarea className="input min-h-[60px] resize-none" placeholder={t('resellersAdmin.notePlaceholder')}
               value={editForm.notes}
               onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setEditReseller(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setEditReseller(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={updateReseller.isPending}
               onClick={() => {
@@ -387,7 +389,7 @@ export function ResellersPage() {
               }}
               className="btn-primary"
             >
-              {updateReseller.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {updateReseller.isPending ? t('resellersAdmin.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -398,9 +400,9 @@ export function ResellersPage() {
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={() => { if (deleteId) deleteReseller.mutate(deleteId, { onSuccess: () => setDeleteId(null) }); }}
-        title="Reseller Sil"
-        message="Bu reseller ve tüm ilişkili verileri silinecek."
-        confirmLabel="Sil"
+        title={t('resellersAdmin.deleteTitle')}
+        message={t('resellersAdmin.deleteMessage')}
+        confirmLabel={t('common.delete')}
         loading={deleteReseller.isPending}
       />
     </div>

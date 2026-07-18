@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 type Variant = 'default' | 'success' | 'danger' | 'warning';
@@ -30,6 +31,7 @@ export function ProgressBar({
   animate = true,
   className,
 }: Props) {
+  const { t } = useTranslation();
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
 
   return (
@@ -57,8 +59,8 @@ export function ProgressBar({
       </div>
       {max !== 100 && (
         <div className="flex justify-between mt-1 text-xs text-muted">
-          <span>{value.toLocaleString()} kayıt işlendi</span>
-          <span>{max.toLocaleString()} toplam</span>
+          <span>{t('ui.recordsProcessed', { n: value.toLocaleString() })}</span>
+          <span>{t('ui.totalCount', { n: max.toLocaleString() })}</span>
         </div>
       )}
     </div>

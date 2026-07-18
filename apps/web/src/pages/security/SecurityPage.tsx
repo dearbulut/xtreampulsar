@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
@@ -6,13 +7,13 @@ import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, type BlockedIP, type BruteForceLog, type AuditLog } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
-const SECURITY_TABS: TabItem[] = [
-  { id: 'blocks', label: 'Aktif Bloklar' },
-  { id: 'bruteforce', label: 'Brute Force Logu' },
-  { id: 'audit', label: 'Audit Log', icon: ScrollText },
-];
-
 export function SecurityPage() {
+  const { t } = useTranslation();
+  const SECURITY_TABS: TabItem[] = [
+    { id: 'blocks', label: t('security.tabBlocks') },
+    { id: 'bruteforce', label: t('security.tabBruteForce') },
+    { id: 'audit', label: t('security.tabAudit'), icon: ScrollText },
+  ];
   const [activeTab, setActiveTab] = useState('blocks');
   const [showBlock, setShowBlock] = useState(false);
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', durationMinutes: '0' });
@@ -25,7 +26,7 @@ export function SecurityPage() {
   const blockIP = useBlockIP();
 
   const handleUnblock = async (ip: string) => {
-    if (!confirm(`${ip} engelini kaldır?`)) return;
+    if (!confirm(t('security.unblockConfirm', { ip }))) return;
     await unblock.mutateAsync(ip);
   };
 
@@ -43,7 +44,7 @@ export function SecurityPage() {
   const blockColumns: Column<BlockedIP>[] = [
     {
       key: 'ip',
-      header: 'IP Adresi',
+      header: t('security.ipAddress'),
       render: (row) => (
         <div className="flex items-center gap-2">
           <Globe className="w-3.5 h-3.5 text-muted flex-shrink-0" />
@@ -54,20 +55,20 @@ export function SecurityPage() {
         </div>
       ),
     },
-    { key: 'reason', header: 'Sebep', render: (row) => <span className="text-sm text-slate-400">{row.reason}</span> },
+    { key: 'reason', header: t('security.reason'), render: (row) => <span className="text-sm text-slate-400">{row.reason}</span> },
     {
       key: 'blockedAt',
-      header: 'Engellenme',
+      header: t('security.blockedAt'),
       render: (row) =>
         new Date(row.blockedAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
     },
     {
       key: 'expiresAt',
-      header: 'Bitiş',
+      header: t('security.expiresAt'),
       render: (row) =>
         row.expiresAt
           ? new Date(row.expiresAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-          : <span className="text-xs text-muted">Süresiz</span>,
+          : <span className="text-xs text-muted">{t('security.indefinite')}</span>,
     },
     {
       key: 'actions',
@@ -79,7 +80,7 @@ export function SecurityPage() {
           disabled={unblock.isPending}
           className="btn btn-ghost py-1 px-2 text-xs text-warning hover:text-warning"
         >
-          <RefreshCw className="w-3 h-3 mr-1" /> Kaldır
+          <RefreshCw className="w-3 h-3 mr-1" /> {t('security.unblock')}
         </button>
       ),
     },
@@ -88,12 +89,12 @@ export function SecurityPage() {
   const bfColumns: Column<BruteForceLog>[] = [
     {
       key: 'ip',
-      header: 'IP Adresi',
+      header: t('security.ipAddress'),
       render: (row) => <span className="font-mono text-sm text-slate-200">{row.ip}</span>,
     },
     {
       key: 'attempts',
-      header: 'Deneme',
+      header: t('security.attempts'),
       render: (row) => (
         <span className={cn('text-sm font-semibold', row.attempts > 20 ? 'text-danger' : row.attempts > 10 ? 'text-warning' : 'text-slate-400')}>
           {row.attempts}
@@ -102,16 +103,16 @@ export function SecurityPage() {
     },
     {
       key: 'lastAttempt',
-      header: 'Son Deneme',
+      header: t('security.lastAttempt'),
       render: (row) =>
         new Date(row.lastAttempt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
     },
     {
       key: 'blocked',
-      header: 'Durum',
+      header: t('common.status'),
       render: (row) => (
         <span className={cn('badge', row.blocked ? 'badge-danger' : 'badge-warning')}>
-          {row.blocked ? 'Engellendi' : 'İzleniyor'}
+          {row.blocked ? t('security.blocked') : t('security.monitoring')}
         </span>
       ),
     },
@@ -120,7 +121,7 @@ export function SecurityPage() {
   const auditColumns: Column<AuditLog>[] = [
     {
       key: 'createdAt',
-      header: 'Tarih',
+      header: t('security.date'),
       render: (row) => (
         <span className="text-xs text-muted font-mono">
           {new Date(row.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -129,14 +130,14 @@ export function SecurityPage() {
     },
     {
       key: 'actorId',
-      header: 'Kullanıcı',
+      header: t('security.user'),
       render: (row) => (
         <span className="text-sm font-mono text-slate-300">{row.actorId ?? <span className="text-muted">—</span>}</span>
       ),
     },
     {
       key: 'action',
-      header: 'Aksiyon',
+      header: t('security.action'),
       render: (row) => {
         const colorMap: Record<string, string> = {
           CREATE: 'badge-success',
@@ -170,20 +171,20 @@ export function SecurityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Güvenlik</h1>
-          <p className="text-sm text-muted mt-0.5">IP blokları ve saldırı tespit sistemi</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('nav.security')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('security.subtitle')}</p>
         </div>
         <button onClick={() => setShowBlock(true)} className="btn btn-danger">
-          <Ban className="w-4 h-4" /> IP Engelle
+          <Ban className="w-4 h-4" /> {t('security.blockIP')}
         </button>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Aktif Blok', value: blocks.length, icon: Shield, color: 'text-danger', bg: 'bg-danger/10' },
-          { label: 'Brute Force', value: bfLogs.filter((l) => l.blocked).length, icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10' },
-          { label: 'İzlenen IP', value: bfLogs.filter((l) => !l.blocked).length, icon: Globe, color: 'text-primary-light', bg: 'bg-primary/10' },
+          { label: t('security.statActiveBlocks'), value: blocks.length, icon: Shield, color: 'text-danger', bg: 'bg-danger/10' },
+          { label: t('security.statBruteForce'), value: bfLogs.filter((l) => l.blocked).length, icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10' },
+          { label: t('security.statMonitoredIP'), value: bfLogs.filter((l) => !l.blocked).length, icon: Globe, color: 'text-primary-light', bg: 'bg-primary/10' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="card p-4 flex items-center gap-4">
             <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', bg)}>
@@ -204,7 +205,7 @@ export function SecurityPage() {
           columns={blockColumns}
           data={blocks}
           isLoading={bLoading}
-          emptyMessage="Aktif blok yok"
+          emptyMessage={t('security.emptyBlocks')}
         />
       )}
 
@@ -213,7 +214,7 @@ export function SecurityPage() {
           columns={bfColumns}
           data={bfLogs}
           isLoading={bfLoading}
-          emptyMessage="Brute force girişimi tespit edilmedi"
+          emptyMessage={t('security.emptyBruteForce')}
         />
       )}
 
@@ -227,15 +228,15 @@ export function SecurityPage() {
           totalPages={auditData?.totalPages}
           total={auditData?.total}
           onPageChange={setAuditPage}
-          emptyTitle="Audit log boş"
-          emptyDescription="Henüz kayıtlı aksiyon yok."
+          emptyTitle={t('security.emptyAuditTitle')}
+          emptyDescription={t('security.emptyAuditDesc')}
         />
       )}
 
-      <Modal open={showBlock} onClose={() => setShowBlock(false)} title="IP Engelle" size="sm">
+      <Modal open={showBlock} onClose={() => setShowBlock(false)} title={t('security.blockIP')} size="sm">
         <form onSubmit={(e) => { void handleBlock(e); }} className="space-y-4 p-6">
           <div>
-            <label className="label">IP Adresi</label>
+            <label className="label">{t('security.ipAddress')}</label>
             <input
               required
               className="input font-mono"
@@ -245,17 +246,17 @@ export function SecurityPage() {
             />
           </div>
           <div>
-            <label className="label">Sebep</label>
+            <label className="label">{t('security.reason')}</label>
             <input
               required
               className="input"
               value={blockForm.reason}
               onChange={(e) => setBlockForm((p) => ({ ...p, reason: e.target.value }))}
-              placeholder="Manuel engelleme"
+              placeholder={t('security.reasonPlaceholder')}
             />
           </div>
           <div>
-            <label className="label">Süre (dakika, 0 = süresiz)</label>
+            <label className="label">{t('security.durationLabel')}</label>
             <input
               type="number"
               className="input"
@@ -265,8 +266,8 @@ export function SecurityPage() {
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowBlock(false)}>İptal</button>
-            <button type="submit" className="btn btn-danger" disabled={blockIP.isPending}>Engelle</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowBlock(false)}>{t('common.cancel')}</button>
+            <button type="submit" className="btn btn-danger" disabled={blockIP.isPending}>{t('security.block')}</button>
           </div>
         </form>
       </Modal>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Clock, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
@@ -49,6 +50,7 @@ function nowOffsetMin(): number {
 }
 
 export function EpgGuidePage() {
+  const { t } = useTranslation();
   const [date, setDate] = useState(() => toDateStr(new Date()));
   const [tooltip, setTooltip] = useState<{ prog: Programme; x: number; y: number } | null>(null);
   const [search, setSearch] = useState('');
@@ -95,15 +97,15 @@ export function EpgGuidePage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Program Rehberi</h1>
-          <p className="text-sm text-muted mt-0.5">EPG zaman çizelgesi</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('nav.epgGuide')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('epg.guide.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
             <input
               className="input pl-8 h-9 text-sm w-44"
-              placeholder="Kanal ara…"
+              placeholder={t('epg.guide.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -113,13 +115,13 @@ export function EpgGuidePage() {
               onClick={() => setOnlyMapped(false)}
               className={cn('px-3 py-1.5 transition-colors', !onlyMapped ? 'bg-primary text-white' : 'text-muted hover:text-fg')}
             >
-              Tümü
+              {t('epg.guide.filterAll')}
             </button>
             <button
               onClick={() => setOnlyMapped(true)}
               className={cn('px-3 py-1.5 border-l border-border transition-colors', onlyMapped ? 'bg-primary text-white' : 'text-muted hover:text-fg')}
             >
-              Sadece Eşleşmiş
+              {t('epg.guide.filterMapped')}
             </button>
           </div>
           <button onClick={prevDay} className="btn btn-secondary p-2">
@@ -138,13 +140,13 @@ export function EpgGuidePage() {
       </div>
 
       {isLoading && (
-        <div className="card p-12 text-center text-muted">Yükleniyor…</div>
+        <div className="card p-12 text-center text-muted">{t('common.loading')}</div>
       )}
 
       {!isLoading && channels.length === 0 && (
         <div className="card p-12 text-center text-muted">
           <Clock className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          Bu tarih için EPG verisi yok
+          {t('epg.guide.noData')}
         </div>
       )}
 
@@ -160,7 +162,7 @@ export function EpgGuidePage() {
                   className="flex-shrink-0 sticky left-0 z-10 bg-surface border-r border-border p-3 text-xs text-muted font-semibold"
                   style={{ width: LABEL_W }}
                 >
-                  Kanal
+                  {t('epg.guide.channelColumn')}
                 </div>
                 <div className="flex flex-shrink-0" style={{ width: totalWidth }}>
                   {HOURS.map((h) => (
@@ -246,7 +248,7 @@ export function EpgGuidePage() {
             {' → '}
             {new Date(tooltip.prog.stop).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
             {' • '}
-            {tooltip.prog.durationMin} dk
+            {t('epg.guide.durationMin', { n: tooltip.prog.durationMin })}
           </div>
           {tooltip.prog.description && (
             <div className="text-xs text-muted line-clamp-3">{tooltip.prog.description}</div>

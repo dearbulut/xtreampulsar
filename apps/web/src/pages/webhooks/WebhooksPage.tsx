@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Pencil, FlaskConical, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
@@ -15,10 +16,10 @@ import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const ALL_EVENTS = [
-  { value: 'user.created',      label: 'Kullanıcı Oluşturuldu' },
-  { value: 'user.expired',      label: 'Kullanıcı Süresi Doldu' },
-  { value: 'user.connected',    label: 'Kullanıcı Bağlandı' },
-  { value: 'user.disconnected', label: 'Kullanıcı Bağlantısı Kesildi' },
+  { value: 'user.created',      labelKey: 'webhooks.eventUserCreated' },
+  { value: 'user.expired',      labelKey: 'webhooks.eventUserExpired' },
+  { value: 'user.connected',    labelKey: 'webhooks.eventUserConnected' },
+  { value: 'user.disconnected', labelKey: 'webhooks.eventUserDisconnected' },
 ] as const;
 
 const EMPTY_FORM = { name: '', url: '', secret: '', events: [] as string[] };
@@ -41,6 +42,7 @@ interface TestResult {
 }
 
 export function WebhooksPage() {
+  const { t } = useTranslation();
   const { data: webhooksRaw, isLoading } = useWebhooks();
   const webhooks = Array.isArray(webhooksRaw) ? webhooksRaw : [];
   const createWebhook = useCreateWebhook();
@@ -73,7 +75,7 @@ export function WebhooksPage() {
 
   const handleCreate = () => {
     if (!form.name.trim() || !form.url.trim()) {
-      toast.error('İsim ve URL zorunludur');
+      toast.error(t('webhooks.nameUrlRequired'));
       return;
     }
     createWebhook.mutate(
@@ -93,7 +95,7 @@ export function WebhooksPage() {
   const handleTest = (id: string) => {
     testWebhook.mutate(id, {
       onSuccess: (res) => setTestResults((prev) => ({ ...prev, [id]: res })),
-      onError: () => setTestResults((prev) => ({ ...prev, [id]: { ok: false, status: null, error: 'İstek başarısız' } })),
+      onError: () => setTestResults((prev) => ({ ...prev, [id]: { ok: false, status: null, error: t('webhooks.requestFailed') } })),
     });
   };
 
@@ -104,20 +106,20 @@ export function WebhooksPage() {
   const FormBody = (
     <div className="space-y-4">
       <div>
-        <label className="label">İsim *</label>
-        <input className="input" placeholder="Örn: Sipariş sistemi" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+        <label className="label">{t('webhooks.nameLabel')}</label>
+        <input className="input" placeholder={t('webhooks.namePlaceholder')} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
       </div>
       <div>
         <label className="label">URL *</label>
         <input className="input font-mono text-xs" placeholder="https://example.com/webhook" value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} />
       </div>
       <div>
-        <label className="label">Secret <span className="text-muted text-xs">(opsiyonel)</span></label>
-        <input className="input font-mono text-xs" placeholder="HMAC-SHA256 imzası için" value={form.secret} onChange={(e) => setForm((f) => ({ ...f, secret: e.target.value }))} />
-        <p className="text-xs text-muted mt-1">Belirtilirse X-Webhook-Signature: sha256=... başlığı eklenir.</p>
+        <label className="label">Secret <span className="text-muted text-xs">({t('webhooks.optional')})</span></label>
+        <input className="input font-mono text-xs" placeholder={t('webhooks.secretPlaceholder')} value={form.secret} onChange={(e) => setForm((f) => ({ ...f, secret: e.target.value }))} />
+        <p className="text-xs text-muted mt-1">{t('webhooks.secretHint')}</p>
       </div>
       <div>
-        <label className="label">Olaylar</label>
+        <label className="label">{t('webhooks.events')}</label>
         <div className="space-y-2 mt-1">
           {ALL_EVENTS.map((ev) => (
             <label key={ev.value} className="flex items-center gap-2 cursor-pointer">
@@ -127,7 +129,7 @@ export function WebhooksPage() {
                 onChange={() => toggleEvent(ev.value)}
                 className="w-4 h-4 rounded accent-primary"
               />
-              <span className="text-sm">{ev.label}</span>
+              <span className="text-sm">{t(ev.labelKey)}</span>
               <span className="text-xs text-muted font-mono">({ev.value})</span>
             </label>
           ))}
@@ -139,22 +141,22 @@ export function WebhooksPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Webhook'lar"
-        description="Dış sistemlere HTTP bildirimi gönder"
+        title={t('webhooks.title')}
+        description={t('webhooks.description')}
         actions={
           <button onClick={openCreate} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Yeni Webhook
+            {t('webhooks.newWebhook')}
           </button>
         }
       />
 
       {isLoading ? (
-        <div className="text-center text-muted py-12">Yükleniyor…</div>
+        <div className="text-center text-muted py-12">{t('common.loading')}</div>
       ) : webhooks.length === 0 ? (
         <div className="card text-center py-12 text-muted">
-          <p className="mb-2">Henüz webhook tanımlı değil.</p>
-          <p className="text-sm">Dış sistemlere anlık bildirim göndermek için "Yeni Webhook" ekle.</p>
+          <p className="mb-2">{t('webhooks.emptyTitle')}</p>
+          <p className="text-sm">{t('webhooks.emptyHint')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -172,7 +174,7 @@ export function WebhooksPage() {
                   <button
                     onClick={() => handleToggle(wh)}
                     className="flex-shrink-0 text-muted hover:text-fg transition-colors"
-                    title={wh.isActive ? 'Pasif et' : 'Aktif et'}
+                    title={wh.isActive ? t('webhooks.deactivate') : t('webhooks.activate')}
                   >
                     {wh.isActive
                       ? <ToggleRight className="w-5 h-5 text-emerald-400" />
@@ -183,7 +185,7 @@ export function WebhooksPage() {
                 {/* Events */}
                 <div className="flex flex-wrap gap-1">
                   {wh.events.length === 0 ? (
-                    <span className="text-xs text-muted">Olay seçilmedi</span>
+                    <span className="text-xs text-muted">{t('webhooks.noEventSelected')}</span>
                   ) : (
                     wh.events.map((ev) => (
                       <span key={ev} className="px-2 py-0.5 rounded-full bg-surface-2 text-xs font-mono">
@@ -213,8 +215,8 @@ export function WebhooksPage() {
                       ? <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
                       : <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}
                     {testRes.ok
-                      ? `Başarılı — HTTP ${testRes.status}`
-                      : (testRes.error ?? `HTTP ${testRes.status ?? 'hata'}`)}
+                      ? t('webhooks.testSuccess', { status: testRes.status })
+                      : (testRes.error ?? t('webhooks.testHttpStatus', { status: testRes.status ?? t('webhooks.testError') }))}
                   </div>
                 )}
 
@@ -226,21 +228,21 @@ export function WebhooksPage() {
                     className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-surface-2 text-muted hover:text-fg transition-colors disabled:opacity-50"
                   >
                     <FlaskConical className="w-3.5 h-3.5" />
-                    {isTesting ? 'Test…' : 'Test Et'}
+                    {isTesting ? t('webhooks.testing') : t('webhooks.test')}
                   </button>
                   <button
                     onClick={() => openEdit(wh)}
                     className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-surface-2 text-muted hover:text-blue-400 transition-colors"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    Düzenle
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={() => setDeleteId(wh.id)}
                     className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-surface-2 text-muted hover:text-danger transition-colors ml-auto"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Sil
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -250,23 +252,23 @@ export function WebhooksPage() {
       )}
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Yeni Webhook" size="md">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('webhooks.newWebhook')} size="md">
         {FormBody}
         <div className="flex gap-2 justify-end pt-4 border-t border-border mt-4">
-          <button onClick={() => setShowCreate(false)} className="btn-ghost">İptal</button>
+          <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
           <button onClick={handleCreate} disabled={createWebhook.isPending} className="btn-primary">
-            {createWebhook.isPending ? 'Oluşturuluyor…' : 'Oluştur'}
+            {createWebhook.isPending ? t('webhooks.creating') : t('common.create')}
           </button>
         </div>
       </Modal>
 
       {/* Edit modal */}
-      <Modal open={!!editWebhook} onClose={() => setEditWebhook(null)} title={`Düzenle — ${editWebhook?.name ?? ''}`} size="md">
+      <Modal open={!!editWebhook} onClose={() => setEditWebhook(null)} title={t('webhooks.editTitle', { name: editWebhook?.name ?? '' })} size="md">
         {FormBody}
         <div className="flex gap-2 justify-end pt-4 border-t border-border mt-4">
-          <button onClick={() => setEditWebhook(null)} className="btn-ghost">İptal</button>
+          <button onClick={() => setEditWebhook(null)} className="btn-ghost">{t('common.cancel')}</button>
           <button onClick={handleUpdate} disabled={updateWebhook.isPending} className="btn-primary">
-            {updateWebhook.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            {updateWebhook.isPending ? t('webhooks.saving') : t('common.save')}
           </button>
         </div>
       </Modal>
@@ -274,9 +276,9 @@ export function WebhooksPage() {
       {/* Delete confirm */}
       <ConfirmDialog
         open={!!deleteId}
-        title="Webhook'u Sil"
-        message="Bu webhook kalıcı olarak silinecek. Emin misin?"
-        confirmLabel="Sil"
+        title={t('webhooks.deleteTitle')}
+        message={t('webhooks.deleteMessage')}
+        confirmLabel={t('common.delete')}
         onConfirm={() => {
           if (deleteId) {
             deleteWebhook.mutate(deleteId, { onSuccess: () => setDeleteId(null) });

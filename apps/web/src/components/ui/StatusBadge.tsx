@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 type Status =
@@ -19,24 +20,24 @@ type Status =
   | string;
 
 const MAP: Record<string, { label: string; dot: string; bg: string; text: string }> = {
-  ACTIVE:    { label: 'Aktif',     dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
-  ONLINE:    { label: 'Online',    dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
-  RUNNING:   { label: 'Çalışıyor', dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
-  COMPLETED: { label: 'Tamamlandı', dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
+  ACTIVE:    { label: 'ui.status.active',    dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
+  ONLINE:    { label: 'ui.status.online',    dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
+  RUNNING:   { label: 'ui.status.running',   dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
+  COMPLETED: { label: 'ui.status.completed', dot: 'bg-success', bg: 'bg-success/10', text: 'text-success' },
 
-  DISABLED:  { label: 'Devre dışı', dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
-  IDLE:      { label: 'Bekliyor',   dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
-  STOPPED:   { label: 'Durduruldu', dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
-  PENDING:   { label: 'Bekliyor',   dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
+  DISABLED:  { label: 'ui.status.disabled',  dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
+  IDLE:      { label: 'ui.status.idle',      dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
+  STOPPED:   { label: 'ui.status.stopped',   dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
+  PENDING:   { label: 'ui.status.pending',   dot: 'bg-muted', bg: 'bg-muted/10', text: 'text-muted' },
 
-  EXPIRED:   { label: 'Süresi Doldu', dot: 'bg-warning', bg: 'bg-warning/10', text: 'text-warning' },
-  BUFFERING: { label: 'Tamponlama',   dot: 'bg-warning', bg: 'bg-warning/10', text: 'text-warning' },
+  EXPIRED:   { label: 'ui.status.expired',   dot: 'bg-warning', bg: 'bg-warning/10', text: 'text-warning' },
+  BUFFERING: { label: 'ui.status.buffering', dot: 'bg-warning', bg: 'bg-warning/10', text: 'text-warning' },
 
-  BANNED:    { label: 'Yasaklı', dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
-  OFFLINE:   { label: 'Offline', dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
-  CRASHED:   { label: 'Çöktü',   dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
-  ERROR:     { label: 'Hata',    dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
-  FAILED:    { label: 'Başarısız', dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
+  BANNED:    { label: 'ui.status.banned',  dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
+  OFFLINE:   { label: 'ui.status.offline', dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
+  CRASHED:   { label: 'ui.status.crashed', dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
+  ERROR:     { label: 'ui.status.error',   dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
+  FAILED:    { label: 'ui.status.failed',  dot: 'bg-danger', bg: 'bg-danger/10', text: 'text-danger' },
 };
 
 interface Props {
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export function StatusBadge({ status, showDot = true, className }: Props) {
+  const { t } = useTranslation();
   const cfg = MAP[status] ?? {
     label: status,
     dot: 'bg-muted',
@@ -58,7 +60,7 @@ export function StatusBadge({ status, showDot = true, className }: Props) {
       {showDot && (
         <span className={cn('w-1.5 h-1.5 rounded-full mr-1.5 flex-shrink-0', cfg.dot)} />
       )}
-      {cfg.label}
+      {t(cfg.label)}
     </span>
   );
 }

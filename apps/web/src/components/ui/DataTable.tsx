@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { LoadingSpinner } from './LoadingSpinner';
 import { EmptyState } from './EmptyState';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,7 @@ export function DataTable<T>({
   stickyHeader,
   mobileCards,
 }: Props<T>) {
+  const { t } = useTranslation();
   const getKey = keyExtractor ?? ((row: T) => String((row as Record<string, unknown>).id ?? Math.random()));
   const allSelected = selectedIds && data.length > 0 && data.every((r) => selectedIds.has(getKey(r)));
 
@@ -96,15 +98,15 @@ export function DataTable<T>({
   const pagination = onPageChange && (
     <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface flex-wrap gap-2">
       <div className="flex items-center gap-3 text-xs text-muted">
-        {total !== undefined && <span>Toplam {total.toLocaleString()} kayıt</span>}
-        {totalPages > 1 && <span className="font-medium">Sayfa {page} / {totalPages}</span>}
+        {total !== undefined && <span>{t('ui.totalRecords', { n: total.toLocaleString() })}</span>}
+        {totalPages > 1 && <span className="font-medium">{t('ui.pageOf', { page, pages: totalPages })}</span>}
       </div>
       {totalPages > 1 && (
         <div className="flex items-center gap-0.5">
-          <button onClick={() => onPageChange(1)} disabled={page <= 1} title="İlk sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+          <button onClick={() => onPageChange(1)} disabled={page <= 1} title={t('ui.firstPage')} className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
             <ChevronsLeft className="w-4 h-4" />
           </button>
-          <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} title="Önceki sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+          <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} title={t('ui.prevPage')} className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
             <ChevronLeft className="w-4 h-4" />
           </button>
           {pageNumbers.map((p, i) =>
@@ -116,10 +118,10 @@ export function DataTable<T>({
               </button>
             ),
           )}
-          <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} title="Sonraki sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+          <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} title={t('ui.nextPage')} className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} title="Son sayfa" className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
+          <button onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} title={t('ui.lastPage')} className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-surface-2 disabled:opacity-30 transition-colors">
             <ChevronsRight className="w-4 h-4" />
           </button>
         </div>
@@ -144,7 +146,7 @@ export function DataTable<T>({
                 {onSelectId && (
                   <div className="flex items-center gap-2 mb-1" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={!!selected} onChange={() => onSelectId(id)} className="accent-primary w-3.5 h-3.5" />
-                    <span className="text-xs text-muted">Seç</span>
+                    <span className="text-xs text-muted">{t('ui.select')}</span>
                   </div>
                 )}
                 {visibleColumns.map((col) => (

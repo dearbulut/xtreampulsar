@@ -1,5 +1,6 @@
 import { Bell, ChevronDown, User, Settings, LogOut, Download, X, ExternalLink, Palette, Menu, Search, Radio, UserCircle, Cpu, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { LANGUAGES } from '@/i18n/i18n';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -68,14 +69,14 @@ function useMarkAllRead() {
   });
 }
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, t: TFunction): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return 'Az önce';
-  if (mins < 60) return `${mins} dakika önce`;
+  if (mins < 1) return t('layout.justNow');
+  if (mins < 60) return t('layout.minutesAgo', { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} saat önce`;
-  return `${Math.floor(hrs / 24)} gün önce`;
+  if (hrs < 24) return t('layout.hoursAgo', { n: hrs });
+  return t('layout.daysAgo', { n: Math.floor(hrs / 24) });
 }
 
 function notifIcon(type: string) {
@@ -108,6 +109,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { t } = useTranslation();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -156,7 +158,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             type="text"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            placeholder="Kullanıcı, kanal, reseller ara… (Esc ile kapat)"
+            placeholder={t('layout.searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
@@ -171,19 +173,19 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
         <div className="max-h-96 overflow-y-auto">
           {!q.trim() && (
             <div className="p-6 text-center text-muted text-sm">
-              Aramak için yazmaya başlayın
+              {t('layout.searchStartTyping')}
             </div>
           )}
 
           {q.trim() && !loading && !hasResults && (
             <div className="p-6 text-center text-muted text-sm">
-              "{q}" için sonuç bulunamadı
+              {t('layout.searchNoResults', { q })}
             </div>
           )}
 
           {results?.users && results.users.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kullanıcılar</div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">{t('nav.users')}</div>
               {results.users.map((u) => (
                 <button
                   key={u.id}
@@ -204,7 +206,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
 
           {results?.streams && results.streams.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kanallar</div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">{t('nav.channels')}</div>
               {results.streams.map((s) => (
                 <button
                   key={s.id}
@@ -230,7 +232,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
 
           {results?.resellers && results.resellers.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Resellerlar</div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">{t('layout.resellers')}</div>
               {results.resellers.map((r) => (
                 <button
                   key={r.id}
@@ -251,7 +253,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
 
           {results?.categories && results.categories.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">Kategoriler</div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-2/50">{t('nav.categories')}</div>
               {results.categories.map((c) => (
                 <button
                   key={c.id}
@@ -263,7 +265,7 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-slate-200">{c.name}</div>
-                    <div className="text-xs text-muted">{c.type} · {c._count?.streams ?? 0} kanal</div>
+                    <div className="text-xs text-muted">{c.type} · {t('layout.channelCount', { n: c._count?.streams ?? 0 })}</div>
                   </div>
                 </button>
               ))}
@@ -272,8 +274,8 @@ function GlobalSearch({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="px-4 py-2 border-t border-border flex items-center justify-between text-[10px] text-muted">
-          <span>Enter ile seç</span>
-          <span>Esc ile kapat</span>
+          <span>{t('layout.enterToSelect')}</span>
+          <span>{t('layout.escToClose')}</span>
         </div>
       </div>
     </div>
@@ -294,7 +296,7 @@ export function Header({ title, breadcrumb }: Props) {
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const changeLanguage = (code: string) => {
     void i18n.changeLanguage(code);
@@ -331,14 +333,14 @@ export function Header({ title, breadcrumb }: Props) {
           <div className="flex items-center gap-2">
             <Download className="w-3.5 h-3.5 flex-shrink-0" />
             <span>
-              Yeni sürüm mevcut: <strong>v{updateInfo?.latestVersion}</strong>
-              {' '}&mdash; mevcut: v{updateInfo?.currentVersion}
+              {t('layout.newVersionAvailable')} <strong>v{updateInfo?.latestVersion}</strong>
+              {' '}&mdash; {t('layout.currentVersion')} v{updateInfo?.currentVersion}
             </span>
             <button
               onClick={() => setShowNotes(true)}
               className="underline underline-offset-2 hover:text-indigo-200 transition-colors"
             >
-              Notlar
+              {t('layout.notes')}
             </button>
             <a
               href={updateInfo?.releaseUrl}
@@ -355,7 +357,7 @@ export function Header({ title, breadcrumb }: Props) {
               disabled={applyUpdate.isPending}
               className="bg-white text-indigo-700 font-semibold px-3 py-0.5 rounded-md hover:bg-indigo-50 transition text-xs disabled:opacity-60"
             >
-              {applyUpdate.isPending ? 'Güncelleniyor...' : 'Güncelle'}
+              {applyUpdate.isPending ? t('layout.updating') : t('common.update')}
             </button>
             <button onClick={() => setBannerDismissed(true)} className="p-0.5 hover:text-indigo-200">
               <X className="w-3.5 h-3.5" />
@@ -394,11 +396,11 @@ export function Header({ title, breadcrumb }: Props) {
           {/* Global search button */}
           <button
             onClick={() => setShowSearch(true)}
-            title="Ara (Cmd+K)"
+            title={t('layout.searchTooltip')}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-muted hover:bg-surface-2 transition-colors text-sm"
           >
             <Search className="w-4 h-4" />
-            <span className="hidden md:inline text-xs">Ara</span>
+            <span className="hidden md:inline text-xs">{t('common.search')}</span>
             <kbd className="hidden md:inline text-[10px] bg-surface-2 border border-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
           </button>
 
@@ -406,7 +408,7 @@ export function Header({ title, breadcrumb }: Props) {
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
-                title="Tema seç"
+                title={t('layout.selectTheme')}
                 className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200 flex items-center gap-1.5"
               >
                 <Palette className="w-4 h-4" />
@@ -422,7 +424,7 @@ export function Header({ title, breadcrumb }: Props) {
                 align="end"
                 sideOffset={6}
               >
-                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">Tema</div>
+                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">{t('layout.theme')}</div>
                 {THEME_ORDER.map((t) => (
                   <DropdownMenu.Item
                     key={t}
@@ -447,14 +449,14 @@ export function Header({ title, breadcrumb }: Props) {
           {/* Language picker */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button title="Dil seç" className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200 flex items-center gap-1">
+              <button title={t('layout.selectLanguage')} className="p-2 rounded-lg text-muted hover:bg-surface-2 transition-all duration-200 flex items-center gap-1">
                 <Globe className="w-4 h-4" />
                 <span className="text-xs hidden sm:inline">{LANGUAGES.find((l) => l.code === i18n.language)?.flag ?? '🌐'}</span>
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className="bg-surface border border-border rounded-xl shadow-2xl p-2 min-w-36 z-50 animate-fade-in" align="end" sideOffset={6}>
-                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">Dil / Language</div>
+                <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold">{t('layout.languageHeader')}</div>
                 {LANGUAGES.map((lang) => (
                   <DropdownMenu.Item
                     key={lang.code}
@@ -492,16 +494,16 @@ export function Header({ title, breadcrumb }: Props) {
                 sideOffset={6}
               >
                 <div className="text-[10px] text-muted px-2 pb-1.5 uppercase tracking-widest font-semibold flex items-center justify-between">
-                  <span>Bildirimler {unreadCount > 0 && <span className="ml-1 text-danger">({unreadCount})</span>}</span>
+                  <span>{t('layout.notifications')} {unreadCount > 0 && <span className="ml-1 text-danger">({unreadCount})</span>}</span>
                   <button
                     onClick={() => void router.navigate({ to: '/settings' })}
                     className="hover:text-primary transition-colors normal-case text-[10px]"
                   >
-                    Tümünü gör
+                    {t('layout.viewAll')}
                   </button>
                 </div>
                 {notifLogs.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-xs text-muted">Bildirim yok</div>
+                  <div className="px-3 py-4 text-center text-xs text-muted">{t('layout.noNotifications')}</div>
                 ) : (
                   notifLogs.slice(0, 8).map((n) => (
                     <button
@@ -516,7 +518,7 @@ export function Header({ title, breadcrumb }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className={cn('text-xs truncate', n.isRead ? 'text-muted' : 'text-slate-200 font-medium')}>{n.subject}</div>
                         <div className="text-[11px] text-muted truncate">{n.recipient}</div>
-                        <div className="text-[10px] text-muted/60 mt-0.5">{relativeTime(n.createdAt)}</div>
+                        <div className="text-[10px] text-muted/60 mt-0.5">{relativeTime(n.createdAt, t)}</div>
                       </div>
                       {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
                     </button>
@@ -550,10 +552,10 @@ export function Header({ title, breadcrumb }: Props) {
                   <div className="text-xs font-medium">{user?.username}</div>
                   <div className="text-[11px] text-muted">{user?.role}</div>
                 </div>
-                <DropdownItem icon={User} label="Profilim" onClick={() => void router.navigate({ to: '/profile' })} />
-                <DropdownItem icon={Settings} label="Ayarlar" onClick={() => void router.navigate({ to: '/settings' })} />
+                <DropdownItem icon={User} label={t('layout.profile')} onClick={() => void router.navigate({ to: '/profile' })} />
+                <DropdownItem icon={Settings} label={t('nav.settings')} onClick={() => void router.navigate({ to: '/settings' })} />
                 <DropdownMenu.Separator className="h-px bg-border my-1" />
-                <DropdownItem icon={LogOut} label="Çıkış Yap" danger onClick={handleLogout} />
+                <DropdownItem icon={LogOut} label={t('layout.logout')} danger onClick={handleLogout} />
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
@@ -565,17 +567,17 @@ export function Header({ title, breadcrumb }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowNotes(false)}>
           <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">v{updateInfo.latestVersion} — Sürüm Notları</h2>
+              <h2 className="font-semibold">v{updateInfo.latestVersion} — {t('layout.releaseNotes')}</h2>
               <button onClick={() => setShowNotes(false)} className="text-muted hover:text-fg">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <pre className="text-sm text-muted whitespace-pre-wrap max-h-80 overflow-y-auto font-mono leading-relaxed">
-              {updateInfo.releaseNotes || 'Sürüm notu yok.'}
+              {updateInfo.releaseNotes || t('layout.noReleaseNotes')}
             </pre>
             <div className="mt-4 flex justify-end gap-2">
               <a href={updateInfo.releaseUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                GitHub'da Gör <ExternalLink className="w-3 h-3" />
+                {t('layout.viewOnGithub')} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>

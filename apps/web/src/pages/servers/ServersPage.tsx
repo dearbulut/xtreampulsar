@@ -10,6 +10,7 @@ import { useServerGuard, useUpdateServerGuard, useBlockedIps, useUnblockIp, type
 import { useServerLoad } from '@/hooks/useUserActivity';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const sparkSeed = (base: number) =>
   Array.from({ length: 12 }, (_, i) => Math.max(0, base + Math.sin(i * 0.7) * base * 0.4));
@@ -48,9 +49,9 @@ function ServerMetricsPanel({ serverId, isOnline }: { serverId: string; isOnline
   );
 }
 
-const roleLabelMap: Record<string, string> = {
-  MAIN: 'Ana Sunucu',
-  LOAD_BALANCER: 'Yük Dağıtıcı',
+const roleLabelKeys: Record<string, string> = {
+  MAIN: 'servers.roleMain',
+  LOAD_BALANCER: 'servers.roleLoadBalancer',
 };
 
 function StatusDot({ online }: { online: boolean }) {
@@ -84,6 +85,7 @@ const FORM_DEFAULT: FormState = {
 };
 
 function ServerGuardPanel({ serverId }: { serverId: string }) {
+  const { t } = useTranslation();
   const { data: guard, isLoading } = useServerGuard(serverId);
   const updateGuard = useUpdateServerGuard(serverId);
   const { data: blockedIps = [] } = useBlockedIps(serverId);
@@ -95,7 +97,7 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
     if (guard) setForm(guard);
   }, [guard]);
 
-  if (isLoading) return <div className="p-6 text-center text-muted">Yükleniyor...</div>;
+  if (isLoading) return <div className="p-6 text-center text-muted">{t('common.loading')}</div>;
 
   const g = { ...guard, ...form };
   const set = <K extends keyof ServerGuard>(k: K, v: ServerGuard[K]) => setForm(p => ({ ...p, [k]: v }));
@@ -106,7 +108,7 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
       <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-xl">
         <div>
           <div className="text-sm font-medium">Server Guard</div>
-          <div className="text-xs text-muted">Otomatik IP engelleme sistemi</div>
+          <div className="text-xs text-muted">{t('servers.guardSubtitle')}</div>
         </div>
         <button type="button" onClick={() => set('enabled', !g.enabled)}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${g.enabled ? 'bg-primary' : 'bg-border'}`}>
@@ -116,44 +118,44 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label">IP Başına Maks Bağlantı</label>
+          <label className="label">{t('servers.maxConnsPerIp')}</label>
           <input type="number" className="input" value={g.maxConnsPerIp ?? 200}
             onChange={e => set('maxConnsPerIp', parseInt(e.target.value, 10))} />
         </div>
         <div>
-          <label className="label">Blok Süresi (dk)</label>
+          <label className="label">{t('servers.blockDuration')}</label>
           <input type="number" className="input" value={g.blockDurationMinutes ?? 10}
             onChange={e => set('blockDurationMinutes', parseInt(e.target.value, 10))} />
         </div>
         <div>
-          <label className="label">Normal User Hit Limiti</label>
+          <label className="label">{t('servers.maxHitsNormalUser')}</label>
           <input type="number" className="input" value={g.maxHitsNormalUser ?? 50}
             onChange={e => set('maxHitsNormalUser', parseInt(e.target.value, 10))} />
         </div>
         <div>
-          <label className="label">Restreamer Hit Limiti</label>
+          <label className="label">{t('servers.maxHitsRestreamer')}</label>
           <input type="number" className="input" value={g.maxHitsRestreamer ?? 500}
             onChange={e => set('maxHitsRestreamer', parseInt(e.target.value, 10))} />
         </div>
       </div>
 
       <div>
-        <label className="label">Hassas Portlar</label>
+        <label className="label">{t('servers.sensitivePorts')}</label>
         <TagInput value={(g.sensitivePorts ?? []).map(String)}
           onChange={v => set('sensitivePorts', v.map(Number))} placeholder="22, 3306..." />
       </div>
       <div>
-        <label className="label">Açık Portlar</label>
+        <label className="label">{t('servers.openPorts')}</label>
         <TagInput value={(g.openPorts ?? []).map(String)}
           onChange={v => set('openPorts', v.map(Number))} placeholder="80, 443, 25461..." />
       </div>
       <div>
-        <label className="label">Whitelist IP'ler</label>
+        <label className="label">{t('servers.whitelistIps')}</label>
         <TagInput value={g.whitelistIps ?? []}
           onChange={v => set('whitelistIps', v)} placeholder="192.168.1.1..." />
       </div>
       <div>
-        <label className="label">Whitelist Kullanıcı Adları</label>
+        <label className="label">{t('servers.whitelistUsernames')}</label>
         <TagInput value={g.whitelistUsernames ?? []}
           onChange={v => set('whitelistUsernames', v)} />
       </div>
@@ -162,19 +164,19 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" className="accent-primary" checked={g.denyInvalidStreamIds ?? true}
             onChange={e => set('denyInvalidStreamIds', e.target.checked)} />
-          <span className="text-sm">Geçersiz Stream ID Engelle</span>
+          <span className="text-sm">{t('servers.denyInvalidStreamIds')}</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" className="accent-primary" checked={g.blockVpnProxy ?? false}
             onChange={e => set('blockVpnProxy', e.target.checked)} />
-          <span className="text-sm">VPN/Proxy Engelle</span>
+          <span className="text-sm">{t('servers.blockVpnProxy')}</span>
         </label>
       </div>
 
       <div className="flex justify-end">
         <button className="btn btn-primary" disabled={updateGuard.isPending}
           onClick={() => void updateGuard.mutateAsync(form)}>
-          {updateGuard.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+          {updateGuard.isPending ? t('servers.saving') : t('common.save')}
         </button>
       </div>
 
@@ -182,15 +184,15 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
       {blockedIps.length > 0 && (
         <div>
           <div className="text-sm font-medium mb-2 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-danger" /> Engellenen IP'ler ({blockedIps.length})
+            <Lock className="w-4 h-4 text-danger" /> {t('servers.blockedIps', { count: blockedIps.length })}
           </div>
           <div className="border border-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="table-th">IP</th>
-                  <th className="table-th">Sebep</th>
-                  <th className="table-th">Süre</th>
+                  <th className="table-th">{t('servers.reason')}</th>
+                  <th className="table-th">{t('servers.duration')}</th>
                   <th className="table-th w-10"></th>
                 </tr>
               </thead>
@@ -202,7 +204,7 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
                     <td className="table-td text-xs text-muted">{new Date(b.expiresAt).toLocaleString('tr-TR')}</td>
                     <td className="table-td">
                       <button onClick={() => void unblockIp.mutateAsync(b.ip)}
-                        className="text-xs text-danger hover:underline">Kaldır</button>
+                        className="text-xs text-danger hover:underline">{t('servers.remove')}</button>
                     </td>
                   </tr>
                 ))}
@@ -216,6 +218,7 @@ function ServerGuardPanel({ serverId }: { serverId: string }) {
 }
 
 export function ServersPage() {
+  const { t } = useTranslation();
   const { data: servers = [], isLoading } = useServers();
   const { data: loadStats = [] } = useServerLoad() as { data: Array<{ serverId: string; name: string; connections: number; maxClients: number; utilization: number; isOnline: boolean }> };
   const createServer = useCreateServer();
@@ -270,7 +273,7 @@ export function ServersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bu sunucuyu silmek istediğinizden emin misiniz?')) return;
+    if (!confirm(t('servers.deleteConfirm'))) return;
     await deleteServer.mutateAsync(id);
   };
 
@@ -283,11 +286,11 @@ export function ServersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Sunucular</h1>
-          <p className="text-sm text-muted mt-0.5">{servers.length} sunucu kayıtlı</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('nav.servers')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('servers.serverCount', { count: servers.length })}</p>
         </div>
         <button onClick={openAdd} className="btn btn-primary">
-          <Plus className="w-4 h-4" /> Sunucu Ekle
+          <Plus className="w-4 h-4" /> {t('servers.addServer')}
         </button>
       </div>
 
@@ -295,9 +298,9 @@ export function ServersPage() {
       {loadStats.length > 0 && (
         <div className="card p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold text-slate-200">Yük Dengesi</div>
+            <div className="text-sm font-semibold text-slate-200">{t('servers.loadBalance')}</div>
             <div className={cn('text-xs font-semibold', overallUtil > 90 ? 'text-danger' : overallUtil > 70 ? 'text-warning' : 'text-success')}>
-              {overallUtil}% toplam kullanım
+              {t('servers.totalUtilization', { pct: overallUtil })}
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -332,8 +335,8 @@ export function ServersPage() {
       ) : servers.length === 0 ? (
         <div className="card py-16 text-center">
           <Server className="w-12 h-12 text-muted mx-auto mb-3" />
-          <div className="text-slate-400 font-medium">Henüz sunucu yok</div>
-          <div className="text-sm text-muted mt-1">İlk sunucuyu ekle</div>
+          <div className="text-slate-400 font-medium">{t('servers.noServers')}</div>
+          <div className="text-sm text-muted mt-1">{t('servers.addFirstServer')}</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -376,13 +379,13 @@ export function ServersPage() {
                       {openMenu === srv.id && (
                         <div className="absolute right-0 top-6 bg-surface border border-border rounded-xl shadow-2xl z-10 py-1 w-36">
                           <button onClick={() => { openEdit(srv); setOpenMenu(null); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 w-full text-left text-slate-300">
-                            <Edit2 className="w-3.5 h-3.5" /> Düzenle
+                            <Edit2 className="w-3.5 h-3.5" /> {t('common.edit')}
                           </button>
                           <button onClick={() => { void handleHealth(srv.id); setOpenMenu(null); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 w-full text-left text-slate-300">
-                            <Activity className="w-3.5 h-3.5" /> Sağlık Testi
+                            <Activity className="w-3.5 h-3.5" /> {t('servers.healthTest')}
                           </button>
                           <button onClick={() => { void handleDelete(srv.id); setOpenMenu(null); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 w-full text-left text-danger">
-                            <Trash2 className="w-3.5 h-3.5" /> Sil
+                            <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                           </button>
                         </div>
                       )}
@@ -401,17 +404,17 @@ export function ServersPage() {
                   <div className="grid grid-cols-3 gap-2 mb-4 text-center">
                     <div>
                       <div className="text-lg font-bold text-slate-200 tabular-nums">{srv.currentClients}</div>
-                      <div className="text-[10px] text-muted">Bağlı</div>
+                      <div className="text-[10px] text-muted">{t('servers.connected')}</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-slate-200 tabular-nums">{srv.maxClients}</div>
-                      <div className="text-[10px] text-muted">Maks</div>
+                      <div className="text-[10px] text-muted">{t('servers.max')}</div>
                     </div>
                     <div>
                       <div className={cn('text-lg font-bold tabular-nums', connPct > 80 ? 'text-danger' : connPct > 60 ? 'text-warning' : 'text-success')}>
                         {connPct}%
                       </div>
-                      <div className="text-[10px] text-muted">Doluluk</div>
+                      <div className="text-[10px] text-muted">{t('servers.occupancy')}</div>
                     </div>
                   </div>
 
@@ -428,7 +431,7 @@ export function ServersPage() {
                     <div className="flex items-center gap-1.5 text-xs text-muted">
                       {isOnline ? <Wifi className="w-3 h-3 text-success" /> : <WifiOff className="w-3 h-3 text-danger" />}
                       <span>{srv.ip}:{srv.port}</span>
-                      <span className="bg-surface-2 px-1.5 py-0.5 rounded text-[10px] ml-1">{roleLabelMap[srv.role] ?? srv.role}</span>
+                      <span className="bg-surface-2 px-1.5 py-0.5 rounded text-[10px] ml-1">{roleLabelKeys[srv.role] ? t(roleLabelKeys[srv.role]) : srv.role}</span>
                     </div>
                     {healthRes !== undefined && (
                       <div className={cn('text-xs font-medium', healthRes?.ok ? 'text-success' : 'text-danger')}>
@@ -456,7 +459,7 @@ export function ServersPage() {
       <Modal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        title={editTarget ? 'Sunucuyu Düzenle' : 'Sunucu Ekle'}
+        title={editTarget ? t('servers.editServer') : t('servers.addServer')}
         size="md"
       >
         {/* Tabs — only shown when editing an existing server */}
@@ -466,13 +469,13 @@ export function ServersPage() {
               onClick={() => setEditTab('details')}
               className={cn('px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2', editTab === 'details' ? 'border-b-2 border-primary text-primary-light' : 'text-muted hover:text-fg')}
             >
-              <Edit2 className="w-3.5 h-3.5" /> Detaylar
+              <Edit2 className="w-3.5 h-3.5" /> {t('servers.details')}
             </button>
             <button
               onClick={() => setEditTab('guard')}
               className={cn('px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2', editTab === 'guard' ? 'border-b-2 border-primary text-primary-light' : 'text-muted hover:text-fg')}
             >
-              <Shield className="w-3.5 h-3.5" /> Sunucu Güvenliği
+              <Shield className="w-3.5 h-3.5" /> {t('servers.serverSecurity')}
             </button>
           </div>
         )}
@@ -482,11 +485,11 @@ export function ServersPage() {
           <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="label">Sunucu Adı</label>
-                <input required className="input" value={form.name} onChange={f('name')} placeholder="Ana Sunucu TR-1" />
+                <label className="label">{t('servers.serverName')}</label>
+                <input required className="input" value={form.name} onChange={f('name')} placeholder={t('servers.serverNamePlaceholder')} />
               </div>
               <div>
-                <label className="label">IP Adresi</label>
+                <label className="label">{t('servers.ipAddress')}</label>
                 <input required className="input" value={form.ip} onChange={f('ip')} placeholder="192.168.1.10" />
               </div>
               <div>
@@ -494,25 +497,25 @@ export function ServersPage() {
                 <input required type="number" className="input" value={form.port} onChange={f('port')} />
               </div>
               <div>
-                <label className="label">Maks Bağlantı</label>
+                <label className="label">{t('servers.maxConnections')}</label>
                 <input required type="number" className="input" value={form.maxClients} onChange={f('maxClients')} />
               </div>
               <div>
-                <label className="label">Rol</label>
+                <label className="label">{t('servers.role')}</label>
                 <select className="input" value={form.role} onChange={f('role')}>
-                  <option value="MAIN">Ana Sunucu</option>
-                  <option value="LOAD_BALANCER">Yük Dağıtıcı</option>
+                  <option value="MAIN">{t('servers.roleMain')}</option>
+                  <option value="LOAD_BALANCER">{t('servers.roleLoadBalancer')}</option>
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="label">Konum (opsiyonel)</label>
+                <label className="label">{t('servers.locationOptional')}</label>
                 <input className="input" value={form.location} onChange={f('location')} placeholder="İstanbul, TR" />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>İptal</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>{t('common.cancel')}</button>
               <button type="submit" className="btn btn-primary" disabled={createServer.isPending || updateServer.isPending}>
-                {editTarget ? 'Güncelle' : 'Ekle'}
+                {editTarget ? t('common.update') : t('common.add')}
               </button>
             </div>
           </form>

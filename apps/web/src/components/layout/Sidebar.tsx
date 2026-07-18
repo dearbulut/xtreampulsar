@@ -29,6 +29,7 @@ import {
   Bell,
   X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
@@ -48,61 +49,61 @@ interface NavGroup {
 
 const NAV: NavGroup[] = [
   {
-    label: 'GENEL',
+    label: 'nav.groups.general',
     items: [
-      { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-      { label: 'Canlı Bağlantılar', to: '/live-connections', icon: Activity },
+      { label: 'nav.dashboard', to: '/dashboard', icon: LayoutDashboard },
+      { label: 'nav.liveConnections', to: '/live-connections', icon: Activity },
     ],
   },
   {
-    label: 'SUNUCULAR',
+    label: 'nav.groups.servers',
     items: [
-      { label: 'Sunucular', to: '/servers', icon: Server },
+      { label: 'nav.servers', to: '/servers', icon: Server },
     ],
   },
   {
-    label: 'İÇERİK',
+    label: 'nav.groups.content',
     items: [
-      { label: 'Kanallar', to: '/channels', icon: Tv },
-      { label: 'VOD', to: '/vod', icon: Film },
-      { label: 'Diziler', to: '/series', icon: Clapperboard },
-      { label: 'Kategoriler', to: '/categories', icon: FolderOpen },
-      { label: "Bouquet'lar", to: '/bouquets', icon: BookMarked },
+      { label: 'nav.channels', to: '/channels', icon: Tv },
+      { label: 'nav.vod', to: '/vod', icon: Film },
+      { label: 'nav.series', to: '/series', icon: Clapperboard },
+      { label: 'nav.categories', to: '/categories', icon: FolderOpen },
+      { label: 'nav.bouquets', to: '/bouquets', icon: BookMarked },
     ],
   },
   {
-    label: 'KULLANICILAR',
+    label: 'nav.groups.users',
     items: [
-      { label: 'Kullanıcılar', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
-      { label: 'Kullanıcı Raporları', to: '/users/report', icon: BarChart2 },
-      { label: "Reseller'lar", to: '/resellers', icon: UserCircle },
-      { label: 'MAG Cihazlar', to: '/mag-devices', icon: Tablet },
+      { label: 'nav.users', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
+      { label: 'nav.userReports', to: '/users/report', icon: BarChart2 },
+      { label: 'nav.resellers', to: '/resellers', icon: UserCircle },
+      { label: 'layout.magDevices', to: '/mag-devices', icon: Tablet },
     ],
   },
   {
-    label: 'EPG',
+    label: 'nav.groups.epg',
     items: [
-      { label: 'EPG Kaynakları', to: '/epg', icon: Radio },
-      { label: 'Manuel Eşleştirme', to: '/epg/mappings', icon: Link2 },
-      { label: 'Program Rehberi', to: '/epg/guide', icon: CalendarDays },
+      { label: 'nav.epgSources', to: '/epg', icon: Radio },
+      { label: 'layout.manualMapping', to: '/epg/mappings', icon: Link2 },
+      { label: 'nav.epgGuide', to: '/epg/guide', icon: CalendarDays },
     ],
   },
   {
-    label: 'ANALİTİK',
+    label: 'nav.groups.analytics',
     items: [
-      { label: 'Gelir Raporu', to: '/analytics/revenue', icon: TrendingUp },
+      { label: 'nav.revenueReport', to: '/analytics/revenue', icon: TrendingUp },
     ],
   },
   {
-    label: 'YÖNETİM',
+    label: 'nav.groups.management',
     items: [
-      { label: 'Paketler', to: '/packages', icon: Package },
-      { label: 'Migration', to: '/migration', icon: ArrowRightLeft },
-      { label: 'Gelişmiş Araçlar', to: '/tools/advanced', icon: Wrench },
-      { label: 'Güvenlik', to: '/security', icon: Shield },
-      { label: "Webhook'lar", to: '/webhooks', icon: Webhook },
-      { label: 'Destek Merkezi', to: '/support', icon: Bell },
-      { label: 'Ayarlar', to: '/settings', icon: Settings },
+      { label: 'nav.packages', to: '/packages', icon: Package },
+      { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
+      { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
+      { label: 'nav.security', to: '/security', icon: Shield },
+      { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
+      { label: 'layout.supportCenter', to: '/support', icon: Bell },
+      { label: 'nav.settings', to: '/settings', icon: Settings },
     ],
   },
 ];
@@ -111,6 +112,7 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const toggle = useUiStore((s) => s.toggleSidebar);
+  const { t } = useTranslation();
 
   return (
     <aside
@@ -154,7 +156,7 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
           <div key={group.label}>
             {!collapsed && (
               <div className="px-3 mb-1 text-[10px] font-semibold text-muted/60 tracking-widest uppercase">
-                {group.label}
+                {t(group.label)}
               </div>
             )}
             <div className="space-y-0.5">
@@ -183,7 +185,7 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
               <button
                 onClick={logout}
                 className="text-muted hover:text-danger transition-colors p-1"
-                title="Çıkış"
+                title={t('layout.logout')}
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -225,6 +227,7 @@ export function Sidebar() {
 
 function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const Icon = item.icon;
+  const { t } = useTranslation();
   return (
     <Link
       to={item.to}
@@ -236,7 +239,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
       <Icon className="w-4 h-4 flex-shrink-0" />
       {!collapsed && (
         <>
-          <span className="flex-1 truncate">{item.label}</span>
+          <span className="flex-1 truncate">{t(item.label)}</span>
           {item.badge && (
             <span
               className={cn(

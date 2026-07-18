@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -20,11 +21,12 @@ export function LoadingSpinner({ size = 'md', className }: Props) {
 }
 
 export function FullPageLoader() {
+  const { t } = useTranslation();
   return (
     <div className="flex h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <LoadingSpinner size="lg" />
-        <p className="text-muted text-sm animate-pulse">Yükleniyor…</p>
+        <p className="text-muted text-sm animate-pulse">{t('common.loading')}</p>
       </div>
     </div>
   );

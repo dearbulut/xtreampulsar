@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pencil, Trash2, Plus, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -19,6 +20,7 @@ const EMPTY_EPISODE_FORM: EpisodeForm = {
 };
 
 export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClose: () => void }) {
+  const { t } = useTranslation();
   const { data: episodes, isLoading } = useEpisodes(series.id);
   const createEpisode = useCreateEpisode(series.id);
   const updateEpisode = useUpdateEpisode(series.id);
@@ -73,16 +75,16 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
   };
 
   return (
-    <Modal open onClose={onClose} title={`Bölümler — ${series.name}`} size="xl">
+    <Modal open onClose={onClose} title={t('streams.episode.modalTitle', { name: series.name })} size="xl">
       <div className="space-y-4">
         {/* Ekle / Düzenle formu */}
         <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
           <p className="text-xs font-semibold text-muted uppercase tracking-wide">
-            {editingId ? 'Bölüm Düzenle' : 'Yeni Bölüm'}
+            {editingId ? t('streams.episode.editTitle') : t('streams.episode.newTitle')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="label">Sezon *</label>
+              <label className="label">{t('streams.episode.seasonLabel')}</label>
               <input
                 type="number"
                 className="input"
@@ -92,7 +94,7 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
               />
             </div>
             <div>
-              <label className="label">Bölüm *</label>
+              <label className="label">{t('streams.episode.episodeLabel')}</label>
               <input
                 type="number"
                 className="input"
@@ -103,16 +105,16 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
             </div>
           </div>
           <div>
-            <label className="label">Başlık</label>
+            <label className="label">{t('streams.episode.titleLabel')}</label>
             <input
               className="input"
-              placeholder="Bölüm adı"
+              placeholder={t('streams.episode.titlePlaceholder')}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Kaynak URL *</label>
+            <label className="label">{t('streams.episode.sourceUrlLabel')}</label>
             <input
               className="input font-mono text-xs"
               placeholder="http://…"
@@ -121,7 +123,7 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
             />
           </div>
           <div>
-            <label className="label">Konteyner</label>
+            <label className="label">{t('streams.episode.containerLabel')}</label>
             <input
               className="input"
               placeholder="mkv"
@@ -130,11 +132,11 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
             />
           </div>
           <div>
-            <label className="label">Özet</label>
+            <label className="label">{t('streams.episode.plotLabel')}</label>
             <textarea
               className="input"
               rows={2}
-              placeholder="Bölüm özeti…"
+              placeholder={t('streams.episode.plotPlaceholder')}
               value={form.plot}
               onChange={(e) => setForm((f) => ({ ...f, plot: e.target.value }))}
             />
@@ -143,7 +145,7 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
             {editingId && (
               <button onClick={resetForm} className="btn-ghost text-xs flex items-center gap-1">
                 <X className="w-3.5 h-3.5" />
-                Vazgeç
+                {t('streams.episode.discard')}
               </button>
             )}
             <button
@@ -152,7 +154,7 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
               className="btn-primary text-xs flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" />
-              {isPending ? 'Kaydediliyor…' : editingId ? 'Güncelle' : 'Ekle'}
+              {isPending ? t('streams.episode.saving') : editingId ? t('common.update') : t('common.add')}
             </button>
           </div>
         </div>
@@ -160,13 +162,13 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
         {/* Bölüm listesi (sezona göre) */}
         <div className="max-h-[45vh] overflow-y-auto space-y-4">
           {isLoading ? (
-            <p className="text-sm text-muted py-4 text-center">Yükleniyor…</p>
+            <p className="text-sm text-muted py-4 text-center">{t('common.loading')}</p>
           ) : seasons.length === 0 ? (
-            <p className="text-sm text-muted py-4 text-center">Henüz bölüm eklenmemiş.</p>
+            <p className="text-sm text-muted py-4 text-center">{t('streams.episode.empty')}</p>
           ) : (
             seasons.map(([season, eps]) => (
               <div key={season}>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Sezon {season}</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-2">{t('streams.episode.seasonNum', { n: season })}</h4>
                 <div className="space-y-1">
                   {eps.map((ep) => (
                     <div
@@ -175,12 +177,12 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
                     >
                       <span className="text-xs font-mono text-muted shrink-0 w-8">#{ep.episode}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-foreground truncate">{ep.title || `Bölüm ${ep.episode}`}</p>
+                        <p className="text-sm text-foreground truncate">{ep.title || t('streams.episode.episodeNum', { n: ep.episode })}</p>
                         <p className="text-[11px] text-muted font-mono truncate">{ep.primaryUrl}</p>
                       </div>
                       <button
                         type="button"
-                        title="Düzenle"
+                        title={t('common.edit')}
                         className="p-1.5 rounded-lg hover:bg-surface-2 text-blue-400 transition-colors"
                         onClick={() => startEdit(ep)}
                       >
@@ -188,7 +190,7 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
                       </button>
                       <button
                         type="button"
-                        title="Sil"
+                        title={t('common.delete')}
                         className="p-1.5 rounded-lg hover:bg-surface-2 text-danger transition-colors"
                         onClick={() => setDeleteId(ep.id)}
                       >
@@ -209,9 +211,9 @@ export function EpisodeManagerModal({ series, onClose }: { series: Stream; onClo
         onConfirm={() => {
           if (deleteId) deleteEpisode.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
         }}
-        title="Bölüm Sil"
-        message="Bu bölüm kalıcı olarak silinecek."
-        confirmLabel="Sil"
+        title={t('streams.episode.deleteTitle')}
+        message={t('streams.episode.deleteConfirm')}
+        confirmLabel={t('common.delete')}
         loading={deleteEpisode.isPending}
       />
     </Modal>

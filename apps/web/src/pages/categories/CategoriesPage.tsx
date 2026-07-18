@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Edit2, FolderOpen, Square, CheckSquare } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
@@ -8,11 +9,11 @@ import { useBouquets } from '@/hooks/useBouquets';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
-const TYPE_TABS: TabItem[] = [
-  { id: '', label: 'Tümü' },
-  { id: 'LIVE', label: 'Canlı' },
-  { id: 'VOD', label: 'VOD' },
-  { id: 'SERIES', label: 'Dizi' },
+const TYPE_TABS: { id: string; labelKey: string }[] = [
+  { id: '', labelKey: 'categories.all' },
+  { id: 'LIVE', labelKey: 'categories.live' },
+  { id: 'VOD', labelKey: 'categories.vod' },
+  { id: 'SERIES', labelKey: 'categories.series' },
 ];
 
 const TYPE_BADGE: Record<string, string> = {
@@ -21,16 +22,17 @@ const TYPE_BADGE: Record<string, string> = {
   SERIES: 'badge-warning',
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  LIVE: 'Canlı',
-  VOD: 'VOD',
-  SERIES: 'Dizi',
+const TYPE_LABEL_KEY: Record<string, string> = {
+  LIVE: 'categories.live',
+  VOD: 'categories.vod',
+  SERIES: 'categories.series',
 };
 
 interface FormState { name: string; type: 'LIVE' | 'VOD' | 'SERIES'; bouquetId: string }
 const FORM_DEFAULT: FormState = { name: '', type: 'LIVE', bouquetId: '' };
 
 export function CategoriesPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<string | null>(null);
@@ -56,14 +58,14 @@ export function CategoriesPage() {
 
   const bulkDelete = async () => {
     if (!selected.size) return;
-    if (!confirm(`${selected.size} kategori silinsin mi?`)) return;
+    if (!confirm(t('categories.bulkDeleteConfirm', { count: selected.size }))) return;
     let failed = 0;
     for (const id of selected) {
       try { await deleteCat.mutateAsync(id); } catch { failed++; }
     }
     setSelected(new Set());
-    if (failed > 0) toast.error(`${failed} kategori silinemedi`);
-    else toast.success('Seçili kategoriler silindi');
+    if (failed > 0) toast.error(t('categories.bulkDeleteFailed', { count: failed }));
+    else toast.success(t('categories.bulkDeleteSuccess'));
   };
 
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -87,13 +89,14 @@ export function CategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Kategori silinsin mi?')) return;
+    if (!confirm(t('categories.deleteConfirm'))) return;
     await deleteCat.mutateAsync(id);
   };
 
-  const tabsWithCount = TYPE_TABS.map((t) => ({
-    ...t,
-    badge: t.id === '' ? categories.length : categories.filter((c) => c.type === t.id).length,
+  const tabsWithCount: TabItem[] = TYPE_TABS.map((tab) => ({
+    id: tab.id,
+    label: t(tab.labelKey),
+    badge: tab.id === '' ? categories.length : categories.filter((c) => c.type === tab.id).length,
   }));
 
   const columns: Column<Category>[] = [
@@ -117,7 +120,7 @@ export function CategoriesPage() {
     },
     {
       key: 'name',
-      header: 'Kategori',
+      header: t('categories.category'),
       render: (row) => (
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -132,24 +135,24 @@ export function CategoriesPage() {
     },
     {
       key: 'type',
-      header: 'Tür',
+      header: t('categories.type'),
       render: (row) => (
-        <span className={cn('badge', TYPE_BADGE[row.type])}>{TYPE_LABEL[row.type]}</span>
+        <span className={cn('badge', TYPE_BADGE[row.type])}>{t(TYPE_LABEL_KEY[row.type])}</span>
       ),
     },
     {
       key: 'streams',
-      header: 'Stream',
+      header: t('categories.streamCount'),
       render: (row) => (
-        <span className="text-sm font-medium text-slate-300">{row._count?.streams ?? 0} kanal</span>
+        <span className="text-sm font-medium text-slate-300">{t('categories.channelCount', { count: row._count?.streams ?? 0 })}</span>
       ),
     },
     {
       key: 'isActive',
-      header: 'Durum',
+      header: t('common.status'),
       render: (row) => (
         <span className={cn('badge', row.isActive ? 'badge-success' : 'badge-gray')}>
-          {row.isActive ? 'Aktif' : 'Pasif'}
+          {row.isActive ? t('common.active') : t('common.inactive')}
         </span>
       ),
     },
@@ -174,52 +177,52 @@ export function CategoriesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Kategoriler</h1>
-          <p className="text-sm text-muted mt-0.5">{categories.length} kategori</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('categories.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('categories.categoryCount', { count: categories.length })}</p>
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
             <button onClick={() => void bulkDelete()} className="btn btn-ghost text-danger border-danger/30 hover:bg-danger/10 text-sm">
-              <Trash2 className="w-4 h-4" /> {selected.size} Sil
+              <Trash2 className="w-4 h-4" /> {t('categories.deleteSelected', { count: selected.size })}
             </button>
           )}
           <button onClick={openAdd} className="btn btn-primary">
-            <Plus className="w-4 h-4" /> Kategori Ekle
+            <Plus className="w-4 h-4" /> {t('categories.addCategory')}
           </button>
         </div>
       </div>
 
       <Tabs tabs={tabsWithCount} active={activeTab} onChange={setActiveTab} />
 
-      <DataTable columns={columns} data={categories} isLoading={isLoading} emptyMessage="Kategori bulunamadı" />
+      <DataTable columns={columns} data={categories} isLoading={isLoading} emptyMessage={t('categories.empty')} />
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editTarget ? 'Düzenle' : 'Kategori Ekle'} size="sm">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editTarget ? t('common.edit') : t('categories.addCategory')} size="sm">
         <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
           <div>
-            <label className="label">Ad</label>
-            <input required className="input" value={form.name} onChange={f('name')} placeholder="Türk Kanallar" />
+            <label className="label">{t('common.name')}</label>
+            <input required className="input" value={form.name} onChange={f('name')} placeholder={t('categories.namePlaceholder')} />
           </div>
           <div>
-            <label className="label">Tür</label>
+            <label className="label">{t('categories.type')}</label>
             <select className="input" value={form.type} onChange={f('type')}>
-              <option value="LIVE">Canlı</option>
-              <option value="VOD">VOD</option>
-              <option value="SERIES">Dizi</option>
+              <option value="LIVE">{t('categories.live')}</option>
+              <option value="VOD">{t('categories.vod')}</option>
+              <option value="SERIES">{t('categories.series')}</option>
             </select>
           </div>
           <div>
-            <label className="label">Bouquet</label>
+            <label className="label">{t('categories.bouquet')}</label>
             <select required className="input" value={form.bouquetId} onChange={f('bouquetId')}>
-              <option value="">Seçin…</option>
+              <option value="">{t('categories.selectPlaceholder')}</option>
               {bouquets.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={createCat.isPending || updateCat.isPending}>
-              {editTarget ? 'Güncelle' : 'Oluştur'}
+              {editTarget ? t('common.update') : t('common.create')}
             </button>
           </div>
         </form>

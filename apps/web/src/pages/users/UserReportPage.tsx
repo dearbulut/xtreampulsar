@@ -26,6 +26,8 @@ import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -52,12 +54,12 @@ interface UserReport {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-function fmtDuration(seconds: number): string {
+function fmtDuration(seconds: number, t: TFunction): string {
   if (seconds <= 0) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}s ${m}d`;
-  return `${m}d`;
+  if (h > 0) return t('userReport.durationHm', { h, m });
+  return t('userReport.durationM', { m });
 }
 
 function fmtDate(iso: string): string {
@@ -65,14 +67,14 @@ function fmtDate(iso: string): string {
   return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}`;
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: TFunction): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'şimdi';
-  if (m < 60) return `${m} dk`;
+  if (m < 1) return t('userReport.now');
+  if (m < 60) return t('userReport.minutesAgo', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} sa`;
-  return `${Math.floor(h / 24)} gün`;
+  if (h < 24) return t('userReport.hoursAgo', { n: h });
+  return t('userReport.daysAgo', { n: Math.floor(h / 24) });
 }
 
 // ─── Date presets ─────────────────────────────────────────────────────────
@@ -89,38 +91,38 @@ function presetDates(p: Preset): { start: string; end: string } {
   return { start: s(30), end: endStr };
 }
 
-const PRESET_LABELS: Record<Preset, string> = {
-  week: 'Bu Hafta', month: 'Bu Ay', '3months': 'Son 3 Ay', custom: 'Özel',
+const PRESET_KEYS: Record<Preset, string> = {
+  week: 'userReport.presetWeek', month: 'userReport.presetMonth', '3months': 'userReport.preset3months', custom: 'userReport.presetCustom',
 };
 
 const EXPIRY_COLORS = ['#ef4444', '#f59e0b', '#6366f1', '#22c55e'];
-const EXPIRY_LABELS = ['Dolmuş', 'Bu Hafta', 'Bu Ay', 'Sonrası'];
+const EXPIRY_KEYS = ['userReport.expiryExpired', 'userReport.expiryThisWeek', 'userReport.expiryThisMonth', 'userReport.expiryLater'];
 
 // ─── CSV export ───────────────────────────────────────────────────────────
 
-function exportCsv(report: UserReport, start: string, end: string) {
+function exportCsv(report: UserReport, start: string, end: string, t: TFunction) {
   const s = report.summary;
   const rows: (string | number)[][] = [
-    [`Kullanıcı Raporu — ${start} / ${end}`],
+    [t('userReport.csvTitle', { start, end })],
     [],
-    ['Özet'],
-    ['Toplam Kullanıcı', s.totalUsers],
-    ['Yeni Kullanıcı (dönem)', s.newUsers],
-    ['Aktif Kullanıcı (son 7g)', s.activeUsers],
-    ['Süresi Dolmuş', s.expiredUsers],
-    ['Askıya Alınmış', s.bannedUsers],
-    ['Kullanıcı Başı Ort. Bağlantı', s.avgConnectionsPerUser],
+    [t('userReport.csvSummary')],
+    [t('userReport.totalUsers'), s.totalUsers],
+    [t('userReport.csvNewUsers'), s.newUsers],
+    [t('userReport.csvActiveUsers'), s.activeUsers],
+    [t('userReport.expiredUsers'), s.expiredUsers],
+    [t('userReport.bannedUsers'), s.bannedUsers],
+    [t('userReport.csvAvgConn'), s.avgConnectionsPerUser],
     [],
-    ['Büyüme Grafiği'],
-    ['Tarih', 'Yeni Kullanıcı', 'Toplam Kullanıcı'],
+    [t('userReport.csvGrowthChart')],
+    [t('userReport.colDate'), t('userReport.newUsers'), t('userReport.totalUsers')],
     ...report.growth.map((g) => [g.date, g.newUsers, g.totalUsers]),
     [],
-    ['Reseller Dağılımı'],
-    ['Reseller', 'Kullanıcı', 'Aktif'],
+    [t('userReport.csvResellerDist')],
+    [t('userReport.colReseller'), t('userReport.colUsers'), t('common.active')],
     ...report.byReseller.map((r) => [r.resellerName, r.userCount, r.activeCount]),
     [],
-    ['En Aktif Kullanıcılar'],
-    ['Kullanıcı', 'Bağlantı', 'Süre (sn)', 'Son Görülme'],
+    [t('userReport.csvTopUsers')],
+    [t('userReport.colUsers'), t('userReport.colConnection'), t('userReport.csvDurationSec'), t('userReport.colLastSeen')],
     ...report.topUsers.map((u) => [u.username, u.totalConnections, u.totalDuration, u.lastSeen]),
   ];
   const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
@@ -151,6 +153,7 @@ function useUserReport(start: string, end: string, groupBy: 'day' | 'week' | 'mo
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 export function UserReportPage() {
+  const { t } = useTranslation();
   const [preset, setPreset] = useState<Preset>('month');
   const [customStart, setCustomStart] = useState(() => new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10));
   const [customEnd, setCustomEnd]   = useState(() => new Date().toISOString().slice(0, 10));
@@ -162,10 +165,10 @@ export function UserReportPage() {
 
   const expiryPie = report
     ? [
-        { name: 'Dolmuş',   value: report.expiryDistribution.expired   },
-        { name: 'Bu Hafta', value: report.expiryDistribution.thisWeek  },
-        { name: 'Bu Ay',    value: report.expiryDistribution.thisMonth },
-        { name: 'Sonrası',  value: report.expiryDistribution.later     },
+        { name: t('userReport.expiryExpired'),   value: report.expiryDistribution.expired   },
+        { name: t('userReport.expiryThisWeek'),  value: report.expiryDistribution.thisWeek  },
+        { name: t('userReport.expiryThisMonth'), value: report.expiryDistribution.thisMonth },
+        { name: t('userReport.expiryLater'),     value: report.expiryDistribution.later     },
       ].filter((d) => d.value > 0)
     : [];
 
@@ -176,16 +179,16 @@ export function UserReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-fg">Kullanıcı Raporu</h1>
-          <p className="text-sm text-muted mt-0.5">Detaylı kullanıcı istatistikleri ve analizi</p>
+          <h1 className="text-2xl font-bold text-fg">{t('userReport.title')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('userReport.subtitle')}</p>
         </div>
         <button
-          onClick={() => report && exportCsv(report, start, end)}
+          onClick={() => report && exportCsv(report, start, end, t)}
           disabled={!report}
           className="btn btn-secondary flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          CSV İndir
+          {t('userReport.exportCsv')}
         </button>
       </div>
 
@@ -202,7 +205,7 @@ export function UserReportPage() {
                 preset === p ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
               )}
             >
-              {PRESET_LABELS[p]}
+              {t(PRESET_KEYS[p])}
             </button>
           ))}
         </div>
@@ -227,9 +230,9 @@ export function UserReportPage() {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted">Grupla:</span>
+          <span className="text-xs text-muted">{t('userReport.groupBy')}</span>
           <div className="flex gap-1">
-            {([['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık']] as const).map(([v, label]) => (
+            {([['day', 'userReport.groupDay'], ['week', 'userReport.groupWeek'], ['month', 'userReport.groupMonth']] as const).map(([v, label]) => (
               <button
                 key={v}
                 onClick={() => setGroupBy(v)}
@@ -238,7 +241,7 @@ export function UserReportPage() {
                   groupBy === v ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
@@ -256,43 +259,43 @@ export function UserReportPage() {
           {/* Summary cards — 6 cards in 2 rows of 3 */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
-              title="Toplam Kullanıcı"
+              title={t('userReport.totalUsers')}
               value={report.summary.totalUsers.toLocaleString('tr')}
               icon={Users}
               variant="primary"
             />
             <StatCard
-              title="Yeni Kullanıcı"
+              title={t('userReport.newUsers')}
               value={report.summary.newUsers.toLocaleString('tr')}
               icon={UserPlus}
               variant="success"
               subtitle={`${start} — ${end}`}
             />
             <StatCard
-              title="Aktif Kullanıcı"
+              title={t('userReport.activeUsers')}
               value={report.summary.activeUsers.toLocaleString('tr')}
               icon={UserCheck}
               variant="info"
-              subtitle="Son 7 günde giriş"
+              subtitle={t('userReport.activeSubtitle')}
             />
             <StatCard
-              title="Süresi Dolmuş"
+              title={t('userReport.expiredUsers')}
               value={report.summary.expiredUsers.toLocaleString('tr')}
               icon={UserX}
               variant="danger"
             />
             <StatCard
-              title="Askıya Alınmış"
+              title={t('userReport.bannedUsers')}
               value={report.summary.bannedUsers.toLocaleString('tr')}
               icon={ShieldOff}
               variant="warning"
             />
             <StatCard
-              title="Kullanıcı Başı Bağlantı"
+              title={t('userReport.avgConnections')}
               value={report.summary.avgConnectionsPerUser}
               icon={BarChart2}
               variant="default"
-              subtitle="Ortalama"
+              subtitle={t('userReport.average')}
             />
           </div>
 
@@ -300,10 +303,10 @@ export function UserReportPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Growth AreaChart */}
             <div className="card p-5">
-              <h2 className="font-semibold text-fg mb-1">Kullanıcı Büyümesi</h2>
-              <p className="text-xs text-muted mb-4">Yeni kayıt ve toplam kullanıcı</p>
+              <h2 className="font-semibold text-fg mb-1">{t('userReport.growthTitle')}</h2>
+              <p className="text-xs text-muted mb-4">{t('userReport.growthSubtitle')}</p>
               {report.growth.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-muted text-sm">Bu dönemde veri yok</div>
+                <div className="h-52 flex items-center justify-center text-muted text-sm">{t('userReport.noDataPeriod')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={210}>
                   <AreaChart data={report.growth} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -332,7 +335,7 @@ export function UserReportPage() {
                       contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
                       labelStyle={{ color: 'var(--fg)' }}
                       formatter={(val: number, name: string) =>
-                        name === 'newUsers' ? [`${val}`, 'Yeni Kullanıcı'] : [`${val}`, 'Toplam Kullanıcı']
+                        name === 'newUsers' ? [`${val}`, t('userReport.newUsers')] : [`${val}`, t('userReport.totalUsers')]
                       }
                     />
                     <Area yAxisId="left"  type="monotone" dataKey="newUsers"   stroke="#6366f1" strokeWidth={2} fill="url(#newGrad)" dot={false} />
@@ -344,10 +347,10 @@ export function UserReportPage() {
 
             {/* Expiry PieChart */}
             <div className="card p-5">
-              <h2 className="font-semibold text-fg mb-1">Süre Bitiş Dağılımı</h2>
-              <p className="text-xs text-muted mb-4">Hesap geçerlilik durumu</p>
+              <h2 className="font-semibold text-fg mb-1">{t('userReport.expiryTitle')}</h2>
+              <p className="text-xs text-muted mb-4">{t('userReport.expirySubtitle')}</p>
               {expiryPie.length === 0 ? (
-                <div className="h-52 flex items-center justify-center text-muted text-sm">Veri yok</div>
+                <div className="h-52 flex items-center justify-center text-muted text-sm">{t('userReport.noData')}</div>
               ) : (
                 <>
                   <ResponsiveContainer width="100%" height={160}>
@@ -372,12 +375,12 @@ export function UserReportPage() {
                       />
                       <Tooltip
                         contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                        formatter={(val: number) => [`${val} kullanıcı`, '']}
+                        formatter={(val: number) => [t('userReport.usersCount', { val }), '']}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    {EXPIRY_LABELS.map((label, i) => {
+                    {EXPIRY_KEYS.map((labelKey, i) => {
                       const val = [
                         report.expiryDistribution.expired,
                         report.expiryDistribution.thisWeek,
@@ -385,8 +388,8 @@ export function UserReportPage() {
                         report.expiryDistribution.later,
                       ][i];
                       return (
-                        <div key={label} className="flex justify-between text-sm">
-                          <span className="text-muted">{label}</span>
+                        <div key={labelKey} className="flex justify-between text-sm">
+                          <span className="text-muted">{t(labelKey)}</span>
                           <span className="font-semibold tabular-nums" style={{ color: EXPIRY_COLORS[i] }}>{val}</span>
                         </div>
                       );
@@ -401,16 +404,16 @@ export function UserReportPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Reseller breakdown */}
             <div className="card p-5 max-h-[480px] flex flex-col">
-              <h2 className="font-semibold text-fg mb-1">Reseller'a Göre Dağılım</h2>
-              <p className="text-xs text-muted mb-4">Kullanıcı kaynağı analizi</p>
+              <h2 className="font-semibold text-fg mb-1">{t('userReport.resellerDistTitle')}</h2>
+              <p className="text-xs text-muted mb-4">{t('userReport.resellerDistSubtitle')}</p>
               <div className="overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-surface">
                     <tr className="border-b border-border">
-                      <th className="text-left text-xs text-muted py-2 pr-3">Reseller</th>
-                      <th className="text-right text-xs text-muted py-2 pr-3">Kullanıcı</th>
-                      <th className="text-right text-xs text-muted py-2 pr-3">Aktif</th>
-                      <th className="text-right text-xs text-muted py-2">Oran</th>
+                      <th className="text-left text-xs text-muted py-2 pr-3">{t('userReport.colReseller')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-3">{t('userReport.colUsers')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-3">{t('common.active')}</th>
+                      <th className="text-right text-xs text-muted py-2">{t('userReport.colRatio')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -439,17 +442,17 @@ export function UserReportPage() {
 
             {/* Top 10 users */}
             <div className="card p-5 max-h-[480px] flex flex-col">
-              <h2 className="font-semibold text-fg mb-1">En Aktif 10 Kullanıcı</h2>
-              <p className="text-xs text-muted mb-4">Toplam bağlantı sayısına göre</p>
+              <h2 className="font-semibold text-fg mb-1">{t('userReport.topUsersTitle')}</h2>
+              <p className="text-xs text-muted mb-4">{t('userReport.topUsersSubtitle')}</p>
               <div className="overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-surface">
                     <tr className="border-b border-border">
                       <th className="text-left text-xs text-muted py-2 pr-3">#</th>
-                      <th className="text-left text-xs text-muted py-2 pr-3">Kullanıcı</th>
-                      <th className="text-right text-xs text-muted py-2 pr-3">Bağlantı</th>
-                      <th className="text-right text-xs text-muted py-2 pr-3">Süre</th>
-                      <th className="text-right text-xs text-muted py-2">Son Görülme</th>
+                      <th className="text-left text-xs text-muted py-2 pr-3">{t('userReport.colUsers')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-3">{t('userReport.colConnection')}</th>
+                      <th className="text-right text-xs text-muted py-2 pr-3">{t('userReport.colDuration')}</th>
+                      <th className="text-right text-xs text-muted py-2">{t('userReport.colLastSeen')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -458,13 +461,13 @@ export function UserReportPage() {
                         <td className="py-2.5 pr-3 text-muted text-xs tabular-nums">{i + 1}</td>
                         <td className="py-2.5 pr-3 text-fg font-medium truncate max-w-[120px]">{u.username}</td>
                         <td className="py-2.5 pr-3 text-right tabular-nums text-fg">{u.totalConnections.toLocaleString('tr')}</td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums text-muted">{fmtDuration(u.totalDuration)}</td>
-                        <td className="py-2.5 text-right text-xs text-muted">{timeAgo(u.lastSeen)}</td>
+                        <td className="py-2.5 pr-3 text-right tabular-nums text-muted">{fmtDuration(u.totalDuration, t)}</td>
+                        <td className="py-2.5 text-right text-xs text-muted">{timeAgo(u.lastSeen, t)}</td>
                       </tr>
                     ))}
                     {report.topUsers.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-muted text-sm">Veri yok</td>
+                        <td colSpan={5} className="py-8 text-center text-muted text-sm">{t('userReport.noData')}</td>
                       </tr>
                     )}
                   </tbody>

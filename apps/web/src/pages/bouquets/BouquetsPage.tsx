@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Edit2, RefreshCw, Layers, Copy } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
@@ -17,6 +18,7 @@ interface FormState { name: string; description: string }
 const FORM_DEFAULT: FormState = { name: '', description: '' };
 
 export function BouquetsPage() {
+  const { t } = useTranslation();
   const { data: bouquets = [], isLoading } = useBouquets();
   const createBouquet = useCreateBouquet();
   const updateBouquet = useUpdateBouquet();
@@ -51,7 +53,7 @@ export function BouquetsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bouquet silinsin mi?')) return;
+    if (!confirm(t('bouquets.deleteConfirm'))) return;
     await deleteBouquet.mutateAsync(id);
   };
 
@@ -67,7 +69,7 @@ export function BouquetsPage() {
   const columns: Column<Bouquet>[] = [
     {
       key: 'name',
-      header: 'Bouquet',
+      header: t('bouquets.colBouquet'),
       render: (row) => (
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
@@ -82,24 +84,24 @@ export function BouquetsPage() {
     },
     {
       key: 'categories',
-      header: 'Kategoriler',
+      header: t('nav.categories'),
       render: (row) => (
         <span className="text-sm font-semibold text-slate-200">{row._count?.categories ?? 0}</span>
       ),
     },
     {
       key: 'users',
-      header: 'Kullanıcılar',
+      header: t('nav.users'),
       render: (row) => (
         <span className="text-sm font-semibold text-blue-400">{row._count?.userBouquets ?? 0}</span>
       ),
     },
     {
       key: 'isActive',
-      header: 'Durum',
+      header: t('common.status'),
       render: (row) => (
         <span className={cn('badge', row.isActive ? 'badge-success' : 'badge-gray')}>
-          {row.isActive ? 'Aktif' : 'Pasif'}
+          {row.isActive ? t('common.active') : t('common.inactive')}
         </span>
       ),
     },
@@ -119,7 +121,7 @@ export function BouquetsPage() {
           </button>
           <button
             className="btn btn-ghost p-1.5 text-xs"
-            title="Klonla"
+            title={t('bouquets.clone')}
             onClick={(e) => { e.stopPropagation(); cloneBouquet.mutate(row.id); }}
             disabled={cloneBouquet.isPending}
           >
@@ -140,35 +142,35 @@ export function BouquetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Bouquet'lar</h1>
-          <p className="text-sm text-muted mt-0.5">{bouquets.length} bouquet</p>
+          <h1 className="text-2xl font-bold text-slate-100">{t('nav.bouquets')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('bouquets.countLabel', { count: bouquets.length })}</p>
         </div>
         <button onClick={openAdd} className="btn btn-primary">
-          <Plus className="w-4 h-4" /> Bouquet Ekle
+          <Plus className="w-4 h-4" /> {t('bouquets.addBouquet')}
         </button>
       </div>
 
-      <DataTable columns={columns} data={bouquets} isLoading={isLoading} emptyMessage="Bouquet bulunamadı" />
+      <DataTable columns={columns} data={bouquets} isLoading={isLoading} emptyMessage={t('bouquets.empty')} />
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editTarget ? 'Bouquet Düzenle' : 'Bouquet Ekle'} size="sm">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editTarget ? t('bouquets.editBouquet') : t('bouquets.addBouquet')} size="sm">
         <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
           <div>
-            <label className="label">Ad</label>
-            <input required className="input" value={form.name} onChange={f('name')} placeholder="Türk Kanallar Paketi" />
+            <label className="label">{t('common.name')}</label>
+            <input required className="input" value={form.name} onChange={f('name')} placeholder={t('bouquets.namePlaceholder')} />
           </div>
           <div>
-            <label className="label">Açıklama (opsiyonel)</label>
+            <label className="label">{t('bouquets.descriptionOptional')}</label>
             <textarea
               className="input resize-none h-20"
               value={form.description}
               onChange={f('description')}
-              placeholder="Bu bouquet hakkında kısa açıklama…"
+              placeholder={t('bouquets.descriptionPlaceholder')}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>{t('common.cancel')}</button>
             <button type="submit" className="btn btn-primary" disabled={createBouquet.isPending || updateBouquet.isPending}>
-              {editTarget ? 'Güncelle' : 'Oluştur'}
+              {editTarget ? t('common.update') : t('common.create')}
             </button>
           </div>
         </form>

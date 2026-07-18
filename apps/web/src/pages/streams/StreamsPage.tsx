@@ -59,6 +59,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import type { Stream } from '@/types';
 import { cn } from '@/lib/utils';
 import { useStreamNowPlaying } from '@/hooks/useEPG';
@@ -66,16 +67,16 @@ import { useStreamNowPlaying } from '@/hooks/useEPG';
 type StreamType = 'LIVE' | 'VOD' | 'SERIES';
 
 const TYPE_TITLES: Record<StreamType, string> = {
-  LIVE: 'Canlı Kanallar',
-  VOD: 'VOD İçerikleri',
-  SERIES: 'Dizi İçerikleri',
+  LIVE: 'streams.typeLive',
+  VOD: 'streams.typeVod',
+  SERIES: 'streams.typeSeries',
 };
 
 const WORKER_CFG = {
-  RUNNING: { dot: 'bg-emerald-400 animate-pulse', label: 'Çalışıyor', text: 'text-emerald-400' },
-  CRASHED: { dot: 'bg-red-500',                   label: 'Hata',       text: 'text-red-400' },
-  STOPPED: { dot: 'bg-amber-400',                 label: 'Durdu',      text: 'text-amber-400' },
-  IDLE:    { dot: 'bg-gray-500',                  label: 'Bekliyor',   text: 'text-gray-400' },
+  RUNNING: { dot: 'bg-emerald-400 animate-pulse', label: 'streams.workerRunning', text: 'text-emerald-400' },
+  CRASHED: { dot: 'bg-red-500',                   label: 'streams.workerCrashed', text: 'text-red-400' },
+  STOPPED: { dot: 'bg-amber-400',                 label: 'streams.workerStopped', text: 'text-amber-400' },
+  IDLE:    { dot: 'bg-gray-500',                  label: 'streams.workerIdle',    text: 'text-gray-400' },
 } as const;
 
 const HEALTH_DOT: Record<string, string> = {
@@ -243,18 +244,19 @@ function HlsPlayer({ src }: { src: string }) {
 }
 
 function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string; streamName: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [hours, setHours] = useState(24);
   const { data, isLoading } = useStreamHealth(streamId, hours);
   const manualCheck = useManualHealthCheck();
 
   const STATUS_CFG = {
-    up: { icon: CheckCircle2, color: 'text-emerald-400', label: 'Çevrimiçi' },
-    down: { icon: XCircle, color: 'text-red-400', label: 'Çevrimdışı' },
-    degraded: { icon: AlertTriangle, color: 'text-yellow-400', label: 'Yavaş' },
+    up: { icon: CheckCircle2, color: 'text-emerald-400', label: t('streams.statusUp') },
+    down: { icon: XCircle, color: 'text-red-400', label: t('streams.offline') },
+    degraded: { icon: AlertTriangle, color: 'text-yellow-400', label: t('streams.statusDegraded') },
   } as const;
 
   return (
-    <Modal open onClose={onClose} title={`Sağlık: ${streamName}`} size="xl">
+    <Modal open onClose={onClose} title={t('streams.healthTitle', { name: streamName })} size="xl">
       <div className="space-y-4">
         {/* Controls */}
         <div className="flex items-center justify-between">
@@ -275,21 +277,21 @@ function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string
             className="btn-ghost text-xs flex items-center gap-1.5"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', manualCheck.isPending && 'animate-spin')} />
-            Şimdi Kontrol Et
+            {t('streams.checkNow')}
           </button>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-muted text-sm">Yükleniyor…</div>
+          <div className="text-center py-8 text-muted text-sm">{t('common.loading')}</div>
         ) : data ? (
           <>
             {/* Stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { icon: ShieldCheck, label: 'Uptime', value: `%${data.uptimePercent.toFixed(1)}`, color: data.uptimePercent >= 95 ? 'text-emerald-400' : data.uptimePercent >= 80 ? 'text-yellow-400' : 'text-red-400' },
-                { icon: Clock, label: 'Ort. Yanıt', value: data.avgResponseTime != null ? `${data.avgResponseTime} ms` : '—', color: 'text-blue-400' },
-                { icon: Activity, label: 'Toplam Kontrol', value: String(data.totalChecks), color: 'text-fg' },
-                { icon: XCircle, label: 'Çevrimdışı', value: String(data.downCount), color: data.downCount > 0 ? 'text-red-400' : 'text-muted' },
+                { icon: ShieldCheck, label: t('streams.uptime'), value: `%${data.uptimePercent.toFixed(1)}`, color: data.uptimePercent >= 95 ? 'text-emerald-400' : data.uptimePercent >= 80 ? 'text-yellow-400' : 'text-red-400' },
+                { icon: Clock, label: t('streams.avgResponse'), value: data.avgResponseTime != null ? `${data.avgResponseTime} ms` : '—', color: 'text-blue-400' },
+                { icon: Activity, label: t('streams.totalChecks'), value: String(data.totalChecks), color: 'text-fg' },
+                { icon: XCircle, label: t('streams.offline'), value: String(data.downCount), color: data.downCount > 0 ? 'text-red-400' : 'text-muted' },
               ].map(({ icon: Icon, label, value, color }) => (
                 <div key={label} className="bg-surface-2 rounded-xl p-3 flex items-start gap-2.5">
                   <Icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', color)} />
@@ -304,7 +306,7 @@ function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string
             {/* Chart */}
             {data.chartData.length > 0 && (
               <div className="bg-surface-2 rounded-xl p-3">
-                <p className="text-xs text-muted mb-2">Son {hours}s Uptime & Yanıt Süresi</p>
+                <p className="text-xs text-muted mb-2">{t('streams.chartTitle', { hours })}</p>
                 <ResponsiveContainer width="100%" height={120}>
                   <LineChart data={data.chartData} margin={{ top: 2, right: 4, bottom: 2, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -319,7 +321,7 @@ function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1c1f2e', border: '1px solid #2e3347', borderRadius: 8, fontSize: 11 }}
                       labelFormatter={(v: string) => new Date(v).toLocaleString('tr-TR')}
-                      formatter={(value: number, name: string) => [name === 'uptime' ? `%${value}` : `${value} ms`, name === 'uptime' ? 'Uptime' : 'Yanıt']}
+                      formatter={(value: number, name: string) => [name === 'uptime' ? `%${value}` : `${value} ms`, name === 'uptime' ? t('streams.uptime') : t('streams.response')]}
                     />
                     <Line yAxisId="pct" type="monotone" dataKey="uptime" stroke="#34d399" strokeWidth={1.5} dot={false} connectNulls />
                     <Line yAxisId="rt" type="monotone" dataKey="responseTime" stroke="#60a5fa" strokeWidth={1.5} dot={false} connectNulls />
@@ -334,10 +336,10 @@ function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left px-3 py-2 text-muted font-medium">Zaman</th>
-                      <th className="text-left px-3 py-2 text-muted font-medium">Durum</th>
-                      <th className="text-right px-3 py-2 text-muted font-medium">Yanıt</th>
-                      <th className="text-left px-3 py-2 text-muted font-medium">Hata</th>
+                      <th className="text-left px-3 py-2 text-muted font-medium">{t('streams.time')}</th>
+                      <th className="text-left px-3 py-2 text-muted font-medium">{t('common.status')}</th>
+                      <th className="text-right px-3 py-2 text-muted font-medium">{t('streams.response')}</th>
+                      <th className="text-left px-3 py-2 text-muted font-medium">{t('streams.error')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -370,7 +372,7 @@ function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string
             )}
           </>
         ) : (
-          <div className="text-center py-8 text-muted text-sm">Veri bulunamadı</div>
+          <div className="text-center py-8 text-muted text-sm">{t('common.noData')}</div>
         )}
       </div>
     </Modal>
@@ -393,6 +395,7 @@ function SortHandle({ id }: { id: string }) {
 }
 
 export function StreamsPage({ type }: { type?: StreamType }) {
+  const { t } = useTranslation();
   const [page, setPageState] = useState(getUrlPage);
 
   const setPage = useCallback((p: number) => {
@@ -479,7 +482,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   );
 
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
-  const pageTitle = type ? TYPE_TITLES[type] : "Stream'ler";
+  const pageTitle = type ? t(TYPE_TITLES[type]) : t('streams.pageTitleAll');
 
   // Sync sorted items when data changes
   useEffect(() => {
@@ -510,7 +513,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'tvgLogo',
-      header: 'İkon',
+      header: t('streams.icon'),
       className: 'w-14',
       render: (r) => {
         const poster = (r as Stream & { posterUrl?: string }).posterUrl;
@@ -552,7 +555,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'workerStatus',
-      header: 'Durum',
+      header: t('common.status'),
       className: 'w-28',
       render: (r) => {
         const cfg = WORKER_CFG[r.workerStatus] ?? WORKER_CFG.IDLE;
@@ -563,11 +566,11 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
               <span className={cn('w-2 h-2 rounded-full flex-shrink-0', healthDot ?? cfg.dot)} />
-              <span className={cn('text-xs font-medium', cfg.text)}>{cfg.label}</span>
+              <span className={cn('text-xs font-medium', cfg.text)}>{t(cfg.label)}</span>
             </div>
             {r.workerStatus === 'RUNNING' && r.healthStatus && r.healthStatus !== 'HEALTHY' && (
               <span className="text-xs text-yellow-400 ml-4">
-                {r.healthStatus === 'UNHEALTHY' ? 'Sorunlu' : 'Bilinmiyor'}
+                {r.healthStatus === 'UNHEALTHY' ? t('streams.unhealthy') : t('streams.unknown')}
                 {r.uptimePercent != null && ` · %${r.uptimePercent}`}
               </span>
             )}
@@ -577,7 +580,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'name',
-      header: 'İsim',
+      header: t('streams.name'),
       render: (r) => {
         const sr = r as Stream & { todayViews?: number; totalViews?: number; lastViewedAt?: string | null };
         const hasStats = (sr.todayViews ?? 0) > 0 || (sr.totalViews ?? 0) > 0;
@@ -591,16 +594,16 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               <div className="absolute left-0 top-full mt-1 z-30 w-52 hidden group-hover:block pointer-events-none">
                 <div className="bg-surface border border-border rounded-xl shadow-2xl p-3 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted">Bugün</span>
-                    <span className="font-semibold text-slate-200">{sr.todayViews ?? 0} izlenme</span>
+                    <span className="text-muted">{t('streams.today')}</span>
+                    <span className="font-semibold text-slate-200">{t('streams.viewsN', { n: sr.todayViews ?? 0 })}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted">Toplam</span>
-                    <span className="font-semibold text-slate-200">{sr.totalViews ?? 0} izlenme</span>
+                    <span className="text-muted">{t('common.total')}</span>
+                    <span className="font-semibold text-slate-200">{t('streams.viewsN', { n: sr.totalViews ?? 0 })}</span>
                   </div>
                   {sr.lastViewedAt && (
                     <div className="flex items-center justify-between border-t border-border pt-1.5 mt-1.5">
-                      <span className="text-muted">Son izleme</span>
+                      <span className="text-muted">{t('streams.lastView')}</span>
                       <span className="text-slate-400">{new Date(sr.lastViewedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   )}
@@ -613,7 +616,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'primaryUrl',
-      header: 'Kaynak',
+      header: t('streams.source'),
       render: (r) => (
         <span className="text-xs font-mono text-muted" title={r.primaryUrl}>
           {r.primaryUrl.length > 40 ? r.primaryUrl.substring(0, 40) + '…' : r.primaryUrl}
@@ -622,13 +625,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'server',
-      header: 'Sunucu',
+      header: t('streams.server'),
       className: 'w-28',
       render: (r) => <span className="text-xs text-slate-300">{r.server?.name ?? '—'}</span>,
     },
     {
       key: 'connections',
-      header: 'İzleyici',
+      header: t('streams.viewers'),
       className: 'text-center w-20',
       headerClassName: 'text-center',
       render: (r) => (
@@ -639,7 +642,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'uptime',
-      header: 'Uptime',
+      header: t('streams.uptime'),
       className: 'w-36',
       render: (r) =>
         r.workerStatus === 'RUNNING' ? (
@@ -650,7 +653,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'healthUptime',
-      header: 'Sağlık',
+      header: t('streams.healthStatus'),
       className: 'w-20',
       render: (r) => {
         const up = (r as Stream & { uptimePercent?: number | null }).uptimePercent;
@@ -659,7 +662,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     {
       key: 'resolution',
-      header: 'Çözünürlük / Kalite',
+      header: t('streams.resolutionQuality'),
       className: 'w-36',
       render: (r) => (
         <div className="flex items-center gap-1.5">
@@ -681,7 +684,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     },
     ...(showEpgColumn ? [{
       key: 'epg',
-      header: 'Şu An',
+      header: t('streams.nowPlaying'),
       className: 'w-44 hidden xl:table-cell',
       render: (r: Stream) => {
         const np = nowPlaying?.[r.id];
@@ -697,82 +700,82 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     } as Column<Stream>] : []),
     {
       key: 'actions',
-      header: 'İşlemler',
+      header: t('common.actions'),
       className: 'w-36',
       render: (r) => (
         <div className="flex items-center gap-0.5">
           {r.workerStatus !== 'RUNNING' && (
             <ActionBtn
-              icon={Play} title="Başlat" color="text-green-400"
+              icon={Play} title={t('streams.start')} color="text-green-400"
               onClick={() => startStream.mutate(r.id)}
               loading={startStream.isPending && startStream.variables === r.id}
             />
           )}
           {r.workerStatus === 'RUNNING' && (
             <ActionBtn
-              icon={Square} title="Durdur" color="text-amber-400"
+              icon={Square} title={t('streams.stop')} color="text-amber-400"
               onClick={() => stopStream.mutate(r.id)}
               loading={stopStream.isPending && stopStream.variables === r.id}
             />
           )}
           <ActionBtn
-            icon={RotateCcw} title="Yeniden başlat" color="text-emerald-400"
+            icon={RotateCcw} title={t('streams.restart')} color="text-emerald-400"
             onClick={() => restart.mutate(r.id)}
             loading={restart.isPending && restart.variables === r.id}
           />
-          <ActionBtn icon={Pencil} title="Düzenle" color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); }} />
-          <ActionBtn icon={Activity} title="Sağlık Raporu" color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
-          <ActionBtn icon={Trash2} title="Sil" color="text-red-400" onClick={() => setDeleteId(r.id)} />
-          <ActionBtn icon={Eye} title="URL Göster" color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
+          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); }} />
+          <ActionBtn icon={Activity} title={t('streams.healthReport')} color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
+          <ActionBtn icon={Trash2} title={t('common.delete')} color="text-red-400" onClick={() => setDeleteId(r.id)} />
+          <ActionBtn icon={Eye} title={t('streams.showUrl')} color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
           {(!type || type === 'LIVE') && (
             <ActionBtn
               icon={Clapperboard}
-              title="Stream Önizle"
+              title={t('streams.preview')}
               color="text-cyan-400"
               loading={previewLoading === r.id}
               onClick={() => {
                 setPreviewLoading(r.id);
                 api.get<{ success: boolean; data: PreviewInfo }>(`/streams/${r.id}/preview-url`)
                   .then((res) => { setPreviewInfo(res.data.data); })
-                  .catch(() => toast.error('Önizleme başlatılamadı'))
+                  .catch(() => toast.error(t('streams.previewFailed')))
                   .finally(() => setPreviewLoading(null));
               }}
             />
           )}
           <ActionBtn
             icon={Microscope}
-            title="Kalite Analiz Et"
+            title={t('streams.analyzeQuality')}
             color="text-purple-400"
             onClick={() => {
               api.post(`/streams/${r.id}/analyze`)
-                .then(() => toast.success(`${r.name}: analiz başlatıldı`))
-                .catch(() => toast.error('Analiz başlatılamadı'));
+                .then(() => toast.success(t('streams.analyzeStarted', { name: r.name })))
+                .catch(() => toast.error(t('streams.analyzeFailed')));
             }}
           />
           <ActionBtn
             icon={Copy}
-            title="Klonla"
+            title={t('streams.clone')}
             color="text-sky-400"
             onClick={() => {
               api.post<{ success: boolean; data: { name: string } }>(`/streams/${r.id}/clone`)
-                .then((res) => toast.success(`Klonlandı → ${res.data.data.name}`))
-                .catch(() => toast.error('Klonlama başarısız'));
+                .then((res) => toast.success(t('streams.cloned', { name: res.data.data.name })))
+                .catch(() => toast.error(t('streams.cloneFailed')));
             }}
           />
           {(type === 'VOD' || type === 'SERIES') && (
             <ActionBtn
               icon={Sparkles}
-              title="Meta Veri Çek"
+              title={t('streams.fetchMeta')}
               color="text-yellow-400"
               loading={enrichStream.isPending && (enrichStream.variables as { id: string } | undefined)?.id === r.id}
               onClick={() => enrichStream.mutate({ id: r.id, type })}
             />
           )}
           {(type === 'VOD' || type === 'SERIES') && (
-            <ActionBtn icon={Film} title="Meta Düzenle" color="text-purple-400" onClick={() => setMetaStream(r)} />
+            <ActionBtn icon={Film} title={t('streams.editMeta')} color="text-purple-400" onClick={() => setMetaStream(r)} />
           )}
           {type === 'SERIES' && (
-            <ActionBtn icon={ListVideo} title="Bölümler" color="text-cyan-400" onClick={() => setEpisodeSeries(r)} />
+            <ActionBtn icon={ListVideo} title={t('streams.episodes')} color="text-cyan-400" onClick={() => setEpisodeSeries(r)} />
           )}
         </div>
       ),
@@ -783,7 +786,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     <div>
       <PageHeader
         title={pageTitle}
-        description={`${data?.total ?? 0} kayıt`}
+        description={t('streams.recordCount', { n: data?.total ?? 0 })}
         actions={
           <>
             <button
@@ -792,12 +795,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 'btn-ghost flex items-center gap-1.5 text-xs',
                 autoRefresh ? 'text-emerald-400' : '',
               )}
-              title={autoRefresh ? 'Auto-Refresh: açık (5s)' : 'Auto-Refresh: kapalı'}
+              title={autoRefresh ? t('streams.autoRefreshOn') : t('streams.autoRefreshOff')}
             >
               {autoRefresh ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-              <span className="hidden sm:inline">Auto-Refresh</span>
+              <span className="hidden sm:inline">{t('streams.autoRefresh')}</span>
             </button>
-            <button onClick={handleRefresh} className="btn-ghost" title="Yenile">
+            <button onClick={handleRefresh} className="btn-ghost" title={t('streams.refresh')}>
               <RefreshCw className="w-4 h-4" />
             </button>
             {selectedStreamIds.size > 0 && (
@@ -806,12 +809,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 className="btn-secondary flex items-center gap-1.5 text-sm"
               >
                 <FolderInput className="w-4 h-4" />
-                {selectedStreamIds.size} Seçili Taşı
+                {t('streams.moveSelected', { n: selectedStreamIds.size })}
               </button>
             )}
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Kanal Ekle</span>
+              <span className="hidden sm:inline">{t('streams.addChannel')}</span>
             </button>
           </>
         }
@@ -824,37 +827,37 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
             <input
               className="input pl-9 h-9"
-              placeholder="İsim veya URL ara…"
+              placeholder={t('streams.searchPlaceholder')}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
           <select className="input h-9 w-auto min-w-36" value={serverId} onChange={(e) => { setServerId(e.target.value); setPage(1); }}>
-            <option value="">Tüm Sunucular</option>
+            <option value="">{t('streams.allServers')}</option>
             {servers?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <select className="input h-9 w-auto min-w-36" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
-            <option value="">Tüm Kategoriler</option>
+            <option value="">{t('streams.allCategories')}</option>
             {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select className="input h-9 w-auto min-w-36" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-            <option value="">Tüm Durumlar</option>
-            <option value="RUNNING">Çalışıyor</option>
-            <option value="IDLE">Bekliyor</option>
-            <option value="CRASHED">Hata</option>
-            <option value="STOPPED">Durdu</option>
+            <option value="">{t('streams.allStatuses')}</option>
+            <option value="RUNNING">{t('streams.workerRunning')}</option>
+            <option value="IDLE">{t('streams.workerIdle')}</option>
+            <option value="CRASHED">{t('streams.workerCrashed')}</option>
+            <option value="STOPPED">{t('streams.workerStopped')}</option>
           </select>
           <button
             onClick={() => setShowAdvFilters((v) => !v)}
             className={cn('btn btn-ghost h-9 text-sm gap-1.5', (showAdvFilters || hasAdvFilters) && 'text-primary')}
           >
             <Filter className="w-3.5 h-3.5" />
-            Gelişmiş
+            {t('streams.advanced')}
             {hasAdvFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
           </button>
           {hasAdvFilters && (
             <button onClick={clearAdvFilters} className="btn btn-ghost h-9 text-xs text-muted hover:text-danger">
-              Temizle
+              {t('streams.clear')}
             </button>
           )}
         </div>
@@ -862,40 +865,40 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         {showAdvFilters && (
           <div className="flex flex-wrap gap-2.5 items-center border-t border-border pt-2.5">
             <select className="input h-9 w-auto min-w-32" value={resolution} onChange={(e) => { setResolution(e.target.value); setPage(1); }}>
-              <option value="">Tüm Çözünürlükler</option>
+              <option value="">{t('streams.allResolutions')}</option>
               <option value="1080">1080p</option>
               <option value="720">720p</option>
               <option value="480">480p</option>
               <option value="360">360p</option>
             </select>
             <select className="input h-9 w-auto min-w-32" value={qualityScore} onChange={(e) => { setQualityScore(e.target.value); setPage(1); }}>
-              <option value="">Tüm Kaliteler</option>
-              <option value="A">A — Mükemmel</option>
-              <option value="B">B — İyi</option>
-              <option value="C">C — Orta</option>
-              <option value="D">D — Düşük</option>
-              <option value="F">F — Kötü</option>
+              <option value="">{t('streams.allQualities')}</option>
+              <option value="A">{t('streams.qualityA')}</option>
+              <option value="B">{t('streams.qualityB')}</option>
+              <option value="C">{t('streams.qualityC')}</option>
+              <option value="D">{t('streams.qualityD')}</option>
+              <option value="F">{t('streams.qualityF')}</option>
             </select>
             <select className="input h-9 w-auto min-w-36" value={healthStatus} onChange={(e) => { setHealthStatus(e.target.value); setPage(1); }}>
-              <option value="">Tüm Sağlık</option>
-              <option value="HEALTHY">Sağlıklı</option>
-              <option value="UNHEALTHY">Sorunlu</option>
-              <option value="UNKNOWN">Bilinmiyor</option>
+              <option value="">{t('streams.allHealth')}</option>
+              <option value="HEALTHY">{t('streams.healthy')}</option>
+              <option value="UNHEALTHY">{t('streams.unhealthy')}</option>
+              <option value="UNKNOWN">{t('streams.unknown')}</option>
             </select>
             <select className="input h-9 w-auto min-w-28" value={videoCodec} onChange={(e) => { setVideoCodec(e.target.value); setPage(1); }}>
-              <option value="">Tüm Codec</option>
+              <option value="">{t('streams.allCodec')}</option>
               <option value="h264">H.264</option>
               <option value="h265">H.265 / HEVC</option>
               <option value="av1">AV1</option>
               <option value="vp9">VP9</option>
             </select>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted whitespace-nowrap">Son güncelleme ≥</label>
+              <label className="text-xs text-muted whitespace-nowrap">{t('streams.updatedAfterLabel')}</label>
               <select className="input h-9 w-auto" value={updatedAfter} onChange={(e) => { setUpdatedAfter(e.target.value); setPage(1); }}>
-                <option value="">Her zaman</option>
-                <option value={new Date(Date.now() - 86400000).toISOString()}>Bugün</option>
-                <option value={new Date(Date.now() - 7 * 86400000).toISOString()}>Bu hafta</option>
-                <option value={new Date(Date.now() - 30 * 86400000).toISOString()}>Bu ay</option>
+                <option value="">{t('streams.anytime')}</option>
+                <option value={new Date(Date.now() - 86400000).toISOString()}>{t('streams.today')}</option>
+                <option value={new Date(Date.now() - 7 * 86400000).toISOString()}>{t('streams.thisWeek')}</option>
+                <option value={new Date(Date.now() - 30 * 86400000).toISOString()}>{t('streams.thisMonth')}</option>
               </select>
             </div>
           </div>
@@ -923,8 +926,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               totalPages={data?.totalPages}
               total={data?.total}
               onPageChange={setPage}
-              emptyTitle="Kayıt bulunamadı"
-              emptyDescription="Arama kriterlerinize uygun kayıt yok."
+              emptyTitle={t('streams.emptyTitle')}
+              emptyDescription={t('streams.emptyDescription')}
               mobileCards
             />
           </SortableContext>
@@ -932,19 +935,19 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       </div>
 
       {/* Bulk move modal */}
-      <Modal open={showBulkMove} onClose={() => setShowBulkMove(false)} title={`${selectedStreamIds.size} Stream Taşı`} size="sm">
+      <Modal open={showBulkMove} onClose={() => setShowBulkMove(false)} title={t('streams.moveStreamsTitle', { n: selectedStreamIds.size })} size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-muted">Hedef kategori seç:</p>
+          <p className="text-sm text-muted">{t('streams.selectTargetCategory')}</p>
           <select
             className="input w-full"
             value={bulkMoveCatId}
             onChange={(e) => setBulkMoveCatId(e.target.value)}
           >
-            <option value="">— Kategori seç —</option>
+            <option value="">{t('streams.selectCategoryOption')}</option>
             {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <div className="flex gap-2 justify-end">
-            <button className="btn btn-secondary" onClick={() => setShowBulkMove(false)}>İptal</button>
+            <button className="btn btn-secondary" onClick={() => setShowBulkMove(false)}>{t('common.cancel')}</button>
             <button
               className="btn btn-primary"
               disabled={!bulkMoveCatId || bulkMoveCategory.isPending}
@@ -954,7 +957,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 setSelectedStreamIds(new Set());
               }}
             >
-              Taşı
+              {t('streams.move')}
             </button>
           </div>
         </div>
@@ -964,7 +967,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       <Modal
         open={!!previewInfo}
         onClose={() => setPreviewInfo(null)}
-        title={previewInfo?.name ?? 'Stream Önizle'}
+        title={previewInfo?.name ?? t('streams.preview')}
         size="lg"
       >
         {previewInfo && (
@@ -990,7 +993,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
 
             {/* Upstream URL — info only */}
             <div>
-              <p className="text-xs text-muted mb-1">Kaynak URL</p>
+              <p className="text-xs text-muted mb-1">{t('streams.sourceUrl')}</p>
               <p className="rounded-lg px-3 py-2.5 font-mono text-xs break-all bg-surface-2 text-fg border border-border">
                 {previewInfo.hlsUrl}
               </p>
@@ -998,15 +1001,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
 
             <div className="flex justify-end gap-2 pt-1">
               <button
-                onClick={() => { void navigator.clipboard.writeText(previewInfo.hlsUrl); toast.success('Kopyalandı'); }}
+                onClick={() => { void navigator.clipboard.writeText(previewInfo.hlsUrl); toast.success(t('streams.copied')); }}
                 className="btn-ghost text-xs text-blue-400 flex items-center gap-1"
               >
                 <Copy className="w-3.5 h-3.5" />
-                URL Kopyala
+                {t('streams.copyUrl')}
               </button>
               <button onClick={() => setPreviewInfo(null)} className="btn-ghost text-xs flex items-center gap-1">
                 <X className="w-3.5 h-3.5" />
-                Kapat
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -1017,74 +1020,74 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       <Modal
         open={showCreate}
         onClose={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
-        title={`Yeni ${type === 'VOD' ? 'Film' : type === 'SERIES' ? 'Dizi' : 'Kanal'} Ekle`}
+        title={t('streams.addTitle', { kind: type === 'VOD' ? t('streams.kindMovie') : type === 'SERIES' ? t('streams.kindSeries') : t('streams.kindChannel') })}
         size="md"
       >
         <div className="space-y-3">
           <div>
-            <label className="label">Kanal Adı *</label>
+            <label className="label">{t('streams.channelNameLabel')} *</label>
             <input
               className="input"
-              placeholder="Örn: TRT 1"
+              placeholder={t('streams.channelNamePlaceholder')}
               value={createForm.name}
               onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Kategori *</label>
+            <label className="label">{t('streams.categoryLabel')} *</label>
             <select
               className="input"
               value={createForm.categoryId}
               onChange={(e) => setCreateForm((f) => ({ ...f, categoryId: e.target.value }))}
             >
-              <option value="">Kategori seçin</option>
+              <option value="">{t('streams.selectCategory')}</option>
               {categories?.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Kaynak URL *</label>
+            <label className="label">{t('streams.sourceUrl')} *</label>
             <input
               className="input font-mono text-xs"
-              placeholder="http:// veya rtmp://"
+              placeholder={t('streams.urlPlaceholder')}
               value={createForm.primaryUrl}
               onChange={(e) => setCreateForm((f) => ({ ...f, primaryUrl: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Yedek URL</label>
+            <label className="label">{t('streams.backupUrl')}</label>
             <input
               className="input font-mono text-xs"
-              placeholder="Opsiyonel — yedek kaynak"
+              placeholder={t('streams.backupUrlPlaceholder')}
               value={createForm.backupUrl}
               onChange={(e) => setCreateForm((f) => ({ ...f, backupUrl: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Sunucu</label>
+            <label className="label">{t('streams.server')}</label>
             <select
               className="input"
               value={createForm.serverId}
               onChange={(e) => setCreateForm((f) => ({ ...f, serverId: e.target.value }))}
             >
-              <option value="">Sunucu seçin</option>
+              <option value="">{t('streams.selectServer')}</option>
               {servers?.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} — {s.ip}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Logo URL</label>
+            <label className="label">{t('streams.logoUrl')}</label>
             <input
               className="input"
-              placeholder="https://… (kanal logosu)"
+              placeholder={t('streams.logoUrlPlaceholder')}
               value={createForm.tvgLogo}
               onChange={(e) => setCreateForm((f) => ({ ...f, tvgLogo: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Yayın Modu</label>
+            <label className="label">{t('streams.streamMode')}</label>
             <div className="grid grid-cols-2 gap-2">
               {(['PROXY', 'TRANSCODE'] as const).map((mode) => (
                 <button
@@ -1098,13 +1101,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   }`}
                 >
                   <span className="font-semibold">
-                    {mode === 'PROXY' ? 'Direkt Proxy' : 'FFmpeg Transcode'}
-                    {mode === 'PROXY' && <span className="ml-1.5 text-emerald-400 text-[10px]">(önerilen)</span>}
+                    {mode === 'PROXY' ? t('streams.modeProxy') : t('streams.modeTranscode')}
+                    {mode === 'PROXY' && <span className="ml-1.5 text-emerald-400 text-[10px]">{t('streams.recommended')}</span>}
                   </span>
                   <span className="text-[10px] leading-snug opacity-70">
                     {mode === 'PROXY'
-                      ? 'Kaynak URL direkt iletilir — düşük kaynak tüketimi'
-                      : 'FFmpeg ile HLS\'e çevrilir — kalite optimizasyonu'}
+                      ? t('streams.modeProxyDesc')
+                      : t('streams.modeTranscodeDesc')}
                   </span>
                 </button>
               ))}
@@ -1112,38 +1115,38 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           </div>
           {(type === 'VOD' || type === 'SERIES') && (
             <div className="space-y-3 pt-3 border-t border-border">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide">Metadata (opsiyonel)</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide">{t('streams.metadataOptional')}</p>
               <div>
-                <label className="label">Özet</label>
+                <label className="label">{t('streams.overview')}</label>
                 <textarea
                   className="input"
                   rows={3}
-                  placeholder="İçerik özeti…"
+                  placeholder={t('streams.overviewPlaceholder')}
                   value={createForm.overview}
                   onChange={(e) => setCreateForm((f) => ({ ...f, overview: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="label">Poster URL</label>
+                <label className="label">{t('streams.posterUrl')}</label>
                 <input
                   className="input"
-                  placeholder="https://…"
+                  placeholder={t('streams.urlPlaceholderShort')}
                   value={createForm.posterUrl}
                   onChange={(e) => setCreateForm((f) => ({ ...f, posterUrl: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="label">Arkaplan URL</label>
+                <label className="label">{t('streams.backdropUrl')}</label>
                 <input
                   className="input"
-                  placeholder="https://…"
+                  placeholder={t('streams.urlPlaceholderShort')}
                   value={createForm.backdropUrl}
                   onChange={(e) => setCreateForm((f) => ({ ...f, backdropUrl: e.target.value }))}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="label">Yıl</label>
+                  <label className="label">{t('streams.year')}</label>
                   <input
                     type="number"
                     className="input"
@@ -1153,7 +1156,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   />
                 </div>
                 <div>
-                  <label className="label">Puan</label>
+                  <label className="label">{t('streams.rating')}</label>
                   <input
                     type="number"
                     step="0.1"
@@ -1165,10 +1168,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 </div>
               </div>
               <div>
-                <label className="label">Türler (virgülle ayır)</label>
+                <label className="label">{t('streams.genres')}</label>
                 <input
                   className="input"
-                  placeholder="Aksiyon, Dram, Bilim Kurgu"
+                  placeholder={t('streams.genresPlaceholder')}
                   value={createForm.tmdbGenres}
                   onChange={(e) => setCreateForm((f) => ({ ...f, tmdbGenres: e.target.value }))}
                 />
@@ -1180,7 +1183,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onClick={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
               className="btn-ghost"
             >
-              İptal
+              {t('common.cancel')}
             </button>
             <button
               disabled={
@@ -1217,7 +1220,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               }}
               className="btn-primary"
             >
-              {createStream.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {createStream.isPending ? t('streams.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -1230,9 +1233,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         onConfirm={() => {
           if (deleteId) deleteStream.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
         }}
-        title="Stream Sil"
-        message="Bu stream kalıcı olarak silinecek. Bu işlem geri alınamaz."
-        confirmLabel="Sil"
+        title={t('streams.deleteTitle')}
+        message={t('streams.deleteMessage')}
+        confirmLabel={t('common.delete')}
         loading={deleteStream.isPending}
       />
 
@@ -1240,17 +1243,17 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       <Modal
         open={!!editStream}
         onClose={() => setEditStream(null)}
-        title={editStream ? `Düzenle — ${editStream.name}` : ''}
+        title={editStream ? t('streams.editTitle', { name: editStream.name }) : ''}
         size="md"
       >
         <div className="space-y-4">
           <div>
-            <label className="label">Kaynak URL (Birincil)</label>
+            <label className="label">{t('streams.sourceUrlPrimary')}</label>
             <input className="input font-mono text-xs" readOnly value={editStream?.primaryUrl ?? ''} />
           </div>
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="label mb-0">Yedek URL'ler</label>
+              <label className="label mb-0">{t('streams.backupUrls')}</label>
               {editBackupUrls.length < 3 && (
                 <button
                   type="button"
@@ -1258,19 +1261,19 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   onClick={() => setEditBackupUrls((prev) => [...prev, ''])}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Ekle
+                  {t('common.add')}
                 </button>
               )}
             </div>
             {editBackupUrls.length === 0 ? (
-              <p className="text-xs text-muted py-2">Yedek URL tanımlı değil.</p>
+              <p className="text-xs text-muted py-2">{t('streams.noBackupUrls')}</p>
             ) : (
               <div className="space-y-2">
                 {editBackupUrls.map((url, i) => (
                   <div key={i} className="flex gap-2">
                     <input
                       className="input font-mono text-xs flex-1"
-                      placeholder="http:// veya rtmp://"
+                      placeholder={t('streams.urlPlaceholder')}
                       value={url}
                       onChange={(e) => {
                         const next = [...editBackupUrls];
@@ -1289,10 +1292,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted mt-1">Maks 3 yedek URL. Birincil URL çevrimdışıysa sırayla denenir.</p>
+            <p className="text-xs text-muted mt-1">{t('streams.backupUrlsHint')}</p>
           </div>
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
-            <button onClick={() => setEditStream(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setEditStream(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={updateBackupUrls.isPending}
               onClick={() => {
@@ -1305,7 +1308,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               }}
               className="btn-primary"
             >
-              {updateBackupUrls.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {updateBackupUrls.isPending ? t('streams.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -1315,12 +1318,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       <Modal
         open={!!metaStream}
         onClose={() => setMetaStream(null)}
-        title={metaStream ? `Meta Düzenle — ${metaStream.name}` : ''}
+        title={metaStream ? t('streams.metaEditTitle', { name: metaStream.name }) : ''}
         size="md"
       >
         <div className="space-y-3">
           <div>
-            <label className="label">Ad</label>
+            <label className="label">{t('common.name')}</label>
             <input
               className="input"
               value={metaForm.name}
@@ -1328,36 +1331,36 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             />
           </div>
           <div>
-            <label className="label">Özet</label>
+            <label className="label">{t('streams.overview')}</label>
             <textarea
               className="input"
               rows={3}
-              placeholder="İçerik özeti…"
+              placeholder={t('streams.overviewPlaceholder')}
               value={metaForm.overview}
               onChange={(e) => setMetaForm((f) => ({ ...f, overview: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Poster URL</label>
+            <label className="label">{t('streams.posterUrl')}</label>
             <input
               className="input"
-              placeholder="https://…"
+              placeholder={t('streams.urlPlaceholderShort')}
               value={metaForm.posterUrl}
               onChange={(e) => setMetaForm((f) => ({ ...f, posterUrl: e.target.value }))}
             />
           </div>
           <div>
-            <label className="label">Arkaplan URL</label>
+            <label className="label">{t('streams.backdropUrl')}</label>
             <input
               className="input"
-              placeholder="https://…"
+              placeholder={t('streams.urlPlaceholderShort')}
               value={metaForm.backdropUrl}
               onChange={(e) => setMetaForm((f) => ({ ...f, backdropUrl: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="label">Yıl</label>
+              <label className="label">{t('streams.year')}</label>
               <input
                 type="number"
                 className="input"
@@ -1367,7 +1370,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               />
             </div>
             <div>
-              <label className="label">Puan</label>
+              <label className="label">{t('streams.rating')}</label>
               <input
                 type="number"
                 step="0.1"
@@ -1379,16 +1382,16 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             </div>
           </div>
           <div>
-            <label className="label">Türler (virgülle ayır)</label>
+            <label className="label">{t('streams.genres')}</label>
             <input
               className="input"
-              placeholder="Aksiyon, Dram, Bilim Kurgu"
+              placeholder={t('streams.genresPlaceholder')}
               value={metaForm.tmdbGenres}
               onChange={(e) => setMetaForm((f) => ({ ...f, tmdbGenres: e.target.value }))}
             />
           </div>
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
-            <button onClick={() => setMetaStream(null)} className="btn-ghost">İptal</button>
+            <button onClick={() => setMetaStream(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
               disabled={updateStream.isPending || !metaForm.name}
               onClick={() => {
@@ -1412,7 +1415,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               }}
               className="btn-primary"
             >
-              {updateStream.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+              {updateStream.isPending ? t('streams.saving') : t('common.save')}
             </button>
           </div>
         </div>

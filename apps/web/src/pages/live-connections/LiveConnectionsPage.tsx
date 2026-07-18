@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshCw, Wifi, ToggleRight, ToggleLeft } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -23,6 +24,7 @@ function fmtDuration(seconds: number): string {
 }
 
 export function LiveConnectionsPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -41,7 +43,7 @@ export function LiveConnectionsPage() {
     },
     {
       key: 'username',
-      header: 'Kullanıcı',
+      header: t('liveConnections.colUser'),
       render: (r) => (
         <div>
           <div className="text-sm font-medium text-slate-200 font-mono">{r.username}</div>
@@ -84,7 +86,7 @@ export function LiveConnectionsPage() {
     },
     {
       key: 'duration',
-      header: 'Süre',
+      header: t('liveConnections.colDuration'),
       render: (r) => (
         <span className="text-sm text-muted tabular-nums">
           {r.duration ? fmtDuration(r.duration) : formatDuration(r.startedAt)}
@@ -102,7 +104,7 @@ export function LiveConnectionsPage() {
           className="flex items-center gap-1 text-xs text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
         >
           <Wifi className="w-3 h-3" />
-          Kes
+          {t('liveConnections.kick')}
         </button>
       ),
     },
@@ -111,8 +113,8 @@ export function LiveConnectionsPage() {
   return (
     <div>
       <PageHeader
-        title="Canlı Bağlantılar"
-        description={`${data?.total ?? 0} aktif bağlantı`}
+        title={t('nav.liveConnections')}
+        description={t('liveConnections.activeConnections', { n: data?.total ?? 0 })}
         actions={
           <>
             <button
@@ -137,7 +139,7 @@ export function LiveConnectionsPage() {
         {autoRefresh && (
           <div className="flex items-center gap-2 text-xs text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            3 saniyede bir otomatik yenileniyor
+            {t('liveConnections.autoRefreshInfo')}
           </div>
         )}
         <div className={cn(
@@ -148,7 +150,7 @@ export function LiveConnectionsPage() {
             'w-1.5 h-1.5 rounded-full',
             connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500',
           )} />
-          {connected ? 'WebSocket bağlı' : 'WebSocket bağlantısı yok'}
+          {connected ? t('liveConnections.wsConnected') : t('liveConnections.wsDisconnected')}
         </div>
       </div>
 
@@ -162,8 +164,8 @@ export function LiveConnectionsPage() {
           totalPages={data?.totalPages}
           total={data?.total}
           onPageChange={setPage}
-          emptyTitle="Aktif bağlantı yok"
-          emptyDescription="Şu an herhangi bir kullanıcı bağlı değil."
+          emptyTitle={t('liveConnections.emptyTitle')}
+          emptyDescription={t('liveConnections.emptyDescription')}
         />
       </div>
     </div>
