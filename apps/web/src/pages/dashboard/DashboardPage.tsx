@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { TFunction } from 'i18next';
 import {
   Users,
   Tv,
@@ -42,14 +43,14 @@ import { cn } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: TFunction): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'şimdi';
-  if (m < 60) return `${m} dk önce`;
+  if (m < 1) return t('layout.justNow');
+  if (m < 60) return t('layout.minutesAgo', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} sa önce`;
-  return `${Math.floor(h / 24)} gün önce`;
+  if (h < 24) return t('layout.hoursAgo', { n: h });
+  return t('layout.daysAgo', { n: Math.floor(h / 24) });
 }
 
 function fmtHour(iso: string): string {
@@ -428,7 +429,7 @@ export function DashboardPage() {
                       <p className="text-xs text-muted mt-0.5">
                         <span className="font-medium">{entry.user}</span>
                         {' · '}
-                        {timeAgo(entry.createdAt)}
+                        {timeAgo(entry.createdAt, t)}
                       </p>
                     </div>
                   </div>
