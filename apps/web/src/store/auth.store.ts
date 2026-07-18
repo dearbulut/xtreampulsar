@@ -13,6 +13,14 @@ export interface ResellerUser {
   tier: string;
 }
 
+export interface ClientUser {
+  id: string;
+  username: string;
+  status: string;
+  expiresAt: string;
+  maxConnections: number;
+}
+
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
@@ -20,6 +28,10 @@ interface AuthState {
   resellerToken: string | null;
   resellerRefreshToken: string | null;
   resellerUser: ResellerUser | null;
+  clientToken: string | null;
+  clientRefreshToken: string | null;
+  clientUser: ClientUser | null;
+  clientPassword: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -27,9 +39,23 @@ interface AuthState {
   resellerLogin: (username: string, password: string) => Promise<void>;
   resellerRefresh: () => Promise<void>;
   resellerLogout: () => void;
+  clientLogin: (username: string, password: string) => Promise<void>;
+  clientRefresh: () => Promise<void>;
+  clientLogout: () => void;
 }
 
-type PersistedState = Pick<AuthState, 'accessToken' | 'refreshToken' | 'user' | 'resellerToken' | 'resellerRefreshToken' | 'resellerUser'>;
+type PersistedState = Pick<
+  AuthState,
+  | 'accessToken'
+  | 'refreshToken'
+  | 'user'
+  | 'resellerToken'
+  | 'resellerRefreshToken'
+  | 'resellerUser'
+  | 'clientToken'
+  | 'clientRefreshToken'
+  | 'clientUser'
+>;
 
 export const useAuthStore = create<AuthState>()(
   persist<AuthState, [], [], PersistedState>(
@@ -40,6 +66,10 @@ export const useAuthStore = create<AuthState>()(
       resellerToken: null,
       resellerRefreshToken: null,
       resellerUser: null,
+      clientToken: null,
+      clientRefreshToken: null,
+      clientUser: null,
+      clientPassword: null,
 
       setTokens(access: string, refresh: string, user: AuthUser) {
         set({ accessToken: access, refreshToken: refresh, user });
@@ -104,6 +134,40 @@ export const useAuthStore = create<AuthState>()(
         }
         set({ resellerToken: null, resellerRefreshToken: null, resellerUser: null });
       },
+
+      async clientLogin(username: string, password: string) {
+        const res = await authClient.post<{
+          success: boolean;
+          data: { accessToken: string; refreshToken: string; user: ClientUser };
+        }>('/auth/client/login', { username, password });
+        const { accessToken, refreshToken, user } = res.data.data;
+        set({
+          clientToken: accessToken,
+          clientRefreshToken: refreshToken,
+          clientUser: user,
+          clientPassword: password,
+        });
+      },
+
+      async clientRefresh() {
+        const token = get().clientRefreshToken;
+        if (!token) throw new Error('No client refresh token');
+        const res = await authClient.post<{
+          success: boolean;
+          data: { accessToken: string };
+        }>('/auth/client/refresh', { refreshToken: token });
+        const { accessToken } = res.data.data;
+        set({ clientToken: accessToken });
+      },
+
+      clientLogout() {
+        set({
+          clientToken: null,
+          clientRefreshToken: null,
+          clientUser: null,
+          clientPassword: null,
+        });
+      },
     }),
     {
       name: 'xp-auth',
@@ -114,6 +178,10 @@ export const useAuthStore = create<AuthState>()(
         resellerToken: state.resellerToken,
         resellerRefreshToken: state.resellerRefreshToken,
         resellerUser: state.resellerUser,
+        clientToken: state.clientToken,
+        clientRefreshToken: state.clientRefreshToken,
+        clientUser: state.clientUser,
+        // clientPassword bilinçli olarak persist EDİLMEZ — yalnız bellekte tutulur.
       }),
     },
   ),

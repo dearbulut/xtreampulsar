@@ -45,6 +45,9 @@ import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
 import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
 import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
 import { SupportPage } from '@/pages/support/SupportPage';
+import { ClientLayout } from '@/components/layout/ClientLayout';
+import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
+import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const rootRoute = createRootRoute({
@@ -316,6 +319,34 @@ const resellerNotificationsRoute = createRoute({
   component: ResellerNotificationsPage,
 });
 
+// ─── Client (end-user) routes ────────────────────────────────────────────────
+
+const clientLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/client/login',
+  beforeLoad: () => {
+    const token = useAuthStore.getState().clientToken;
+    if (token) throw redirect({ to: '/client/dashboard' });
+  },
+  component: ClientLoginPage,
+});
+
+const clientLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_client',
+  beforeLoad: () => {
+    const token = useAuthStore.getState().clientToken;
+    if (!token) throw redirect({ to: '/client/login' });
+  },
+  component: ClientLayout,
+});
+
+const clientDashboardRoute = createRoute({
+  getParentRoute: () => clientLayoutRoute,
+  path: '/client/dashboard',
+  component: ClientDashboardPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -331,6 +362,10 @@ const routeTree = rootRoute.addChildren([
     resellerLiveRoute,
     resellerActivityRoute,
     resellerNotificationsRoute,
+  ]),
+  clientLoginRoute,
+  clientLayoutRoute.addChildren([
+    clientDashboardRoute,
   ]),
   layoutRoute.addChildren([
     dashboardRoute,
