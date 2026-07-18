@@ -954,16 +954,16 @@ export class MigrationService implements OnModuleInit {
           // XUI.ONE
           if (table === 'bouquets' && options.importBouquets) {
             shouldProcess = true;
-            handler = (row, cols) => this.importXUIOneBouquet(row, cols, options);
+            handler = (row, cols) => this.importXUIOneBouquet(row, cols, options, bouquetIdCache, pendingBouquetStreams);
           } else if (table === 'categories' && options.importCategories) {
             shouldProcess = true;
             handler = (row, cols) => this.importXUIOneCategory(row, cols, catCache, options);
           } else if (table === 'streams' && options.importStreams) {
             shouldProcess = true;
-            handler = (row, cols) => this.importXUIOneStream(row, cols, catCache, options);
+            handler = (row, cols) => this.importXUIOneStream(row, cols, catCache, options, streamIdCache);
           } else if (table === 'lines' && options.importUsers) {
             shouldProcess = true;
-            handler = (row, cols) => this.importXUIOneLine(row, cols, options);
+            handler = (row, cols) => this.importXUIOneLine(row, cols, options, pendingUserBouquets);
           } else if (table === 'resellers' && options.importResellers) {
             shouldProcess = true;
             handler = (row, cols) => this.importXUIOneReseller(row, cols, options);
@@ -1402,23 +1402,51 @@ export class MigrationService implements OnModuleInit {
     row: (string | null)[],
     columns: string[] | null,
     options: DumpImportOptions,
+    bouquetIdCache: Map<string, string>,
+    pendingBouquetStreams: Array<{ bouquetDumpId: string; streamDumpIds: string[] }>,
   ): Promise<void> {
     const name = this.getCol(row, columns, 'name', 1) ?? this.getCol(row, columns, 'bouquet_name', 1);
     if (!name) return;
 
+    const dumpId = this.getCol(row, columns, 'id', 0);
     const sortOrderRaw = this.getCol(row, columns, 'sort_order', 2) ?? this.getCol(row, columns, 'order', 2);
     const sortOrder = sortOrderRaw ? parseInt(sortOrderRaw, 10) : 0;
 
+    let bouquetId: string | undefined;
     if (options.conflictMode === 'OVERWRITE') {
-      await this.prisma.bouquet.upsert({
+      const upserted = await this.prisma.bouquet.upsert({
         where: { name } as Parameters<typeof this.prisma.bouquet.upsert>[0]['where'],
         create: { name, sortOrder },
         update: { sortOrder },
+        select: { id: true },
       });
+      bouquetId = upserted.id;
     } else {
       const existing = await this.prisma.bouquet.findFirst({ where: { name }, select: { id: true } });
-      if (!existing) {
-        await this.prisma.bouquet.create({ data: { name, sortOrder } });
+      if (existing) {
+        bouquetId = existing.id;
+      } else {
+        const created = await this.prisma.bouquet.create({ data: { name, sortOrder }, select: { id: true } });
+        bouquetId = created.id;
+      }
+    }
+
+    if (dumpId && bouquetId) {
+      bouquetIdCache.set(dumpId, bouquetId);
+
+      // Yayın-bazlı bouquet içeriği: bouquet_channels + bouquet_movies + bouquet_series
+      // (her biri JSON dizi, dump stream id'leri) → ertelenmiş linkleme için topla.
+      const streamDumpIds: string[] = [];
+      for (const col of ['bouquet_channels', 'bouquet_movies', 'bouquet_series']) {
+        const raw = this.getCol(row, columns, col, -1);
+        if (!raw) continue;
+        try {
+          const arr = JSON.parse(raw) as unknown;
+          if (Array.isArray(arr)) streamDumpIds.push(...arr.map((v) => String(v)));
+        } catch { /* bozuk JSON → geç */ }
+      }
+      if (streamDumpIds.length > 0) {
+        pendingBouquetStreams.push({ bouquetDumpId: dumpId, streamDumpIds });
       }
     }
   }
@@ -1474,7 +1502,9 @@ export class MigrationService implements OnModuleInit {
     columns: string[] | null,
     catCache: Map<string, string>,
     options: DumpImportOptions,
+    streamIdCache: Map<string, string>,
   ): Promise<void> {
+    const dumpId = this.getCol(row, columns, 'id', 0);
     const name = this.getCol(row, columns, 'stream_display_name', 1)
       ?? this.getCol(row, columns, 'name', 1)
       ?? 'Unknown';
@@ -1505,25 +1535,34 @@ export class MigrationService implements OnModuleInit {
     const categoryId = catKey ? catCache.get(catKey) : undefined;
     if (!categoryId) return;
 
+    let streamId: string | undefined;
     if (options.conflictMode === 'OVERWRITE') {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (existing) {
         await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId, tvgId: tvgId || null } });
+        streamId = existing.id;
       } else {
-        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null } });
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
+        streamId = created.id;
       }
     } else {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
-      if (!existing) {
-        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null } });
+      if (existing) {
+        streamId = existing.id;
+      } else {
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
+        streamId = created.id;
       }
     }
+
+    if (dumpId && streamId) streamIdCache.set(dumpId, streamId);
   }
 
   private async importXUIOneLine(
     row: (string | null)[],
     columns: string[] | null,
     options: DumpImportOptions,
+    pendingUserBouquets: Array<{ username: string; bouquetDumpIds: string[] }>,
   ): Promise<void> {
     const username = this.getCol(row, columns, 'username', 1);
     if (!username) return;
@@ -1567,6 +1606,20 @@ export class MigrationService implements OnModuleInit {
       const existing = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
       if (!existing) {
         await this.prisma.user.create({ data: { username, ...data } });
+      }
+    }
+
+    // Kullanıcının bouquet erişimi (bouquet JSON dizi, dump bouquet id'leri) →
+    // ertelenmiş linkleme için topla.
+    const bouquetRaw = this.getCol(row, columns, 'bouquet', -1);
+    if (bouquetRaw) {
+      let bouquetDumpIds: string[] = [];
+      try {
+        const arr = JSON.parse(bouquetRaw) as unknown;
+        if (Array.isArray(arr)) bouquetDumpIds = arr.map((v) => String(v));
+      } catch { /* bozuk JSON → geç */ }
+      if (bouquetDumpIds.length > 0) {
+        pendingUserBouquets.push({ username, bouquetDumpIds });
       }
     }
   }
