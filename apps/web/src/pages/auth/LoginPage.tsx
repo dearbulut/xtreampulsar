@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from '@tanstack/react-router';
 import { Zap, Shield, Tv, Users, Activity, Eye, EyeOff, SmartphoneNfc } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -13,13 +14,14 @@ interface PublicConfig {
 }
 
 const FEATURES = [
-  { icon: Tv, text: 'Sınırsız stream yönetimi' },
-  { icon: Users, text: 'Kullanıcı ve reseller sistemi' },
-  { icon: Activity, text: 'Gerçek zamanlı analitik' },
-  { icon: Shield, text: 'Güvenli JWT kimlik doğrulama' },
+  { icon: Tv, key: 'auth.feature1' },
+  { icon: Users, key: 'auth.feature2' },
+  { icon: Activity, key: 'auth.feature3' },
+  { icon: Shield, key: 'auth.feature4' },
 ];
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -49,7 +51,7 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!username || !password) {
-      toast.error('Kullanıcı adı ve şifre gerekli');
+      toast.error(t('auth.credentialsRequired'));
       return;
     }
     setLoading(true);
@@ -80,10 +82,10 @@ export function LoginPage() {
           role: data.user.role as 'ADMIN' | 'RESELLER' | 'USER',
         });
         await router.navigate({ to: '/dashboard' });
-        toast.success('Giriş başarılı');
+        toast.success(t('auth.loginSuccess'));
       }
     } catch {
-      toast.error('Geçersiz kullanıcı adı veya şifre');
+      toast.error(t('auth.invalidUsernameOrPassword'));
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ export function LoginPage() {
   const handle2FASubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!totpCode || totpCode.length !== 6) {
-      toast.error('6 haneli kod giriniz');
+      toast.error(t('auth.enterCode6'));
       return;
     }
     try {
@@ -104,7 +106,7 @@ export function LoginPage() {
         role: data.user.role as 'ADMIN' | 'RESELLER' | 'USER',
       });
       await router.navigate({ to: '/dashboard' });
-      toast.success('Giriş başarılı');
+      toast.success(t('auth.loginSuccess'));
     } catch {
       // error handled by mutation
     }
@@ -136,32 +138,32 @@ export function LoginPage() {
             </div>
             <div>
               <div className="font-bold text-xl text-gradient">{publicConfig.panelName}</div>
-              <div className="text-xs text-muted">IPTV Middleware</div>
+              <div className="text-xs text-muted">{t('auth.middleware')}</div>
             </div>
           </div>
 
           <h1 className="text-4xl font-bold text-slate-100 leading-tight mb-4">
-            Profesyonel IPTV<br />
-            <span className="text-gradient">Yönetim Paneli</span>
+            {t('auth.heroTitle1')}<br />
+            <span className="text-gradient">{t('auth.heroTitle2')}</span>
           </h1>
           <p className="text-muted text-lg mb-10">
-            Stream'lerinizi, kullanıcılarınızı ve içeriklerinizi tek bir yerden yönetin.
+            {t('auth.heroSubtitle')}
           </p>
 
           <div className="space-y-4">
-            {FEATURES.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-3">
+            {FEATURES.map(({ icon: Icon, key }) => (
+              <div key={key} className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Icon className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-slate-300 text-sm">{text}</span>
+                <span className="text-slate-300 text-sm">{t(key)}</span>
               </div>
             ))}
           </div>
         </div>
 
         <div className="relative text-xs text-muted">
-          © 2024 XtreamPulsar. Tüm hakları saklıdır.
+          {t('auth.copyright')}
         </div>
       </div>
 
@@ -181,13 +183,13 @@ export function LoginPage() {
           {!requires2FA ? (
             <>
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-100 mb-1">Hoş geldiniz</h2>
-                <p className="text-muted text-sm">Devam etmek için giriş yapın</p>
+                <h2 className="text-2xl font-bold text-slate-100 mb-1">{t('auth.welcome')}</h2>
+                <p className="text-muted text-sm">{t('auth.loginToContinue')}</p>
               </div>
 
               <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
                 <div>
-                  <label className="label">Kullanıcı Adı</label>
+                  <label className="label">{t('auth.username')}</label>
                   <input
                     type="text"
                     className="input"
@@ -200,7 +202,7 @@ export function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="label">Şifre</label>
+                  <label className="label">{t('auth.password')}</label>
                   <div className="relative">
                     <input
                       type={showPass ? 'text' : 'password'}
@@ -228,10 +230,10 @@ export function LoginPage() {
                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Giriş yapılıyor…
+                      {t('auth.loggingIn')}
                     </>
                   ) : (
-                    'Giriş Yap'
+                    t('auth.login')
                   )}
                 </button>
               </form>
@@ -242,13 +244,13 @@ export function LoginPage() {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                   <SmartphoneNfc className="w-7 h-7 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-100 mb-1">İki Faktörlü Doğrulama</h2>
-                <p className="text-muted text-sm">Authenticator uygulamanızdaki 6 haneli kodu girin</p>
+                <h2 className="text-2xl font-bold text-slate-100 mb-1">{t('auth.twoFactorTitle')}</h2>
+                <p className="text-muted text-sm">{t('auth.twoFactorSubtitle')}</p>
               </div>
 
               <form onSubmit={(e) => void handle2FASubmit(e)} className="space-y-5">
                 <div>
-                  <label className="label">Doğrulama Kodu</label>
+                  <label className="label">{t('auth.verificationCode')}</label>
                   <input
                     type="text"
                     className="input text-center text-xl tracking-widest"
@@ -269,10 +271,10 @@ export function LoginPage() {
                   {verify2FA.isPending ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Doğrulanıyor…
+                      {t('auth.verifying')}
                     </>
                   ) : (
-                    'Doğrula'
+                    t('auth.verify')
                   )}
                 </button>
 
@@ -281,7 +283,7 @@ export function LoginPage() {
                   onClick={() => { setRequires2FA(false); setTempToken(''); setTotpCode(''); }}
                   className="w-full text-center text-sm text-muted hover:text-slate-300 transition-colors"
                 >
-                  Geri dön
+                  {t('auth.goBack')}
                 </button>
               </form>
             </>
@@ -289,7 +291,7 @@ export function LoginPage() {
 
           <div className="mt-8 p-4 rounded-xl bg-surface border border-border">
             <p className="text-xs text-muted text-center">
-              {publicConfig.panelName} Admin Panel v1.0 •{' '}
+              {publicConfig.panelName} {t('auth.adminPanelTag')}{' '}
               <span className="text-primary">API v1</span>
             </p>
           </div>

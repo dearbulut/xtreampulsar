@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Tv2, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import toast from 'react-hot-toast';
 
 export function ClientLoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clientLogin = useAuthStore((s) => s.clientLogin);
 
@@ -22,7 +24,7 @@ export function ClientLoginPage() {
       void navigate({ to: '/client/dashboard' });
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Kullanıcı adı veya şifre hatalı');
+      toast.error(msg ?? t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -36,19 +38,19 @@ export function ClientLoginPage() {
             <Tv2 className="w-6 h-6 text-primary" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-100">Abone Girişi</h1>
-            <p className="text-sm text-muted mt-1">XtreamPulsar</p>
+            <h1 className="text-xl font-bold text-slate-100">{t('auth.clientTitle')}</h1>
+            <p className="text-sm text-muted mt-1">{t('auth.clientSubtitle')}</p>
           </div>
         </div>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="card p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Kullanıcı Adı</label>
+            <label className="text-xs font-medium text-muted">{t('auth.username')}</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Kullanıcı adı"
+              placeholder={t('auth.usernamePlaceholder')}
               className="input w-full"
               autoComplete="username"
               required
@@ -56,13 +58,13 @@ export function ClientLoginPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Şifre</label>
+            <label className="text-xs font-medium text-muted">{t('auth.password')}</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Şifre"
+                placeholder={t('auth.passwordPlaceholder')}
                 className="input w-full pr-10"
                 autoComplete="current-password"
                 required
@@ -82,7 +84,7 @@ export function ClientLoginPage() {
             disabled={loading || !username || !password}
             className="btn-primary w-full"
           >
-            {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+            {loading ? t('auth.loggingIn') : t('auth.login')}
           </button>
         </form>
       </div>

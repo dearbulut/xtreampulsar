@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Tv2, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import toast from 'react-hot-toast';
 
 export function ResellerLoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const resellerLogin = useAuthStore((s) => s.resellerLogin);
 
@@ -21,7 +23,7 @@ export function ResellerLoginPage() {
       await resellerLogin(username, password);
       void navigate({ to: '/reseller/dashboard' });
     } catch {
-      toast.error('Kullanıcı adı veya şifre hatalı');
+      toast.error(t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -35,19 +37,19 @@ export function ResellerLoginPage() {
             <Tv2 className="w-6 h-6 text-primary" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-100">Bayi Paneli</h1>
-            <p className="text-sm text-muted mt-1">XtreamPulsar Reseller</p>
+            <h1 className="text-xl font-bold text-slate-100">{t('auth.resellerTitle')}</h1>
+            <p className="text-sm text-muted mt-1">{t('auth.resellerSubtitle')}</p>
           </div>
         </div>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="card p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Kullanıcı Adı</label>
+            <label className="text-xs font-medium text-muted">{t('auth.username')}</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Kullanıcı adı"
+              placeholder={t('auth.usernamePlaceholder')}
               className="input w-full"
               autoComplete="username"
               required
@@ -55,13 +57,13 @@ export function ResellerLoginPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted">Şifre</label>
+            <label className="text-xs font-medium text-muted">{t('auth.password')}</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Şifre"
+                placeholder={t('auth.passwordPlaceholder')}
                 className="input w-full pr-10"
                 autoComplete="current-password"
                 required
@@ -81,7 +83,7 @@ export function ResellerLoginPage() {
             disabled={loading || !username || !password}
             className="btn-primary w-full"
           >
-            {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+            {loading ? t('auth.loggingIn') : t('auth.login')}
           </button>
         </form>
       </div>

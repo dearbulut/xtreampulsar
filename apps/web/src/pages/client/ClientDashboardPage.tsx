@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Tv2, Radio, KeyRound, Copy, Check, Eye, EyeOff,
   CalendarClock, Users, Clock, Wifi, ListVideo,
@@ -16,6 +17,7 @@ import toast from 'react-hot-toast';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const map: Record<string, string> = {
     ACTIVE: 'bg-emerald-500/15 text-emerald-400',
     DISABLED: 'bg-slate-500/15 text-slate-400',
@@ -23,10 +25,10 @@ function StatusBadge({ status }: { status: string }) {
     EXPIRED: 'bg-amber-500/15 text-amber-400',
   };
   const labelMap: Record<string, string> = {
-    ACTIVE: 'Aktif',
-    DISABLED: 'Pasif',
-    BANNED: 'Banlı',
-    EXPIRED: 'Süresi Dolmuş',
+    ACTIVE: t('client.statusActive'),
+    DISABLED: t('client.statusDisabled'),
+    BANNED: t('client.statusBanned'),
+    EXPIRED: t('client.statusExpired'),
   };
   return (
     <span className={cn('text-xs px-2 py-0.5 rounded font-medium', map[status] ?? 'bg-surface-2 text-muted')}>
@@ -58,12 +60,13 @@ function InfoRow({ icon: Icon, label, children }: { icon: React.ElementType; lab
 }
 
 function CopyRow({ label, value }: { label: string; value: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     void navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-    toast.success('Kopyalandı');
+    toast.success(t('client.copied'));
   };
   return (
     <div className="space-y-1">
@@ -84,10 +87,11 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 // ─── Subscription card ───────────────────────────────────────────────────────
 
 function SubscriptionCard() {
+  const { t } = useTranslation();
   const { data: me, isLoading } = useClientMe();
 
   if (isLoading || !me) {
-    return <div className="card p-5 text-sm text-muted">Yükleniyor…</div>;
+    return <div className="card p-5 text-sm text-muted">{t('common.loading')}</div>;
   }
 
   const dl = daysLeft(me.expiresAt);
@@ -98,36 +102,36 @@ function SubscriptionCard() {
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
           <Tv2 className="w-4 h-4 text-primary" />
-          Abonelik
+          {t('client.subscription')}
         </h2>
         <div className="flex items-center gap-2">
           {me.isTrial && (
-            <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-500/15 text-blue-400">Deneme</span>
+            <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-500/15 text-blue-400">{t('client.trial')}</span>
           )}
           <StatusBadge status={me.status} />
         </div>
       </div>
 
       <div>
-        <InfoRow icon={CalendarClock} label="Bitiş Tarihi">
+        <InfoRow icon={CalendarClock} label={t('client.expiry')}>
           {expired ? (
-            <span className="text-danger font-medium">Süresi doldu</span>
+            <span className="text-danger font-medium">{t('client.expired')}</span>
           ) : (
             <span>
               {formatDate(me.expiresAt)}
               <span className={cn('ml-1.5 text-xs', dl < 7 ? 'text-danger' : dl < 30 ? 'text-warning' : 'text-muted')}>
-                ({dl} gün)
+                ({t('client.daysLeft', { days: dl })})
               </span>
             </span>
           )}
         </InfoRow>
-        <InfoRow icon={Wifi} label="Aktif Bağlantı">
+        <InfoRow icon={Wifi} label={t('client.activeConnections')}>
           <span className="font-mono">{me.activeConnections} / {me.maxConnections}</span>
         </InfoRow>
-        <InfoRow icon={Users} label="Maks. Bağlantı">
+        <InfoRow icon={Users} label={t('client.maxConnections')}>
           <span className="font-mono">{me.maxConnections}</span>
         </InfoRow>
-        <InfoRow icon={Clock} label="Oluşturulma">
+        <InfoRow icon={Clock} label={t('client.createdAt')}>
           {formatDate(me.createdAt)}
         </InfoRow>
       </div>
@@ -138,6 +142,7 @@ function SubscriptionCard() {
 // ─── Playlist card ───────────────────────────────────────────────────────────
 
 function PlaylistCard() {
+  const { t } = useTranslation();
   const { data: me } = useClientMe();
   const storedPassword = useAuthStore((s) => s.clientPassword);
   const [pw, setPw] = useState(storedPassword ?? '');
@@ -159,17 +164,17 @@ function PlaylistCard() {
     <div className="card p-5 space-y-4">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
         <ListVideo className="w-4 h-4 text-primary" />
-        Playlist Bağlantıları
+        {t('client.playlist')}
       </h2>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted">Şifre</label>
+        <label className="text-xs font-medium text-muted">{t('client.password')}</label>
         <div className="relative">
           <input
             type={showPw ? 'text' : 'password'}
             value={pw}
             onChange={(e) => setPw(e.target.value)}
-            placeholder="Playlist şifreniz"
+            placeholder={t('client.playlistPasswordPlaceholder')}
             className="input w-full pr-10 font-mono text-sm"
             autoComplete="off"
           />
@@ -185,13 +190,13 @@ function PlaylistCard() {
 
       {urls ? (
         <div className="space-y-2">
-          <CopyRow label="M3U" value={urls.m3u} />
-          <CopyRow label="Player API" value={urls.player} />
-          <CopyRow label="EPG (XMLTV)" value={urls.epg} />
+          <CopyRow label={t('client.m3u')} value={urls.m3u} />
+          <CopyRow label={t('client.playerApi')} value={urls.player} />
+          <CopyRow label={t('client.epg')} value={urls.epg} />
         </div>
       ) : (
         <p className="text-xs text-muted bg-surface-2 rounded-lg px-3 py-2.5">
-          Bağlantıların oluşması için şifrenizi girin.
+          {t('client.enterPasswordHint')}
         </p>
       )}
     </div>
@@ -201,24 +206,25 @@ function PlaylistCard() {
 // ─── Active connections card ─────────────────────────────────────────────────
 
 function ConnectionsCard() {
+  const { t } = useTranslation();
   const { data: connections = [], isLoading } = useClientConnections();
 
   return (
     <div className="card p-5 space-y-3">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
         <Radio className="w-4 h-4 text-primary" />
-        Aktif Bağlantılar
+        {t('client.activeConnectionsTitle')}
         {connections.length > 0 && (
           <span className="text-xs text-muted font-normal">({connections.length})</span>
         )}
       </h2>
 
       {isLoading ? (
-        <div className="text-sm text-muted py-4 text-center">Yükleniyor…</div>
+        <div className="text-sm text-muted py-4 text-center">{t('common.loading')}</div>
       ) : connections.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-muted">
           <Wifi className="w-7 h-7 opacity-30" />
-          <p className="text-sm">Aktif bağlantı yok</p>
+          <p className="text-sm">{t('client.noConnections')}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -226,8 +232,8 @@ function ConnectionsCard() {
             <thead className="border-b border-border">
               <tr>
                 <th className="text-left px-2 py-2 text-xs font-medium text-muted">IP</th>
-                <th className="text-left px-2 py-2 text-xs font-medium text-muted">Kanal</th>
-                <th className="text-right px-2 py-2 text-xs font-medium text-muted">Süre</th>
+                <th className="text-left px-2 py-2 text-xs font-medium text-muted">{t('client.channel')}</th>
+                <th className="text-right px-2 py-2 text-xs font-medium text-muted">{t('client.duration')}</th>
               </tr>
             </thead>
             <tbody>
@@ -251,6 +257,7 @@ function ConnectionsCard() {
 // ─── Change password card ────────────────────────────────────────────────────
 
 function ChangePasswordCard() {
+  const { t } = useTranslation();
   const changePassword = useClientChangePassword();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -262,7 +269,7 @@ function ChangePasswordCard() {
       await changePassword.mutateAsync({ currentPassword, newPassword });
       // Playlist URL'lerinin taze şifreyle çalışması için bellekteki şifreyi güncelle.
       useAuthStore.setState({ clientPassword: newPassword });
-      toast.success('Şifre değiştirildi');
+      toast.success(t('client.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
     } catch {
@@ -274,12 +281,12 @@ function ChangePasswordCard() {
     <div className="card p-5 space-y-4">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
         <KeyRound className="w-4 h-4 text-primary" />
-        Şifre Değiştir
+        {t('client.changePassword')}
       </h2>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted">Mevcut Şifre</label>
+          <label className="text-xs font-medium text-muted">{t('client.currentPassword')}</label>
           <input
             type="password"
             value={currentPassword}
@@ -290,7 +297,7 @@ function ChangePasswordCard() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted">Yeni Şifre</label>
+          <label className="text-xs font-medium text-muted">{t('client.newPassword')}</label>
           <input
             type="password"
             value={newPassword}
@@ -306,7 +313,7 @@ function ChangePasswordCard() {
           disabled={changePassword.isPending || !currentPassword || !newPassword}
           className="btn-primary w-full text-sm"
         >
-          {changePassword.isPending ? 'Kaydediliyor…' : 'Şifreyi Değiştir'}
+          {changePassword.isPending ? t('client.saving') : t('client.changePasswordBtn')}
         </button>
       </form>
     </div>
@@ -316,15 +323,16 @@ function ChangePasswordCard() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function ClientDashboardPage() {
+  const { t } = useTranslation();
   const clientUser = useAuthStore((s) => s.clientUser);
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-lg font-semibold text-slate-100">
-          Hoş Geldiniz, <span className="text-primary">{clientUser?.username}</span>
+          {t('client.welcome')}, <span className="text-primary">{clientUser?.username}</span>
         </h1>
-        <p className="text-sm text-muted">Abone Paneli</p>
+        <p className="text-sm text-muted">{t('client.panelSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

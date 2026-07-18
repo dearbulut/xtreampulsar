@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { Outlet, useNavigate } from '@tanstack/react-router';
 import { Tv2, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 
 export function ClientLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clientUser = useAuthStore((s) => s.clientUser);
   const clientLogout = useAuthStore((s) => s.clientLogout);
@@ -29,7 +31,7 @@ export function ClientLayout() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Çıkış
+            {t('client.logout')}
           </button>
         </div>
       </header>
