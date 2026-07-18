@@ -29,6 +29,18 @@
       "management": "MANAGEMENT"
     }
   },
+  "activityLog": {
+    "LOGIN": "Logged in",
+    "LOGOUT": "Logged out",
+    "STREAM_START": "Started watching a stream",
+    "STREAM_END": "Finished watching a stream",
+    "STREAM_STOP": "Stream stopped",
+    "CREATED": "Account created",
+    "PASSWORD_CHANGED": "Password changed",
+    "PASSWORD_CHANGE": "Password changed",
+    "SUSPENDED": "Account suspended",
+    "REGISTER": "Account created"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

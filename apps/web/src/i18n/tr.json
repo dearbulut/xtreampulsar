@@ -29,6 +29,18 @@
       "management": "YÖNETİM"
     }
   },
+  "activityLog": {
+    "LOGIN": "Giriş yapıldı",
+    "LOGOUT": "Çıkış yapıldı",
+    "STREAM_START": "Stream izlemeye başladı",
+    "STREAM_END": "Stream izlemeyi bitirdi",
+    "STREAM_STOP": "Stream durduruldu",
+    "CREATED": "Hesap oluşturuldu",
+    "PASSWORD_CHANGED": "Şifre değiştirildi",
+    "PASSWORD_CHANGE": "Şifre değiştirildi",
+    "SUSPENDED": "Hesap askıya alındı",
+    "REGISTER": "Hesap oluşturuldu"
+  },
   "common": {
     "save": "Kaydet",
     "cancel": "İptal",
