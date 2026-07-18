@@ -16,7 +16,7 @@ import {
 import type { ResellerUserRow } from '@/hooks/useResellerPanel';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useSettings } from '@/hooks/useSettings';
-import { cn, daysLeft, formatDate } from '@/lib/utils';
+import { cn, daysLeft, formatDate, copyToClipboard } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
@@ -102,7 +102,7 @@ export function ResellerUserDrawer({
   const xtreamBase = `http://${xtreamHost}:${xtreamPort}`;
 
   const copy = useCallback((text: string, key: string) => {
-    void navigator.clipboard.writeText(text);
+    void copyToClipboard(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
     toast.success(t('reseller.drawer.toastCopied'));

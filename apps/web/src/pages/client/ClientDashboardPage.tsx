@@ -11,7 +11,7 @@ import {
   useClientChangePassword,
   type ClientConnection,
 } from '@/hooks/useClientPanel';
-import { cn, daysLeft, formatDate } from '@/lib/utils';
+import { cn, daysLeft, formatDate, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const copy = () => {
-    void navigator.clipboard.writeText(value);
+    void copyToClipboard(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
     toast.success(t('client.copied'));

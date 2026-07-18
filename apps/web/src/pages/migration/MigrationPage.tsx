@@ -34,7 +34,7 @@ import {
   type DumpPreview,
   type DumpImportOptions,
 } from '@/hooks/useMigration';
-import { cn } from '@/lib/utils';
+import { cn, copyToClipboard } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={() => {
-        void navigator.clipboard.writeText(text);
+        void copyToClipboard(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}

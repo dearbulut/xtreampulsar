@@ -24,7 +24,7 @@ import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { Modal } from '@/components/ui/Modal';
 import { ResellerUserDrawer } from './ResellerUserDrawer';
 import { ResellerQuickCreateModal } from './ResellerQuickCreateModal';
-import { cn, daysLeft, formatDate } from '@/lib/utils';
+import { cn, daysLeft, formatDate, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 type DurationKey = `h:${number}` | `d:${number}` | 'custom';
@@ -120,7 +120,7 @@ function _QuickCreateModal({ onClose, credits }: { onClose: () => void; credits:
   })();
 
   const copy = useCallback((text: string, key: string) => {
-    void navigator.clipboard.writeText(text);
+    void copyToClipboard(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
     toast.success(t('reseller.dashboard.toastCopied'));

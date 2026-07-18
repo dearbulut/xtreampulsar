@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { copyToClipboard } from '@/lib/utils';
 import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
@@ -701,7 +702,7 @@ function ApiKeyTab() {
 
   const handleCopy = () => {
     if (!newKey) return;
-    void navigator.clipboard.writeText(newKey).then(() => {
+    void copyToClipboard(newKey).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });

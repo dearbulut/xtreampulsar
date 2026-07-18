@@ -12,7 +12,7 @@ import {
 import type { QuickCreateResult } from '@/hooks/useResellerPanel';
 import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { Modal } from '@/components/ui/Modal';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -37,7 +37,7 @@ function ResultScreen({
   const [copied, setCopied] = useState<string | null>(null);
 
   const copy = useCallback((text: string, key: string) => {
-    void navigator.clipboard.writeText(text);
+    void copyToClipboard(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
     toast.success(t('reseller.quick.toastCopied'));

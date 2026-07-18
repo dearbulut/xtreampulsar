@@ -26,7 +26,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useBouquets } from '@/hooks/useBouquets';
 import type { User } from '@/types';
-import { daysLeft, formatDate, cn } from '@/lib/utils';
+import { daysLeft, formatDate, cn, copyToClipboard } from '@/lib/utils';
 
 interface UserStats {
   totalDurationSeconds: number;
@@ -180,7 +180,7 @@ export function UsersPage() {
   };
 
   const copyCredentials = (text: string, id: string) => {
-    void navigator.clipboard.writeText(text);
+    void copyToClipboard(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -892,7 +892,7 @@ export function UsersPage() {
                           className="text-muted hover:text-slate-200 transition-colors p-1"
                           title={t('users.copy')}
                           onClick={() => {
-                            void navigator.clipboard.writeText(r.newPassword);
+                            void copyToClipboard(r.newPassword);
                             toast.success(t('users.passwordCopied', { username: r.username }));
                           }}
                         >
@@ -909,7 +909,7 @@ export function UsersPage() {
                 className="btn-secondary text-sm flex items-center gap-2"
                 onClick={() => {
                   const text = bulkPasswordResults.map((r) => `${r.username}\t${r.newPassword}`).join('\n');
-                  void navigator.clipboard.writeText(text);
+                  void copyToClipboard(text);
                   toast.success(t('users.allCopied'));
                 }}
               >
@@ -1126,7 +1126,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                     <div key={label} className="flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5">
                       <span className="text-[10px] font-semibold text-primary-light w-16 shrink-0">{label}</span>
                       <span className="font-mono text-[11px] text-slate-300 truncate flex-1" title={url}>{url}</span>
-                      <button onClick={() => { void navigator.clipboard.writeText(url); setCopiedUrl(label); setTimeout(() => setCopiedUrl(null), 1500); }} className="btn-ghost p-1 shrink-0" title={t('users.copy')}>
+                      <button onClick={() => { void copyToClipboard(url); setCopiedUrl(label); setTimeout(() => setCopiedUrl(null), 1500); }} className="btn-ghost p-1 shrink-0" title={t('users.copy')}>
                         {copiedUrl === label ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
@@ -1535,7 +1535,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
 
   const copyUrl = (token: string) => {
     const url = `${getServerUrl()}/playlist/${token}`;
-    void navigator.clipboard.writeText(url);
+    void copyToClipboard(url);
     setCopiedKey(`token:${token}`);
     setTimeout(() => setCopiedKey(null), 1500);
     toast.success(t('users.playlistUrlCopied'));
@@ -1543,7 +1543,7 @@ function PlaylistTab({ userId, username }: { userId: string; username: string })
 
   const copyStdUrl = (token: string) => {
     const url = `${xtreamBaseUrl}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(token)}&type=m3u_plus`;
-    void navigator.clipboard.writeText(url);
+    void copyToClipboard(url);
     setCopiedKey(`std:${token}`);
     setTimeout(() => setCopiedKey(null), 1500);
     toast.success(t('users.standardUrlCopied'));
@@ -1856,7 +1856,7 @@ function QuickCreateModal({ onClose, mutation }: QuickCreateModalProps) {
       `${t('users.expiry')}: ${new Date(result.user.expiresAt).toLocaleDateString('tr-TR')}`,
       `M3U URL: ${result.m3uUrl}`,
     ].join('\n');
-    void navigator.clipboard.writeText(text);
+    void copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success(t('users.infoCopied'));
@@ -2155,7 +2155,7 @@ function TrialCreateModal({ onClose, mutation }: TrialCreateModalProps) {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => { void navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+              onClick={() => { void copyToClipboard(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
               className="btn-secondary text-sm flex-1"
             >
               {copied ? t('users.copied') : t('users.copy')}

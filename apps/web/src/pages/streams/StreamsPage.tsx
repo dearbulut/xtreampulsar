@@ -61,7 +61,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import type { Stream } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, copyToClipboard } from '@/lib/utils';
 import { useStreamNowPlaying } from '@/hooks/useEPG';
 
 type StreamType = 'LIVE' | 'VOD' | 'SERIES';
@@ -1001,7 +1001,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
 
             <div className="flex justify-end gap-2 pt-1">
               <button
-                onClick={() => { void navigator.clipboard.writeText(previewInfo.hlsUrl); toast.success(t('streams.copied')); }}
+                onClick={() => { void copyToClipboard(previewInfo.hlsUrl); toast.success(t('streams.copied')); }}
                 className="btn-ghost text-xs text-blue-400 flex items-center gap-1"
               >
                 <Copy className="w-3.5 h-3.5" />
