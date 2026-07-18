@@ -19,6 +19,15 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+function applyHtmlLang(lng: string) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lng;
+    document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
+  }
+}
+applyHtmlLang(savedLang);
+i18n.on('languageChanged', applyHtmlLang);
+
 export default i18n;
 
 export const LANGUAGES = [

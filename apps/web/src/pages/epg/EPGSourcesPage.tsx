@@ -12,7 +12,7 @@ import {
   useMassAssignEPG,
 } from '@/hooks/useEPG';
 import type { EPGSource } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, dateLocale } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 
 export function EPGSourcesPage() {
@@ -86,7 +86,7 @@ export function EPGSourcesPage() {
       header: t('epg.sources.colUpdatedAt'),
       render: (row) =>
         row.updatedAt
-          ? new Date(row.updatedAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          ? new Date(row.updatedAt).toLocaleDateString(dateLocale(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
           : '-',
     },
     {

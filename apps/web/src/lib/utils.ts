@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import i18n from '@/i18n/i18n';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,8 +33,13 @@ export function daysLeft(expiresAt: string): number {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+export function dateLocale(): string {
+  const l = i18n.language || 'tr';
+  return l === 'tr' ? 'tr-TR' : l === 'de' ? 'de-DE' : l === 'ar' ? 'ar' : 'en-GB';
+}
+
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('tr-TR', {
+  return new Date(iso).toLocaleDateString(dateLocale(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -41,7 +47,7 @@ export function formatDate(iso: string): string {
 }
 
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('tr-TR', {
+  return new Date(iso).toLocaleString(dateLocale(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

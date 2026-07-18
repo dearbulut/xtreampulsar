@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle, Loader2, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import { TagInput } from '@/components/ui/TagInput';
 import { useEPGSources, useMassAssignEPG, useMassAssignJobStatus } from '@/hooks/useEPG';
-import { cn } from '@/lib/utils';
+import { cn, dateLocale } from '@/lib/utils';
 
 export function EPGMassAssignPage() {
   const { t } = useTranslation();
@@ -187,7 +187,7 @@ export function EPGMassAssignPage() {
           {job.finishedAt && (
             <div className="flex items-center gap-1 mt-3 text-xs text-muted">
               <Clock className="w-3 h-3" />
-              {t('epg.massAssign.finishedAt', { time: new Date(job.finishedAt).toLocaleTimeString('tr-TR') })}
+              {t('epg.massAssign.finishedAt', { time: new Date(job.finishedAt).toLocaleTimeString(dateLocale()) })}
             </div>
           )}
         </div>

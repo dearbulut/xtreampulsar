@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Clock, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import { cn } from '@/lib/utils';
+import { cn, dateLocale } from '@/lib/utils';
 import { useEPGMappings } from '@/hooks/useEPG';
 
 interface Programme {
@@ -244,9 +244,9 @@ export function EpgGuidePage() {
         >
           <div className="text-sm font-semibold text-slate-100 mb-1">{tooltip.prog.title}</div>
           <div className="text-xs text-muted mb-1.5">
-            {new Date(tooltip.prog.start).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(tooltip.prog.start).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}
             {' → '}
-            {new Date(tooltip.prog.stop).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(tooltip.prog.stop).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}
             {' • '}
             {t('epg.guide.durationMin', { n: tooltip.prog.durationMin })}
           </div>
