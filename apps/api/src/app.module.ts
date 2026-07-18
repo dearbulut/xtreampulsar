@@ -39,6 +39,7 @@ import { SearchModule } from './search/search.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { ControlModule } from './control/control.module';
 import { SupportModule } from './support/support.module';
+import { ClientModule } from './client/client.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { SupportModule } from './support/support.module';
     WebhookModule,
     ControlModule,
     SupportModule,
+    ClientModule,
   ],
   controllers: [AppController],
   providers: [

@@ -377,6 +377,87 @@ export class AuthService {
     });
   }
 
+  // Son kullanıcı (client) portalı girişi. resellerLogin şablonu; User + RefreshToken
+  // tablolarını kullanır. findByCredentials'ı KULLANMAZ (o playlist-token'ı da kabul
+  // ederdi) — portal gerçek şifreyi doğrular.
+  async clientLogin(dto: LoginDto, ip = '') {
+    void ip;
+    const user = await this.prisma.user.findFirst({
+      where: { username: dto.username, deletedAt: null },
+    });
+
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      const exp = user.expiresAt ? user.expiresAt.toISOString().slice(0, 10) : '';
+      throw new ForbiddenException(
+        `Abonelik ${user.status.toLowerCase()}${exp ? ` (bitiş: ${exp})` : ''}`,
+      );
+    }
+
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: 'USER',
+      type: 'user',
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const rawRefresh = crypto.randomBytes(64).toString('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefresh).digest('hex');
+
+    await this.prisma.refreshToken.create({
+      data: {
+        token: hashedRefresh,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken: rawRefresh,
+      user: {
+        id: user.id,
+        username: user.username,
+        status: user.status,
+        expiresAt: user.expiresAt,
+        maxConnections: user.maxConnections,
+      },
+    };
+  }
+
+  // Client refresh: resellerRefresh şablonu ama User RefreshToken tablosu.
+  async clientRefresh(rawToken: string) {
+    const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { token: hash },
+      include: { user: true },
+    });
+
+    if (!stored || stored.isRevoked || stored.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (stored.user.status !== 'ACTIVE') {
+      throw new ForbiddenException(`Abonelik ${stored.user.status.toLowerCase()}`);
+    }
+
+    const payload = {
+      sub: stored.user.id,
+      username: stored.user.username,
+      role: 'USER',
+      type: 'user',
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+
+    return { accessToken };
+  }
+
   private async issueTokens(user: { id: string; username: string; role: string }) {
     const payload = { sub: user.id, username: user.username, role: user.role };
 

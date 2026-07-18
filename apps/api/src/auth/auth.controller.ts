@@ -134,4 +134,18 @@ export class AuthController {
   async resellerLogout(@Body() dto: RefreshTokenDto): Promise<void> {
     await this.authService.resellerLogout(dto.refreshToken);
   }
+
+  @Post('client/login')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  clientLogin(@Body() dto: LoginDto, @Req() req: Request) {
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
+    return this.authService.clientLogin(dto, ip);
+  }
+
+  @Post('client/refresh')
+  @HttpCode(HttpStatus.OK)
+  clientRefresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.clientRefresh(dto.refreshToken);
+  }
 }
