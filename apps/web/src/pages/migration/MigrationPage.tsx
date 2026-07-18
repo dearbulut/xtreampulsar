@@ -228,7 +228,7 @@ export function MigrationPage() {
       if (isDumpSource && dumpJobId) {
         await startDumpImport.mutateAsync({ jobId: dumpJobId, options: importOptions });
       } else if (source === 'm3u' && m3uFile) {
-        const res = await importM3U.mutateAsync({ file: m3uFile });
+        const res = await importM3U.mutateAsync({ file: m3uFile, conflictMode: importOptions.conflictMode });
         setM3uJobId(res.data.data.jobId);
       } else if (source === 'xtream_api') {
         const res = await importXtream.mutateAsync({

@@ -188,14 +188,27 @@ export class MigrationService implements OnModuleInit {
         const categoryId = await ensureCategory(entry.groupTitle || 'Uncategorized', entry.streamType);
         const existing = await this.prisma.stream.findFirst({
           where: { primaryUrl: entry.url, categoryId },
-          select: { id: true },
+          select: { id: true, name: true, tvgId: true, tvgLogo: true },
         });
 
+        const m3uMode = dto.conflictMode ?? 'OVERWRITE';
         if (existing) {
-          await this.prisma.stream.update({
-            where: { id: existing.id },
-            data: { name: entry.name, tvgId: entry.tvgId || null, tvgLogo: entry.logo || null },
-          });
+          if (m3uMode === 'SKIP') {
+            /* mevcut kayıt → atla */
+          } else if (m3uMode === 'MERGE') {
+            const patch: Record<string, unknown> = {};
+            if (!existing.name && entry.name) patch.name = entry.name;
+            if (!existing.tvgId && entry.tvgId) patch.tvgId = entry.tvgId;
+            if (!existing.tvgLogo && entry.logo) patch.tvgLogo = entry.logo;
+            if (Object.keys(patch).length > 0) {
+              await this.prisma.stream.update({ where: { id: existing.id }, data: patch as Parameters<typeof this.prisma.stream.update>[0]['data'] });
+            }
+          } else {
+            await this.prisma.stream.update({
+              where: { id: existing.id },
+              data: { name: entry.name, tvgId: entry.tvgId || null, tvgLogo: entry.logo || null },
+            });
+          }
         } else {
           await this.prisma.stream.create({
             data: {

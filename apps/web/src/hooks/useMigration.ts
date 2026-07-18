@@ -141,10 +141,11 @@ export function usePreviewM3U() {
 export function useImportM3U() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, dryRun }: { file: File; dryRun?: boolean }) => {
+    mutationFn: ({ file, dryRun, conflictMode }: { file: File; dryRun?: boolean; conflictMode?: 'SKIP' | 'OVERWRITE' | 'MERGE' }) => {
       const form = new FormData();
       form.append('file', file);
       if (dryRun !== undefined) form.append('dryRun', String(dryRun));
+      if (conflictMode) form.append('conflictMode', conflictMode);
       return api.post<{ success: boolean; data: { jobId: string } }>(
         '/migration/m3u/import',
         form,

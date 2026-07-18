@@ -12,4 +12,8 @@ export class ImportM3uDto {
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean = false;
+
+  @IsOptional()
+  @IsIn(['SKIP', 'OVERWRITE', 'MERGE'])
+  conflictMode?: 'SKIP' | 'OVERWRITE' | 'MERGE';
 }
