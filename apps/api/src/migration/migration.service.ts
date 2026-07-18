@@ -946,6 +946,9 @@ export class MigrationService implements OnModuleInit {
           } else if (table === 'packages' && options.importPackages) {
             shouldProcess = true;
             handler = (row, cols) => this.importXtreamUIPackage(row, cols, options);
+          } else if (table === 'epg' && options.importEpgMappings) {
+            shouldProcess = true;
+            handler = (row, cols) => this.importXtreamUIEpg(row, cols, options);
           }
         } else {
           // XUI.ONE
@@ -1185,6 +1188,7 @@ export class MigrationService implements OnModuleInit {
     const categoryIdRaw = this.getCol(row, columns, 'category_id', 2);
     const sourceRaw = this.getCol(row, columns, 'stream_source', 3) ?? '';
     const tvgLogo = this.getCol(row, columns, 'stream_icon', 4) ?? null;
+    const tvgId = this.getCol(row, columns, 'epg_channel_id', -1);
 
     // Resolve primary URL
     let primaryUrl = sourceRaw;
@@ -1209,10 +1213,10 @@ export class MigrationService implements OnModuleInit {
     if (options.conflictMode === 'OVERWRITE') {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (existing) {
-        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId } });
+        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId, tvgId: tvgId || null } });
         streamId = existing.id;
       } else {
-        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId }, select: { id: true } });
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
         streamId = created.id;
       }
     } else {
@@ -1220,7 +1224,7 @@ export class MigrationService implements OnModuleInit {
       if (existing) {
         streamId = existing.id;
       } else {
-        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId }, select: { id: true } });
+        const created = await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null }, select: { id: true } });
         streamId = created.id;
       }
     }
@@ -1296,6 +1300,27 @@ export class MigrationService implements OnModuleInit {
         pendingUserBouquets.push({ username, bouquetDumpIds });
       }
     }
+  }
+
+  private async importXtreamUIEpg(
+    row: (string | null)[],
+    columns: string[] | null,
+    _options: DumpImportOptions,
+  ): Promise<void> {
+    const name = this.getCol(row, columns, 'epg_name', 1) ?? this.getCol(row, columns, 'name', 1);
+    const url = this.getCol(row, columns, 'epg_url', -1)
+      ?? this.getCol(row, columns, 'epg_source', -1)
+      ?? this.getCol(row, columns, 'server_url', -1)
+      ?? this.getCol(row, columns, 'url', -1);
+
+    // URL'siz EPG kaynağı anlamsız.
+    if (!url) return;
+
+    // Duplicate: aynı XMLTV URL zaten varsa atla.
+    const existing = await this.prisma.ePGSource.findFirst({ where: { xmltvUrl: url }, select: { id: true } });
+    if (existing) return;
+
+    await this.prisma.ePGSource.create({ data: { name: name || 'Imported EPG', xmltvUrl: url } });
   }
 
   private async importXtreamUIReseller(
@@ -1460,6 +1485,7 @@ export class MigrationService implements OnModuleInit {
     const tvgLogo = this.getCol(row, columns, 'stream_icon', 4)
       ?? this.getCol(row, columns, 'logo', 4)
       ?? null;
+    const tvgId = this.getCol(row, columns, 'epg_channel_id', -1);
 
     let primaryUrl = sourceRaw;
     if (sourceRaw.trimStart().startsWith('[')) {
@@ -1482,14 +1508,14 @@ export class MigrationService implements OnModuleInit {
     if (options.conflictMode === 'OVERWRITE') {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (existing) {
-        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId } });
+        await this.prisma.stream.update({ where: { id: existing.id }, data: { name, tvgLogo, categoryId, tvgId: tvgId || null } });
       } else {
-        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null } });
       }
     } else {
       const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
       if (!existing) {
-        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId } });
+        await this.prisma.stream.create({ data: { name, primaryUrl, tvgLogo, categoryId, tvgId: tvgId || null } });
       }
     }
   }
