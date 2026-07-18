@@ -159,7 +159,7 @@ export function ResellersPage() {
     <div>
       <PageHeader
         title={t('nav.resellers')}
-        description={t('resellersAdmin.resellerCount', { n: resellers?.length ?? 0 })}
+        description={t('resellersAdmin.resellerCount', { count: resellers?.length ?? 0 })}
         actions={
           <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
             <Plus className="w-4 h-4" />

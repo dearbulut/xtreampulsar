@@ -114,7 +114,7 @@ export function LiveConnectionsPage() {
     <div>
       <PageHeader
         title={t('nav.liveConnections')}
-        description={t('liveConnections.activeConnections', { n: data?.total ?? 0 })}
+        description={t('liveConnections.activeConnections', { count: data?.total ?? 0 })}
         actions={
           <>
             <button

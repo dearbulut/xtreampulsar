@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Outlet, Link, useNavigate } from '@tanstack/react-router';
 import {
   Tv2, LayoutDashboard, Users, LogOut, CreditCard, Settings, Network,
@@ -30,12 +31,12 @@ const NAV = [
 
 // ─── Relative time helper ────────────────────────────────────────────────────
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: TFunction): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return `${diff}s önce`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}dk önce`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}sa önce`;
-  return `${Math.floor(diff / 86400)}g önce`;
+  if (diff < 60) return t('layout.justNow');
+  if (diff < 3600) return t('layout.minutesAgo', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t('layout.hoursAgo', { n: Math.floor(diff / 3600) });
+  return t('layout.daysAgo', { n: Math.floor(diff / 86400) });
 }
 
 // ─── Notification icon by type ───────────────────────────────────────────────
@@ -121,7 +122,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
                   )}
                 </div>
                 <p className="text-xs text-muted mt-0.5 line-clamp-2">{n.message}</p>
-                <span className="text-[11px] text-muted/60 mt-1 block">{timeAgo(n.createdAt)}</span>
+                <span className="text-[11px] text-muted/60 mt-1 block">{timeAgo(n.createdAt, t)}</span>
               </div>
             </button>
           ))

@@ -786,7 +786,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
     <div>
       <PageHeader
         title={pageTitle}
-        description={t('streams.recordCount', { n: data?.total ?? 0 })}
+        description={t('streams.recordCount', { count: data?.total ?? 0 })}
         actions={
           <>
             <button

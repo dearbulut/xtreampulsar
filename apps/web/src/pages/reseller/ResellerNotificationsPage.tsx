@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Bell, CheckCheck, CreditCard, Clock, Info } from 'lucide-react';
 import {
   useResellerNotifications,
@@ -11,12 +12,12 @@ import { cn } from '@/lib/utils';
 
 type FilterKey = 'all' | 'unread' | 'LOW_CREDIT' | 'USER_EXPIRING';
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: TFunction): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return `${diff}s önce`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}dk önce`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}sa önce`;
-  return `${Math.floor(diff / 86400)}g önce`;
+  if (diff < 60) return t('layout.justNow');
+  if (diff < 3600) return t('layout.minutesAgo', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t('layout.hoursAgo', { n: Math.floor(diff / 3600) });
+  return t('layout.daysAgo', { n: Math.floor(diff / 86400) });
 }
 
 function NotifIcon({ type }: { type: string }) {
@@ -42,6 +43,7 @@ function NotifIcon({ type }: { type: string }) {
 }
 
 function NotifRow({ n, onRead }: { n: ResellerNotification; onRead: (id: string) => void }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={() => { if (!n.isRead) onRead(n.id); }}
@@ -57,7 +59,7 @@ function NotifRow({ n, onRead }: { n: ResellerNotification; onRead: (id: string)
             {n.title}
           </span>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[11px] text-muted/60 whitespace-nowrap">{timeAgo(n.createdAt)}</span>
+            <span className="text-[11px] text-muted/60 whitespace-nowrap">{timeAgo(n.createdAt, t)}</span>
             {!n.isRead && <span className="w-2 h-2 rounded-full bg-primary" />}
           </div>
         </div>

@@ -153,7 +153,6 @@
     "qrCode": "QR Code",
     "qrFailed": "Failed to get QR code",
     "activity": "Activity",
-    "userCount": "{{n}} users",
     "downloadCsv": "Download CSV",
     "downloadReport": "Download Report",
     "addTrial": "Add Trial",
@@ -329,7 +328,9 @@
     "preset6mo": "6 Months",
     "preset9mo": "9 Months",
     "preset1y": "1 Year",
-    "preset2y": "2 Years"
+    "preset2y": "2 Years",
+    "userCount_one": "{{count}} user",
+    "userCount_other": "{{count}} users"
   },
   "streams": {
     "title": "Channels",
@@ -408,7 +409,6 @@
     "analyzeFailed": "Failed to start analysis",
     "cloned": "Cloned → {{name}}",
     "cloneFailed": "Clone failed",
-    "recordCount": "{{n}} records",
     "autoRefresh": "Auto-Refresh",
     "autoRefreshOn": "Auto-Refresh: on (5s)",
     "autoRefreshOff": "Auto-Refresh: off",
@@ -482,7 +482,9 @@
     "backupUrls": "Backup URLs",
     "noBackupUrls": "No backup URLs defined.",
     "backupUrlsHint": "Max 3 backup URLs. Tried in order if the primary URL is offline.",
-    "metaEditTitle": "Edit Metadata — {{name}}"
+    "metaEditTitle": "Edit Metadata — {{name}}",
+    "recordCount_one": "{{count}} record",
+    "recordCount_other": "{{count}} records"
   },
   "categories": {
     "title": "Categories",
@@ -495,8 +497,6 @@
     "series": "Series",
     "all": "All",
     "category": "Category",
-    "channelCount": "{{count}} channels",
-    "categoryCount": "{{count}} categories",
     "deleteSelected": "Delete {{count}}",
     "empty": "No categories found",
     "namePlaceholder": "Turkish Channels",
@@ -504,7 +504,11 @@
     "deleteConfirm": "Delete category?",
     "bulkDeleteConfirm": "Delete {{count}} categories?",
     "bulkDeleteFailed": "Failed to delete {{count}} categories",
-    "bulkDeleteSuccess": "Selected categories deleted"
+    "bulkDeleteSuccess": "Selected categories deleted",
+    "channelCount_one": "{{count}} channel",
+    "channelCount_other": "{{count}} channels",
+    "categoryCount_one": "{{count}} category",
+    "categoryCount_other": "{{count}} categories"
   },
   "packages": {
     "title": "Packages",
@@ -514,7 +518,6 @@
     "price": "Price",
     "users": "Users",
     "addPackage": "Add Package",
-    "packageCount": "{{count}} packages",
     "noPackages": "No packages yet",
     "deleteConfirm": "Delete package?",
     "setInactive": "Set Inactive",
@@ -530,7 +533,9 @@
     "descriptionLabel": "Description (optional)",
     "bouquetsLabel": "Bouquets (optional)",
     "bouquetsHint": "Users who receive this package automatically get the selected bouquets. If left empty, the user is assigned the default bouquet.",
-    "noBouquets": "No bouquets yet."
+    "noBouquets": "No bouquets yet.",
+    "packageCount_one": "{{count}} package",
+    "packageCount_other": "{{count}} packages"
   },
   "settings": {
     "title": "Settings",
@@ -1154,13 +1159,14 @@
     "deleteConfirm": "Delete bouquet?",
     "colBouquet": "Bouquet",
     "clone": "Clone",
-    "countLabel": "{{count}} bouquet",
     "addBouquet": "Add Bouquet",
     "empty": "No bouquets found",
     "editBouquet": "Edit Bouquet",
     "namePlaceholder": "Turkish Channels Package",
     "descriptionOptional": "Description (optional)",
-    "descriptionPlaceholder": "A short description of this bouquet…"
+    "descriptionPlaceholder": "A short description of this bouquet…",
+    "countLabel_one": "{{count}} bouquet",
+    "countLabel_other": "{{count}} bouquets"
   },
   "epg": {
     "guide": {
@@ -1282,12 +1288,13 @@
     "colUser": "User",
     "colDuration": "Duration",
     "kick": "Disconnect",
-    "activeConnections": "{{n}} active connections",
     "autoRefreshInfo": "Auto-refreshing every 3 seconds",
     "wsConnected": "WebSocket connected",
     "wsDisconnected": "WebSocket not connected",
     "emptyTitle": "No active connections",
-    "emptyDescription": "No user is currently connected."
+    "emptyDescription": "No user is currently connected.",
+    "activeConnections_one": "{{count}} active connection",
+    "activeConnections_other": "{{count}} active connections"
   },
   "mag": {
     "title": "MAG Devices",
@@ -1417,7 +1424,6 @@
     "tier": "Tier",
     "credit": "Credit",
     "addCredit": "Add Credit",
-    "resellerCount": "{{n}} reseller",
     "addReseller": "Add Reseller",
     "emptyTitle": "No resellers found",
     "emptyDescription": "No resellers added yet.",
@@ -1443,7 +1449,9 @@
     "zeroUnlimited": "0 = unlimited",
     "note": "Note",
     "deleteTitle": "Delete Reseller",
-    "deleteMessage": "This reseller and all associated data will be deleted."
+    "deleteMessage": "This reseller and all associated data will be deleted.",
+    "resellerCount_one": "{{count}} reseller",
+    "resellerCount_other": "{{count}} resellers"
   },
   "security": {
     "tabBlocks": "Active Blocks",
@@ -1494,7 +1502,6 @@
     "duration": "Duration",
     "remove": "Remove",
     "deleteConfirm": "Are you sure you want to delete this server?",
-    "serverCount": "{{count}} servers registered",
     "addServer": "Add Server",
     "loadBalance": "Load Balance",
     "totalUtilization": "{{pct}}% total usage",
@@ -1514,7 +1521,9 @@
     "ipAddress": "IP Address",
     "maxConnections": "Max Connections",
     "role": "Role",
-    "locationOptional": "Location (optional)"
+    "locationOptional": "Location (optional)",
+    "serverCount_one": "{{count}} server registered",
+    "serverCount_other": "{{count}} servers registered"
   },
   "support": {
     "title": "Support Center",

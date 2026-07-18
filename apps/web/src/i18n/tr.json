@@ -153,7 +153,6 @@
     "qrCode": "QR Kod",
     "qrFailed": "QR kod alınamadı",
     "activity": "Aktivite",
-    "userCount": "{{n}} kullanıcı",
     "downloadCsv": "CSV İndir",
     "downloadReport": "Rapor İndir",
     "addTrial": "Trial Ekle",
@@ -329,7 +328,9 @@
     "preset6mo": "6 Ay",
     "preset9mo": "9 Ay",
     "preset1y": "1 Yıl",
-    "preset2y": "2 Yıl"
+    "preset2y": "2 Yıl",
+    "userCount_one": "{{count}} kullanıcı",
+    "userCount_other": "{{count}} kullanıcı"
   },
   "streams": {
     "title": "Kanallar",
@@ -408,7 +409,6 @@
     "analyzeFailed": "Analiz başlatılamadı",
     "cloned": "Klonlandı → {{name}}",
     "cloneFailed": "Klonlama başarısız",
-    "recordCount": "{{n}} kayıt",
     "autoRefresh": "Auto-Refresh",
     "autoRefreshOn": "Auto-Refresh: açık (5s)",
     "autoRefreshOff": "Auto-Refresh: kapalı",
@@ -482,7 +482,9 @@
     "backupUrls": "Yedek URL'ler",
     "noBackupUrls": "Yedek URL tanımlı değil.",
     "backupUrlsHint": "Maks 3 yedek URL. Birincil URL çevrimdışıysa sırayla denenir.",
-    "metaEditTitle": "Meta Düzenle — {{name}}"
+    "metaEditTitle": "Meta Düzenle — {{name}}",
+    "recordCount_one": "{{count}} kayıt",
+    "recordCount_other": "{{count}} kayıt"
   },
   "categories": {
     "title": "Kategoriler",
@@ -495,8 +497,6 @@
     "series": "Dizi",
     "all": "Tümü",
     "category": "Kategori",
-    "channelCount": "{{count}} kanal",
-    "categoryCount": "{{count}} kategori",
     "deleteSelected": "{{count}} Sil",
     "empty": "Kategori bulunamadı",
     "namePlaceholder": "Türk Kanallar",
@@ -504,7 +504,11 @@
     "deleteConfirm": "Kategori silinsin mi?",
     "bulkDeleteConfirm": "{{count}} kategori silinsin mi?",
     "bulkDeleteFailed": "{{count}} kategori silinemedi",
-    "bulkDeleteSuccess": "Seçili kategoriler silindi"
+    "bulkDeleteSuccess": "Seçili kategoriler silindi",
+    "channelCount_one": "{{count}} kanal",
+    "channelCount_other": "{{count}} kanal",
+    "categoryCount_one": "{{count}} kategori",
+    "categoryCount_other": "{{count}} kategori"
   },
   "packages": {
     "title": "Paketler",
@@ -514,7 +518,6 @@
     "price": "Fiyat",
     "users": "Kullanıcı",
     "addPackage": "Paket Ekle",
-    "packageCount": "{{count}} paket",
     "noPackages": "Henüz paket yok",
     "deleteConfirm": "Paket silinsin mi?",
     "setInactive": "Pasif yap",
@@ -530,7 +533,9 @@
     "descriptionLabel": "Açıklama (opsiyonel)",
     "bouquetsLabel": "Bouquet'ler (opsiyonel)",
     "bouquetsHint": "Bu paketi alan kullanıcılar seçilen bouquet'leri otomatik alır. Boş bırakılırsa kullanıcıya varsayılan bouquet atanır.",
-    "noBouquets": "Henüz bouquet yok."
+    "noBouquets": "Henüz bouquet yok.",
+    "packageCount_one": "{{count}} paket",
+    "packageCount_other": "{{count}} paket"
   },
   "settings": {
     "title": "Ayarlar",
@@ -1154,13 +1159,14 @@
     "deleteConfirm": "Bouquet silinsin mi?",
     "colBouquet": "Bouquet",
     "clone": "Klonla",
-    "countLabel": "{{count}} bouquet",
     "addBouquet": "Bouquet Ekle",
     "empty": "Bouquet bulunamadı",
     "editBouquet": "Bouquet Düzenle",
     "namePlaceholder": "Türk Kanallar Paketi",
     "descriptionOptional": "Açıklama (opsiyonel)",
-    "descriptionPlaceholder": "Bu bouquet hakkında kısa açıklama…"
+    "descriptionPlaceholder": "Bu bouquet hakkında kısa açıklama…",
+    "countLabel_one": "{{count}} bouquet",
+    "countLabel_other": "{{count}} bouquet"
   },
   "epg": {
     "guide": {
@@ -1282,12 +1288,13 @@
     "colUser": "Kullanıcı",
     "colDuration": "Süre",
     "kick": "Kes",
-    "activeConnections": "{{n}} aktif bağlantı",
     "autoRefreshInfo": "3 saniyede bir otomatik yenileniyor",
     "wsConnected": "WebSocket bağlı",
     "wsDisconnected": "WebSocket bağlantısı yok",
     "emptyTitle": "Aktif bağlantı yok",
-    "emptyDescription": "Şu an herhangi bir kullanıcı bağlı değil."
+    "emptyDescription": "Şu an herhangi bir kullanıcı bağlı değil.",
+    "activeConnections_one": "{{count}} aktif bağlantı",
+    "activeConnections_other": "{{count}} aktif bağlantı"
   },
   "mag": {
     "title": "MAG Cihazlar",
@@ -1417,7 +1424,6 @@
     "tier": "Tip",
     "credit": "Kredi",
     "addCredit": "Kredi Ekle",
-    "resellerCount": "{{n}} reseller",
     "addReseller": "Reseller Ekle",
     "emptyTitle": "Reseller bulunamadı",
     "emptyDescription": "Henüz reseller eklenmemiş.",
@@ -1443,7 +1449,9 @@
     "zeroUnlimited": "0 = sınırsız",
     "note": "Not",
     "deleteTitle": "Reseller Sil",
-    "deleteMessage": "Bu reseller ve tüm ilişkili verileri silinecek."
+    "deleteMessage": "Bu reseller ve tüm ilişkili verileri silinecek.",
+    "resellerCount_one": "{{count}} reseller",
+    "resellerCount_other": "{{count}} reseller"
   },
   "security": {
     "tabBlocks": "Aktif Bloklar",
@@ -1494,7 +1502,6 @@
     "duration": "Süre",
     "remove": "Kaldır",
     "deleteConfirm": "Bu sunucuyu silmek istediğinizden emin misiniz?",
-    "serverCount": "{{count}} sunucu kayıtlı",
     "addServer": "Sunucu Ekle",
     "loadBalance": "Yük Dengesi",
     "totalUtilization": "{{pct}}% toplam kullanım",
@@ -1514,7 +1521,9 @@
     "ipAddress": "IP Adresi",
     "maxConnections": "Maks Bağlantı",
     "role": "Rol",
-    "locationOptional": "Konum (opsiyonel)"
+    "locationOptional": "Konum (opsiyonel)",
+    "serverCount_one": "{{count}} sunucu kayıtlı",
+    "serverCount_other": "{{count}} sunucu kayıtlı"
   },
   "support": {
     "title": "Destek Merkezi",

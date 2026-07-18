@@ -318,7 +318,7 @@ export function UsersPage() {
     <div>
       <PageHeader
         title={t('users.title')}
-        description={t('users.userCount', { n: data?.total ?? 0 })}
+        description={t('users.userCount', { count: data?.total ?? 0 })}
         actions={
           <>
             <button onClick={exportCsv} className="btn-secondary flex items-center gap-1.5 text-sm" title={t('users.downloadCsv')}>
