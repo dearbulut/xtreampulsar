@@ -5,7 +5,8 @@ import en from './en.json';
 import de from './de.json';
 import ar from './ar.json';
 
-const savedLang = localStorage.getItem('xp-lang') ?? 'tr';
+const rawLang = localStorage.getItem('xp-lang');
+const savedLang = rawLang === 'en' ? 'en' : 'tr';
 
 void i18n.use(initReactI18next).init({
   resources: {
@@ -33,6 +34,4 @@ export default i18n;
 export const LANGUAGES = [
   { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
 ];
