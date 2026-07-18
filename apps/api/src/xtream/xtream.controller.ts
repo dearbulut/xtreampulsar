@@ -423,6 +423,7 @@ export class XtreamController {
       rewrite?: { proxyPrefix: string; upstreamOrigin: string; playlistUrl: string };
       streamDownUrl?: string;
       isFallback?: boolean;
+      redirectCount?: number;
     },
   ): void {
     const onEnd = opts?.onEnd;
@@ -454,6 +455,20 @@ export class XtreamController {
         },
       },
       (proxyRes) => {
+        // Fallback video URL'i redirect ederse (CDN/cloud) takip et (maks 3).
+        const sCode = proxyRes.statusCode ?? 200;
+        if (opts?.isFallback && [301, 302, 303, 307, 308].includes(sCode)) {
+          const loc = proxyRes.headers['location'];
+          const rc = opts.redirectCount ?? 0;
+          if (loc && rc < 3 && !res.headersSent) {
+            proxyRes.resume();
+            try {
+              const next = new URL(String(loc), streamUrl).toString();
+              this.proxyToUpstream(next, req, res, { isFallback: true, redirectCount: rc + 1 });
+            } catch { if (!res.headersSent) res.status(HttpStatus.BAD_GATEWAY).end(); }
+            return;
+          }
+        }
         // Upstream hata kodu (stream down) → fallback video (recursion guard).
         const upstreamCode = proxyRes.statusCode ?? 200;
         if (upstreamCode >= 400 && opts?.streamDownUrl && !opts?.isFallback && !res.headersSent) {
