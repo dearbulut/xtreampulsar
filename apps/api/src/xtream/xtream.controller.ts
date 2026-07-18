@@ -302,7 +302,7 @@ export class XtreamController {
         wl ? 0 : guard.maxConnsPerIp,
       );
       if (!validation.allowed) {
-        res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
+        await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden');
         return null;
       }
 
@@ -370,6 +370,49 @@ export class XtreamController {
       .join('\n');
   }
 
+  // ─── Fallback videolar (Settings) ───────────────────────────────────────────
+  // Xtream-UI tarzı: stream çökünce / limit aşımı / expired / banned durumunda
+  // hata/deny status yerine ayarlanmış videoyu istemciye proxy'le. URL boşsa
+  // davranış birebir aynı (geriye dönük uyumlu). 10sn cache.
+  private fbCache: { at: number; v: { streamDown: string | null; banned: string | null; expired: string | null; maxConx: string | null } } | null = null;
+
+  private async getFallbackVideos(): Promise<{ streamDown: string | null; banned: string | null; expired: string | null; maxConx: string | null }> {
+    if (this.fbCache && Date.now() - this.fbCache.at < 10000) return this.fbCache.v;
+    const st = await this.prisma.settings
+      .findUnique({ where: { id: 'singleton' }, select: { streamDownVideo: true, bannedVideo: true, expiredVideo: true, maxConxExceedVideo: true } })
+      .catch(() => null);
+    const v = {
+      streamDown: st?.streamDownVideo || null,
+      banned: st?.bannedVideo || null,
+      expired: st?.expiredVideo || null,
+      maxConx: st?.maxConxExceedVideo || null,
+    };
+    this.fbCache = { at: Date.now(), v };
+    return v;
+  }
+
+  private serveFallbackVideo(url: string, req: Request, res: Response): void {
+    if (res.headersSent) return;
+    try {
+      this.proxyToUpstream(url, req, res, { isFallback: true });
+    } catch {
+      if (!res.headersSent) res.status(HttpStatus.BAD_GATEWAY).end();
+    }
+  }
+
+  // Deny reason'ını uygun fallback videoya eşle; video yoksa orijinal status'u gönder.
+  private async denyWithVideo(res: Response, status: number, reason: string): Promise<void> {
+    if (res.headersSent) return;
+    const fb = await this.getFallbackVideos();
+    const r = (reason || '').toLowerCase();
+    let url: string | null = null;
+    if (r.includes('expired')) url = fb.expired;
+    else if (r.includes('connection') && (r.includes('max') || r.includes('limit') || r.includes('reached'))) url = fb.maxConx;
+    else if (r.includes('block') || r.includes('banned') || r.includes('disabled')) url = fb.banned;
+    if (url) { this.serveFallbackVideo(url, res.req as Request, res); return; }
+    res.status(status).send(reason);
+  }
+
   private proxyToUpstream(
     streamUrl: string,
     req: Request,
@@ -378,6 +421,8 @@ export class XtreamController {
       onEnd?: (bytes: bigint, durationSeconds: number) => void;
       onHeartbeat?: () => void;
       rewrite?: { proxyPrefix: string; upstreamOrigin: string; playlistUrl: string };
+      streamDownUrl?: string;
+      isFallback?: boolean;
     },
   ): void {
     const onEnd = opts?.onEnd;
@@ -409,6 +454,13 @@ export class XtreamController {
         },
       },
       (proxyRes) => {
+        // Upstream hata kodu (stream down) → fallback video (recursion guard).
+        const upstreamCode = proxyRes.statusCode ?? 200;
+        if (upstreamCode >= 400 && opts?.streamDownUrl && !opts?.isFallback && !res.headersSent) {
+          proxyRes.resume();
+          this.serveFallbackVideo(opts.streamDownUrl, req, res);
+          return;
+        }
         const ct = String(proxyRes.headers['content-type'] ?? '');
         const isPlaylist = !!opts?.rewrite && (/mpegurl/i.test(ct) || /\.m3u8($|\?)/i.test(target.pathname + target.search));
 
@@ -430,7 +482,11 @@ export class XtreamController {
             });
             res.end(out);
           });
-          proxyRes.on('error', () => { if (!res.headersSent) res.status(HttpStatus.BAD_GATEWAY).end(); });
+          proxyRes.on('error', () => {
+            if (res.headersSent) return;
+            if (opts?.streamDownUrl && !opts?.isFallback) { this.serveFallbackVideo(opts.streamDownUrl, req, res); return; }
+            res.status(HttpStatus.BAD_GATEWAY).end();
+          });
           return;
         }
 
@@ -461,11 +517,11 @@ export class XtreamController {
     }
 
     proxyReq.on('error', (err) => {
-      if (!res.headersSent) {
-        res
-          .status(HttpStatus.BAD_GATEWAY)
-          .json({ error: 'Bad Gateway', message: err.message });
-      }
+      if (res.headersSent) return;
+      if (opts?.streamDownUrl && !opts?.isFallback) { this.serveFallbackVideo(opts.streamDownUrl, req, res); return; }
+      res
+        .status(HttpStatus.BAD_GATEWAY)
+        .json({ error: 'Bad Gateway', message: err.message });
     });
 
     proxyReq.end();
@@ -505,7 +561,9 @@ export class XtreamController {
       deviceType: this.userActivityService.detectDeviceType(ctx.ua),
     });
 
+    const fbStreamDown = (await this.getFallbackVideos()).streamDown ?? undefined;
     this.proxyToUpstream(streamUrl, req, res, {
+      streamDownUrl: fbStreamDown,
       onHeartbeat: () => { if (connId) void this.userService.touchConnection(connId); },
       onEnd: (bytes, duration) => {
         if (connId) void this.userService.closeConnection(connId);
@@ -544,11 +602,11 @@ export class XtreamController {
     const wl = guard.whitelistIps.includes(clientIpRaw) || guard.whitelistUsernames.includes(username);
 
     // IP geo/ban check
-    if (!wl && await this.isXtreamBlocked(clientIpRaw)) { res.status(403).send('Access temporarily blocked'); return; }
+    if (!wl && await this.isXtreamBlocked(clientIpRaw)) { await this.denyWithVideo(res, 403, 'Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(clientIpRaw, guard.serverId ?? undefined);
       if (!ipCheck.allowed) {
-        res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden');
+        await this.denyWithVideo(res, HttpStatus.FORBIDDEN, ipCheck.reason ?? 'Forbidden');
         return;
       }
     } catch { /* non-fatal: continue on lookup error */ }
@@ -603,7 +661,7 @@ export class XtreamController {
     try {
       const validation = await this.userService.validateConnection(user.id, clientIp, clientUa, wl ? 0 : guard.maxConnsPerIp);
       if (!validation.allowed) {
-        res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden');
+        await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden');
         return;
       }
     } catch {
@@ -664,7 +722,9 @@ export class XtreamController {
     if ((streamRecord.streamMode ?? 'PROXY') === 'PROXY') {
       const proxyPrefix = `/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${externalId}`;
       const upstreamOrigin = new URL(streamRecord.primaryUrl).origin;
+      const fbStreamDown = (await this.getFallbackVideos()).streamDown ?? undefined;
       this.proxyToUpstream(streamRecord.primaryUrl, req, res, {
+        streamDownUrl: fbStreamDown,
         rewrite: { proxyPrefix, upstreamOrigin, playlistUrl: streamRecord.primaryUrl },
       });
       return;
@@ -876,10 +936,10 @@ export class XtreamController {
     const guard = await this.guardConfig.getEffective();
     const ip = this.clientIpOf(req);
     const wl = guard.whitelistIps.includes(ip) || guard.whitelistUsernames.includes(username);
-    if (!wl && await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
+    if (!wl && await this.isXtreamBlocked(ip)) { await this.denyWithVideo(res, 403, 'Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip, guard.serverId ?? undefined);
-      if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
+      if (!ipCheck.allowed) { await this.denyWithVideo(res, HttpStatus.FORBIDDEN, ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
     const result = await this.authorizeAndGetUrl(
@@ -906,10 +966,10 @@ export class XtreamController {
     const guard = await this.guardConfig.getEffective();
     const ip = this.clientIpOf(req);
     const wl = guard.whitelistIps.includes(ip) || guard.whitelistUsernames.includes(username);
-    if (!wl && await this.isXtreamBlocked(ip)) { res.status(403).send('Access temporarily blocked'); return; }
+    if (!wl && await this.isXtreamBlocked(ip)) { await this.denyWithVideo(res, 403, 'Access temporarily blocked'); return; }
     try {
       const ipCheck = await this.securityService.checkIpAllowed(ip, guard.serverId ?? undefined);
-      if (!ipCheck.allowed) { res.status(HttpStatus.FORBIDDEN).send(ipCheck.reason ?? 'Forbidden'); return; }
+      if (!ipCheck.allowed) { await this.denyWithVideo(res, HttpStatus.FORBIDDEN, ipCheck.reason ?? 'Forbidden'); return; }
     } catch { /* non-fatal */ }
 
     // Önce episode olarak çöz (yoksa aşağıdaki legacy tek-stream fallback devam eder)
@@ -921,7 +981,7 @@ export class XtreamController {
         const user = await this.xtream.authenticate(username, password);
         if (!user) { res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized'); return; }
         const access = await this.userService.checkSubscriptionActive(user.id);
-        if (!access.allowed) { res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden'); return; }
+        if (!access.allowed) { await this.denyWithVideo(res, HttpStatus.FORBIDDEN, access.reason ?? 'Forbidden'); return; }
         if (user.role !== 'ADMIN' && user.role !== 'RESELLER') {
           const canAccess = await this.streamService.canUserAccessStream(user.id, { streamId: episode.seriesId });
           if (!canAccess) { res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil'); return; }
@@ -929,7 +989,7 @@ export class XtreamController {
         const ua = req.headers['user-agent'] ?? '';
         // Episode path'te cap enforce edilmiyordu — VOD/live ile aynı per-IP/user tavanını uygula.
         const validation = await this.userService.validateConnection(user.id, ip, ua, wl ? 0 : guard.maxConnsPerIp);
-        if (!validation.allowed) { res.status(HttpStatus.FORBIDDEN).send(validation.reason ?? 'Forbidden'); return; }
+        if (!validation.allowed) { await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden'); return; }
         await this.proxyWithConnection(episode.primaryUrl, req, res, {
           userId: user.id, streamId: episode.seriesId, ip, ua,
         });
