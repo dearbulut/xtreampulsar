@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsUrl, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUrl, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ImportXtreamDto {
@@ -26,4 +26,8 @@ export class ImportXtreamDto {
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean = false;
+
+  @IsOptional()
+  @IsIn(['SKIP', 'OVERWRITE', 'MERGE'])
+  conflictMode?: 'SKIP' | 'OVERWRITE' | 'MERGE';
 }

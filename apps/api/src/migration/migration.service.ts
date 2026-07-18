@@ -286,7 +286,7 @@ export class MigrationService implements OnModuleInit {
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'LIVE');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'LIVE', jobId);
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'LIVE', jobId, dto.conflictMode ?? 'OVERWRITE');
         await saveProgress();
       }
 
@@ -297,7 +297,7 @@ export class MigrationService implements OnModuleInit {
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'VOD');
-        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD', jobId);
+        totalImported += await this.importXtreamStreams(streams, catIdMap, dto.serverUrl, dto.username, dto.password, 'VOD', jobId, dto.conflictMode ?? 'OVERWRITE');
         await saveProgress();
       }
 
@@ -308,7 +308,7 @@ export class MigrationService implements OnModuleInit {
         ]);
 
         const catIdMap = await this.importXtreamCategories(cats, 'SERIES');
-        totalImported += await this.importXtreamSeriesItems(series, catIdMap, dto.serverUrl, dto.username, dto.password, jobId);
+        totalImported += await this.importXtreamSeriesItems(series, catIdMap, dto.serverUrl, dto.username, dto.password, jobId, dto.conflictMode ?? 'OVERWRITE');
         await saveProgress();
       }
 
@@ -381,6 +381,7 @@ export class MigrationService implements OnModuleInit {
     password: string,
     type: 'LIVE' | 'VOD' | 'SERIES',
     jobId: string,
+    conflictMode: 'SKIP' | 'OVERWRITE' | 'MERGE' = 'OVERWRITE',
   ): Promise<number> {
     let count = 0;
     let i = 0;
@@ -409,20 +410,33 @@ export class MigrationService implements OnModuleInit {
         // (duplicate yok, idempotent).
         const existing = await this.prisma.stream.findFirst({
           where: { primaryUrl },
-          select: { id: true },
+          select: { id: true, name: true, tvgLogo: true, tvgId: true, categoryId: true },
         });
         if (existing) {
-          await this.prisma.stream.update({
-            where: { id: existing.id },
-            data: {
-              name: s.name,
-              primaryUrl,
-              streamMode: 'PROXY',
-              tvgLogo: s.stream_icon || null,
-              tvgId: s.epg_channel_id || null,
-              categoryId,
-            },
-          });
+          if (conflictMode === 'SKIP') {
+            /* mevcut → atla */
+          } else if (conflictMode === 'MERGE') {
+            const patch: Record<string, unknown> = {};
+            if (!existing.name && s.name) patch.name = s.name;
+            if (!existing.tvgLogo && s.stream_icon) patch.tvgLogo = s.stream_icon;
+            if (!existing.tvgId && s.epg_channel_id) patch.tvgId = s.epg_channel_id;
+            if (!existing.categoryId && categoryId) patch.categoryId = categoryId;
+            if (Object.keys(patch).length > 0) {
+              await this.prisma.stream.update({ where: { id: existing.id }, data: patch as Parameters<typeof this.prisma.stream.update>[0]['data'] });
+            }
+          } else {
+            await this.prisma.stream.update({
+              where: { id: existing.id },
+              data: {
+                name: s.name,
+                primaryUrl,
+                streamMode: 'PROXY',
+                tvgLogo: s.stream_icon || null,
+                tvgId: s.epg_channel_id || null,
+                categoryId,
+              },
+            });
+          }
         } else {
           await this.prisma.stream.create({
             data: {
@@ -454,6 +468,7 @@ export class MigrationService implements OnModuleInit {
     username: string,
     password: string,
     jobId: string,
+    conflictMode: 'SKIP' | 'OVERWRITE' | 'MERGE' = 'OVERWRITE',
   ): Promise<number> {
     let count = 0;
     let i = 0;
@@ -469,9 +484,19 @@ export class MigrationService implements OnModuleInit {
       const primaryUrl = `${baseUrl}/series/${username}/${password}/${s.series_id}.mkv`;
       let seriesStreamId: string;
       try {
-        const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true } });
+        const existing = await this.prisma.stream.findFirst({ where: { primaryUrl }, select: { id: true, name: true, tvgLogo: true, categoryId: true } });
         if (existing) {
-          await this.prisma.stream.update({ where: { id: existing.id }, data: { name: s.name, tvgLogo: s.cover || null, streamMode: 'PROXY', categoryId } });
+          if (conflictMode === 'MERGE') {
+            const patch: Record<string, unknown> = {};
+            if (!existing.name && s.name) patch.name = s.name;
+            if (!existing.tvgLogo && s.cover) patch.tvgLogo = s.cover;
+            if (!existing.categoryId && categoryId) patch.categoryId = categoryId;
+            if (Object.keys(patch).length > 0) {
+              await this.prisma.stream.update({ where: { id: existing.id }, data: patch as Parameters<typeof this.prisma.stream.update>[0]['data'] });
+            }
+          } else if (conflictMode !== 'SKIP') {
+            await this.prisma.stream.update({ where: { id: existing.id }, data: { name: s.name, tvgLogo: s.cover || null, streamMode: 'PROXY', categoryId } });
+          }
           seriesStreamId = existing.id;
         } else {
           const created = await this.prisma.stream.create({ data: { name: s.name, primaryUrl, streamMode: 'PROXY', tvgLogo: s.cover || null, categoryId }, select: { id: true } });

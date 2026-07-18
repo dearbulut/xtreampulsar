@@ -171,6 +171,7 @@ export function useImportXtream() {
       importVod?: boolean;
       importSeries?: boolean;
       dryRun?: boolean;
+      conflictMode?: 'SKIP' | 'OVERWRITE' | 'MERGE';
     }) => api.post<{ success: boolean; data: { jobId: string } }>('/migration/xtream/import', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['migration'] });

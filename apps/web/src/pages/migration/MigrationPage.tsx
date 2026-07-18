@@ -238,6 +238,7 @@ export function MigrationPage() {
           importLive: xtreamForm.live,
           importVod: xtreamForm.vod,
           importSeries: xtreamForm.series,
+          conflictMode: importOptions.conflictMode,
         });
         setXtreamJobId(res.data.data.jobId);
       }
