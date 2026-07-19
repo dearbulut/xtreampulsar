@@ -1,106 +1,50 @@
-import { Zap, Twitter, Github, Youtube } from 'lucide-react';
+'use client';
 
-const FOOTER_LINKS = {
-  Ürün: [
-    { label: 'Özellikler', href: '#features' },
-    { label: 'Fiyatlandırma', href: '/pricing' },
-    { label: 'Karşılaştırma', href: '#comparison' },
-    { label: 'Migration', href: '#migration' },
-    { label: 'Referanslar', href: '#testimonials' },
-    { label: 'SSS', href: '#faq' },
-  ],
-  Kaynaklar: [
-    { label: 'Dokümantasyon', href: 'https://docs.xtreampulsar.io' },
-    { label: 'API Referansı', href: '#' },
-    { label: 'Kurulum Rehberi', href: '#' },
-    { label: 'Video Eğitimleri', href: '#' },
-    { label: 'Blog', href: '#' },
-    { label: 'Topluluk', href: '#' },
-  ],
-  Şirket: [
-    { label: 'Hakkımızda', href: '#' },
-    { label: 'İletişim', href: '#' },
-    { label: 'Destek', href: 'mailto:support@xtreampulsar.io' },
-    { label: 'İş Ortaklığı', href: '#' },
-    { label: 'Affiliate Programı', href: '#' },
-  ],
-  Yasal: [
-    { label: 'Gizlilik Politikası', href: '#' },
-    { label: 'Kullanım Koşulları', href: '#' },
-    { label: 'Çerez Politikası', href: '#' },
-    { label: 'KVKK', href: '#' },
-    { label: 'SLA', href: '#' },
-  ],
-};
-
-const SOCIAL_LINKS = [
-  { icon: Twitter, label: 'Twitter', href: 'https://twitter.com/xtreampulsar' },
-  { icon: Github, label: 'GitHub', href: 'https://github.com/xtreampulsar' },
-  { icon: Youtube, label: 'YouTube', href: 'https://youtube.com/@xtreampulsar' },
-];
+import { Zap } from 'lucide-react';
+import { useLang } from '@/lib/i18n';
 
 export function Footer() {
+  const { t } = useLang();
+  const year = new Date().getFullYear();
+
   return (
     <footer className="border-t border-border bg-surface/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main footer */}
-        <div className="py-16 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-3 lg:col-span-1">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+          <div className="md:col-span-2">
             <a href="/" className="flex items-center gap-2.5 mb-4">
-              <div className="relative w-8 h-8 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600" />
-                <Zap className="relative w-5 h-5 text-white" fill="currentColor" />
-              </div>
-              <span className="font-bold text-lg text-text-base">
-                Xtream<span className="text-primary">Pulsar</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-brand">
+                <Zap className="h-5 w-5 text-white" />
+              </span>
+              <span className="text-lg font-bold tracking-tight">
+                Xtream<span className="gradient-text">Pulsar</span>
               </span>
             </a>
-            <p className="text-sm text-text-muted leading-relaxed max-w-xs">
-              Yeni nesil IPTV yönetim paneli. Modern arayüz, güçlü API, gerçek destek.
-            </p>
-            <div className="mt-6 flex items-center gap-3">
-              {SOCIAL_LINKS.map(({ icon: Icon, label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-border text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all"
-                >
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
+            <p className="text-sm text-text-muted max-w-sm leading-relaxed">{t.footer.tagline}</p>
           </div>
 
-          {/* Link columns */}
-          {Object.entries(FOOTER_LINKS).map(([group, links]) => (
-            <div key={group}>
-              <h3 className="text-sm font-semibold text-text-base mb-4">{group}</h3>
-              <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-text-muted hover:text-text-base transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div>
+            <h4 className="text-sm font-semibold mb-4">{t.footer.product}</h4>
+            <ul className="space-y-2.5 text-sm text-text-muted">
+              <li><a href="#features" className="hover:text-text-base transition-colors">{t.nav.features}</a></li>
+              <li><a href="#pricing" className="hover:text-text-base transition-colors">{t.nav.pricing}</a></li>
+              <li><a href="#migration" className="hover:text-text-base transition-colors">{t.nav.migration}</a></li>
+              <li><a href="#faq" className="hover:text-text-base transition-colors">{t.nav.faq}</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold mb-4">{t.footer.resources}</h4>
+            <ul className="space-y-2.5 text-sm text-text-muted">
+              <li><a href="https://docs.xtreampulsar.com" target="_blank" rel="noreferrer" className="hover:text-text-base transition-colors">{t.footer.docs}</a></li>
+              <li><a href="mailto:info@xtreampulsar.com" className="hover:text-text-base transition-colors">{t.footer.contact}</a></li>
+            </ul>
+          </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="py-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-text-muted">
-            © {new Date().getFullYear()} XtreamPulsar. Tüm hakları saklıdır.
-          </p>
-          <p className="text-sm text-text-muted">
-            Made with ♥ for IPTV operators worldwide
-          </p>
+        <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-muted">
+          <span>© {year} XtreamPulsar. {t.footer.rights}</span>
+          <span className="font-mono">panel.xtreampulsar.com</span>
         </div>
       </div>
     </footer>

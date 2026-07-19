@@ -10,11 +10,10 @@ const PRICE_MAP: Record<string, string | undefined> = {
   WHITE_LABEL: process.env.STRIPE_PRICE_WHITE_LABEL,
 };
 
+// Tek paket modeli: tüm özellikler dahil, €70/ay. (Stripe tarafında STRIPE_PRICE_PRO
+// fiyatı €70/ay olarak tanımlanmalı; eski tier price env'leri geriye dönük durabilir.)
 const PLAN_INFO = [
-  { tier: 'STARTER', name: 'Starter', price: 39, description: 'Küçük ölçekli operatörler' },
-  { tier: 'PRO', name: 'Pro', price: 79, description: 'Büyüyen operatörler' },
-  { tier: 'BUSINESS', name: 'Business', price: 149, description: 'Büyük ölçekli operasyonlar' },
-  { tier: 'WHITE_LABEL', name: 'White-label', price: 299, description: 'Tam özelleştirme' },
+  { tier: 'PRO', name: 'XtreamPulsar Complete', price: 70, description: 'Tüm özellikler dahil — tek paket' },
 ];
 
 @Injectable()
