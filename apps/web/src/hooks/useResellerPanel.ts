@@ -769,3 +769,42 @@ export function useUploadBrandingLogo() {
     onError: () => toast.error('Logo yüklenemedi'),
   });
 }
+
+
+export interface ResellerApiKey {
+  id: string;
+  name: string;
+  key: string;
+  isActive: boolean;
+  lastUsedAt?: string | null;
+  createdAt: string;
+}
+
+export function useResellerApiKeys() {
+  return useQuery({
+    queryKey: ['reseller-panel', 'api-keys'],
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: ResellerApiKey[] }>('/reseller-api-keys');
+      return res.data.data;
+    },
+  });
+}
+
+export function useCreateResellerApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await resellerApi.post<{ success: boolean; data: ResellerApiKey & { key: string } }>('/reseller-api-keys', { name });
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller-panel', 'api-keys'] }),
+  });
+}
+
+export function useRevokeResellerApiKey() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resellerApi.delete(`/reseller-api-keys/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller-panel', 'api-keys'] }),
+  });
+}

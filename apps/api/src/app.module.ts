@@ -42,6 +42,7 @@ import { SupportModule } from './support/support.module';
 import { ClientModule } from './client/client.module';
 import { ClientRequestsModule } from './client-requests/client-requests.module';
 import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
+import { ResellerApiModule } from './reseller-api/reseller-api.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
     ClientModule,
     ClientRequestsModule,
     M3uSyncModule,
+    ResellerApiModule,
   ],
   controllers: [AppController],
   providers: [

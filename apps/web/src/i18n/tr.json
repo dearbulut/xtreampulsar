@@ -975,7 +975,8 @@
       "markAllRead": "Tümünü okundu işaretle",
       "noNotifications": "Bildirim yok",
       "showingRecent": "Son {{n}} bildirim gösteriliyor",
-      "notifAria": "Bildirimler"
+      "notifAria": "Bildirimler",
+      "api": "API & WHMCS"
     },
     "live": {
       "title": "Canlı İzleme",
@@ -1827,5 +1828,33 @@
     "syncNow": "Şimdi Senkronla",
     "deleteTitle": "Kaynağı Sil",
     "deleteConfirm": "Bu M3U kaynağını silmek istediğinize emin misiniz?"
+  },
+  "resellerApi": {
+    "title": "Reseller API & WHMCS",
+    "subtitle": "Otomasyon/faturalama (WHMCS) icin API anahtari olustur ve abone islemlerini programatik yonet",
+    "baseUrl": "API Adresi",
+    "authNote": "Tum isteklerde header:",
+    "saveOnce": "Bu anahtari simdi kaydedin — tekrar gosterilmeyecek!",
+    "copy": "Kopyala",
+    "copied": "Kopyalandi",
+    "keyName": "Anahtar Adi",
+    "generate": "Anahtar Olustur",
+    "createError": "Olusturulamadi",
+    "noKeys": "Henuz API anahtari yok",
+    "colName": "Ad",
+    "colKey": "Anahtar",
+    "colLastUsed": "Son Kullanim",
+    "never": "Hic",
+    "revoke": "Iptal Et",
+    "endpoints": "Endpointler",
+    "epMe": "bayi bilgisi + kredi",
+    "epPackages": "paketler",
+    "epUsers": "aboneleri listele",
+    "epCreate": "abone olustur (packageId veya durationDays+maxConnections)",
+    "epGet": "abone detayi",
+    "epExtend": "sure uzat ({days})",
+    "epStatus": "durum degistir ({status: ACTIVE|DISABLED})",
+    "epDelete": "abone sil",
+    "whmcsNote": "WHMCS provisioning modulu ve tam dokumantasyon icin yoneticinizle iletisime gecin."
   }
 }

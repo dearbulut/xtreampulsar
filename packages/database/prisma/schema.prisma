@@ -420,6 +420,7 @@ model Reseller {
   creditLogs    ResellerCreditLog[]
   notifications ResellerNotification[]
   refreshTokens ResellerRefreshToken[]
+  apiKeys       ResellerApiKey[]
 
   @@map("resellers")
 }
@@ -1034,4 +1035,21 @@ model M3uSource {
   updatedAt        DateTime  @updatedAt
 
   @@map("m3u_sources")
+}
+
+
+model ResellerApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  key        String    @unique
+  resellerId String
+  reseller   Reseller  @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([key])
+  @@index([resellerId])
+  @@map("reseller_api_keys")
 }

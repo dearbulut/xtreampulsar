@@ -44,6 +44,7 @@ import { MagDevicesPage } from '@/pages/mag/MagDevicesPage';
 import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
 import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
 import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
+import { ResellerApiPage } from '@/pages/reseller/ResellerApiPage';
 import { SupportPage } from '@/pages/support/SupportPage';
 import { ClientRequestsPage } from '@/pages/client-requests/ClientRequestsPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
@@ -334,6 +335,12 @@ const resellerNotificationsRoute = createRoute({
   component: ResellerNotificationsPage,
 });
 
+const resellerApiRoute = createRoute({
+  getParentRoute: () => resellerLayoutRoute,
+  path: '/reseller/api',
+  component: ResellerApiPage,
+});
+
 // ─── Client (end-user) routes ────────────────────────────────────────────────
 
 const clientLoginRoute = createRoute({
@@ -377,6 +384,7 @@ const routeTree = rootRoute.addChildren([
     resellerLiveRoute,
     resellerActivityRoute,
     resellerNotificationsRoute,
+    resellerApiRoute,
   ]),
   clientLoginRoute,
   clientLayoutRoute.addChildren([

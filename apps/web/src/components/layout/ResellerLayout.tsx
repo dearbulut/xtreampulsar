@@ -5,6 +5,7 @@ import { Outlet, Link, useNavigate } from '@tanstack/react-router';
 import {
   Tv2, LayoutDashboard, Users, LogOut, CreditCard, Settings, Network,
   Bell, CreditCard as CreditIcon, Clock, CheckCheck, X, Radio, Activity,
+  KeyRound
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/reseller/credits', label: 'reseller.nav.credits', icon: CreditCard },
   { to: '/reseller/activity', label: 'reseller.nav.activity', icon: Activity },
   { to: '/reseller/notifications', label: 'reseller.nav.notifications', icon: Bell },
+  { to: '/reseller/api', label: 'reseller.nav.api', icon: KeyRound },
   { to: '/reseller/profile', label: 'reseller.nav.profile', icon: Settings },
 ];
 
