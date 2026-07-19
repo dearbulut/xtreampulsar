@@ -51,3 +51,16 @@ export function useUpdateClientRequest() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['client-requests'] }),
   });
 }
+
+export function useAiSuggest() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post<{ success: boolean; data: { reply: string } }>(
+        `/client-requests/${id}/ai-suggest`,
+        {},
+        { timeout: 40_000 },
+      );
+      return res.data.data.reply;
+    },
+  });
+}

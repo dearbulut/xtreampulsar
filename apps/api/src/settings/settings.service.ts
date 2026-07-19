@@ -146,7 +146,7 @@ export class SettingsService {
       'blockVpnProxy', 'priorityBackupStream', 'enableConxExceedLog', 'instantCloseConn',
       'resellerNotifyExpiry', 'streamDownAlert', 'enableLocalBackups', 'enableRemoteBackup',
       'discordAlerts', 'telegramAlerts', 'registrationOpen', 'enableGuard', 'denyInvalidStreamIds',
-      'autoEnrichMetadata', 'geoBlockEnabled', 'urlHealthCheck',
+      'autoEnrichMetadata', 'geoBlockEnabled', 'urlHealthCheck', 'aiEnabled',
     ]);
 
     const clean: Record<string, unknown> = {};

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ClientRequestsService } from './client-requests.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -28,5 +28,10 @@ export class ClientRequestsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: { status: 'OPEN' | 'RESOLVED' | 'REJECTED'; adminNote?: string }) {
     return this.service.updateStatus(id, body.status, body.adminNote);
+  }
+
+  @Post(':id/ai-suggest')
+  aiSuggest(@Param('id') id: string) {
+    return this.service.aiSuggest(id);
   }
 }

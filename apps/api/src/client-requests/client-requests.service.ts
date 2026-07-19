@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiService } from '../ai/ai.service';
 
 type ReqStatus = 'OPEN' | 'RESOLVED' | 'REJECTED';
 
 @Injectable()
 export class ClientRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ai: AiService,
+  ) {}
 
   async list(params: { status?: string; type?: string; page?: number; limit?: number }) {
     const page = Number(params.page) > 0 ? Number(params.page) : 1;
@@ -39,6 +43,16 @@ export class ClientRequestsService {
         resolvedAt: status === 'OPEN' ? null : new Date(),
       },
     });
+  }
+
+  /** Bir talep için AI yanıt taslağı üretir (kaydetmez; admin gözden geçirip adminNote'a yazar). */
+  async aiSuggest(id: string): Promise<{ reply: string }> {
+    const req = await this.prisma.clientRequest.findUnique({
+      where: { id },
+      select: { title: true, message: true, type: true },
+    });
+    if (!req) throw new NotFoundException('Talep bulunamadı');
+    return this.ai.suggestReply({ title: req.title, message: req.message, type: req.type });
   }
 
   async stats(): Promise<{ openReports: number; openRequests: number }> {

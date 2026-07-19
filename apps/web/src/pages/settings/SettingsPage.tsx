@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { copyToClipboard } from '@/lib/utils';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle, Sparkles } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { use2FAStatus, use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
+import { useAiSettings, useSaveAiSettings, type AiSettings } from '@/hooks/useAiSettings';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,7 @@ const getSettingsTabs = (t: (key: string) => string): TabItem[] => [
   { id: 'database', label: t('settings.tabDatabase'), icon: Database },
   { id: 'api', label: 'API', icon: Key },
   { id: 'white-label', label: 'White-Label', icon: Palette },
+  { id: 'ai', label: 'AI Destek', icon: Sparkles },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -679,6 +681,48 @@ export function SettingsPage() {
 
         {/* === WHITE-LABEL === */}
         {activeTab === 'white-label' && <WhiteLabelTab />}
+
+        {/* === AI SUPPORT === */}
+        {activeTab === 'ai' && <AiSettingsTab />}
+      </div>
+    </div>
+  );
+}
+
+function AiSettingsTab() {
+  const { data, isLoading } = useAiSettings();
+  const saveAi = useSaveAiSettings();
+  const [form, setForm] = useState<AiSettings | null>(null);
+  useEffect(() => { if (data && !form) setForm(data); }, [data, form]);
+  if (isLoading || !form) return <div className="text-sm text-muted py-6">Yükleniyor…</div>;
+  const set = (k: keyof AiSettings, v: string | boolean) => setForm((p) => (p ? { ...p, [k]: v } : p));
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div className="flex items-start gap-2 text-xs text-muted bg-surface-2 rounded-lg p-3">
+        <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <span>Destek taleplerine AI ile yanıt taslağı üretir. Bir LLM API anahtarı girip etkinleştirene kadar uykudadır; anahtar yalnızca sunucuda saklanır.</span>
+      </div>
+      <Field label="Etkin"><Toggle checked={form.aiEnabled} onChange={(v) => set('aiEnabled', v)} /></Field>
+      <Field label="Sağlayıcı">
+        <select className="input" value={form.aiProvider} onChange={(e) => set('aiProvider', e.target.value)}>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </Field>
+      <Field label="API Anahtarı" hint="Sunucuda saklanır.">
+        <input className="input font-mono" type="password" value={form.aiApiKey} onChange={(e) => set('aiApiKey', e.target.value)} placeholder="anahtar" />
+      </Field>
+      <Field label="Model" hint="Boşsa varsayılan (Claude Haiku / gpt-4o-mini).">
+        <input className="input font-mono" value={form.aiModel} onChange={(e) => set('aiModel', e.target.value)} placeholder="claude-3-5-haiku-latest" />
+      </Field>
+      <Field label="Sistem Talimatı" hint="Botun üslubu (boşsa varsayılan).">
+        <textarea className="input min-h-[90px]" value={form.aiSystemPrompt} onChange={(e) => set('aiSystemPrompt', e.target.value)} />
+      </Field>
+      <div className="flex items-center gap-3">
+        <button className="btn btn-primary" disabled={saveAi.isPending} onClick={() => saveAi.mutate(form)}>
+          {saveAi.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+        {saveAi.isSuccess && <span className="text-xs text-emerald-400">Kaydedildi.</span>}
       </div>
     </div>
   );

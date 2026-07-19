@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageSquareWarning, TvMinimal, Check, X, RotateCcw, Inbox } from 'lucide-react';
-import { useClientRequests, useUpdateClientRequest, type ClientRequest } from '@/hooks/useClientRequests';
+import { MessageSquareWarning, TvMinimal, Check, X, RotateCcw, Inbox, Sparkles } from 'lucide-react';
+import { useClientRequests, useUpdateClientRequest, useAiSuggest, type ClientRequest } from '@/hooks/useClientRequests';
+import toast from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ export function ClientRequestsPage() {
   const [status, setStatus] = useState<'' | 'OPEN' | 'RESOLVED' | 'REJECTED'>('OPEN');
   const { data, isLoading } = useClientRequests({ type: type || undefined, status: status || undefined });
   const update = useUpdateClientRequest();
+  const aiSuggest = useAiSuggest();
   const items = data?.items ?? [];
 
   const typeTabs: { key: '' | 'REPORT' | 'NEW_CHANNEL'; label: string }[] = [
@@ -115,6 +117,13 @@ export function ClientRequestsPage() {
                     </td>
                     <td className="table-td">
                       <div className="flex items-center justify-end gap-1">
+                        <button className="btn-ghost p-1.5" title="AI yanıt taslağı öner" disabled={aiSuggest.isPending}
+                          onClick={() => aiSuggest.mutate(r.id, {
+                            onSuccess: (reply) => update.mutate({ id: r.id, status: r.status, adminNote: reply }),
+                            onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'AI yanıtı alınamadı'),
+                          })}>
+                          <Sparkles className="w-4 h-4 text-primary" />
+                        </button>
                         {r.status !== 'RESOLVED' && (
                           <button className="btn-ghost p-1.5" title={t('clientRequests.resolve')}
                             onClick={() => update.mutate({ id: r.id, status: 'RESOLVED' })}>

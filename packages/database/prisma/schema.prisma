@@ -665,6 +665,12 @@ model Settings {
   registrationOpen        Boolean  @default(false)
   tierPricing             Json     @default("{}")
   creditPricing           Json?
+  // AI destek botu (uykuda — anahtar girilene kadar)
+  aiEnabled               Boolean  @default(false)
+  aiProvider              String   @default("anthropic")
+  aiApiKey                String   @default("")
+  aiModel                 String   @default("")
+  aiSystemPrompt          String?
   // Panel geo-block
   geoBlockEnabled         Boolean  @default(false)
   allowedCountries        String[] @default([])
