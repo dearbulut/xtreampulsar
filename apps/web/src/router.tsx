@@ -6,6 +6,7 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { getPanelMode } from '@/lib/panelMode';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { TwoFactorSetupPage } from '@/pages/auth/TwoFactorSetupPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
@@ -62,6 +63,9 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   beforeLoad: () => {
+    const mode = getPanelMode();
+    if (mode === 'reseller') throw redirect({ to: '/reseller/login' });
+    if (mode === 'client') throw redirect({ to: '/client/login' });
     const token = useAuthStore.getState().accessToken;
     if (token) throw redirect({ to: '/dashboard' });
   },
@@ -77,7 +81,12 @@ const setup2FARoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: () => { throw redirect({ to: '/dashboard' }); },
+  beforeLoad: () => {
+    const mode = getPanelMode();
+    if (mode === 'reseller') throw redirect({ to: '/reseller/login' });
+    if (mode === 'client') throw redirect({ to: '/client/login' });
+    throw redirect({ to: '/dashboard' });
+  },
   component: () => null,
 });
 
@@ -85,6 +94,9 @@ const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_layout',
   beforeLoad: () => {
+    const mode = getPanelMode();
+    if (mode === 'reseller') throw redirect({ to: '/reseller/login' });
+    if (mode === 'client') throw redirect({ to: '/client/login' });
     const token = useAuthStore.getState().accessToken;
     if (!token) throw redirect({ to: '/login' });
   },
@@ -265,6 +277,7 @@ const resellerLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reseller/login',
   beforeLoad: () => {
+    if (getPanelMode() === 'client') throw redirect({ to: '/client/login' });
     const token = useAuthStore.getState().resellerToken;
     if (token) throw redirect({ to: '/reseller/dashboard' });
   },
@@ -275,6 +288,7 @@ const resellerLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_reseller',
   beforeLoad: () => {
+    if (getPanelMode() === 'client') throw redirect({ to: '/client/login' });
     const token = useAuthStore.getState().resellerToken;
     if (!token) throw redirect({ to: '/reseller/login' });
   },
@@ -347,6 +361,7 @@ const clientLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/client/login',
   beforeLoad: () => {
+    if (getPanelMode() === 'reseller') throw redirect({ to: '/reseller/login' });
     const token = useAuthStore.getState().clientToken;
     if (token) throw redirect({ to: '/client/dashboard' });
   },
@@ -357,6 +372,7 @@ const clientLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_client',
   beforeLoad: () => {
+    if (getPanelMode() === 'reseller') throw redirect({ to: '/reseller/login' });
     const token = useAuthStore.getState().clientToken;
     if (!token) throw redirect({ to: '/client/login' });
   },

@@ -671,6 +671,9 @@ model Settings {
   aiApiKey                String   @default("")
   aiModel                 String   @default("")
   aiSystemPrompt          String?
+  // White-label panel adresleri (hostname gating)
+  resellerPanelHost       String?
+  clientPanelHost         String?
   // Panel geo-block
   geoBlockEnabled         Boolean  @default(false)
   allowedCountries        String[] @default([])

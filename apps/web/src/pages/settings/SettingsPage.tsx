@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { copyToClipboard } from '@/lib/utils';
-import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle, Sparkles } from 'lucide-react';
+import { Save, RotateCcw, Globe, Tv, Users, Radio, Shield, Database, HardDrive, Trash2, Upload, Download, Bell, Key, Copy, Check, Palette, Image as ImageIcon, Plus, Star, AlertCircle, Sparkles, Link2 } from 'lucide-react';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
@@ -12,6 +12,7 @@ import { use2FAStatus, use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
 import { useWhiteLabel, useUpdateWhiteLabel, useUploadLogo } from '@/hooks/useWhiteLabel';
 import { useAiSettings, useSaveAiSettings, type AiSettings } from '@/hooks/useAiSettings';
+import { usePanelHosts, useSavePanelHosts, type PanelHosts } from '@/hooks/usePanelHosts';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ const getSettingsTabs = (t: (key: string) => string): TabItem[] => [
   { id: 'api', label: 'API', icon: Key },
   { id: 'white-label', label: 'White-Label', icon: Palette },
   { id: 'ai', label: 'AI Destek', icon: Sparkles },
+  { id: 'panel-hosts', label: 'Panel Adresleri', icon: Link2 },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -684,6 +686,9 @@ export function SettingsPage() {
 
         {/* === AI SUPPORT === */}
         {activeTab === 'ai' && <AiSettingsTab />}
+
+        {/* === PANEL HOSTS === */}
+        {activeTab === 'panel-hosts' && <PanelHostsTab />}
       </div>
     </div>
   );
@@ -723,6 +728,42 @@ function AiSettingsTab() {
           {saveAi.isPending ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
         {saveAi.isSuccess && <span className="text-xs text-emerald-400">Kaydedildi.</span>}
+      </div>
+    </div>
+  );
+}
+
+function PanelHostsTab() {
+  const { data, isLoading } = usePanelHosts();
+  const save = useSavePanelHosts();
+  const [form, setForm] = useState<PanelHosts | null>(null);
+  useEffect(() => { if (data && !form) setForm(data); }, [data, form]);
+  if (isLoading || !form) return <div className="text-sm text-muted py-6">Yükleniyor…</div>;
+  const set = (k: keyof PanelHosts, v: string) => setForm((p) => (p ? { ...p, [k]: v.trim() } : p));
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div className="flex items-start gap-2 text-xs text-muted bg-surface-2 rounded-lg p-3">
+        <Link2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <span>
+          Reseller ve müşteri (client) panelini ANA panel adresinden ayrı bir hostname'de sunarsınız —
+          böylece reseller/müşteri admin adresini görmez. Buraya girdiğiniz hostname'den açıldığında SPA
+          yalnızca ilgili paneli gösterir. Ayrıca DNS (A kaydı) + nginx server bloğu + SSL kurulumu gerekir
+          (kurulum adımı). Boş bırakılırsa path tabanlı (/reseller, /client) çalışmaya devam eder.
+        </span>
+      </div>
+      <Field label="Reseller panel hostname" hint="Örn: bayi.musteridomain.com (protokolsüz, sadece host).">
+        <input className="input font-mono" value={form.resellerPanelHost}
+          onChange={(e) => set('resellerPanelHost', e.target.value)} placeholder="bayi.ornek.com" />
+      </Field>
+      <Field label="Client (müşteri) panel hostname" hint="Örn: uye.musteridomain.com">
+        <input className="input font-mono" value={form.clientPanelHost}
+          onChange={(e) => set('clientPanelHost', e.target.value)} placeholder="uye.ornek.com" />
+      </Field>
+      <div className="flex items-center gap-3">
+        <button className="btn btn-primary" disabled={save.isPending} onClick={() => save.mutate(form)}>
+          {save.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+        {save.isSuccess && <span className="text-xs text-emerald-400">Kaydedildi. (Yeni adresler için tarayıcıyı yenileyin.)</span>}
       </div>
     </div>
   );
