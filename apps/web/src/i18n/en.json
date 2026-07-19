@@ -337,7 +337,9 @@
     "userCount_one": "{{count}} user",
     "userCount_other": "{{count}} users",
     "connectionUrls": "Connection URLs",
-    "noPasswordForUrls": "This user's password isn't stored (legacy) — change the password to reveal the URLs."
+    "noPasswordForUrls": "This user's password isn't stored (legacy) — change the password to reveal the URLs.",
+    "owner": "Owner",
+    "ownerAdmin": "Admin"
   },
   "streams": {
     "title": "Channels",

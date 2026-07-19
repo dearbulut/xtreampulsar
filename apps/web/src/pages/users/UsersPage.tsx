@@ -274,6 +274,18 @@ export function UsersPage() {
       ),
     },
     {
+      key: 'owner',
+      header: t('users.owner'),
+      render: (r) => {
+        const owner = r.resellerId ? resellers.find((x: { id: string; username: string }) => x.id === r.resellerId) : null;
+        return (
+          <span className="text-xs text-muted">
+            {r.resellerId ? (owner?.username ?? '—') : t('users.ownerAdmin')}
+          </span>
+        );
+      },
+    },
+    {
       key: 'actions',
       header: t('common.actions'),
       className: 'w-44',

@@ -337,7 +337,9 @@
     "userCount_one": "{{count}} kullanıcı",
     "userCount_other": "{{count}} kullanıcı",
     "connectionUrls": "Bağlantı URL'leri",
-    "noPasswordForUrls": "Bu kullanıcının şifresi kayıtlı değil (eski kayıt) — URL'ler için şifreyi değiştirin."
+    "noPasswordForUrls": "Bu kullanıcının şifresi kayıtlı değil (eski kayıt) — URL'ler için şifreyi değiştirin.",
+    "owner": "Sahip",
+    "ownerAdmin": "Admin"
   },
   "streams": {
     "title": "Kanallar",

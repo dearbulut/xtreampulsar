@@ -665,20 +665,25 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       header: t('streams.resolutionQuality'),
       className: 'w-36',
       render: (r) => (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted">{r.resolution ?? '—'}</span>
-          {r.qualityScore && (
-            <span className={cn(
-              'text-xs font-bold px-1.5 py-0.5 rounded',
-              r.qualityScore === 'A' && 'bg-green-500/20 text-green-400',
-              r.qualityScore === 'B' && 'bg-lime-500/20 text-lime-400',
-              r.qualityScore === 'C' && 'bg-yellow-500/20 text-yellow-400',
-              r.qualityScore === 'D' && 'bg-orange-500/20 text-orange-400',
-              r.qualityScore === 'F' && 'bg-red-500/20 text-red-400',
-            )}>
-              {r.qualityScore}
-            </span>
-          )}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted">{r.resolution ?? '—'}</span>
+            {r.videoCodec && (
+              <span className="text-[10px] uppercase font-medium text-muted bg-surface-2 px-1 py-0.5 rounded leading-none">{r.videoCodec}</span>
+            )}
+            {r.qualityScore && (
+              <span className={cn(
+                'text-xs font-bold px-1.5 py-0.5 rounded',
+                r.qualityScore === 'A' && 'bg-green-500/20 text-green-400',
+                r.qualityScore === 'B' && 'bg-lime-500/20 text-lime-400',
+                r.qualityScore === 'C' && 'bg-yellow-500/20 text-yellow-400',
+                r.qualityScore === 'D' && 'bg-orange-500/20 text-orange-400',
+                r.qualityScore === 'F' && 'bg-red-500/20 text-red-400',
+              )}>
+                {r.qualityScore}
+              </span>
+            )}
+          </div>
         </div>
       ),
     },
