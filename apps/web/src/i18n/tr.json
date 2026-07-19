@@ -1671,7 +1671,11 @@
     "regroupApply": "Uygula ({{groups}} dizi, {{rows}} satır)",
     "regroupDone": "{{groups}} dizi arka planda işleniyor ({{episodes}} bölüm, {{rows}} fazla satır sadeleşecek). Birkaç dakika içinde Diziler sayfası tek satıra düşer — sayfayı yenileyerek kontrol et.",
     "regroupStats": "Tarandı: {{scanned}} · Dizi grubu: {{groups}} · Yeni dizi: {{parents}} · Bölüm: {{episodes}} · Kaldırılacak satır: {{rows}}",
-    "regroupEpisodes": "{{count}} bölüm"
+    "regroupEpisodes": "{{count}} bölüm",
+    "probeDurDesc": "Süresi boş VOD filmlerini ffprobe ile tarayıp süre bilgisini doldurur (Xtream get_vod_info duration_secs). Ağ üzerinden çalıştığı için sınırlı gruplar halinde, arka planda işler.",
+    "probeDurRun": "Süreleri Tara ({{limit}})",
+    "probeDurStarted": "{{pending}} film arka planda taranıyor — birkaç dakika sonra oynatıcıda süreler görünür.",
+    "probeDurNone": "Süresi boş VOD bulunamadı — hepsi zaten dolu."
   },
   "ui": {
     "processing": "İşleniyor…",

@@ -36,6 +36,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return { id: reseller.id, username: reseller.username, role: 'RESELLER', type: 'reseller' };
     }
 
+    // Client (abone) panel token'ı: rolü her zaman USER'a sabitle — DB rolü ADMIN/RESELLER
+    // olsa bile client panelde abone gibi davranmalı (aksi halde @Roles('USER') 403 verir).
+    if (payload.type === 'user') {
+      const sub = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, username: true, status: true },
+      });
+      if (!sub || sub.status !== 'ACTIVE') {
+        throw new UnauthorizedException('User not found or inactive');
+      }
+      return { id: sub.id, username: sub.username, role: 'USER', type: 'user' };
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, username: true, role: true, status: true },

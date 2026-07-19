@@ -1,5 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import * as os from 'os';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type Redis from 'ioredis';
@@ -9,6 +11,7 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 @Injectable()
 export class ToolsService {
   private readonly logger = new Logger(ToolsService.name);
+  private readonly ffprobePath = process.env.FFPROBE_PATH ?? 'ffprobe';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -193,6 +196,42 @@ export class ToolsService {
   }
 
   // ─── Re-encode VODs ──────────────────────────────────────────────────────────
+
+  // ─── VOD Film Süreleri (ffprobe) ─────────────────────────────────────────────
+
+  /** Süresi (durationSecs) boş VOD'ları sınırlı bir grup halinde ffprobe ile doldurur (arka planda). */
+  async probeVodDurations(limit = 200): Promise<{ pending: number; started: boolean }> {
+    const vods = await this.prisma.stream.findMany({
+      where: { category: { type: 'VOD' }, durationSecs: null },
+      select: { id: true, primaryUrl: true },
+      take: Math.min(Math.max(limit, 1), 1000),
+    });
+    if (vods.length) void this.runProbeVodDurations(vods);
+    return { pending: vods.length, started: vods.length > 0 };
+  }
+
+  private async runProbeVodDurations(vods: Array<{ id: string; primaryUrl: string }>): Promise<void> {
+    const execFileAsync = promisify(execFile);
+    let updated = 0;
+    for (const v of vods) {
+      try {
+        const { stdout } = await execFileAsync(
+          this.ffprobePath,
+          ['-v', 'quiet', '-print_format', 'json', '-show_format', v.primaryUrl],
+          { timeout: 15_000, maxBuffer: 1024 * 1024 },
+        );
+        const dur = Math.round(Number(JSON.parse(stdout)?.format?.duration) || 0);
+        if (dur > 0) {
+          await this.prisma.stream.update({ where: { id: v.id }, data: { durationSecs: dur } });
+          updated++;
+        }
+      } catch {
+        /* ffprobe başarısız / zaman aşımı → geç */
+      }
+      if (updated > 0 && updated % 50 === 0) this.logger.log(`probeVodDurations: ${updated} güncellendi`);
+    }
+    this.logger.log(`probeVodDurations: tamam, ${updated}/${vods.length} güncellendi`);
+  }
 
   async reencodeVods(opts: {
     categoryId?: string;

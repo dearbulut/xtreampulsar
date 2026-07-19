@@ -260,6 +260,7 @@ model Stream {
   videoCodec      String?
   fps             Float?
   lastAnalyzedAt  DateTime?
+  durationSecs    Int?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

@@ -70,6 +70,12 @@ export class ToolsController {
     return this.toolsService.reencodeVods(body);
   }
 
+  // POST /tools/probe-vod-durations
+  @Post('probe-vod-durations')
+  probeVodDurations(@Body('limit') limit?: number) {
+    return this.toolsService.probeVodDurations(limit ?? 200);
+  }
+
   // POST /tools/bulk-series-import
   @Post('bulk-series-import')
   bulkSeriesImport(

@@ -200,16 +200,21 @@ export class XtreamService {
   async getVodInfo(vodExternalId: number) {
     const vod = await this.streamService.findByExternalId(vodExternalId);
     if (!vod) return { info: {}, movie_data: {} };
+    const ext = (vod.primaryUrl.match(/\.([a-z0-9]{2,4})(?:\?|$)/i)?.[1] || 'mp4').toLowerCase();
+    const durationSecs = vod.durationSecs ?? 0;
+    const durationStr = durationSecs > 0
+      ? `${Math.floor(durationSecs / 3600).toString().padStart(2, '0')}:${Math.floor((durationSecs % 3600) / 60).toString().padStart(2, '0')}:${(durationSecs % 60).toString().padStart(2, '0')}`
+      : '';
     return {
       info: {
         movie_image: vod.posterUrl ?? vod.tvgLogo ?? '', plot: vod.overview ?? '', cast: '', director: '',
         genre: (vod.tmdbGenres ?? []).join(', '), releasedate: vod.releaseYear ? String(vod.releaseYear) : '',
         rating: vod.tmdbRating != null ? String(vod.tmdbRating) : '0',
         rating_5based: vod.tmdbRating != null ? Math.round((vod.tmdbRating / 2) * 10) / 10 : 0,
-        backdrop_path: vod.backdropUrl ? [vod.backdropUrl] : [], duration_secs: 0, duration: '', container_extension: 'mp4',
+        backdrop_path: vod.backdropUrl ? [vod.backdropUrl] : [], duration_secs: durationSecs, duration: durationStr, container_extension: ext,
       },
       movie_data: { stream_id: vod.externalId, name: vod.name, added: String(Math.floor(vod.createdAt.getTime() / 1000)),
-                    category_id: String(vod.category.externalId), container_extension: 'mp4' },
+                    category_id: String(vod.category.externalId), container_extension: ext },
     };
   }
 

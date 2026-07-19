@@ -17,10 +17,11 @@ import {
   RefreshCw,
   ShieldCheck,
   Wrench,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries } from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries, useProbeVodDurations } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -37,7 +38,8 @@ type ToolId =
   | 'system-stats'
   | 'iptv-check'
   | 'fix-types'
-  | 'regroup-series';
+  | 'regroup-series'
+  | 'probe-durations';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -51,6 +53,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'iptv-check', icon: ShieldCheck, label: 'IPTV Checker' },
   { id: 'fix-types', icon: Wrench, label: 'Fix Stream Types' },
   { id: 'regroup-series', icon: Layers, label: 'Regroup Series' },
+  { id: 'probe-durations', icon: Clock, label: 'VOD Durations' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -703,6 +706,38 @@ function RegroupSeriesPanel() {
   );
 }
 
+function ProbeDurationsPanel() {
+  const { t } = useTranslation();
+  const [limit, setLimit] = useState(200);
+  const probe = useProbeVodDurations();
+  const r = probe.data;
+
+  return (
+    <div>
+      <PanelTitle icon={Clock}>VOD Durations</PanelTitle>
+      <PanelDesc>{t('tools.probeDurDesc')}</PanelDesc>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={1}
+          max={1000}
+          className="input w-28"
+          value={limit}
+          onChange={(e) => setLimit(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))}
+        />
+        <RunButton onClick={() => void probe.mutateAsync(limit)} loading={probe.isPending}>
+          {t('tools.probeDurRun', { limit })}
+        </RunButton>
+      </div>
+      {probe.isSuccess && r && (
+        <SuccessBox>
+          {r.started ? t('tools.probeDurStarted', { pending: r.pending }) : t('tools.probeDurNone')}
+        </SuccessBox>
+      )}
+    </div>
+  );
+}
+
 function IptvCheckPanel() {
   const { t } = useTranslation();
   const [host, setHost] = useState('');
@@ -908,6 +943,7 @@ export function AdvancedToolsPage() {
           {active === 'iptv-check' && <IptvCheckPanel />}
           {active === 'fix-types' && <FixStreamTypesPanel />}
           {active === 'regroup-series' && <RegroupSeriesPanel />}
+          {active === 'probe-durations' && <ProbeDurationsPanel />}
         </div>
       </div>
     </div>

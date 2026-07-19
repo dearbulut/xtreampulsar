@@ -249,3 +249,23 @@ export function useRegroupSeries() {
     },
   });
 }
+
+
+// ─── VOD Film Süreleri (ffprobe) ─────────────────────────────────────────────
+
+export interface ProbeVodDurationsResult {
+  pending: number;
+  started: boolean;
+}
+
+export function useProbeVodDurations() {
+  return useMutation({
+    mutationFn: async (limit: number) => {
+      const res = await api.post<{ success: boolean; data: ProbeVodDurationsResult }>(
+        '/tools/probe-vod-durations',
+        { limit },
+      );
+      return res.data.data;
+    },
+  });
+}

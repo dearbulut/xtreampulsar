@@ -1671,7 +1671,11 @@
     "regroupApply": "Apply ({{groups}} series, {{rows}} rows)",
     "regroupDone": "{{groups}} series processing in background ({{episodes}} episodes, {{rows}} extra rows will be cleaned up). Within a few minutes the Series page collapses to one row each — refresh to check.",
     "regroupStats": "Scanned: {{scanned}} · Series groups: {{groups}} · New series: {{parents}} · Episodes: {{episodes}} · Rows to remove: {{rows}}",
-    "regroupEpisodes": "{{count}} episodes"
+    "regroupEpisodes": "{{count}} episodes",
+    "probeDurDesc": "Scans VOD movies with missing duration via ffprobe and fills it in (Xtream get_vod_info duration_secs). Runs over the network in bounded batches, in the background.",
+    "probeDurRun": "Probe Durations ({{limit}})",
+    "probeDurStarted": "{{pending}} movies scanning in background — durations appear in players within a few minutes.",
+    "probeDurNone": "No VOD with missing duration — all already filled."
   },
   "ui": {
     "processing": "Processing…",
