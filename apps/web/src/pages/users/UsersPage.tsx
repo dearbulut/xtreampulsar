@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { TagInput } from '@/components/ui/TagInput';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
   useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser, useCreateTrialUser,
@@ -991,6 +992,8 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const { data: allBouquets = [] } = useBouquets();
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
+  const [editingAccess, setEditingAccess] = useState(false);
+  const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, lockDevice: false });
   const kickUser = useKickUser();
   const settings = useSettings();
   const xtreamBaseUrl = (() => {
@@ -1118,6 +1121,70 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 <button className="btn-ghost text-sm" onClick={() => { setEditPassword(false); setNewPassword(''); }}>
                   {t('common.cancel')}
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* Erişim Kontrolü — hat başına anti-abuse */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-muted">{t('users.accessControl')}</div>
+              {!editingAccess && (
+                <button
+                  onClick={() => {
+                    setAccessDraft({
+                      allowedIps: user.allowedIps ?? [],
+                      allowedCountries: user.allowedCountries ?? [],
+                      blockVpn: user.blockVpn ?? false,
+                      lockDevice: user.lockDevice ?? false,
+                    });
+                    setEditingAccess(true);
+                  }}
+                  className="btn-secondary text-sm flex items-center gap-2"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> {t('common.edit')}
+                </button>
+              )}
+            </div>
+
+            {!editingAccess ? (
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                {(user.allowedIps?.length ?? 0) > 0 && (
+                  <span className="badge bg-surface-2 text-slate-300">IP: {user.allowedIps!.join(', ')}</span>
+                )}
+                {(user.allowedCountries?.length ?? 0) > 0 && (
+                  <span className="badge bg-surface-2 text-slate-300">{t('users.countries')}: {user.allowedCountries!.join(', ')}</span>
+                )}
+                {user.blockVpn && <span className="badge bg-warning/10 text-warning">{t('users.vpnBlocked')}</span>}
+                {user.lockDevice && <span className="badge bg-primary/10 text-primary-light">{t('users.deviceLocked')}</span>}
+                {!(user.allowedIps?.length || user.allowedCountries?.length || user.blockVpn || user.lockDevice) && (
+                  <span className="text-muted">{t('users.noRestrictions')}</span>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <div className="text-[11px] text-muted mb-1">{t('users.allowedIps')} <span className="opacity-60">({t('users.emptyMeansAll')})</span></div>
+                  <TagInput value={accessDraft.allowedIps} onChange={(v) => setAccessDraft((a) => ({ ...a, allowedIps: v }))} placeholder="1.2.3.4" />
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted mb-1">{t('users.allowedCountries')} <span className="opacity-60">(ISO: TR, DE… — {t('users.emptyMeansAll')})</span></div>
+                  <TagInput value={accessDraft.allowedCountries} onChange={(v) => setAccessDraft((a) => ({ ...a, allowedCountries: v.map((x) => x.toUpperCase()) }))} placeholder="TR" />
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={accessDraft.blockVpn} onChange={(e) => setAccessDraft((a) => ({ ...a, blockVpn: e.target.checked }))} />
+                  {t('users.blockVpnLabel')}
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={accessDraft.lockDevice} onChange={(e) => setAccessDraft((a) => ({ ...a, lockDevice: e.target.checked }))} />
+                  {t('users.lockDeviceLabel')} <span className="text-[11px] text-muted">({t('users.lockDeviceHint')})</span>
+                </label>
+                <div className="flex gap-2">
+                  <button className="btn-primary text-sm" onClick={() => { onUpdate(userId, accessDraft); setEditingAccess(false); }}>
+                    {t('common.save')}
+                  </button>
+                  <button className="btn-ghost text-sm" onClick={() => setEditingAccess(false)}>{t('common.cancel')}</button>
+                </div>
               </div>
             )}
           </div>

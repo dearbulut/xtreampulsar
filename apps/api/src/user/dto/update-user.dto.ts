@@ -43,4 +43,22 @@ export class UpdateUserDto {
   @IsArray()
   @IsString({ each: true })
   bouquetIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedIps?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedCountries?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  blockVpn?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  lockDevice?: boolean;
 }

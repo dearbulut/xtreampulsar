@@ -343,7 +343,18 @@
     "connectionUrls": "Bağlantı URL'leri",
     "noPasswordForUrls": "Bu kullanıcının şifresi kayıtlı değil (eski kayıt) — URL'ler için şifreyi değiştirin.",
     "owner": "Sahip",
-    "ownerAdmin": "Admin"
+    "ownerAdmin": "Admin",
+    "accessControl": "Erişim Kontrolü",
+    "countries": "Ülkeler",
+    "vpnBlocked": "VPN engelli",
+    "deviceLocked": "Cihaz kilitli",
+    "noRestrictions": "Kısıtlama yok",
+    "allowedIps": "İzinli IP'ler",
+    "allowedCountries": "İzinli ülkeler",
+    "emptyMeansAll": "boş = hepsi",
+    "blockVpnLabel": "VPN/proxy bağlantılarını engelle",
+    "lockDeviceLabel": "Cihaz kilidi",
+    "lockDeviceHint": "ilk bağlanan cihaza kilitlenir"
   },
   "streams": {
     "title": "Kanallar",

@@ -483,6 +483,12 @@ model User {
   expiresAt        DateTime
   notes            String?
   isTrial          Boolean    @default(false)
+  // Hat erişim kontrolü (anti-abuse)
+  allowedIps       String[]   @default([])
+  allowedCountries String[]   @default([])
+  blockVpn         Boolean    @default(false)
+  lockDevice       Boolean    @default(false)
+  lockedDeviceId   String?
   trialEndsAt      DateTime?
   deletedAt        DateTime?
   twoFactorSecret     String?

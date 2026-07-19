@@ -343,7 +343,18 @@
     "connectionUrls": "Connection URLs",
     "noPasswordForUrls": "This user's password isn't stored (legacy) — change the password to reveal the URLs.",
     "owner": "Owner",
-    "ownerAdmin": "Admin"
+    "ownerAdmin": "Admin",
+    "accessControl": "Access Control",
+    "countries": "Countries",
+    "vpnBlocked": "VPN blocked",
+    "deviceLocked": "Device locked",
+    "noRestrictions": "No restrictions",
+    "allowedIps": "Allowed IPs",
+    "allowedCountries": "Allowed countries",
+    "emptyMeansAll": "empty = all",
+    "blockVpnLabel": "Block VPN/proxy connections",
+    "lockDeviceLabel": "Device lock",
+    "lockDeviceHint": "locks to the first device that connects"
   },
   "streams": {
     "title": "Channels",

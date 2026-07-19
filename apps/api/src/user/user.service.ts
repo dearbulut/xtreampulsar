@@ -9,6 +9,7 @@ import {
 import { randomBytes } from 'crypto';
 import { Cron } from '@nestjs/schedule';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import * as qrcode from 'qrcode';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
@@ -70,6 +71,27 @@ export class UserService {
     return this.userRepo.findById(id);
   }
 
+  private ipMetaCache = new Map<string, { cc: string; proxy: boolean; ts: number }>();
+  /** ip-api.com ile ülke + proxy/hosting (VPN) tespiti — 1 saat cache, özel IP'lerde atla. */
+  private async lookupIpMeta(ip: string): Promise<{ cc: string; proxy: boolean } | null> {
+    if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) return null;
+    const cached = this.ipMetaCache.get(ip);
+    const now = Date.now();
+    if (cached && now - cached.ts < 3_600_000) return { cc: cached.cc, proxy: cached.proxy };
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode,proxy,hosting`, { signal: controller.signal });
+      clearTimeout(timer);
+      const d = (await res.json()) as { countryCode?: string; proxy?: boolean; hosting?: boolean };
+      const meta = { cc: d.countryCode ?? '', proxy: Boolean(d.proxy || d.hosting) };
+      this.ipMetaCache.set(ip, { ...meta, ts: now });
+      return meta;
+    } catch {
+      return null;
+    }
+  }
+
   async validateConnection(userId: string, ip: string, _userAgent?: string, perIpCap?: number) {
     const user = await this.userRepo.findById(userId);
     if (!user || user.deletedAt) return { allowed: false, reason: 'User not found' };
@@ -96,6 +118,38 @@ export class UserService {
       const ipActive = await this.userRepo.countActiveConnectionsByIp(ip);
       if (ipActive >= cap) {
         return { allowed: false, reason: `IP connection limit reached (${cap})` };
+      }
+    }
+
+    // ── Hat erişim kontrolü (anti-abuse) ────────────────────────────────
+    // IP allowlist (lookup gerektirmez)
+    const allowedIps = (user as { allowedIps?: string[] }).allowedIps ?? [];
+    if (allowedIps.length > 0 && ip && !allowedIps.includes(ip)) {
+      return { allowed: false, reason: 'IP not allowed for this line' };
+    }
+    // Ülke kilidi + VPN engelleme (yalnız gerektiğinde ip-api sorgusu)
+    const allowedCountries = (user as { allowedCountries?: string[] }).allowedCountries ?? [];
+    const blockVpn = (user as { blockVpn?: boolean }).blockVpn ?? false;
+    if ((allowedCountries.length > 0 || blockVpn) && ip) {
+      const meta = await this.lookupIpMeta(ip);
+      if (meta) {
+        if (allowedCountries.length > 0 && meta.cc && !allowedCountries.includes(meta.cc)) {
+          return { allowed: false, reason: `Country ${meta.cc} not allowed for this line` };
+        }
+        if (blockVpn && meta.proxy) {
+          return { allowed: false, reason: 'VPN/proxy not allowed for this line' };
+        }
+      }
+    }
+    // Cihaz kilidi (user-agent parmak izi; ilk cihaza otomatik kilitlenir)
+    const lockDevice = (user as { lockDevice?: boolean }).lockDevice ?? false;
+    if (lockDevice && _userAgent) {
+      const fp = crypto.createHash('sha256').update(_userAgent).digest('hex').slice(0, 24);
+      const locked = (user as { lockedDeviceId?: string | null }).lockedDeviceId ?? null;
+      if (!locked) {
+        await this.prisma.user.update({ where: { id: userId }, data: { lockedDeviceId: fp } });
+      } else if (locked !== fp) {
+        return { allowed: false, reason: 'Device locked to another device' };
       }
     }
 
@@ -186,6 +240,7 @@ export class UserService {
           id: true, username: true, role: true, status: true,
           maxConnections: true, expiresAt: true, notes: true,
           plainPassword: true,
+          allowedIps: true, allowedCountries: true, blockVpn: true, lockDevice: true,
           createdAt: true, resellerId: true,
           // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
           _count: { select: { connections: { where: activeConnectionWhere() } } },
@@ -289,6 +344,10 @@ export class UserService {
     }
     if (dto.expiresAt) {
       data.expiresAt = new Date(dto.expiresAt);
+    }
+    // Cihaz kilidi kapatılınca kilitli cihazı sıfırla (tekrar açılınca yeni cihaza kilitlensin)
+    if (dto.lockDevice === false) {
+      data.lockedDeviceId = null;
     }
 
     const user = await this.prisma.user.update({

@@ -101,6 +101,10 @@ export interface User {
   isTrial?: boolean;
   trialEndsAt?: string | null;
   plainPassword?: string | null;
+  allowedIps?: string[];
+  allowedCountries?: string[];
+  blockVpn?: boolean;
+  lockDevice?: boolean;
   _count?: { connections: number };
 }
 

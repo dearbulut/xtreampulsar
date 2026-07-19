@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -47,4 +48,22 @@ export class CreateUserDto {
   @IsArray()
   @IsString({ each: true })
   bouquetIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedIps?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedCountries?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  blockVpn?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  lockDevice?: boolean;
 }
