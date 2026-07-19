@@ -1751,5 +1751,10 @@
     "saving": "Saving…",
     "deleteTitle": "Delete Webhook",
     "deleteMessage": "This webhook will be permanently deleted. Are you sure?"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "subtitle": "The page you are looking for may have moved or never existed.",
+    "back": "Back to dashboard"
   }
 }

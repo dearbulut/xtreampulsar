@@ -49,6 +49,7 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
 import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
 import { useAuthStore } from '@/store/auth.store';
+import { NotFoundPage } from '@/pages/misc/NotFoundPage';
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -397,7 +398,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({ routeTree, defaultNotFoundComponent: NotFoundPage });
 
 declare module '@tanstack/react-router' {
   interface Register {

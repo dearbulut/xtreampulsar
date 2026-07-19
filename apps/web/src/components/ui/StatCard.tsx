@@ -36,7 +36,7 @@ export function StatCard({
   const cfg = variantCfg[variant];
 
   return (
-    <div className={cn('card p-5 flex flex-col gap-3', className)}>
+    <div className={cn('card card-hover p-5 flex flex-col gap-3', className)}>
       <div className="flex items-center justify-between">
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', cfg.icon)}>
           <Icon className="w-5 h-5" />

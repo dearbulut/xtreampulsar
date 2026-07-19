@@ -1751,5 +1751,10 @@
     "saving": "Kaydediliyor…",
     "deleteTitle": "Webhook'u Sil",
     "deleteMessage": "Bu webhook kalıcı olarak silinecek. Emin misin?"
+  },
+  "notFound": {
+    "title": "Sayfa bulunamadı",
+    "subtitle": "Aradığınız sayfa taşınmış veya hiç var olmamış olabilir.",
+    "back": "Panele dön"
   }
 }

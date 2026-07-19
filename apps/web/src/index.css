@@ -71,37 +71,49 @@
   .card {
     @apply bg-surface rounded-xl;
     border: 1px solid var(--color-border);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.05);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
   }
   .dark .card {
     border-color: rgba(99, 102, 241, 0.15);
-    box-shadow: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  }
+  /* Interactive cards (stat tiles, clickable rows) — gentle lift on hover */
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.10);
+    border-color: rgba(99, 102, 241, 0.35);
+  }
+  .dark .card-hover:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.40);
+    border-color: rgba(129, 140, 248, 0.40);
   }
 
   /* ── Buttons ────────────────────────────────────────────────────────── */
   .btn-primary {
     @apply bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-medium
-           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+           transition-all duration-150 active:scale-[0.98] shadow-sm hover:shadow-md
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
   }
 
   .btn-ghost {
-    @apply text-muted hover:bg-surface-2 px-3 py-2 rounded-lg text-sm transition-colors;
+    @apply text-muted hover:bg-surface-2 px-3 py-2 rounded-lg text-sm transition-all duration-150 active:scale-[0.97];
   }
   .btn-ghost:hover { color: var(--color-fg); }
 
   .btn-danger {
-    @apply bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm transition-colors;
+    @apply bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm transition-all duration-150 active:scale-[0.97];
   }
 
   .btn {
     @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-           transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+           transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
   }
 
   /* ── Input ──────────────────────────────────────────────────────────── */
   .input {
-    @apply bg-surface rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1
-           focus:ring-primary focus:border-primary transition-colors w-full;
+    @apply bg-surface rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2
+           focus:ring-primary/25 focus:border-primary transition-all w-full;
     border: 1px solid var(--color-border);
     color: var(--color-fg);
   }
