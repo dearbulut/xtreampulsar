@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -30,5 +30,10 @@ export class ClientController {
   @Get('me/requests')
   getMyRequests(@CurrentUser() user: JwtUser) {
     return this.clientService.getMyRequests(user.id);
+  }
+
+  @Post('me/requests/:id/messages')
+  addRequestMessage(@CurrentUser() user: JwtUser, @Param('id') id: string, @Body('body') body: string) {
+    return this.clientService.addMyRequestMessage(user.id, id, body);
   }
 }

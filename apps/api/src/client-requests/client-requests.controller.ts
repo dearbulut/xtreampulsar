@@ -34,4 +34,9 @@ export class ClientRequestsController {
   aiSuggest(@Param('id') id: string) {
     return this.service.aiSuggest(id);
   }
+
+  @Post(':id/messages')
+  addMessage(@Param('id') id: string, @Body('body') body: string) {
+    return this.service.addMessage(id, body);
+  }
 }

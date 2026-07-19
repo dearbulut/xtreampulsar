@@ -40,7 +40,8 @@ export class AiService {
         `özel adımlar YAZMA. Somut teknik çözüm adımı verme (bilmiyorsun). ` +
         `Bunun yerine: sorunu kibarca teyit et, teknik ekibin en kısa sürede inceleyeceğini belirt, ` +
         `gerekirse aboneden hangi içerik/kanal ve hangi cihazda sorun yaşadığını nazikçe sor. ` +
-        `Emoji kullanma.`;
+        `Emoji kullanma. Yanıtın başına 'Yanıt Taslağı' gibi BAŞLIK/ETİKET ekleme; ` +
+        `doğrudan abonenin okuyacağı mesajı yaz. Markdown biçimlendirme (**, #, - vb.) KULLANMA, düz metin yaz.`;
 
     const userMsg =
       `Talep tipi: ${ctx.type}\n` +

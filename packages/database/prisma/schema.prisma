@@ -1020,10 +1020,23 @@ model ClientRequest {
   adminNote  String?
   createdAt  DateTime            @default(now())
   resolvedAt DateTime?
+  messages   ClientRequestMessage[]
 
   @@index([status])
   @@index([type])
   @@map("client_requests")
+}
+
+model ClientRequestMessage {
+  id        String        @id @default(cuid())
+  requestId String
+  request   ClientRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sender    String        // USER | ADMIN
+  body      String
+  createdAt DateTime      @default(now())
+
+  @@index([requestId])
+  @@map("client_request_messages")
 }
 
 

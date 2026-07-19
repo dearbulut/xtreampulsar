@@ -794,7 +794,10 @@
     "details": "Details",
     "send": "Send",
     "requestSent": "Your request was received, thank you!",
-    "noRequests": "No reports/requests yet"
+    "noRequests": "No reports/requests yet",
+    "support": "Support",
+    "you": "You",
+    "replyPlaceholder": "Write a reply…"
   },
   "errors": {
     "required": "This field is required",

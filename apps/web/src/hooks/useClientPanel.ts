@@ -135,6 +135,7 @@ export interface ClientRequestItem {
   adminNote?: string | null;
   createdAt: string;
   stream?: { id: string; name: string } | null;
+  messages?: Array<{ id: string; sender: string; body: string; createdAt: string }>;
 }
 
 export function useMyClientRequests() {
@@ -146,6 +147,15 @@ export function useMyClientRequests() {
       const res = await clientApi.get<{ success: boolean; data: ClientRequestItem[] }>('/client/me/requests');
       return res.data.data;
     },
+  });
+}
+
+export function useAddClientRequestMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: string }) =>
+      clientApi.post(`/client/me/requests/${id}/messages`, { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['client-panel', 'requests'] }),
   });
 }
 

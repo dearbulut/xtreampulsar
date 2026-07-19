@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
@@ -89,8 +89,28 @@ export class ClientService {
     return this.prisma.clientRequest.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { stream: { select: { id: true, name: true } } },
+      include: {
+        stream: { select: { id: true, name: true } },
+        messages: { orderBy: { createdAt: 'asc' }, select: { id: true, sender: true, body: true, createdAt: true } },
+      },
       take: 50,
     });
+  }
+
+  // Son kullanıcı: kendi talebine cevap mesajı ekler (thread) + talebi yeniden açar.
+  async addMyRequestMessage(userId: string, requestId: string, body: string) {
+    const req = await this.prisma.clientRequest.findFirst({
+      where: { id: requestId, userId },
+      select: { id: true },
+    });
+    if (!req) throw new NotFoundException('Talep bulunamadı');
+    const text = (body || '').trim();
+    if (!text) throw new BadRequestException('Mesaj boş olamaz');
+    const msg = await this.prisma.clientRequestMessage.create({
+      data: { requestId, sender: 'USER', body: text.slice(0, 2000) },
+      select: { id: true, sender: true, body: true, createdAt: true },
+    });
+    await this.prisma.clientRequest.update({ where: { id: requestId }, data: { status: 'OPEN', resolvedAt: null } });
+    return msg;
   }
 }

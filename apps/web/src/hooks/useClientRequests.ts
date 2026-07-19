@@ -12,6 +12,7 @@ export interface ClientRequest {
   resolvedAt?: string | null;
   user?: { id: string; username: string } | null;
   stream?: { id: string; name: string } | null;
+  messages?: Array<{ id: string; sender: string; body: string; createdAt: string }>;
 }
 
 export function useClientRequests(params: { status?: string; type?: string } = {}) {
@@ -62,5 +63,14 @@ export function useAiSuggest() {
       );
       return res.data.data.reply;
     },
+  });
+}
+
+export function useAddAdminMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: string }) =>
+      api.post(`/client-requests/${id}/messages`, { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['client-requests'] }),
   });
 }

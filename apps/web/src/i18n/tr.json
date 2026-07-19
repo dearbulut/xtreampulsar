@@ -794,7 +794,10 @@
     "details": "Detay",
     "send": "Gönder",
     "requestSent": "Talebiniz alındı, teşekkürler!",
-    "noRequests": "Henüz bildirim/istek yok"
+    "noRequests": "Henüz bildirim/istek yok",
+    "support": "Destek",
+    "you": "Siz",
+    "replyPlaceholder": "Yanıt yaz…"
   },
   "errors": {
     "required": "Bu alan zorunludur",

@@ -11,7 +11,9 @@ import {
   useClientChangePassword,
   useCreateClientRequest,
   useMyClientRequests,
+  useAddClientRequestMessage,
   type ClientConnection,
+  type ClientRequestItem,
 } from '@/hooks/useClientPanel';
 import { cn, daysLeft, formatDate, copyToClipboard } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -373,22 +375,7 @@ function RequestCard() {
       {myReqs.length > 0 ? (
         <div className="space-y-1.5 pt-3 border-t border-border">
           {myReqs.slice(0, 5).map((r) => (
-            <div key={r.id} className="text-xs pt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-muted">
-                  {r.type === 'REPORT' ? '⚠ ' : '＋ '}{r.stream?.name ? `${r.stream.name} — ` : ''}{r.title}
-                </span>
-                <span className={cn('shrink-0', r.status === 'RESOLVED' ? 'text-success' : r.status === 'REJECTED' ? 'text-danger' : 'text-warning')}>
-                  {t(`clientRequests.status${r.status.charAt(0) + r.status.slice(1).toLowerCase()}`)}
-                </span>
-              </div>
-              {r.adminNote && (
-                <div className="mt-1 flex gap-1.5 text-primary bg-primary/5 rounded px-2 py-1.5">
-                  <span className="shrink-0">↳</span>
-                  <span className="whitespace-pre-wrap break-words">{r.adminNote}</span>
-                </div>
-              )}
-            </div>
+            <ClientRequestRow key={r.id} r={r} />
           ))}
         </div>
       ) : (
@@ -417,6 +404,59 @@ export function ClientDashboardPage() {
         <ConnectionsCard />
         <ChangePasswordCard />
         <RequestCard />
+      </div>
+    </div>
+  );
+}
+
+
+function ClientRequestRow({ r }: { r: ClientRequestItem }) {
+  const { t } = useTranslation();
+  const [reply, setReply] = useState('');
+  const addMsg = useAddClientRequestMessage();
+  const send = () => {
+    const body = reply.trim();
+    if (!body) return;
+    addMsg.mutate({ id: r.id, body }, { onSuccess: () => setReply('') });
+  };
+  const hasThread = !!(r.messages && r.messages.length > 0);
+  return (
+    <div className="text-xs pt-2 border-t border-border/40 first:border-t-0 first:pt-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-muted">
+          {r.type === 'REPORT' ? '\u26A0 ' : '\uFF0B '}{r.stream?.name ? `${r.stream.name} \u2014 ` : ''}{r.title}
+        </span>
+        <span className={cn('shrink-0', r.status === 'RESOLVED' ? 'text-success' : r.status === 'REJECTED' ? 'text-danger' : 'text-warning')}>
+          {t(`clientRequests.status${r.status.charAt(0) + r.status.slice(1).toLowerCase()}`)}
+        </span>
+      </div>
+      {r.message && <div className="mt-1 text-muted/70">{r.message}</div>}
+      {r.adminNote && !hasThread && (
+        <div className="mt-1 rounded px-2 py-1.5 bg-primary/5 text-primary whitespace-pre-wrap break-words">
+          <span className="font-medium mr-1">{t('client.support')}:</span>{r.adminNote}
+        </div>
+      )}
+      {hasThread && (
+        <div className="mt-1.5 space-y-1">
+          {r.messages!.map((m) => (
+            <div key={m.id} className={cn('rounded px-2 py-1.5 whitespace-pre-wrap break-words',
+              m.sender === 'ADMIN' ? 'bg-primary/5 text-primary' : 'bg-surface-2 text-fg')}>
+              <span className="font-medium mr-1">{m.sender === 'ADMIN' ? t('client.support') : t('client.you')}:</span>{m.body}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-1.5 flex gap-1.5">
+        <input
+          className="input flex-1 !py-1 text-xs"
+          placeholder={t('client.replyPlaceholder')}
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+        />
+        <button className="btn-primary !py-1 !px-3 text-xs whitespace-nowrap" disabled={!reply.trim() || addMsg.isPending} onClick={send}>
+          {t('client.send')}
+        </button>
       </div>
     </div>
   );

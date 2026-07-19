@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageSquareWarning, TvMinimal, Check, X, RotateCcw, Inbox, Sparkles } from 'lucide-react';
-import { useClientRequests, useUpdateClientRequest, useAiSuggest, type ClientRequest } from '@/hooks/useClientRequests';
+import { MessageSquareWarning, TvMinimal, Check, X, RotateCcw, Inbox, Sparkles, MessageSquare } from 'lucide-react';
+import { useClientRequests, useUpdateClientRequest, useAiSuggest, useAddAdminMessage, type ClientRequest } from '@/hooks/useClientRequests';
+import { Modal } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatDate } from '@/lib/utils';
@@ -20,6 +21,10 @@ export function ClientRequestsPage() {
   const { data, isLoading } = useClientRequests({ type: type || undefined, status: status || undefined });
   const update = useUpdateClientRequest();
   const aiSuggest = useAiSuggest();
+  const addAdminMsg = useAddAdminMessage();
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const threadReq = data?.items.find((x) => x.id === threadId) ?? null;
   const items = data?.items ?? [];
 
   const typeTabs: { key: '' | 'REPORT' | 'NEW_CHANNEL'; label: string }[] = [
@@ -117,12 +122,11 @@ export function ClientRequestsPage() {
                     </td>
                     <td className="table-td">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="btn-ghost p-1.5" title="AI yanıt taslağı öner" disabled={aiSuggest.isPending}
-                          onClick={() => aiSuggest.mutate(r.id, {
-                            onSuccess: (reply) => update.mutate({ id: r.id, status: r.status, adminNote: reply }),
-                            onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'AI yanıtı alınamadı'),
-                          })}>
-                          <Sparkles className="w-4 h-4 text-primary" />
+                        <button className="btn-ghost p-1.5 relative" title="Mesajlar / Yanıtla" onClick={() => { setThreadId(r.id); setReplyText(''); }}>
+                          <MessageSquare className="w-4 h-4 text-primary" />
+                          {r.messages && r.messages.length > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 bg-primary text-white rounded-full text-[9px] leading-none px-1 py-0.5">{r.messages.length}</span>
+                          )}
                         </button>
                         {r.status !== 'RESOLVED' && (
                           <button className="btn-ghost p-1.5" title={t('clientRequests.resolve')}
@@ -151,6 +155,57 @@ export function ClientRequestsPage() {
           </div>
         )}
       </div>
+
+      {threadReq && (
+        <Modal open={!!threadReq} onClose={() => setThreadId(null)} title={`${threadReq.user?.username ?? ''} \u2014 ${threadReq.title}`}>
+          <div className="space-y-3">
+            {threadReq.message && (
+              <div className="text-sm bg-surface-2 rounded-lg p-2.5 text-fg whitespace-pre-wrap break-words">
+                <span className="font-medium mr-1">{threadReq.user?.username ?? 'Abone'}:</span>{threadReq.message}
+              </div>
+            )}
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {threadReq.adminNote && (!threadReq.messages || threadReq.messages.length === 0) && (
+                <div className="text-sm rounded-lg px-2.5 py-1.5 bg-primary/10 text-primary whitespace-pre-wrap break-words">
+                  <span className="font-medium mr-1">Destek:</span>{threadReq.adminNote}
+                </div>
+              )}
+              {(threadReq.messages ?? []).map((m) => (
+                <div key={m.id} className={cn('text-sm rounded-lg px-2.5 py-1.5 whitespace-pre-wrap break-words',
+                  m.sender === 'ADMIN' ? 'bg-primary/10 text-primary ml-6' : 'bg-surface-2 text-fg mr-6')}>
+                  <span className="font-medium mr-1">{m.sender === 'ADMIN' ? 'Destek' : (threadReq.user?.username ?? 'Abone')}:</span>{m.body}
+                </div>
+              ))}
+            </div>
+            <textarea
+              className="input min-h-[80px]"
+              placeholder="Yanıt yaz\u2026"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+            />
+            <div className="flex items-center justify-between gap-2">
+              <button
+                className="btn-ghost text-sm inline-flex items-center gap-1.5"
+                disabled={aiSuggest.isPending}
+                onClick={() => aiSuggest.mutate(threadReq.id, {
+                  onSuccess: (reply) => setReplyText(reply),
+                  onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'AI yan\u0131t\u0131 al\u0131namad\u0131'),
+                })}
+              >
+                <Sparkles className="w-4 h-4 text-primary" />
+                {aiSuggest.isPending ? 'AI \u00fcretiliyor\u2026' : 'AI \u00f6ner'}
+              </button>
+              <button
+                className="btn-primary"
+                disabled={!replyText.trim() || addAdminMsg.isPending}
+                onClick={() => addAdminMsg.mutate({ id: threadReq.id, body: replyText.trim() }, { onSuccess: () => setReplyText('') })}
+              >
+                G\u00f6nder
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

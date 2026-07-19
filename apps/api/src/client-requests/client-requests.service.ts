@@ -27,6 +27,7 @@ export class ClientRequestsService {
         include: {
           user: { select: { id: true, username: true } },
           stream: { select: { id: true, name: true } },
+          messages: { orderBy: { createdAt: 'asc' }, select: { id: true, sender: true, body: true, createdAt: true } },
         },
       }),
       this.prisma.clientRequest.count({ where }),
@@ -53,6 +54,18 @@ export class ClientRequestsService {
     });
     if (!req) throw new NotFoundException('Talep bulunamadı');
     return this.ai.suggestReply({ title: req.title, message: req.message, type: req.type });
+  }
+
+  /** Admin talebe cevap mesajı ekler (thread). */
+  async addMessage(id: string, body: string) {
+    const req = await this.prisma.clientRequest.findUnique({ where: { id }, select: { id: true } });
+    if (!req) throw new NotFoundException('Talep bulunamadı');
+    const text = (body || '').trim();
+    if (!text) throw new NotFoundException('Mesaj boş olamaz');
+    return this.prisma.clientRequestMessage.create({
+      data: { requestId: id, sender: 'ADMIN', body: text.slice(0, 2000) },
+      select: { id: true, sender: true, body: true, createdAt: true },
+    });
   }
 
   async stats(): Promise<{ openReports: number; openRequests: number }> {
