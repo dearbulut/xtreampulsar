@@ -80,6 +80,11 @@ export class MigrationController {
     return this.migrationService.regroupSeries(dryRun ?? true);
   }
 
+  @Post('sanitize-names')
+  sanitizeNames(@Body('dryRun') dryRun?: boolean) {
+    return this.migrationService.sanitizeStreamNames(dryRun ?? true);
+  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }))
   uploadDump(@UploadedFile() file: Express.Multer.File) {

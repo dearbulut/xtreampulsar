@@ -1913,6 +1913,58 @@ export class MigrationService implements OnModuleInit {
     return bouquet.id;
   }
 
+  /** Adına EXTINF attribute'u sızmış (eski parse hatası) bir ismi gerçek görünen ada indirger. */
+  private cleanLeakedName(name: string): string | null {
+    if (!/tvg-logo=|group-title=|tvg-name=|tvg-id=/i.test(name)) return null; // temiz
+    let cleaned = name;
+    const i = name.lastIndexOf('",');
+    if (i >= 0) cleaned = name.slice(i + 2).trim();
+    if (/tvg-logo=|group-title=/i.test(cleaned)) {
+      const q = cleaned.indexOf('"');
+      if (q > 0) cleaned = cleaned.slice(0, q).trim();
+      else cleaned = cleaned.replace(/(tvg-logo|group-title|tvg-name|tvg-id)="[^"]*"/gi, '').trim();
+    }
+    cleaned = cleaned.replace(/^[",\s]+/, '').replace(/[",\s]+$/, '').trim();
+    return cleaned && cleaned !== name ? cleaned : null;
+  }
+
+  /** Bozuk-adlı stream'leri tespit edip gerçek adına düzeltir. dryRun=true → önizleme. */
+  async sanitizeStreamNames(dryRun = true): Promise<{ found: number; toFix: number; details: Array<{ id: string; oldName: string; newName: string }> }> {
+    const bad = await this.prisma.stream.findMany({
+      where: {
+        OR: [
+          { name: { contains: 'tvg-logo="' } },
+          { name: { contains: 'group-title="' } },
+          { name: { contains: 'tvg-name="' } },
+        ],
+      },
+      select: { id: true, name: true, category: { select: { type: true } } },
+    });
+
+    const fixes: Array<{ id: string; oldName: string; newName: string }> = [];
+    for (const st of bad) {
+      let cleaned = this.cleanLeakedName(st.name);
+      if (!cleaned) continue;
+      if (st.category?.type === 'SERIES') {
+        const parsed = this.parseSeriesEntry(cleaned, '');
+        if (parsed?.title) cleaned = parsed.title;
+      }
+      if (cleaned && cleaned !== st.name) fixes.push({ id: st.id, oldName: st.name.slice(0, 140), newName: cleaned });
+    }
+
+    if (!dryRun) {
+      for (const fx of fixes) {
+        try {
+          await this.prisma.stream.update({ where: { id: fx.id }, data: { name: fx.newName } });
+        } catch (err) {
+          this.logger.error(`sanitizeStreamNames ${fx.id}: ${(err as Error).message}`);
+        }
+      }
+    }
+
+    return { found: bad.length, toFix: fixes.length, details: fixes.slice(0, 300) };
+  }
+
   /** M3U bölüm adından dizi başlığı + sezon/bölüm + bölüm başlığını çıkarır. */
   private parseSeriesEntry(name: string, url: string): { title: string; season: number; episode: number; epTitle: string; ext: string } | null {
     const se = /S(\d{1,3})\s*E(\d{1,4})/i.exec(name);

@@ -269,3 +269,25 @@ export function useProbeVodDurations() {
     },
   });
 }
+
+
+// ─── Sanitize Stream Names (bozuk-ad temizliği) ──────────────────────────────
+
+export interface SanitizeNamesResult {
+  found: number;
+  toFix: number;
+  details: Array<{ id: string; oldName: string; newName: string }>;
+}
+
+export function useSanitizeNames() {
+  return useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const res = await api.post<{ success: boolean; data: SanitizeNamesResult }>(
+        '/migration/sanitize-names',
+        { dryRun },
+        { timeout: 120_000 },
+      );
+      return res.data.data;
+    },
+  });
+}

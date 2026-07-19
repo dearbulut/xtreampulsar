@@ -18,10 +18,11 @@ import {
   ShieldCheck,
   Wrench,
   Layers,
-  Clock
+  Clock,
+  Eraser
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries, useProbeVodDurations } from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries, useProbeVodDurations, useSanitizeNames } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -39,7 +40,8 @@ type ToolId =
   | 'iptv-check'
   | 'fix-types'
   | 'regroup-series'
-  | 'probe-durations';
+  | 'probe-durations'
+  | 'sanitize-names';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -54,6 +56,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-types', icon: Wrench, label: 'Fix Stream Types' },
   { id: 'regroup-series', icon: Layers, label: 'Regroup Series' },
   { id: 'probe-durations', icon: Clock, label: 'VOD Durations' },
+  { id: 'sanitize-names', icon: Eraser, label: 'Sanitize Names' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -738,6 +741,54 @@ function ProbeDurationsPanel() {
   );
 }
 
+function SanitizeNamesPanel() {
+  const { t } = useTranslation();
+  const preview = useSanitizeNames();
+  const apply = useSanitizeNames();
+  const d = preview.data;
+
+  return (
+    <div>
+      <PanelTitle icon={Eraser}>Sanitize Names</PanelTitle>
+      <PanelDesc>{t('tools.sanitizeDesc')}</PanelDesc>
+      <div className="flex gap-2">
+        <RunButton onClick={() => void preview.mutateAsync(true)} loading={preview.isPending}>
+          {t('tools.sanitizePreview')}
+        </RunButton>
+        {d && d.toFix > 0 && (
+          <button
+            className="btn-primary"
+            disabled={apply.isPending}
+            onClick={() => void apply.mutateAsync(false)}
+          >
+            {t('tools.sanitizeApply', { count: d.toFix })}
+          </button>
+        )}
+      </div>
+
+      {apply.isSuccess && apply.data && (
+        <SuccessBox>{t('tools.sanitizeDone', { count: apply.data.toFix })}</SuccessBox>
+      )}
+
+      {d && !apply.isSuccess && (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-muted">{t('tools.sanitizeResult', { found: d.found, count: d.toFix })}</p>
+          {d.details.length > 0 && (
+            <div className="max-h-72 overflow-y-auto card divide-y divide-border">
+              {d.details.slice(0, 200).map((row) => (
+                <div key={row.id} className="px-3 py-1.5 text-xs">
+                  <div className="truncate text-muted line-through">{row.oldName}</div>
+                  <div className="truncate text-fg font-medium">{row.newName}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IptvCheckPanel() {
   const { t } = useTranslation();
   const [host, setHost] = useState('');
@@ -944,6 +995,7 @@ export function AdvancedToolsPage() {
           {active === 'fix-types' && <FixStreamTypesPanel />}
           {active === 'regroup-series' && <RegroupSeriesPanel />}
           {active === 'probe-durations' && <ProbeDurationsPanel />}
+          {active === 'sanitize-names' && <SanitizeNamesPanel />}
         </div>
       </div>
     </div>

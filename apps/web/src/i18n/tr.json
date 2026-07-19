@@ -1675,7 +1675,12 @@
     "probeDurDesc": "Süresi boş VOD filmlerini ffprobe ile tarayıp süre bilgisini doldurur (Xtream get_vod_info duration_secs). Ağ üzerinden çalıştığı için sınırlı gruplar halinde, arka planda işler.",
     "probeDurRun": "Süreleri Tara ({{limit}})",
     "probeDurStarted": "{{pending}} film arka planda taranıyor — birkaç dakika sonra oynatıcıda süreler görünür.",
-    "probeDurNone": "Süresi boş VOD bulunamadı — hepsi zaten dolu."
+    "probeDurNone": "Süresi boş VOD bulunamadı — hepsi zaten dolu.",
+    "sanitizeDesc": "Eski ayrıştırma hatasından kalma, adına EXTINF attribute'u (tvg-logo/group-title) sızmış stream'leri bulup gerçek adına düzeltir. SERIES ise dizi başlığına indirger. Önce önizle.",
+    "sanitizePreview": "Önizle",
+    "sanitizeApply": "Uygula ({{count}})",
+    "sanitizeDone": "{{count}} isim düzeltildi.",
+    "sanitizeResult": "{{found}} bozuk-ad bulundu · {{count}} düzeltilecek"
   },
   "ui": {
     "processing": "İşleniyor…",
