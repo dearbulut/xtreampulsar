@@ -30,11 +30,25 @@ function checkPgDump(): void {
   }
 }
 
+function checkOpenssl(): void {
+  try {
+    execSync('which openssl', { stdio: 'ignore' });
+  } catch {
+    throw new Error('openssl not found — required for encrypted backups');
+  }
+}
+
 @Injectable()
 export class BackupService {
   private readonly logger = new Logger(BackupService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private async getEncKey(): Promise<string | null> {
+    const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
+    const k = settings?.backupEncryptionKey?.trim();
+    return k ? k : null;
+  }
 
   private async getBackupDir(): Promise<string> {
     const settings = await this.prisma.settings.findUnique({ where: { id: 'singleton' } });
@@ -46,15 +60,24 @@ export class BackupService {
     const backupDir = await this.getBackupDir();
     fs.mkdirSync(backupDir, { recursive: true });
 
+    const encKey = await this.getEncKey();
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `backup-${ts}.sql.gz`;
+    const filename = encKey ? `backup-${ts}.sql.gz.enc` : `backup-${ts}.sql.gz`;
     const filePath = path.join(backupDir, filename);
 
-    this.logger.log(`Creating backup: ${filePath}`);
+    this.logger.log(`Creating backup: ${filePath}${encKey ? ' (encrypted)' : ''}`);
 
     const db = parseDatabaseUrl();
-    const cmd = `pg_dump -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}" | gzip > "${filePath}"`;
-    const env = { ...process.env, PGPASSWORD: db.password };
+    const env: NodeJS.ProcessEnv = { ...process.env, PGPASSWORD: db.password };
+    const dump = `pg_dump -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}" | gzip`;
+    let cmd: string;
+    if (encKey) {
+      checkOpenssl();
+      env.XP_BK_KEY = encKey;
+      cmd = `${dump} | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:XP_BK_KEY > "${filePath}"`;
+    } else {
+      cmd = `${dump} > "${filePath}"`;
+    }
 
     try {
       await execAsync(cmd, { shell: '/bin/sh', env });
@@ -110,11 +133,19 @@ export class BackupService {
 
     this.logger.warn(`RESTORING database from ${filename}`);
     const db = parseDatabaseUrl();
-    const env = { ...process.env, PGPASSWORD: db.password };
-    await execAsync(
-      `gunzip -c "${filePath}" | psql -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}"`,
-      { shell: '/bin/sh', env },
-    );
+    const env: NodeJS.ProcessEnv = { ...process.env, PGPASSWORD: db.password };
+    const psql = `psql -h "${db.host}" -p "${db.port}" -U "${db.user}" "${db.dbname}"`;
+    let cmd: string;
+    if (filename.endsWith('.enc')) {
+      const encKey = await this.getEncKey();
+      if (!encKey) throw new Error('Backup is encrypted but no encryption key is configured in Settings');
+      checkOpenssl();
+      env.XP_BK_KEY = encKey;
+      cmd = `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:XP_BK_KEY -in "${filePath}" | gunzip | ${psql}`;
+    } else {
+      cmd = `gunzip -c "${filePath}" | ${psql}`;
+    }
+    await execAsync(cmd, { shell: '/bin/sh', env });
     return { message: `Database restored from ${filename}` };
   }
 
@@ -157,8 +188,16 @@ export class BackupService {
 
     this.logger.log('Running automatic backup…');
     try {
-      await this.createLocalBackup();
+      const result = await this.createLocalBackup();
       await this.cleanOldBackups(settings.backupsToKeep);
+      if (settings.enableRemoteBackup && settings.dropboxApiKey) {
+        try {
+          await this.uploadToDropbox(result.filename, settings.dropboxApiKey);
+          this.logger.log(`Auto-backup uploaded to remote: ${result.filename}`);
+        } catch (err) {
+          this.logger.error(`Remote upload failed: ${(err as Error).message}`);
+        }
+      }
     } catch (err) {
       this.logger.error(`Auto-backup failed: ${(err as Error).message}`);
     }

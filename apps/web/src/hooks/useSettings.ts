@@ -119,6 +119,7 @@ export interface DatabaseSettings {
   backupsToKeep: number;
   enableRemoteBackup: boolean;
   dropboxApiKey: string;
+  backupEncryptionKey: string;
 }
 
 export interface AllSettings {
@@ -153,7 +154,7 @@ const DEFAULTS: AllSettings = {
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
   security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
-  database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '' },
+  database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '', backupEncryptionKey: '' },
 };
 
 interface DbSettings {
@@ -189,6 +190,7 @@ interface DbSettings {
   backupsToKeep: number;
   enableRemoteBackup: boolean;
   dropboxApiKey: string;
+  backupEncryptionKey?: string | null;
   discordWebhookUrl?: string | null;
   telegramBotToken?: string | null;
   telegramChatId?: string | null;
@@ -283,6 +285,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
       backupsToKeep: db.backupsToKeep ?? 5,
       enableRemoteBackup: db.enableRemoteBackup ?? false,
       dropboxApiKey: db.dropboxApiKey ?? '',
+      backupEncryptionKey: db.backupEncryptionKey ?? '',
     },
   };
 }
@@ -346,6 +349,7 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     backupsToKeep: settings.database.backupsToKeep,
     enableRemoteBackup: settings.database.enableRemoteBackup,
     dropboxApiKey: settings.database.dropboxApiKey,
+    backupEncryptionKey: settings.database.backupEncryptionKey || null,
   };
 }
 

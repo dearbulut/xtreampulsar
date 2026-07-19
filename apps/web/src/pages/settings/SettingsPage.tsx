@@ -568,6 +568,11 @@ export function SettingsPage() {
                   onChange={(e) => updateSettings('database', { dropboxApiKey: e.target.value })}
                   placeholder="••••••••••••••••" />
               </Field>
+              <Field label={t('settings.backupEncryptionKey')} hint={t('settings.backupEncryptionHint')}>
+                <input type="password" className="input font-mono" value={settings.database.backupEncryptionKey}
+                  onChange={(e) => updateSettings('database', { backupEncryptionKey: e.target.value })}
+                  placeholder="••••••••••••••••" />
+              </Field>
             </div>
 
             <div className="pt-4 border-t border-border">

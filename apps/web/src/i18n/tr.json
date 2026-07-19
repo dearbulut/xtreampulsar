@@ -711,7 +711,9 @@
     "customPricingActiveHint": "Listede olmayan süreler için gün bazlı hesaplanır",
     "creditsPerDay": "Gün Başına Kredi",
     "creditsPerDayHint": "Örn: 0.1 → 25 gün = 3 kredi",
-    "daysPreview": "25 gün = {{n}} kredi"
+    "daysPreview": "25 gün = {{n}} kredi",
+    "backupEncryptionKey": "Yedek Şifreleme Anahtarı",
+    "backupEncryptionHint": "Ayarlanırsa yedekler AES-256 ile şifrelenir (.enc). Boşsa düz .gz. Bu anahtarı güvende tut — geri yükleme için gerekli."
   },
   "auth": {
     "username": "Kullanıcı Adı",

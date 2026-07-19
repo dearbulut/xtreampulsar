@@ -711,7 +711,9 @@
     "customPricingActiveHint": "Calculated per day for durations not in the list",
     "creditsPerDay": "Credits Per Day",
     "creditsPerDayHint": "E.g.: 0.1 → 25 days = 3 credits",
-    "daysPreview": "25 days = {{n}} credits"
+    "daysPreview": "25 days = {{n}} credits",
+    "backupEncryptionKey": "Backup Encryption Key",
+    "backupEncryptionHint": "If set, backups are encrypted with AES-256 (.enc). Empty = plain .gz. Keep this key safe — required for restore."
   },
   "auth": {
     "username": "Username",
