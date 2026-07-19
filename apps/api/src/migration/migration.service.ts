@@ -1863,39 +1863,40 @@ export class MigrationService implements OnModuleInit {
   }
 
   private inferStreamType(groupTitle: string, url: string, name?: string): 'LIVE' | 'VOD' | 'SERIES' {
-    // ── 1. URL is the strongest signal ──────────────────────────────────────
+    const gt = groupTitle.toUpperCase();
+    let urlLower = '';
+    let urlPath = '';
     try {
-      const urlLower = url.toLowerCase();
-      const urlPath = new URL(url).pathname.toLowerCase();
-
-      if (/\/(movie|vod)\//.test(urlPath)) return 'VOD';
-      if (/\/series\//.test(urlPath)) return 'SERIES';
-      if (/\.(mp4|mkv|avi)(\?|$)/.test(urlLower)) return 'VOD';
-      if (/\.m3u8(\?|$)/.test(urlLower)) return 'LIVE';
-      if (/\/live\//.test(urlPath)) return 'LIVE';
+      urlLower = url.toLowerCase();
+      urlPath = new URL(url).pathname.toLowerCase();
     } catch {
-      // malformed URL — fall through
+      urlLower = (url || '').toLowerCase();
     }
 
-    // ── 2. Stream name: season-episode pattern → SERIES ───────────────────
-    if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
+    // ── 1. Definitive URL-path signals ───────────────────────────────────
+    if (/\/series\//.test(urlPath)) return 'SERIES';
+    if (/\/(movie|vod)\//.test(urlPath)) return 'VOD';
+    if (/\/live\//.test(urlPath)) return 'LIVE';
+    if (/\.m3u8(\?|$)/.test(urlLower)) return 'LIVE';
 
-    // ── 3. Group-title analysis (with 24/7 live-channel guard) ────────────
-    const gt = groupTitle.toUpperCase();
+    // ── 2. 24/7 / channel groups → LIVE (override; providers write 7/24 too) ─
     const is247 = gt.includes('24/7') || gt.includes('7/24') || gt.includes('24H') || gt.includes('7-24') || gt.includes('24-7');
     const isChannel = gt.includes('KANAL') || gt.includes('CHANNEL');
-
-    // Explicit live signals override everything else
     if (is247 || isChannel) return 'LIVE';
 
-    // Exact match on common standalone genre labels
+    // ── 3. SERIES signals (name SxxExx or group) — BEFORE bare extension ──
+    if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
+    if (/\b(SERIE|SERIES|DİZİ|DIZI)\b/.test(gt)) return 'SERIES';
+
+    // ── 4. VOD signals (group) ────────────────────────────────────────────
     const gtTrimmed = gt.trim();
     if (gtTrimmed === 'VOD' || gtTrimmed === 'MOVIES' || gtTrimmed === 'FILMS') return 'VOD';
+    if (/\b(MOVIE|FILM|FİLM|MOVIES|FILMS|SİNEMA|SINEMA)\b/.test(gt)) return 'VOD';
 
-    // Substring matches — only when live guards are absent
-    if (/\b(SERIE|SERIES|DİZİ)\b/.test(gt)) return 'SERIES';
-    if (/\b(MOVIE|FILM|FİLM|MOVIES|FILMS)\b/.test(gt)) return 'VOD';
+    // ── 5. Bare movie extension → VOD (fallback, series already handled) ──
+    if (/\.(mp4|mkv|avi)(\?|$)/.test(urlLower)) return 'VOD';
 
+    // ── 6. Default → LIVE ─────────────────────────────────────────────────
     return 'LIVE';
   }
 
