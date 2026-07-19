@@ -120,7 +120,12 @@
     "noData": "Veri yok",
     "recentActivity": "Son Aktiviteler",
     "userActionHistory": "Kullanıcı işlem geçmişi",
-    "noActivity": "Aktivite yok"
+    "noActivity": "Aktivite yok",
+    "paidTrialSplit": "{{paid}} ücretli · {{trial}} deneme",
+    "servers": "Sunucular",
+    "online": "Çevrimiçi",
+    "offline": "Çevrimdışı",
+    "responseMs": "Yanıt {{n}}ms"
   },
   "users": {
     "title": "Kullanıcılar",

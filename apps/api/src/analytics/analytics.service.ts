@@ -583,6 +583,7 @@ export class AnalyticsService {
   async getDashboardStats() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
 
     const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
       try { return await fn(); }
@@ -601,6 +602,10 @@ export class AnalyticsService {
       streamsUp,
       streamsDown,
       streamsDegraded,
+      trialUsers,
+      paidUsers,
+      newUsersYesterday,
+      connectionsYesterday,
     ] = await Promise.all([
       safe('totalUsers',      () => this.prisma.user.count({ where: { deletedAt: null } }), 0),
       safe('activeUsers',     () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', expiresAt: { gte: now } } }), 0),
@@ -615,6 +620,10 @@ export class AnalyticsService {
       safe('streamsDeg',     () => this.prisma.streamHealthLog
         .groupBy({ by: ['streamId'], where: { checkedAt: { gte: new Date(Date.now() - 10 * 60_000) }, status: 'degraded' } })
         .then((r) => r.length), 0),
+      safe('trialUsers',     () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', isTrial: true, expiresAt: { gte: now } } }), 0),
+      safe('paidUsers',      () => this.prisma.user.count({ where: { deletedAt: null, status: 'ACTIVE', isTrial: false, expiresAt: { gte: now } } }), 0),
+      safe('newUsersYest',   () => this.prisma.user.count({ where: { deletedAt: null, createdAt: { gte: yesterdayStart, lt: todayStart } } }), 0),
+      safe('connsYest',      () => this.prisma.connection.count({ where: { startedAt: { gte: yesterdayStart, lt: todayStart } } }), 0),
     ]);
 
     let activeStreams = 0;
@@ -651,6 +660,10 @@ export class AnalyticsService {
       streamsUp,
       streamsDown,
       streamsDegraded,
+      trialUsers,
+      paidUsers,
+      newUsersYesterday,
+      connectionsYesterday,
     };
   }
 

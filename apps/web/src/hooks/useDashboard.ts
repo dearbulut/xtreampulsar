@@ -118,6 +118,10 @@ export interface DashboardStats {
   streamsUp: number;
   streamsDown: number;
   streamsDegraded: number;
+  trialUsers: number;
+  paidUsers: number;
+  newUsersYesterday: number;
+  connectionsYesterday: number;
 }
 
 export function useDashboardStats() {

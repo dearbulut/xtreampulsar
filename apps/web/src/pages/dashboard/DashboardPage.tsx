@@ -14,6 +14,7 @@ import {
   Play,
   Wifi,
   WifiOff,
+  Server as ServerIcon,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -37,6 +38,7 @@ import {
   useConnectionsChart,
   useRecentActivity,
   useTopStreams,
+  useServerStats,
 } from '@/hooks/useDashboard';
 import { useSocket } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
@@ -61,6 +63,11 @@ function fmtHour(iso: string): string {
 function fmtMbps(v: number): string {
   if (v >= 1000) return `${(v / 1000).toFixed(1)} Gbps`;
   return `${v} Mbps`;
+}
+
+function pctDelta(today: number, yesterday: number): number | null {
+  if (!yesterday) return today > 0 ? 100 : null;
+  return Math.round(((today - yesterday) / yesterday) * 100);
 }
 
 const ACTIVITY_ICON: Record<string, typeof LogIn> = {
@@ -90,6 +97,7 @@ export function DashboardPage() {
   const { data: chartData = [], isLoading: chartLoading } = useConnectionsChart(chartHours);
   const { data: topStreams = [], isLoading: streamsLoading } = useTopStreams(10);
   const { data: activity = [], isLoading: activityLoading } = useRecentActivity(20);
+  const { data: servers = [] } = useServerStats();
 
   // Top 4 live cards — prefer WebSocket-pushed data, fall back to polled stats
   const activeConns = live?.connections?.active ?? stats?.activeConnections ?? 0;
@@ -150,7 +158,7 @@ export function DashboardPage() {
           value={totalUsers.toLocaleString('tr')}
           icon={Database}
           variant="default"
-          subtitle={stats ? t('dashboard.nActive', { n: stats.activeUsers.toLocaleString('tr') }) : undefined}
+          subtitle={stats ? t('dashboard.paidTrialSplit', { paid: stats.paidUsers.toLocaleString('tr'), trial: stats.trialUsers.toLocaleString('tr') }) : undefined}
         />
       </div>
 
@@ -162,6 +170,7 @@ export function DashboardPage() {
           value={stats?.newUsersToday ?? '—'}
           color="text-success"
           loading={statsLoading}
+          trend={stats ? pctDelta(stats.newUsersToday, stats.newUsersYesterday) : null}
         />
         <SmallCard
           icon={Link2}
@@ -169,6 +178,7 @@ export function DashboardPage() {
           value={stats?.connectionsToday != null ? stats.connectionsToday.toLocaleString('tr') : '—'}
           color="text-info"
           loading={statsLoading}
+          trend={stats ? pctDelta(stats.connectionsToday, stats.connectionsYesterday) : null}
         />
         <SmallCard
           icon={UserX}
@@ -186,6 +196,44 @@ export function DashboardPage() {
           sub={stats?.streamsDown ? t('dashboard.nDown', { n: stats.streamsDown }) : t('dashboard.allGood')}
         />
       </div>
+
+      {/* Row 2.5 — Per-server live cards */}
+      {servers.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-fg mb-2">{t('dashboard.servers')}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {servers.map((sv) => (
+              <div key={sv.id} className="card card-hover p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ServerIcon className="w-4 h-4 text-muted shrink-0" />
+                    <span className="font-medium text-fg truncate">{sv.name}</span>
+                  </div>
+                  <span className={cn('flex items-center gap-1 text-xs', sv.isOnline ? 'text-success' : 'text-danger')}>
+                    <span className={cn('w-1.5 h-1.5 rounded-full', sv.isOnline ? 'bg-success animate-pulse-slow' : 'bg-danger')} />
+                    {sv.isOnline ? t('dashboard.online') : t('dashboard.offline')}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-xs text-muted mb-1">
+                    <span className="tabular-nums">{(sv.activeConnections ?? 0).toLocaleString('tr')} / {sv.maxClients.toLocaleString('tr')}</span>
+                    <span className="tabular-nums">{Math.round(sv.utilization ?? 0)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', (sv.utilization ?? 0) >= 90 ? 'bg-danger' : (sv.utilization ?? 0) >= 70 ? 'bg-warning' : 'bg-primary')}
+                      style={{ width: `${Math.min(100, sv.utilization ?? 0)}%` }}
+                    />
+                  </div>
+                </div>
+                {sv.responseTime != null && (
+                  <p className="text-xs text-muted mt-2">{t('dashboard.responseMs', { n: sv.responseTime })}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Row 3 — Connection chart + Health pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -452,6 +500,7 @@ function SmallCard({
   color,
   loading,
   sub,
+  trend,
 }: {
   icon: React.ElementType;
   label: string;
@@ -459,19 +508,27 @@ function SmallCard({
   color: string;
   loading?: boolean;
   sub?: string;
+  trend?: number | null;
 }) {
   return (
-    <div className="card p-4 flex items-center gap-3">
+    <div className="card card-hover p-4 flex items-center gap-3">
       <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4 text-muted" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-muted truncate">{label}</p>
         {loading ? (
           <div className="h-5 w-12 bg-surface-2 rounded animate-pulse mt-1" />
         ) : (
           <>
-            <p className={cn('text-lg font-bold tabular-nums leading-tight', color)}>{value}</p>
+            <div className="flex items-center gap-2">
+              <p className={cn('text-lg font-bold tabular-nums leading-tight', color)}>{value}</p>
+              {trend != null && Number.isFinite(trend) && (
+                <span className={cn('text-[11px] font-medium tabular-nums', trend >= 0 ? 'text-success' : 'text-danger')}>
+                  {trend >= 0 ? '\u2191' : '\u2193'} {Math.abs(trend)}%
+                </span>
+              )}
+            </div>
             {sub && <p className="text-xs text-muted">{sub}</p>}
           </>
         )}

@@ -120,7 +120,12 @@
     "noData": "No data",
     "recentActivity": "Recent Activity",
     "userActionHistory": "User action history",
-    "noActivity": "No activity"
+    "noActivity": "No activity",
+    "paidTrialSplit": "{{paid}} paid · {{trial}} trial",
+    "servers": "Servers",
+    "online": "Online",
+    "offline": "Offline",
+    "responseMs": "Response {{n}}ms"
   },
   "users": {
     "title": "Users",
