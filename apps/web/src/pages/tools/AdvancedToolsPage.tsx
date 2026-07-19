@@ -15,18 +15,10 @@ import {
   CheckCircle,
   Terminal,
   RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  useFixUsersOutput,
-  useStreamsToJson,
-  useSetStreamServer,
-  useCleanDatabase,
-  useRestartAllStreams,
-  useReencodeVods,
-  useBulkSeriesImport,
-  useSystemStats,
-} from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -40,7 +32,8 @@ type ToolId =
   | 'restart-streams'
   | 'reencode-vods'
   | 'bulk-series'
-  | 'system-stats';
+  | 'system-stats'
+  | 'iptv-check';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -51,6 +44,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'reencode-vods', icon: Film, label: 'ReEncode VODs' },
   { id: 'bulk-series', icon: Package, label: 'Bulk Series Import' },
   { id: 'system-stats', icon: Activity, label: 'System Stats' },
+  { id: 'iptv-check', icon: ShieldCheck, label: 'IPTV Checker' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -586,6 +580,68 @@ function formatUptime(seconds: number, t: (key: string, opts?: Record<string, un
   return parts.join(' ');
 }
 
+function IptvCheckPanel() {
+  const { t } = useTranslation();
+  const [host, setHost] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const check = useIptvCheck();
+  const r = check.data;
+
+  const submit = () => {
+    if (!host.trim() || !username.trim() || !password.trim()) return;
+    void check.mutateAsync({ host: host.trim(), username: username.trim(), password: password.trim() });
+  };
+
+  const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('tr-TR') : '—');
+
+  return (
+    <div>
+      <PanelTitle icon={ShieldCheck}>IPTV Checker</PanelTitle>
+      <PanelDesc>{t('tools.iptvCheckDesc')}</PanelDesc>
+      <div className="space-y-3 max-w-md">
+        <div>
+          <label className="block text-xs text-muted mb-1">{t('tools.iptvHost')}</label>
+          <input className="input font-mono" value={host} onChange={(e) => setHost(e.target.value)} placeholder="http://panel.example.com:8080" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('users.username')}</label>
+            <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('users.password')}</label>
+            <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        </div>
+        <RunButton onClick={submit} loading={check.isPending}>{t('tools.iptvCheckRun')}</RunButton>
+      </div>
+
+      {r && !r.ok && (
+        <div className="mt-4 max-w-md rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm px-4 py-3">
+          {r.error}
+        </div>
+      )}
+      {r && r.ok && (
+        <div className="mt-4 max-w-md card p-4 space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted">{t('tools.iptvStatus')}</span>
+            <span className={cn('badge', r.auth && r.status === 'Active' ? 'badge-success' : 'badge-danger')}>
+              {r.auth ? (r.status || 'Active') : t('tools.iptvInvalid')}
+            </span>
+          </div>
+          {r.isTrial && <div className="flex justify-between"><span className="text-muted">{t('tools.iptvTrial')}</span><span className="badge badge-warning">Trial</span></div>}
+          <div className="flex justify-between"><span className="text-muted">{t('tools.iptvExpiry')}</span><span className="tabular-nums">{fmt(r.expDate)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">{t('tools.iptvCreated')}</span><span className="tabular-nums">{fmt(r.createdAt)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">{t('tools.iptvConns')}</span><span className="tabular-nums">{r.activeCons ?? 0} / {r.maxConnections ?? '—'}</span></div>
+          {r.serverUrl && <div className="flex justify-between"><span className="text-muted">{t('tools.iptvServer')}</span><span className="font-mono text-xs">{r.serverUrl}:{r.serverPort}</span></div>}
+          {r.timezone && <div className="flex justify-between"><span className="text-muted">{t('tools.iptvTimezone')}</span><span className="text-xs">{r.timezone}</span></div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SystemStatsPanel() {
   const { t } = useTranslation();
   const { data: stats, isLoading, refetch, isFetching } = useSystemStats();
@@ -726,6 +782,7 @@ export function AdvancedToolsPage() {
           {active === 'reencode-vods' && <ReencodeVodsPanel />}
           {active === 'bulk-series' && <BulkSeriesImportPanel />}
           {active === 'system-stats' && <SystemStatsPanel />}
+          {active === 'iptv-check' && <IptvCheckPanel />}
         </div>
       </div>
     </div>

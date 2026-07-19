@@ -1649,7 +1649,18 @@
     "database": "Database",
     "connected": "Connected",
     "notConnected": "Not Connected",
-    "dataFetchFailed": "Could not fetch data."
+    "dataFetchFailed": "Could not fetch data.",
+    "iptvCheckDesc": "Check an external Xtream panel line — active status, expiry date, connection limit.",
+    "iptvHost": "Panel URL",
+    "iptvCheckRun": "Check",
+    "iptvStatus": "Status",
+    "iptvInvalid": "Invalid",
+    "iptvTrial": "Trial",
+    "iptvExpiry": "Expiry",
+    "iptvCreated": "Created",
+    "iptvConns": "Connections (active/max)",
+    "iptvServer": "Server",
+    "iptvTimezone": "Timezone"
   },
   "ui": {
     "processing": "Processing…",

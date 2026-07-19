@@ -430,4 +430,49 @@ export class ToolsService {
       uptimeFormatted: this.formatUptimeSeconds(uptime),
     };
   }
+
+  // Dış bir Xtream panelin hattını kontrol et (player_api.php user_info + server_info).
+  async iptvCheck(host: string, username: string, password: string) {
+    let base = (host ?? '').trim().replace(/\/+$/, '');
+    if (!base) return { ok: false, error: 'Host gerekli' };
+    if (!/^https?:\/\//.test(base)) base = 'http://' + base;
+    const url = `${base}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+    let resp: Response;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      resp = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'XtreamPulsar-Checker' } });
+      clearTimeout(timer);
+    } catch (e) {
+      return { ok: false, error: 'Bağlanılamadı: ' + (e as Error).message };
+    }
+    if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+
+    let data: Record<string, unknown>;
+    try { data = (await resp.json()) as Record<string, unknown>; }
+    catch { return { ok: false, error: 'Geçersiz yanıt (JSON değil) — Xtream paneli olmayabilir' }; }
+
+    const ui = data?.user_info as Record<string, unknown> | undefined;
+    const si = data?.server_info as Record<string, unknown> | undefined;
+    if (!ui) return { ok: false, error: 'user_info yok — geçersiz kimlik bilgisi olabilir' };
+
+    const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
+    const tsToIso = (v: unknown) => (v ? new Date(Number(v) * 1000).toISOString() : null);
+
+    return {
+      ok: true,
+      auth: ui.auth === 1 || ui.auth === '1',
+      status: String(ui.status ?? ''),
+      isTrial: ui.is_trial === '1' || ui.is_trial === 1,
+      expDate: tsToIso(ui.exp_date),
+      createdAt: tsToIso(ui.created_at),
+      activeCons: num(ui.active_cons),
+      maxConnections: num(ui.max_connections),
+      serverUrl: (si?.url as string) ?? null,
+      serverPort: (si?.port as string) ?? null,
+      httpsPort: (si?.https_port as string) ?? null,
+      timezone: (si?.timezone as string) ?? null,
+    };
+  }
 }

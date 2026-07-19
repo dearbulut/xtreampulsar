@@ -175,3 +175,31 @@ export function useSystemStats() {
     refetchInterval: 10_000,
   });
 }
+
+
+// ─── IPTV Checker ────────────────────────────────────────────────────────────
+
+export interface IptvCheckResult {
+  ok: boolean;
+  error?: string;
+  auth?: boolean;
+  status?: string;
+  isTrial?: boolean;
+  expDate?: string | null;
+  createdAt?: string | null;
+  activeCons?: number | null;
+  maxConnections?: number | null;
+  serverUrl?: string | null;
+  serverPort?: string | null;
+  httpsPort?: string | null;
+  timezone?: string | null;
+}
+
+export function useIptvCheck() {
+  return useMutation({
+    mutationFn: async (data: { host: string; username: string; password: string }) => {
+      const res = await api.post<{ success: boolean; data: IptvCheckResult }>('/tools/iptv-check', data);
+      return res.data.data;
+    },
+  });
+}

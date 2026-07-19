@@ -1649,7 +1649,18 @@
     "database": "Veritabanı",
     "connected": "Bağlı",
     "notConnected": "Bağlı Değil",
-    "dataFetchFailed": "Veri alınamadı."
+    "dataFetchFailed": "Veri alınamadı.",
+    "iptvCheckDesc": "Dış bir Xtream panelinin hattını kontrol et — aktif mi, bitiş tarihi, bağlantı limiti.",
+    "iptvHost": "Panel Adresi",
+    "iptvCheckRun": "Kontrol Et",
+    "iptvStatus": "Durum",
+    "iptvInvalid": "Geçersiz",
+    "iptvTrial": "Deneme",
+    "iptvExpiry": "Bitiş",
+    "iptvCreated": "Oluşturulma",
+    "iptvConns": "Bağlantı (aktif/maks)",
+    "iptvServer": "Sunucu",
+    "iptvTimezone": "Saat Dilimi"
   },
   "ui": {
     "processing": "İşleniyor…",

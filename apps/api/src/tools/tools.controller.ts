@@ -92,4 +92,10 @@ export class ToolsController {
   systemStats() {
     return this.toolsService.systemStats();
   }
+
+  // POST /tools/iptv-check
+  @Post('iptv-check')
+  iptvCheck(@Body() body: { host: string; username: string; password: string }) {
+    return this.toolsService.iptvCheck(body.host, body.username, body.password);
+  }
 }
