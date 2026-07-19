@@ -66,16 +66,26 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   } catch {
     // fall through to legacy fallback
   }
-  // Legacy / insecure-context fallback (plain http self-hosted panels)
+  // Legacy / insecure-context fallback (plain http self-hosted panels).
+  // execCommand('copy') requires a focused, selected element inside a user gesture;
+  // 1px on-screen textarea + focus() + setSelectionRange is the reliable pattern.
   try {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
-    ta.style.top = '-9999px';
-    ta.style.opacity = '0';
-    ta.setAttribute('readonly', '');
+    ta.style.left = '0';
+    ta.style.top = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.padding = '0';
+    ta.style.border = 'none';
+    ta.style.outline = 'none';
+    ta.style.boxShadow = 'none';
+    ta.style.background = 'transparent';
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
+    try { ta.setSelectionRange(0, text.length); } catch { /* noop */ }
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     return ok;
