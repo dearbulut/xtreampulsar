@@ -122,7 +122,7 @@ export class XtreamService {
       category_id: String(s.category.externalId),
       custom_sid: '',
       direct_source: '',
-      container_extension: 'mp4',
+      container_extension: (s.primaryUrl.match(/\.([a-z0-9]{2,4})(?:\?|$)/i)?.[1] || 'mp4').toLowerCase(),
       rating: s.tmdbRating != null ? String(s.tmdbRating) : '0',
       rating_5based: s.tmdbRating != null ? Math.round((s.tmdbRating / 2) * 10) / 10 : 0,
       plot: s.overview ?? '',

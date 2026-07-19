@@ -224,3 +224,27 @@ export function useFixStreamTypes() {
     },
   });
 }
+
+
+// ─── Regroup Series (dizi bölümlerini tek dizi altında topla) ────────────────
+
+export interface RegroupSeriesResult {
+  scanned: number;
+  seriesGroups: number;
+  parentsToCreate: number;
+  episodesToCreate: number;
+  streamsToRemove: number;
+  details: Array<{ title: string; category: string; episodes: number }>;
+}
+
+export function useRegroupSeries() {
+  return useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const res = await api.post<{ success: boolean; data: RegroupSeriesResult }>(
+        '/migration/regroup-series',
+        { dryRun },
+      );
+      return res.data.data;
+    },
+  });
+}

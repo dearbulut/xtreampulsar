@@ -181,11 +181,30 @@ export class MigrationService implements OnModuleInit {
       return cat.id;
     };
 
+    // Dizi bölümlerini grupla: her benzersiz (kategori + dizi başlığı) → tek parent Stream + Episode'lar
+    const seriesGroups = new Map<string, { title: string; categoryId: string; logo: string; tvgId: string; eps: Array<{ season: number; episode: number; title: string; url: string; ext: string }> }>();
+
     let i = 0;
     for (const entry of entries) {
       if (++i % 200 === 0 && (await this.isCancelled(jobId))) break; // madde 3a
       try {
         const categoryId = await ensureCategory(entry.groupTitle || 'Uncategorized', entry.streamType);
+
+        // Dizi bölümü → parent seri altında topla (düz stream yaratma yok)
+        if (entry.streamType === 'SERIES') {
+          const parsed = this.parseSeriesEntry(entry.name, entry.url);
+          if (parsed) {
+            const key = `${categoryId}::${parsed.title.toLowerCase()}`;
+            let g = seriesGroups.get(key);
+            if (!g) {
+              g = { title: parsed.title, categoryId, logo: entry.logo || '', tvgId: entry.tvgId || '', eps: [] };
+              seriesGroups.set(key, g);
+            }
+            g.eps.push({ season: parsed.season, episode: parsed.episode, title: parsed.epTitle, url: entry.url, ext: parsed.ext });
+            processed++;
+            continue;
+          }
+        }
         const existing = await this.prisma.stream.findFirst({
           where: { primaryUrl: entry.url, categoryId },
           select: { id: true, name: true, tvgId: true, tvgLogo: true },
@@ -224,6 +243,38 @@ export class MigrationService implements OnModuleInit {
       } catch (err) {
         failed++;
         errors.push(`${entry.name}: ${(err as Error).message}`);
+      }
+    }
+
+    // Gruplanan dizileri kalıcılaştır: parent Stream + Episode kayıtları
+    for (const g of seriesGroups.values()) {
+      try {
+        let parent = await this.prisma.stream.findFirst({
+          where: { categoryId: g.categoryId, name: g.title },
+          select: { id: true },
+        });
+        if (!parent) {
+          parent = await this.prisma.stream.create({
+            data: {
+              name: g.title,
+              primaryUrl: g.eps[0]?.url || '',
+              tvgLogo: g.logo || null,
+              tvgId: g.tvgId || null,
+              categoryId: g.categoryId,
+            },
+            select: { id: true },
+          });
+        }
+        for (const ep of g.eps) {
+          await this.prisma.episode.upsert({
+            where: { seriesId_season_episode: { seriesId: parent.id, season: ep.season, episode: ep.episode } },
+            create: { seriesId: parent.id, season: ep.season, episode: ep.episode, title: ep.title || null, primaryUrl: ep.url, containerExtension: ep.ext },
+            update: { primaryUrl: ep.url, title: ep.title || null, containerExtension: ep.ext },
+          });
+        }
+      } catch (err) {
+        failed++;
+        errors.push(`series ${g.title}: ${(err as Error).message}`);
       }
     }
 
@@ -1862,6 +1913,96 @@ export class MigrationService implements OnModuleInit {
     return bouquet.id;
   }
 
+  /** M3U bölüm adından dizi başlığı + sezon/bölüm + bölüm başlığını çıkarır. */
+  private parseSeriesEntry(name: string, url: string): { title: string; season: number; episode: number; epTitle: string; ext: string } | null {
+    const se = /S(\d{1,3})\s*E(\d{1,4})/i.exec(name);
+    if (!se) return null;
+    const season = parseInt(se[1], 10);
+    const episode = parseInt(se[2], 10);
+    if (!Number.isFinite(season) || !Number.isFinite(episode)) return null;
+    let title = name.split(/\s+S\d{1,3}(?:\s*E\d{1,4}|\b)/i)[0].trim();
+    title = title.replace(/[\-–—:•|\s]+$/, '').trim();
+    if (!title) title = name.replace(se[0], '').trim() || name.trim();
+    let epTitle = '';
+    const after = name.slice((se.index ?? 0) + se[0].length);
+    const m = /[-–—:]\s*(.+)$/.exec(after);
+    if (m) epTitle = m[1].trim();
+    const ext = (url.match(/\.([a-z0-9]{2,4})(?:\?|$)/i)?.[1] || 'mkv').toLowerCase();
+    return { title, season, episode, epTitle, ext };
+  }
+
+  /**
+   * Zaten import edilmiş DÜZ dizi-bölüm stream'lerini tek Dizi (parent Stream) + Episode
+   * yapısına toplar. dryRun=true → yalnız önizleme; false → uygular (fazla bölüm-stream silinir).
+   */
+  async regroupSeries(dryRun = true): Promise<{ scanned: number; seriesGroups: number; parentsToCreate: number; episodesToCreate: number; streamsToRemove: number; details: Array<{ title: string; category: string; episodes: number }> }> {
+    const streams = await this.prisma.stream.findMany({
+      where: { category: { type: 'SERIES' } },
+      select: { id: true, name: true, primaryUrl: true, tvgLogo: true, tvgId: true, categoryId: true, category: { select: { name: true } } },
+    });
+
+    interface Member { id: string; season: number; episode: number; epTitle: string; url: string; ext: string }
+    const groups = new Map<string, { title: string; categoryId: string; category: string; logo: string | null; tvgId: string | null; members: Member[] }>();
+
+    for (const st of streams) {
+      const parsed = this.parseSeriesEntry(st.name, st.primaryUrl);
+      if (!parsed) continue; // SxxExx yok → zaten düzgün bir dizi başlığı, dokunma
+      const key = `${st.categoryId}::${parsed.title.toLowerCase()}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { title: parsed.title, categoryId: st.categoryId, category: st.category?.name || '', logo: st.tvgLogo, tvgId: st.tvgId, members: [] };
+        groups.set(key, g);
+      }
+      g.members.push({ id: st.id, season: parsed.season, episode: parsed.episode, epTitle: parsed.epTitle, url: st.primaryUrl, ext: parsed.ext });
+    }
+
+    let parentsToCreate = 0;
+    let episodesToCreate = 0;
+    let streamsToRemove = 0;
+    const details: Array<{ title: string; category: string; episodes: number }> = [];
+
+    for (const g of groups.values()) {
+      details.push({ title: g.title, category: g.category, episodes: g.members.length });
+      episodesToCreate += g.members.length;
+
+      if (dryRun) {
+        const existingParent = await this.prisma.stream.findFirst({ where: { categoryId: g.categoryId, name: g.title }, select: { id: true } });
+        if (!existingParent) parentsToCreate++;
+        streamsToRemove += existingParent ? g.members.length : Math.max(0, g.members.length - 1);
+        continue;
+      }
+
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          let parent = await tx.stream.findFirst({ where: { categoryId: g.categoryId, name: g.title }, select: { id: true } });
+          let reusedMemberId: string | null = null;
+          if (!parent) {
+            const first = g.members[0];
+            parent = await tx.stream.update({ where: { id: first.id }, data: { name: g.title }, select: { id: true } });
+            reusedMemberId = first.id;
+            parentsToCreate++;
+          }
+          for (const mem of g.members) {
+            await tx.episode.upsert({
+              where: { seriesId_season_episode: { seriesId: parent!.id, season: mem.season, episode: mem.episode } },
+              create: { seriesId: parent!.id, season: mem.season, episode: mem.episode, title: mem.epTitle || null, primaryUrl: mem.url, containerExtension: mem.ext },
+              update: { primaryUrl: mem.url, title: mem.epTitle || null, containerExtension: mem.ext },
+            });
+          }
+          const removable = g.members.filter((mem) => mem.id !== reusedMemberId).map((mem) => mem.id);
+          if (removable.length) {
+            const del = await tx.stream.deleteMany({ where: { id: { in: removable } } });
+            streamsToRemove += del.count;
+          }
+        });
+      } catch (err) {
+        this.logger.error(`regroupSeries ${g.title}: ${(err as Error).message}`);
+      }
+    }
+
+    return { scanned: streams.length, seriesGroups: groups.size, parentsToCreate, episodesToCreate, streamsToRemove, details: details.slice(0, 500) };
+  }
+
   private inferStreamType(groupTitle: string, url: string, name?: string): 'LIVE' | 'VOD' | 'SERIES' {
     const gt = groupTitle.toUpperCase();
     let urlLower = '';
@@ -1907,8 +2048,15 @@ export class MigrationService implements OnModuleInit {
       const line = raw.trim();
       if (line.startsWith('#EXTINF')) {
         meta = {};
-        const nameMatch = /,(.+)$/.exec(line);
-        if (nameMatch) meta.name = nameMatch[1].trim();
+        // Görünen ad EXTINF'te attribute'lardan SONRA, son '",' sınırının ardından gelir.
+        // İlk virgülle bölmek, tvg-name gibi tırnak-içi virgüllü değerlerde ("House, M.D.") adı bozar.
+        const lastQuoteComma = line.lastIndexOf('",');
+        if (lastQuoteComma >= 0) {
+          meta.name = line.slice(lastQuoteComma + 2).trim();
+        } else {
+          const firstComma = line.indexOf(',');
+          if (firstComma >= 0) meta.name = line.slice(firstComma + 1).trim();
+        }
 
         const logoMatch = /tvg-logo="([^"]*)"/.exec(line);
         if (logoMatch) meta.logo = logoMatch[1];

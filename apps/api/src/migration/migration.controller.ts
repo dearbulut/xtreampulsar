@@ -75,6 +75,11 @@ export class MigrationController {
     return this.migrationService.fixStreamTypes(dryRun ?? false);
   }
 
+  @Post('regroup-series')
+  regroupSeries(@Body('dryRun') dryRun?: boolean) {
+    return this.migrationService.regroupSeries(dryRun ?? true);
+  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }))
   uploadDump(@UploadedFile() file: Express.Multer.File) {

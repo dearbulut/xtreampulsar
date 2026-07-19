@@ -16,10 +16,11 @@ import {
   Terminal,
   RefreshCw,
   ShieldCheck,
-  Wrench
+  Wrench,
+  Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes } from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -35,7 +36,8 @@ type ToolId =
   | 'bulk-series'
   | 'system-stats'
   | 'iptv-check'
-  | 'fix-types';
+  | 'fix-types'
+  | 'regroup-series';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -48,6 +50,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'system-stats', icon: Activity, label: 'System Stats' },
   { id: 'iptv-check', icon: ShieldCheck, label: 'IPTV Checker' },
   { id: 'fix-types', icon: Wrench, label: 'Fix Stream Types' },
+  { id: 'regroup-series', icon: Layers, label: 'Dizi Grupla (Regroup Series)' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -635,6 +638,65 @@ function FixStreamTypesPanel() {
   );
 }
 
+function RegroupSeriesPanel() {
+  const preview = useRegroupSeries();
+  const apply = useRegroupSeries();
+  const d = preview.data;
+
+  return (
+    <div>
+      <PanelTitle icon={Layers}>Dizi Grupla (Regroup Series)</PanelTitle>
+      <PanelDesc>
+        M3U ile içe aktarılmış ve her bölümü ayrı satır olarak duran dizileri tek "Dizi → Sezon → Bölüm"
+        yapısına toplar. Önce önizle; uygulanınca fazladan bölüm-stream'leri silinir ve Episode kayıtları oluşturulur.
+      </PanelDesc>
+      <div className="flex gap-2">
+        <RunButton onClick={() => void preview.mutateAsync(true)} loading={preview.isPending}>
+          Önizle
+        </RunButton>
+        {d && d.streamsToRemove > 0 && (
+          <button
+            className="btn-primary"
+            disabled={apply.isPending}
+            onClick={() => void apply.mutateAsync(false)}
+          >
+            Uygula ({d.seriesGroups} dizi, {d.streamsToRemove} satır sadeleşecek)
+          </button>
+        )}
+      </div>
+
+      {apply.isSuccess && apply.data && (
+        <SuccessBox>
+          {apply.data.seriesGroups} dizi toplandı, {apply.data.episodesToCreate} bölüm oluşturuldu,
+          {' '}{apply.data.streamsToRemove} fazla satır kaldırıldı.
+        </SuccessBox>
+      )}
+
+      {d && !apply.isSuccess && (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-muted">
+            Tarandı: {d.scanned} · Dizi grubu: {d.seriesGroups} · Yeni dizi: {d.parentsToCreate} ·
+            {' '}Bölüm: {d.episodesToCreate} · Kaldırılacak satır: {d.streamsToRemove}
+          </p>
+          {d.details.length > 0 && (
+            <div className="max-h-72 overflow-y-auto card divide-y divide-border">
+              {d.details.slice(0, 200).map((row, idx) => (
+                <div key={idx} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                  <span className="truncate text-fg max-w-md">{row.title}</span>
+                  <span className="shrink-0 ml-2 flex items-center gap-2">
+                    <span className="badge badge-gray">{row.category}</span>
+                    <span className="badge badge-success tabular-nums">{row.episodes} bölüm</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IptvCheckPanel() {
   const { t } = useTranslation();
   const [host, setHost] = useState('');
@@ -839,6 +901,7 @@ export function AdvancedToolsPage() {
           {active === 'system-stats' && <SystemStatsPanel />}
           {active === 'iptv-check' && <IptvCheckPanel />}
           {active === 'fix-types' && <FixStreamTypesPanel />}
+          {active === 'regroup-series' && <RegroupSeriesPanel />}
         </div>
       </div>
     </div>
