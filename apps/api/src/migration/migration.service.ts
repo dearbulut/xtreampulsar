@@ -1884,19 +1884,18 @@ export class MigrationService implements OnModuleInit {
     const isChannel = gt.includes('KANAL') || gt.includes('CHANNEL');
     if (is247 || isChannel) return 'LIVE';
 
-    // ── 3. SERIES signals (name SxxExx or group) — BEFORE bare extension ──
-    if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
-    if (/(SERIE|D[İI]Z[İI])/.test(gt)) return 'SERIES';
+    // ── 3. On-demand FILE (.mp4/.mkv/.avi...) → yalnız o zaman VOD/SERIES ──
+    //     Sürekli yayın (.ts / uzantısız) grup adında "Movies/Series" geçse
+    //     bile LIVE'dır (24/7 film/dizi kanalları canlıdır). Grup kelimeleri
+    //     URL bir dosya DEĞİLSE tipi belirleyemez.
+    const isFile = /\.(mp4|mkv|avi|mov|m4v|ts\.mp4)(\?|$)/.test(urlLower);
+    if (isFile) {
+      if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
+      if (/(SERIE|D[İI]Z[İI])/.test(gt)) return 'SERIES';
+      return 'VOD';
+    }
 
-    // ── 4. VOD signals (group) ────────────────────────────────────────────
-    const gtTrimmed = gt.trim();
-    if (gtTrimmed === 'VOD' || gtTrimmed === 'MOVIES' || gtTrimmed === 'FILMS') return 'VOD';
-    if (/(MOVIE|F[İI]LM|S[İI]NEMA)/.test(gt)) return 'VOD';
-
-    // ── 5. Bare movie extension → VOD (fallback, series already handled) ──
-    if (/\.(mp4|mkv|avi)(\?|$)/.test(urlLower)) return 'VOD';
-
-    // ── 6. Default → LIVE ─────────────────────────────────────────────────
+    // ── 4. Sürekli yayın → LIVE (grup adı override etmez) ─────────────────
     return 'LIVE';
   }
 
