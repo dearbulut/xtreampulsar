@@ -100,7 +100,7 @@ export class BackupService {
     const backupDir = await this.getBackupDir();
     if (!fs.existsSync(backupDir)) return [];
 
-    const files = fs.readdirSync(backupDir).filter((f) => f.endsWith('.sql.gz'));
+    const files = fs.readdirSync(backupDir).filter((f) => f.endsWith('.sql.gz') || f.endsWith('.sql.gz.enc'));
     return files
       .map((filename) => {
         const stat = fs.statSync(path.join(backupDir, filename));
