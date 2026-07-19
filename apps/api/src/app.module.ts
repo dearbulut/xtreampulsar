@@ -40,6 +40,7 @@ import { WebhookModule } from './webhook/webhook.module';
 import { ControlModule } from './control/control.module';
 import { SupportModule } from './support/support.module';
 import { ClientModule } from './client/client.module';
+import { ClientRequestsModule } from './client-requests/client-requests.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { ClientModule } from './client/client.module';
     ControlModule,
     SupportModule,
     ClientModule,
+    ClientRequestsModule,
   ],
   controllers: [AppController],
   providers: [

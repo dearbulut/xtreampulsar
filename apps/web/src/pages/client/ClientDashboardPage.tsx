@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Tv2, Radio, KeyRound, Copy, Check, Eye, EyeOff,
-  CalendarClock, Users, Clock, Wifi, ListVideo,
+  CalendarClock, Users, Clock, Wifi, ListVideo, MessageSquareWarning, Send,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import {
   useClientMe,
   useClientConnections,
   useClientChangePassword,
+  useCreateClientRequest,
+  useMyClientRequests,
   type ClientConnection,
 } from '@/hooks/useClientPanel';
 import { cn, daysLeft, formatDate, copyToClipboard } from '@/lib/utils';
@@ -322,6 +324,72 @@ function ChangePasswordCard() {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+function RequestCard() {
+  const { t } = useTranslation();
+  const [mode, setMode] = useState<'REPORT' | 'NEW_CHANNEL'>('REPORT');
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const create = useCreateClientRequest();
+  const { data: myReqs = [] } = useMyClientRequests();
+
+  const submit = () => {
+    if (!title.trim()) return;
+    create.mutate(
+      { type: mode, title: title.trim(), message: message.trim() || undefined },
+      { onSuccess: () => { setTitle(''); setMessage(''); toast.success(t('client.requestSent')); } },
+    );
+  };
+
+  return (
+    <div className="card p-5 space-y-4">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+        <MessageSquareWarning className="w-4 h-4 text-primary" />
+        {t('client.myRequests')}
+      </h2>
+      <div className="flex gap-1">
+        <button onClick={() => setMode('REPORT')} className={cn('flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors', mode === 'REPORT' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>{t('client.reportProblem')}</button>
+        <button onClick={() => setMode('NEW_CHANNEL')} className={cn('flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors', mode === 'NEW_CHANNEL' ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>{t('client.requestChannel')}</button>
+      </div>
+      <p className="text-xs text-muted">{mode === 'REPORT' ? t('client.reportProblemDesc') : t('client.requestChannelDesc')}</p>
+      <input
+        className="input"
+        placeholder={mode === 'REPORT' ? t('client.problemChannel') : t('client.channelName')}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <textarea
+        className="input min-h-16 resize-none"
+        placeholder={t('client.details')}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <button
+        className="btn-primary w-full flex items-center justify-center gap-2"
+        disabled={!title.trim() || create.isPending}
+        onClick={submit}
+      >
+        <Send className="w-4 h-4" />{t('client.send')}
+      </button>
+      {myReqs.length > 0 ? (
+        <div className="space-y-1.5 pt-3 border-t border-border">
+          {myReqs.slice(0, 5).map((r) => (
+            <div key={r.id} className="flex items-center justify-between text-xs gap-2">
+              <span className="truncate text-muted">
+                {r.type === 'REPORT' ? '⚠ ' : '＋ '}{r.stream?.name ? `${r.stream.name} — ` : ''}{r.title}
+              </span>
+              <span className={cn('shrink-0', r.status === 'RESOLVED' ? 'text-success' : r.status === 'REJECTED' ? 'text-danger' : 'text-warning')}>
+                {t(`clientRequests.status${r.status.charAt(0) + r.status.slice(1).toLowerCase()}`)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted text-center pt-2">{t('client.noRequests')}</p>
+      )}
+    </div>
+  );
+}
+
 export function ClientDashboardPage() {
   const { t } = useTranslation();
   const clientUser = useAuthStore((s) => s.clientUser);
@@ -340,6 +408,7 @@ export function ClientDashboardPage() {
         <PlaylistCard />
         <ConnectionsCard />
         <ChangePasswordCard />
+        <RequestCard />
       </div>
     </div>
   );

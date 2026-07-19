@@ -27,7 +27,8 @@
       "epg": "EPG",
       "analytics": "ANALİTİK",
       "management": "YÖNETİM"
-    }
+    },
+    "clientRequests": "Bildirim & İstekler"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -125,7 +126,9 @@
     "servers": "Sunucular",
     "online": "Çevrimiçi",
     "offline": "Çevrimdışı",
-    "responseMs": "Yanıt {{n}}ms"
+    "responseMs": "Yanıt {{n}}ms",
+    "reportedChannels": "Bildirilen Kanallar",
+    "channelRequests": "Kanal İstekleri"
   },
   "users": {
     "title": "Kullanıcılar",
@@ -777,7 +780,18 @@
     "newPassword": "Yeni Şifre",
     "saving": "Kaydediliyor…",
     "changePasswordBtn": "Şifreyi Değiştir",
-    "passwordChanged": "Şifre değiştirildi"
+    "passwordChanged": "Şifre değiştirildi",
+    "reportProblem": "Sorun Bildir",
+    "requestChannel": "Yeni Kanal İste",
+    "myRequests": "Bildirimlerim & İsteklerim",
+    "reportProblemDesc": "İzlerken bir kanalda sorun mu var? Bize bildirin.",
+    "requestChannelDesc": "Görmek istediğiniz bir kanal mı var? İsteyin.",
+    "channelName": "Kanal adı",
+    "problemChannel": "Sorunlu kanal (opsiyonel)",
+    "details": "Detay",
+    "send": "Gönder",
+    "requestSent": "Talebiniz alındı, teşekkürler!",
+    "noRequests": "Henüz bildirim/istek yok"
   },
   "errors": {
     "required": "Bu alan zorunludur",
@@ -1763,5 +1777,27 @@
     "title": "Sayfa bulunamadı",
     "subtitle": "Aradığınız sayfa taşınmış veya hiç var olmamış olabilir.",
     "back": "Panele dön"
+  },
+  "clientRequests": {
+    "title": "Bildirim & İstekler",
+    "subtitle": "Abonelerin kanal sorun bildirimleri ve yeni kanal istekleri",
+    "all": "Tümü",
+    "reports": "Sorun Bildirimleri",
+    "requests": "Kanal İstekleri",
+    "statusOpen": "Açık",
+    "statusResolved": "Çözüldü",
+    "statusRejected": "Reddedildi",
+    "allStatuses": "Tüm Durumlar",
+    "colType": "Tür",
+    "colUser": "Abone",
+    "colDetail": "Detay",
+    "colDate": "Tarih",
+    "colStatus": "Durum",
+    "report": "Sorun",
+    "request": "İstek",
+    "resolve": "Çöz",
+    "reject": "Reddet",
+    "reopen": "Yeniden Aç",
+    "empty": "Kayıt yok"
   }
 }

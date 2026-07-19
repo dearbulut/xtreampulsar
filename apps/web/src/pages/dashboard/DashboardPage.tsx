@@ -15,6 +15,8 @@ import {
   Wifi,
   WifiOff,
   Server as ServerIcon,
+  MessageSquareWarning,
+  TvMinimal,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -30,6 +32,7 @@ import {
   Legend,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { StatCard } from '@/components/ui/StatCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -40,6 +43,7 @@ import {
   useTopStreams,
   useServerStats,
 } from '@/hooks/useDashboard';
+import { useClientRequestStats } from '@/hooks/useClientRequests';
 import { useSocket } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
 
@@ -98,6 +102,7 @@ export function DashboardPage() {
   const { data: topStreams = [], isLoading: streamsLoading } = useTopStreams(10);
   const { data: activity = [], isLoading: activityLoading } = useRecentActivity(20);
   const { data: servers = [] } = useServerStats();
+  const { data: reqStats } = useClientRequestStats();
 
   // Top 4 live cards — prefer WebSocket-pushed data, fall back to polled stats
   const activeConns = live?.connections?.active ?? stats?.activeConnections ?? 0;
@@ -195,6 +200,28 @@ export function DashboardPage() {
           loading={statsLoading}
           sub={stats?.streamsDown ? t('dashboard.nDown', { n: stats.streamsDown }) : t('dashboard.allGood')}
         />
+      </div>
+
+      {/* Row 2.4 — Client reports & channel requests */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link to="/client-requests" className="card card-hover p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
+            <MessageSquareWarning className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-muted">{t('dashboard.reportedChannels')}</p>
+            <p className="text-xl font-bold text-fg tabular-nums">{reqStats?.openReports ?? '—'}</p>
+          </div>
+        </Link>
+        <Link to="/client-requests" className="card card-hover p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-info/10 text-info flex items-center justify-center shrink-0">
+            <TvMinimal className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-muted">{t('dashboard.channelRequests')}</p>
+            <p className="text-xl font-bold text-fg tabular-nums">{reqStats?.openRequests ?? '—'}</p>
+          </div>
+        </Link>
       </div>
 
       {/* Row 2.5 — Per-server live cards */}

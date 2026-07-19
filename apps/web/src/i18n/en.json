@@ -27,7 +27,8 @@
       "epg": "EPG",
       "analytics": "ANALYTICS",
       "management": "MANAGEMENT"
-    }
+    },
+    "clientRequests": "Reports & Requests"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -125,7 +126,9 @@
     "servers": "Servers",
     "online": "Online",
     "offline": "Offline",
-    "responseMs": "Response {{n}}ms"
+    "responseMs": "Response {{n}}ms",
+    "reportedChannels": "Reported Channels",
+    "channelRequests": "Channel Requests"
   },
   "users": {
     "title": "Users",
@@ -777,7 +780,18 @@
     "newPassword": "New Password",
     "saving": "Saving…",
     "changePasswordBtn": "Change Password",
-    "passwordChanged": "Password changed"
+    "passwordChanged": "Password changed",
+    "reportProblem": "Report a Problem",
+    "requestChannel": "Request a Channel",
+    "myRequests": "My Reports & Requests",
+    "reportProblemDesc": "Having an issue with a channel? Let us know.",
+    "requestChannelDesc": "A channel you want to see? Request it.",
+    "channelName": "Channel name",
+    "problemChannel": "Affected channel (optional)",
+    "details": "Details",
+    "send": "Send",
+    "requestSent": "Your request was received, thank you!",
+    "noRequests": "No reports/requests yet"
   },
   "errors": {
     "required": "This field is required",
@@ -1763,5 +1777,27 @@
     "title": "Page not found",
     "subtitle": "The page you are looking for may have moved or never existed.",
     "back": "Back to dashboard"
+  },
+  "clientRequests": {
+    "title": "Reports & Requests",
+    "subtitle": "Subscriber channel problem reports and new channel requests",
+    "all": "All",
+    "reports": "Problem Reports",
+    "requests": "Channel Requests",
+    "statusOpen": "Open",
+    "statusResolved": "Resolved",
+    "statusRejected": "Rejected",
+    "allStatuses": "All Statuses",
+    "colType": "Type",
+    "colUser": "Subscriber",
+    "colDetail": "Detail",
+    "colDate": "Date",
+    "colStatus": "Status",
+    "report": "Problem",
+    "request": "Request",
+    "resolve": "Resolve",
+    "reject": "Reject",
+    "reopen": "Reopen",
+    "empty": "No records"
   }
 }

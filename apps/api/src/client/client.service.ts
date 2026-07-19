@@ -63,4 +63,34 @@ export class ClientService {
       stream: c.stream,
     }));
   }
+
+  // Son kullanıcı: kanal sorunu bildir veya yeni kanal iste.
+  async createRequest(
+    userId: string,
+    dto: { type: 'REPORT' | 'NEW_CHANNEL'; streamId?: string; title: string; message?: string },
+  ) {
+    let streamId: string | null = null;
+    if (dto.type === 'REPORT' && dto.streamId) {
+      const st = await this.prisma.stream.findUnique({ where: { id: dto.streamId }, select: { id: true } });
+      streamId = st?.id ?? null;
+    }
+    return this.prisma.clientRequest.create({
+      data: {
+        type: dto.type,
+        userId,
+        streamId,
+        title: dto.title.trim(),
+        message: dto.message?.trim() || null,
+      },
+    });
+  }
+
+  async getMyRequests(userId: string) {
+    return this.prisma.clientRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { stream: { select: { id: true, name: true } } },
+      take: 50,
+    });
+  }
 }

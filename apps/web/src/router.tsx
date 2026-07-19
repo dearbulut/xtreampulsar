@@ -45,6 +45,7 @@ import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
 import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
 import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
 import { SupportPage } from '@/pages/support/SupportPage';
+import { ClientRequestsPage } from '@/pages/client-requests/ClientRequestsPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
 import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
@@ -244,6 +245,12 @@ const supportRoute = createRoute({
   component: SupportPage,
 });
 
+const clientRequestsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/client-requests',
+  component: ClientRequestsPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -395,6 +402,7 @@ const routeTree = rootRoute.addChildren([
     webhooksRoute,
     magDevicesRoute,
     supportRoute,
+    clientRequestsRoute,
   ]),
 ]);
 

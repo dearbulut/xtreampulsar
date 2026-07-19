@@ -283,6 +283,7 @@ model Stream {
   bouquetStreams BouquetStream[]
   healthLogs     StreamHealthLog[]
   episodes       Episode[]         @relation("SeriesEpisodes")
+  clientRequests ClientRequest[]
 
   @@map("streams")
 }
@@ -502,6 +503,7 @@ model User {
   apiKeys        ApiKey[]
   activityLogs   UserActivityLog[]
   playlists      UserPlaylist[]
+  clientRequests ClientRequest[]
 
   @@index([packageId])
   @@map("users")
@@ -982,4 +984,35 @@ model ControlAdmin {
   createdAt DateTime @default(now())
 
   @@map("control_admins")
+}
+
+
+enum ClientRequestType {
+  REPORT
+  NEW_CHANNEL
+}
+
+enum ClientRequestStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+model ClientRequest {
+  id         String              @id @default(cuid())
+  type       ClientRequestType
+  status     ClientRequestStatus @default(OPEN)
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  streamId   String?
+  stream     Stream?             @relation(fields: [streamId], references: [id], onDelete: SetNull)
+  title      String
+  message    String?
+  adminNote  String?
+  createdAt  DateTime            @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+  @@index([type])
+  @@map("client_requests")
 }

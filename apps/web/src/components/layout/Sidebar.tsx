@@ -28,6 +28,7 @@ import {
   Tablet,
   Bell,
   X,
+  MessageSquareWarning
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -103,6 +104,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.security', to: '/security', icon: Shield },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },
+      { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
       { label: 'nav.settings', to: '/settings', icon: Settings },
     ],
   },

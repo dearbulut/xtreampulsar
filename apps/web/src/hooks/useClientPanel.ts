@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth.store';
@@ -121,6 +121,42 @@ export function useClientChangePassword() {
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast.error(msg ?? 'Şifre değiştirilemedi');
+    },
+  });
+}
+
+
+export interface ClientRequestItem {
+  id: string;
+  type: 'REPORT' | 'NEW_CHANNEL';
+  status: 'OPEN' | 'RESOLVED' | 'REJECTED';
+  title: string;
+  message?: string | null;
+  createdAt: string;
+  stream?: { id: string; name: string } | null;
+}
+
+export function useMyClientRequests() {
+  const token = useAuthStore((s) => s.clientToken);
+  return useQuery({
+    queryKey: ['client-panel', 'requests'],
+    enabled: !!token,
+    queryFn: async () => {
+      const res = await clientApi.get<{ success: boolean; data: ClientRequestItem[] }>('/client/me/requests');
+      return res.data.data;
+    },
+  });
+}
+
+export function useCreateClientRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { type: 'REPORT' | 'NEW_CHANNEL'; streamId?: string; title: string; message?: string }) =>
+      clientApi.post('/client/requests', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['client-panel', 'requests'] }),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Gönderilemedi');
     },
   });
 }
