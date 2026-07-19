@@ -49,7 +49,7 @@ export class AiService {
       const reply =
         provider === 'openai'
           ? await this.callOpenAi(s.aiApiKey, s.aiModel || 'gpt-4o-mini', system, userMsg)
-          : await this.callAnthropic(s.aiApiKey, s.aiModel || 'claude-3-5-haiku-latest', system, userMsg);
+          : await this.callAnthropic(s.aiApiKey, s.aiModel || 'claude-haiku-4-5', system, userMsg);
       const trimmed = reply.trim();
       if (!trimmed) throw new Error('boş yanıt');
       return { reply: trimmed };

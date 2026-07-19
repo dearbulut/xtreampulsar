@@ -712,8 +712,8 @@ function AiSettingsTab() {
       <Field label="API Anahtarı" hint="Sunucuda saklanır.">
         <input className="input font-mono" type="password" value={form.aiApiKey} onChange={(e) => set('aiApiKey', e.target.value)} placeholder="anahtar" />
       </Field>
-      <Field label="Model" hint="Boşsa varsayılan (Claude Haiku / gpt-4o-mini).">
-        <input className="input font-mono" value={form.aiModel} onChange={(e) => set('aiModel', e.target.value)} placeholder="claude-3-5-haiku-latest" />
+      <Field label="Model" hint="Boşsa varsayılan (claude-haiku-4-5 / gpt-4o-mini). Örn: claude-sonnet-5">
+        <input className="input font-mono" value={form.aiModel} onChange={(e) => set('aiModel', e.target.value)} placeholder="claude-haiku-4-5" />
       </Field>
       <Field label="Sistem Talimatı" hint="Botun üslubu (boşsa varsayılan).">
         <textarea className="input min-h-[90px]" value={form.aiSystemPrompt} onChange={(e) => set('aiSystemPrompt', e.target.value)} />
