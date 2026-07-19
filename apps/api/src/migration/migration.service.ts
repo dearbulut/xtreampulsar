@@ -1886,12 +1886,12 @@ export class MigrationService implements OnModuleInit {
 
     // ── 3. SERIES signals (name SxxExx or group) — BEFORE bare extension ──
     if (name && /S\d+\s*E\d+/i.test(name)) return 'SERIES';
-    if (/\b(SERIE|SERIES|DİZİ|DIZI)\b/.test(gt)) return 'SERIES';
+    if (/(SERIE|D[İI]Z[İI])/.test(gt)) return 'SERIES';
 
     // ── 4. VOD signals (group) ────────────────────────────────────────────
     const gtTrimmed = gt.trim();
     if (gtTrimmed === 'VOD' || gtTrimmed === 'MOVIES' || gtTrimmed === 'FILMS') return 'VOD';
-    if (/\b(MOVIE|FILM|FİLM|MOVIES|FILMS|SİNEMA|SINEMA)\b/.test(gt)) return 'VOD';
+    if (/(MOVIE|F[İI]LM|S[İI]NEMA)/.test(gt)) return 'VOD';
 
     // ── 5. Bare movie extension → VOD (fallback, series already handled) ──
     if (/\.(mp4|mkv|avi)(\?|$)/.test(urlLower)) return 'VOD';
