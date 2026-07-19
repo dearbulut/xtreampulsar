@@ -1665,7 +1665,13 @@
     "fixTypesPreview": "Önizle",
     "fixTypesApply": "Uygula ({{count}})",
     "fixTypesDone": "{{count}} içerik doğru tipe taşındı",
-    "fixTypesResult": "{{checked}} kontrol edildi · {{changed}} taşınacak"
+    "fixTypesResult": "{{checked}} kontrol edildi · {{changed}} taşınacak",
+    "regroupDesc": "M3U ile içe aktarılmış ve her bölümü ayrı satır olarak duran dizileri tek “Dizi → Sezon → Bölüm” yapısına toplar. Önce önizle; uygulanınca fazladan bölüm-stream'leri silinir ve Episode kayıtları oluşturulur.",
+    "regroupPreview": "Önizle",
+    "regroupApply": "Uygula ({{groups}} dizi, {{rows}} satır)",
+    "regroupDone": "{{groups}} dizi arka planda işleniyor ({{episodes}} bölüm, {{rows}} fazla satır sadeleşecek). Birkaç dakika içinde Diziler sayfası tek satıra düşer — sayfayı yenileyerek kontrol et.",
+    "regroupStats": "Tarandı: {{scanned}} · Dizi grubu: {{groups}} · Yeni dizi: {{parents}} · Bölüm: {{episodes}} · Kaldırılacak satır: {{rows}}",
+    "regroupEpisodes": "{{count}} bölüm"
   },
   "ui": {
     "processing": "İşleniyor…",

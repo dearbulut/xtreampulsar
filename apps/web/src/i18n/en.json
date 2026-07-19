@@ -1665,7 +1665,13 @@
     "fixTypesPreview": "Preview",
     "fixTypesApply": "Apply ({{count}})",
     "fixTypesDone": "{{count}} items moved to correct type",
-    "fixTypesResult": "{{checked}} checked · {{changed}} to move"
+    "fixTypesResult": "{{checked}} checked · {{changed}} to move",
+    "regroupDesc": "Consolidates series imported via M3U — where each episode is a separate row — into a single “Series → Season → Episode” structure. Preview first; applying deletes redundant episode-streams and creates Episode records.",
+    "regroupPreview": "Preview",
+    "regroupApply": "Apply ({{groups}} series, {{rows}} rows)",
+    "regroupDone": "{{groups}} series processing in background ({{episodes}} episodes, {{rows}} extra rows will be cleaned up). Within a few minutes the Series page collapses to one row each — refresh to check.",
+    "regroupStats": "Scanned: {{scanned}} · Series groups: {{groups}} · New series: {{parents}} · Episodes: {{episodes}} · Rows to remove: {{rows}}",
+    "regroupEpisodes": "{{count}} episodes"
   },
   "ui": {
     "processing": "Processing…",

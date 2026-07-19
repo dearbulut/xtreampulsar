@@ -50,7 +50,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'system-stats', icon: Activity, label: 'System Stats' },
   { id: 'iptv-check', icon: ShieldCheck, label: 'IPTV Checker' },
   { id: 'fix-types', icon: Wrench, label: 'Fix Stream Types' },
-  { id: 'regroup-series', icon: Layers, label: 'Dizi Grupla (Regroup Series)' },
+  { id: 'regroup-series', icon: Layers, label: 'Regroup Series' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -639,20 +639,18 @@ function FixStreamTypesPanel() {
 }
 
 function RegroupSeriesPanel() {
+  const { t } = useTranslation();
   const preview = useRegroupSeries();
   const apply = useRegroupSeries();
   const d = preview.data;
 
   return (
     <div>
-      <PanelTitle icon={Layers}>Dizi Grupla (Regroup Series)</PanelTitle>
-      <PanelDesc>
-        M3U ile içe aktarılmış ve her bölümü ayrı satır olarak duran dizileri tek "Dizi → Sezon → Bölüm"
-        yapısına toplar. Önce önizle; uygulanınca fazladan bölüm-stream'leri silinir ve Episode kayıtları oluşturulur.
-      </PanelDesc>
+      <PanelTitle icon={Layers}>Regroup Series</PanelTitle>
+      <PanelDesc>{t('tools.regroupDesc')}</PanelDesc>
       <div className="flex gap-2">
         <RunButton onClick={() => void preview.mutateAsync(true)} loading={preview.isPending}>
-          Önizle
+          {t('tools.regroupPreview')}
         </RunButton>
         {d && d.streamsToRemove > 0 && (
           <button
@@ -660,23 +658,31 @@ function RegroupSeriesPanel() {
             disabled={apply.isPending}
             onClick={() => void apply.mutateAsync(false)}
           >
-            Uygula ({d.seriesGroups} dizi, {d.streamsToRemove} satır sadeleşecek)
+            {t('tools.regroupApply', { groups: d.seriesGroups, rows: d.streamsToRemove })}
           </button>
         )}
       </div>
 
       {apply.isSuccess && apply.data && (
         <SuccessBox>
-          {apply.data.seriesGroups} dizi toplandı, {apply.data.episodesToCreate} bölüm oluşturuldu,
-          {' '}{apply.data.streamsToRemove} fazla satır kaldırıldı.
+          {t('tools.regroupDone', {
+            groups: apply.data.seriesGroups,
+            episodes: apply.data.episodesToCreate,
+            rows: apply.data.streamsToRemove,
+          })}
         </SuccessBox>
       )}
 
       {d && !apply.isSuccess && (
         <div className="mt-4 space-y-2">
           <p className="text-sm text-muted">
-            Tarandı: {d.scanned} · Dizi grubu: {d.seriesGroups} · Yeni dizi: {d.parentsToCreate} ·
-            {' '}Bölüm: {d.episodesToCreate} · Kaldırılacak satır: {d.streamsToRemove}
+            {t('tools.regroupStats', {
+              scanned: d.scanned,
+              groups: d.seriesGroups,
+              parents: d.parentsToCreate,
+              episodes: d.episodesToCreate,
+              rows: d.streamsToRemove,
+            })}
           </p>
           {d.details.length > 0 && (
             <div className="max-h-72 overflow-y-auto card divide-y divide-border">
@@ -685,7 +691,7 @@ function RegroupSeriesPanel() {
                   <span className="truncate text-fg max-w-md">{row.title}</span>
                   <span className="shrink-0 ml-2 flex items-center gap-2">
                     <span className="badge badge-gray">{row.category}</span>
-                    <span className="badge badge-success tabular-nums">{row.episodes} bölüm</span>
+                    <span className="badge badge-success tabular-nums">{t('tools.regroupEpisodes', { count: row.episodes })}</span>
                   </span>
                 </div>
               ))}
