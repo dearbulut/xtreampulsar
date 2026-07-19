@@ -28,7 +28,8 @@ import {
   Tablet,
   Bell,
   X,
-  MessageSquareWarning
+  MessageSquareWarning,
+  Rss
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -100,6 +101,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'nav.packages', to: '/packages', icon: Package },
       { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
+      { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
       { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'nav.security', to: '/security', icon: Shield },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },

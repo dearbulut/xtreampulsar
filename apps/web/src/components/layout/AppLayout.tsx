@@ -25,6 +25,7 @@ const ROUTE_TITLE_KEYS: Record<string, string[]> = {
   '/tools/advanced': ['nav.tools'],
   '/security': ['nav.security'],
   '/client-requests': ['nav.clientRequests'],
+  '/m3u-sources': ['nav.m3uSync'],
   '/webhooks': ['layout.webhooks'],
   '/support': ['layout.supportCenter'],
   '/settings': ['nav.settings'],

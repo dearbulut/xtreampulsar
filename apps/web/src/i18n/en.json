@@ -28,7 +28,8 @@
       "analytics": "ANALYTICS",
       "management": "MANAGEMENT"
     },
-    "clientRequests": "Reports & Requests"
+    "clientRequests": "Reports & Requests",
+    "m3uSync": "Auto M3U Sync"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -1799,5 +1800,32 @@
     "reject": "Reject",
     "reopen": "Reopen",
     "empty": "No records"
+  },
+  "m3uSync": {
+    "title": "Auto M3U Content Sync",
+    "subtitle": "Automatically update content from provider M3U links on a schedule (ideal for event categories)",
+    "add": "Add Source",
+    "editTitle": "Edit Source",
+    "empty": "No M3U sources yet",
+    "colName": "Name / URL",
+    "colType": "Type",
+    "colInterval": "Interval",
+    "colLastSync": "Last Sync",
+    "colStatus": "Status",
+    "name": "Name",
+    "url": "M3U URL",
+    "type": "Content Type",
+    "conflictMode": "Conflict Mode",
+    "intervalMinutes": "Sync Interval (minutes)",
+    "enabled": "Enabled",
+    "everyMinutes": "{{n}} min",
+    "never": "Never",
+    "disabled": "Disabled",
+    "ok": "OK",
+    "error": "Error",
+    "pending": "Pending",
+    "syncNow": "Sync Now",
+    "deleteTitle": "Delete Source",
+    "deleteConfirm": "Are you sure you want to delete this M3U source?"
   }
 }

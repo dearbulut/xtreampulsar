@@ -41,6 +41,7 @@ import { ControlModule } from './control/control.module';
 import { SupportModule } from './support/support.module';
 import { ClientModule } from './client/client.module';
 import { ClientRequestsModule } from './client-requests/client-requests.module';
+import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { ClientRequestsModule } from './client-requests/client-requests.module';
     SupportModule,
     ClientModule,
     ClientRequestsModule,
+    M3uSyncModule,
   ],
   controllers: [AppController],
   providers: [

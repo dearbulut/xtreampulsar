@@ -28,7 +28,8 @@
       "analytics": "ANALİTİK",
       "management": "YÖNETİM"
     },
-    "clientRequests": "Bildirim & İstekler"
+    "clientRequests": "Bildirim & İstekler",
+    "m3uSync": "Otomatik M3U Sync"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -1799,5 +1800,32 @@
     "reject": "Reddet",
     "reopen": "Yeniden Aç",
     "empty": "Kayıt yok"
+  },
+  "m3uSync": {
+    "title": "Otomatik M3U İçerik Sync",
+    "subtitle": "Sağlayıcı M3U linklerinden içeriği zamanlanmış olarak otomatik güncelle (event kategorileri için ideal)",
+    "add": "Kaynak Ekle",
+    "editTitle": "Kaynağı Düzenle",
+    "empty": "Henüz M3U kaynağı yok",
+    "colName": "Ad / URL",
+    "colType": "Tür",
+    "colInterval": "Aralık",
+    "colLastSync": "Son Senkron",
+    "colStatus": "Durum",
+    "name": "Ad",
+    "url": "M3U URL",
+    "type": "İçerik Türü",
+    "conflictMode": "Çakışma Modu",
+    "intervalMinutes": "Senkron Aralığı (dakika)",
+    "enabled": "Aktif",
+    "everyMinutes": "{{n}} dk",
+    "never": "Hiç",
+    "disabled": "Pasif",
+    "ok": "Başarılı",
+    "error": "Hata",
+    "pending": "Bekliyor",
+    "syncNow": "Şimdi Senkronla",
+    "deleteTitle": "Kaynağı Sil",
+    "deleteConfirm": "Bu M3U kaynağını silmek istediğinize emin misiniz?"
   }
 }

@@ -1016,3 +1016,22 @@ model ClientRequest {
   @@index([type])
   @@map("client_requests")
 }
+
+
+model M3uSource {
+  id               String    @id @default(cuid())
+  name             String
+  url              String
+  defaultType      String    @default("LIVE")
+  defaultBouquetId String?
+  conflictMode     String    @default("MERGE")
+  enabled          Boolean   @default(true)
+  intervalMinutes  Int       @default(360)
+  lastSyncedAt     DateTime?
+  lastStatus       String?
+  lastMessage      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("m3u_sources")
+}
