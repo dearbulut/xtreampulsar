@@ -122,7 +122,7 @@ export function ClientRequestsPage() {
                     </td>
                     <td className="table-td">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="btn-ghost p-1.5 relative" title="Mesajlar / Yanıtla" onClick={() => { setThreadId(r.id); setReplyText(''); }}>
+                        <button className="btn-ghost p-1.5 relative" title={t('clientRequests.crThread')} onClick={() => { setThreadId(r.id); setReplyText(''); }}>
                           <MessageSquare className="w-4 h-4 text-primary" />
                           {r.messages && r.messages.length > 0 && (
                             <span className="absolute -top-0.5 -right-0.5 bg-primary text-white rounded-full text-[9px] leading-none px-1 py-0.5">{r.messages.length}</span>
@@ -161,25 +161,25 @@ export function ClientRequestsPage() {
           <div className="space-y-3">
             {threadReq.message && (
               <div className="text-sm bg-surface-2 rounded-lg p-2.5 text-fg whitespace-pre-wrap break-words">
-                <span className="font-medium mr-1">{threadReq.user?.username ?? 'Abone'}:</span>{threadReq.message}
+                <span className="font-medium mr-1">{threadReq.user?.username ?? t('clientRequests.crSubscriber')}:</span>{threadReq.message}
               </div>
             )}
             <div className="space-y-1.5 max-h-72 overflow-y-auto">
               {threadReq.adminNote && (!threadReq.messages || threadReq.messages.length === 0) && (
                 <div className="text-sm rounded-lg px-2.5 py-1.5 bg-primary/10 text-primary whitespace-pre-wrap break-words">
-                  <span className="font-medium mr-1">Destek:</span>{threadReq.adminNote}
+                  <span className="font-medium mr-1">{t('clientRequests.crSupport')}:</span>{threadReq.adminNote}
                 </div>
               )}
               {(threadReq.messages ?? []).map((m) => (
                 <div key={m.id} className={cn('text-sm rounded-lg px-2.5 py-1.5 whitespace-pre-wrap break-words',
                   m.sender === 'ADMIN' ? 'bg-primary/10 text-primary ml-6' : 'bg-surface-2 text-fg mr-6')}>
-                  <span className="font-medium mr-1">{m.sender === 'ADMIN' ? 'Destek' : (threadReq.user?.username ?? 'Abone')}:</span>{m.body}
+                  <span className="font-medium mr-1">{m.sender === 'ADMIN' ? t('clientRequests.crSupport') : (threadReq.user?.username ?? t('clientRequests.crSubscriber'))}:</span>{m.body}
                 </div>
               ))}
             </div>
             <textarea
               className="input min-h-[80px]"
-              placeholder="Yanıt yaz…"
+              placeholder={t('clientRequests.crReplyPlaceholder')}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
             />
@@ -189,18 +189,18 @@ export function ClientRequestsPage() {
                 disabled={aiSuggest.isPending}
                 onClick={() => aiSuggest.mutate(threadReq.id, {
                   onSuccess: (reply) => setReplyText(reply),
-                  onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'AI yan\u0131t\u0131 al\u0131namad\u0131'),
+                  onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('clientRequests.crAiError')),
                 })}
               >
                 <Sparkles className="w-4 h-4 text-primary" />
-                {aiSuggest.isPending ? 'AI \u00fcretiliyor\u2026' : 'AI \u00f6ner'}
+                {aiSuggest.isPending ? t('clientRequests.crAiSuggesting') : t('clientRequests.crAiSuggest')}
               </button>
               <button
                 className="btn-primary"
                 disabled={!replyText.trim() || addAdminMsg.isPending}
                 onClick={() => addAdminMsg.mutate({ id: threadReq.id, body: replyText.trim() }, { onSuccess: () => setReplyText('') })}
               >
-                Gönder
+                {t('clientRequests.crSend')}
               </button>
             </div>
           </div>

@@ -26,8 +26,8 @@ const getSettingsTabs = (t: (key: string) => string): TabItem[] => [
   { id: 'database', label: t('settings.tabDatabase'), icon: Database },
   { id: 'api', label: 'API', icon: Key },
   { id: 'white-label', label: 'White-Label', icon: Palette },
-  { id: 'ai', label: 'AI Destek', icon: Sparkles },
-  { id: 'panel-hosts', label: 'Panel Adresleri', icon: Link2 },
+  { id: 'ai', label: t('settings.tabAi'), icon: Sparkles },
+  { id: 'panel-hosts', label: t('settings.tabPanelHosts'), icon: Link2 },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -695,75 +695,72 @@ export function SettingsPage() {
 }
 
 function AiSettingsTab() {
+  const { t } = useTranslation();
   const { data, isLoading } = useAiSettings();
   const saveAi = useSaveAiSettings();
   const [form, setForm] = useState<AiSettings | null>(null);
   useEffect(() => { if (data && !form) setForm(data); }, [data, form]);
-  if (isLoading || !form) return <div className="text-sm text-muted py-6">Yükleniyor…</div>;
+  if (isLoading || !form) return <div className="text-sm text-muted py-6">{t('common.loading')}</div>;
   const set = (k: keyof AiSettings, v: string | boolean) => setForm((p) => (p ? { ...p, [k]: v } : p));
   return (
     <div className="space-y-5 max-w-2xl">
       <div className="flex items-start gap-2 text-xs text-muted bg-surface-2 rounded-lg p-3">
         <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <span>Destek taleplerine AI ile yanıt taslağı üretir. Bir LLM API anahtarı girip etkinleştirene kadar uykudadır; anahtar yalnızca sunucuda saklanır.</span>
+        <span>{t('settings.aiDesc')}</span>
       </div>
-      <Field label="Etkin"><Toggle checked={form.aiEnabled} onChange={(v) => set('aiEnabled', v)} /></Field>
-      <Field label="Sağlayıcı">
+      <Field label={t('settings.aiEnabled')}><Toggle checked={form.aiEnabled} onChange={(v) => set('aiEnabled', v)} /></Field>
+      <Field label={t('settings.aiProvider')}>
         <select className="input" value={form.aiProvider} onChange={(e) => set('aiProvider', e.target.value)}>
           <option value="anthropic">Anthropic (Claude)</option>
           <option value="openai">OpenAI</option>
         </select>
       </Field>
-      <Field label="API Anahtarı" hint="Sunucuda saklanır.">
+      <Field label={t('settings.aiApiKey')} hint={t('settings.aiApiKeyHint')}>
         <input className="input font-mono" type="password" value={form.aiApiKey} onChange={(e) => set('aiApiKey', e.target.value)} placeholder="anahtar" />
       </Field>
-      <Field label="Model" hint="Boşsa varsayılan (claude-haiku-4-5 / gpt-4o-mini). Örn: claude-sonnet-5">
+      <Field label={t('settings.aiModel')} hint={t('settings.aiModelHint')}>
         <input className="input font-mono" value={form.aiModel} onChange={(e) => set('aiModel', e.target.value)} placeholder="claude-haiku-4-5" />
       </Field>
-      <Field label="Sistem Talimatı" hint="Botun üslubu (boşsa varsayılan).">
+      <Field label={t('settings.aiSystemPrompt')} hint={t('settings.aiSystemPromptHint')}>
         <textarea className="input min-h-[90px]" value={form.aiSystemPrompt} onChange={(e) => set('aiSystemPrompt', e.target.value)} />
       </Field>
       <div className="flex items-center gap-3">
         <button className="btn btn-primary" disabled={saveAi.isPending} onClick={() => saveAi.mutate(form)}>
-          {saveAi.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          {saveAi.isPending ? t('settings.saving') : t('settings.save')}
         </button>
-        {saveAi.isSuccess && <span className="text-xs text-emerald-400">Kaydedildi.</span>}
+        {saveAi.isSuccess && <span className="text-xs text-emerald-400">{t('settings.saved')}</span>}
       </div>
     </div>
   );
 }
 
 function PanelHostsTab() {
+  const { t } = useTranslation();
   const { data, isLoading } = usePanelHosts();
   const save = useSavePanelHosts();
   const [form, setForm] = useState<PanelHosts | null>(null);
   useEffect(() => { if (data && !form) setForm(data); }, [data, form]);
-  if (isLoading || !form) return <div className="text-sm text-muted py-6">Yükleniyor…</div>;
+  if (isLoading || !form) return <div className="text-sm text-muted py-6">{t('common.loading')}</div>;
   const set = (k: keyof PanelHosts, v: string) => setForm((p) => (p ? { ...p, [k]: v.trim() } : p));
   return (
     <div className="space-y-5 max-w-2xl">
       <div className="flex items-start gap-2 text-xs text-muted bg-surface-2 rounded-lg p-3">
         <Link2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <span>
-          Reseller ve müşteri (client) panelini ANA panel adresinden ayrı bir hostname'de sunarsınız —
-          böylece reseller/müşteri admin adresini görmez. Buraya girdiğiniz hostname'den açıldığında SPA
-          yalnızca ilgili paneli gösterir. Ayrıca DNS (A kaydı) + nginx server bloğu + SSL kurulumu gerekir
-          (kurulum adımı). Boş bırakılırsa path tabanlı (/reseller, /client) çalışmaya devam eder.
-        </span>
+<span>{t('settings.panelHostsDesc')}</span>
       </div>
-      <Field label="Reseller panel hostname" hint="Örn: bayi.musteridomain.com (protokolsüz, sadece host).">
+      <Field label={t('settings.resellerHost')} hint={t('settings.resellerHostHint')}>
         <input className="input font-mono" value={form.resellerPanelHost}
           onChange={(e) => set('resellerPanelHost', e.target.value)} placeholder="bayi.ornek.com" />
       </Field>
-      <Field label="Client (müşteri) panel hostname" hint="Örn: uye.musteridomain.com">
+      <Field label={t('settings.clientHost')} hint={t('settings.clientHostHint')}>
         <input className="input font-mono" value={form.clientPanelHost}
           onChange={(e) => set('clientPanelHost', e.target.value)} placeholder="uye.ornek.com" />
       </Field>
       <div className="flex items-center gap-3">
         <button className="btn btn-primary" disabled={save.isPending} onClick={() => save.mutate(form)}>
-          {save.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          {save.isPending ? t('settings.saving') : t('settings.save')}
         </button>
-        {save.isSuccess && <span className="text-xs text-emerald-400">Kaydedildi. (Yeni adresler için tarayıcıyı yenileyin.)</span>}
+        {save.isSuccess && <span className="text-xs text-emerald-400">{t('settings.savedRefresh')}</span>}
       </div>
     </div>
   );
