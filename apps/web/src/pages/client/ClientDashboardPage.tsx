@@ -373,13 +373,21 @@ function RequestCard() {
       {myReqs.length > 0 ? (
         <div className="space-y-1.5 pt-3 border-t border-border">
           {myReqs.slice(0, 5).map((r) => (
-            <div key={r.id} className="flex items-center justify-between text-xs gap-2">
-              <span className="truncate text-muted">
-                {r.type === 'REPORT' ? '⚠ ' : '＋ '}{r.stream?.name ? `${r.stream.name} — ` : ''}{r.title}
-              </span>
-              <span className={cn('shrink-0', r.status === 'RESOLVED' ? 'text-success' : r.status === 'REJECTED' ? 'text-danger' : 'text-warning')}>
-                {t(`clientRequests.status${r.status.charAt(0) + r.status.slice(1).toLowerCase()}`)}
-              </span>
+            <div key={r.id} className="text-xs pt-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-muted">
+                  {r.type === 'REPORT' ? '⚠ ' : '＋ '}{r.stream?.name ? `${r.stream.name} — ` : ''}{r.title}
+                </span>
+                <span className={cn('shrink-0', r.status === 'RESOLVED' ? 'text-success' : r.status === 'REJECTED' ? 'text-danger' : 'text-warning')}>
+                  {t(`clientRequests.status${r.status.charAt(0) + r.status.slice(1).toLowerCase()}`)}
+                </span>
+              </div>
+              {r.adminNote && (
+                <div className="mt-1 flex gap-1.5 text-primary bg-primary/5 rounded px-2 py-1.5">
+                  <span className="shrink-0">↳</span>
+                  <span className="whitespace-pre-wrap break-words">{r.adminNote}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>

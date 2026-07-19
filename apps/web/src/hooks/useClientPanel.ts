@@ -132,6 +132,7 @@ export interface ClientRequestItem {
   status: 'OPEN' | 'RESOLVED' | 'REJECTED';
   title: string;
   message?: string | null;
+  adminNote?: string | null;
   createdAt: string;
   stream?: { id: string; name: string } | null;
 }
