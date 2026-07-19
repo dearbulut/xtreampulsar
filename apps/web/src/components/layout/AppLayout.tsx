@@ -24,6 +24,7 @@ const ROUTE_TITLE_KEYS: Record<string, string[]> = {
   '/migration': ['nav.migration'],
   '/tools/advanced': ['nav.tools'],
   '/security': ['nav.security'],
+  '/client-requests': ['nav.clientRequests'],
   '/webhooks': ['layout.webhooks'],
   '/support': ['layout.supportCenter'],
   '/settings': ['nav.settings'],
