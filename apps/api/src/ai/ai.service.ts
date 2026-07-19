@@ -5,6 +5,7 @@ interface SuggestCtx {
   title: string;
   message?: string | null;
   type: string;
+  messages?: Array<{ sender: string; body: string }>;
 }
 
 @Injectable()
@@ -43,11 +44,16 @@ export class AiService {
         `Emoji kullanma. Yanıtın başına 'Yanıt Taslağı' gibi BAŞLIK/ETİKET ekleme; ` +
         `doğrudan abonenin okuyacağı mesajı yaz. Markdown biçimlendirme (**, #, - vb.) KULLANMA, düz metin yaz.`;
 
+    const convo = (ctx.messages ?? [])
+      .map((m) => `${m.sender === 'ADMIN' ? 'Destek' : 'Abone'}: ${m.body}`)
+      .join('\n');
     const userMsg =
       `Talep tipi: ${ctx.type}\n` +
       `Başlık: ${ctx.title}\n` +
-      `Mesaj: ${ctx.message || '(yok)'}\n\n` +
-      `Aboneye gönderilebilecek bir yanıt taslağı yaz.`;
+      `Abonenin ilk mesajı: ${ctx.message || '(yok)'}\n` +
+      (convo ? `\nKonuşma geçmişi (eskiden yeniye):\n${convo}\n` : '') +
+      `\nAbonenin EN SON mesajına uygun, konuşmayı doğal biçimde ilerleten kısa bir yanıt taslağı yaz. ` +
+      `Zaten sorulmuş/yanıtlanmış şeyleri tekrar etme.`;
 
     const provider = (s.aiProvider || 'anthropic').toLowerCase();
 

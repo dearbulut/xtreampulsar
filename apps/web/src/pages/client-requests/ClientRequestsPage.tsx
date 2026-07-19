@@ -179,7 +179,7 @@ export function ClientRequestsPage() {
             </div>
             <textarea
               className="input min-h-[80px]"
-              placeholder="Yanıt yaz\u2026"
+              placeholder="Yanıt yaz…"
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
             />
@@ -200,7 +200,7 @@ export function ClientRequestsPage() {
                 disabled={!replyText.trim() || addAdminMsg.isPending}
                 onClick={() => addAdminMsg.mutate({ id: threadReq.id, body: replyText.trim() }, { onSuccess: () => setReplyText('') })}
               >
-                G\u00f6nder
+                Gönder
               </button>
             </div>
           </div>

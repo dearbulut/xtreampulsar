@@ -50,10 +50,13 @@ export class ClientRequestsService {
   async aiSuggest(id: string): Promise<{ reply: string }> {
     const req = await this.prisma.clientRequest.findUnique({
       where: { id },
-      select: { title: true, message: true, type: true },
+      select: {
+        title: true, message: true, type: true,
+        messages: { orderBy: { createdAt: 'asc' }, select: { sender: true, body: true } },
+      },
     });
     if (!req) throw new NotFoundException('Talep bulunamadı');
-    return this.ai.suggestReply({ title: req.title, message: req.message, type: req.type });
+    return this.ai.suggestReply({ title: req.title, message: req.message, type: req.type, messages: req.messages });
   }
 
   /** Admin talebe cevap mesajı ekler (thread). */
