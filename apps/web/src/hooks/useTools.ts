@@ -243,6 +243,7 @@ export function useRegroupSeries() {
       const res = await api.post<{ success: boolean; data: RegroupSeriesResult }>(
         '/migration/regroup-series',
         { dryRun },
+        { timeout: 180_000 }, // 89k+ stream taraması global 30s sınırını aşabilir
       );
       return res.data.data;
     },

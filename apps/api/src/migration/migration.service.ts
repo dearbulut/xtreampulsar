@@ -1938,11 +1938,11 @@ export class MigrationService implements OnModuleInit {
   async regroupSeries(dryRun = true): Promise<{ scanned: number; seriesGroups: number; parentsToCreate: number; episodesToCreate: number; streamsToRemove: number; details: Array<{ title: string; category: string; episodes: number }> }> {
     const streams = await this.prisma.stream.findMany({
       where: { category: { type: 'SERIES' } },
-      select: { id: true, name: true, primaryUrl: true, tvgLogo: true, tvgId: true, categoryId: true, category: { select: { name: true } } },
+      select: { id: true, name: true, primaryUrl: true, categoryId: true, category: { select: { name: true } } },
     });
 
     interface Member { id: string; season: number; episode: number; epTitle: string; url: string; ext: string }
-    const groups = new Map<string, { title: string; categoryId: string; category: string; logo: string | null; tvgId: string | null; members: Member[] }>();
+    const groups = new Map<string, { title: string; categoryId: string; category: string; members: Member[] }>();
 
     for (const st of streams) {
       const parsed = this.parseSeriesEntry(st.name, st.primaryUrl);
@@ -1950,57 +1950,70 @@ export class MigrationService implements OnModuleInit {
       const key = `${st.categoryId}::${parsed.title.toLowerCase()}`;
       let g = groups.get(key);
       if (!g) {
-        g = { title: parsed.title, categoryId: st.categoryId, category: st.category?.name || '', logo: st.tvgLogo, tvgId: st.tvgId, members: [] };
+        g = { title: parsed.title, categoryId: st.categoryId, category: st.category?.name || '', members: [] };
         groups.set(key, g);
       }
       g.members.push({ id: st.id, season: parsed.season, episode: parsed.episode, epTitle: parsed.epTitle, url: st.primaryUrl, ext: parsed.ext });
     }
 
-    let parentsToCreate = 0;
+    // Sayımlar tamamen bellekte (grup-başı DB sorgusu YOK → önizleme hızlı).
     let episodesToCreate = 0;
     let streamsToRemove = 0;
     const details: Array<{ title: string; category: string; episodes: number }> = [];
-
     for (const g of groups.values()) {
-      details.push({ title: g.title, category: g.category, episodes: g.members.length });
       episodesToCreate += g.members.length;
-
-      if (dryRun) {
-        const existingParent = await this.prisma.stream.findFirst({ where: { categoryId: g.categoryId, name: g.title }, select: { id: true } });
-        if (!existingParent) parentsToCreate++;
-        streamsToRemove += existingParent ? g.members.length : Math.max(0, g.members.length - 1);
-        continue;
-      }
-
-      try {
-        await this.prisma.$transaction(async (tx) => {
-          let parent = await tx.stream.findFirst({ where: { categoryId: g.categoryId, name: g.title }, select: { id: true } });
-          let reusedMemberId: string | null = null;
-          if (!parent) {
-            const first = g.members[0];
-            parent = await tx.stream.update({ where: { id: first.id }, data: { name: g.title }, select: { id: true } });
-            reusedMemberId = first.id;
-            parentsToCreate++;
-          }
-          for (const mem of g.members) {
-            await tx.episode.upsert({
-              where: { seriesId_season_episode: { seriesId: parent!.id, season: mem.season, episode: mem.episode } },
-              create: { seriesId: parent!.id, season: mem.season, episode: mem.episode, title: mem.epTitle || null, primaryUrl: mem.url, containerExtension: mem.ext },
-              update: { primaryUrl: mem.url, title: mem.epTitle || null, containerExtension: mem.ext },
-            });
-          }
-          const removable = g.members.filter((mem) => mem.id !== reusedMemberId).map((mem) => mem.id);
-          if (removable.length) {
-            const del = await tx.stream.deleteMany({ where: { id: { in: removable } } });
-            streamsToRemove += del.count;
-          }
-        });
-      } catch (err) {
-        this.logger.error(`regroupSeries ${g.title}: ${(err as Error).message}`);
-      }
+      streamsToRemove += Math.max(0, g.members.length - 1); // bir üye parent olarak yeniden kullanılır
+      details.push({ title: g.title, category: g.category, episodes: g.members.length });
     }
+    const summary = {
+      scanned: streams.length,
+      seriesGroups: groups.size,
+      parentsToCreate: groups.size,
+      episodesToCreate,
+      streamsToRemove,
+      details: details.slice(0, 300),
+    };
 
-    return { scanned: streams.length, seriesGroups: groups.size, parentsToCreate, episodesToCreate, streamsToRemove, details: details.slice(0, 500) };
+    if (dryRun) return summary;
+
+    // Uygula: 89k+ stream'de HTTP zaman aşımına takılmamak için ARKA PLANDA işle.
+    void this.applyRegroupSeries([...groups.values()]);
+    return summary;
+  }
+
+  private async applyRegroupSeries(
+    groups: Array<{ title: string; categoryId: string; category: string; members: Array<{ id: string; season: number; episode: number; epTitle: string; url: string; ext: string }> }>,
+  ): Promise<void> {
+    let done = 0;
+    for (const g of groups) {
+      try {
+        await this.prisma.$transaction(
+          async (tx) => {
+            let parent = await tx.stream.findFirst({ where: { categoryId: g.categoryId, name: g.title }, select: { id: true } });
+            let reusedMemberId: string | null = null;
+            if (!parent) {
+              const first = g.members[0];
+              parent = await tx.stream.update({ where: { id: first.id }, data: { name: g.title }, select: { id: true } });
+              reusedMemberId = first.id;
+            }
+            for (const mem of g.members) {
+              await tx.episode.upsert({
+                where: { seriesId_season_episode: { seriesId: parent!.id, season: mem.season, episode: mem.episode } },
+                create: { seriesId: parent!.id, season: mem.season, episode: mem.episode, title: mem.epTitle || null, primaryUrl: mem.url, containerExtension: mem.ext },
+                update: { primaryUrl: mem.url, title: mem.epTitle || null, containerExtension: mem.ext },
+              });
+            }
+            const removable = g.members.filter((mem) => mem.id !== reusedMemberId).map((mem) => mem.id);
+            if (removable.length) await tx.stream.deleteMany({ where: { id: { in: removable } } });
+          },
+          { timeout: 30000 },
+        );
+      } catch (err) {
+        this.logger.error(`applyRegroupSeries ${g.title}: ${(err as Error).message}`);
+      }
+      if (++done % 200 === 0) this.logger.log(`regroupSeries: ${done}/${groups.length} dizi işlendi`);
+    }
+    this.logger.log(`regroupSeries: tamamlandı, ${groups.length} dizi grubu işlendi`);
   }
 
   private inferStreamType(groupTitle: string, url: string, name?: string): 'LIVE' | 'VOD' | 'SERIES' {
