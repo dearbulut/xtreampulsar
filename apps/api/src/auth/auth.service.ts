@@ -5,6 +5,8 @@ import {
   ConflictException,
   Inject,
   Optional,
+  NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import type { Reseller } from '@xtreampulsar/database';
 import { JwtService } from '@nestjs/jwt';
@@ -24,6 +26,7 @@ const RESELLER_REFRESH_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -415,6 +418,39 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
+
+    return {
+      accessToken,
+      refreshToken: rawRefresh,
+      user: {
+        id: user.id,
+        username: user.username,
+        status: user.status,
+        expiresAt: user.expiresAt,
+        maxConnections: user.maxConnections,
+      },
+    };
+  }
+
+  /** ADMIN: bir aboneyi (USER) şifre olmadan taklit et — client paneli token'ı üretir. */
+  async impersonateUser(userId: string, adminId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (user.role !== 'USER') {
+      throw new ForbiddenException('Yalnız abone (USER) hesapları taklit edilebilir');
+    }
+
+    const payload = { sub: user.id, username: user.username, role: 'USER', type: 'user' };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const rawRefresh = crypto.randomBytes(64).toString('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(rawRefresh).digest('hex');
+    await this.prisma.refreshToken.create({
+      data: { token: hashedRefresh, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+    });
+
+    this.logger.warn(`Impersonation: admin=${adminId} → user=${user.username} (${user.id})`);
 
     return {
       accessToken,

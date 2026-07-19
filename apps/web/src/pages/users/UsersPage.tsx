@@ -13,9 +13,10 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { TagInput } from '@/components/ui/TagInput';
+import { useAuthStore } from '@/store/auth.store';
 import {
   useUsers, useCreateUser, useExtendUser, useBanUser, useUnbanUser,
-  useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser, useCreateTrialUser,
+  useKickUser, useDeleteUser, useUpdateUser, useQuickCreateUser, useCreateTrialUser, useImpersonateUser,
   useUserBouquets,
 } from '@/hooks/useUsers';
 import { useSettings } from '@/hooks/useSettings';
@@ -995,6 +996,8 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const [editingAccess, setEditingAccess] = useState(false);
   const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, lockDevice: false });
   const kickUser = useKickUser();
+  const impersonate = useImpersonateUser();
+  const setClientSession = useAuthStore((st) => st.setClientSession);
   const settings = useSettings();
   const xtreamBaseUrl = (() => {
     const rawUrl = settings?.general?.serverUrl?.trim();
@@ -1123,6 +1126,28 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Impersonation — abone olarak panele gir */}
+          <div className="border-t border-border pt-4">
+            <div className="text-xs text-muted mb-2">{t('users.impersonate')}</div>
+            <button
+              className="btn-secondary text-sm flex items-center gap-2"
+              disabled={impersonate.isPending || user.role !== 'USER'}
+              onClick={() => {
+                impersonate.mutate(user.id, {
+                  onSuccess: (data) => {
+                    setClientSession(data.accessToken, data.refreshToken, data.user);
+                    window.open('/client/dashboard', '_blank');
+                  },
+                  onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('users.impersonateError')),
+                });
+              }}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              {impersonate.isPending ? t('common.loading') : t('users.impersonateBtn')}
+            </button>
+            <p className="text-[11px] text-muted mt-1.5">{t('users.impersonateHint')}</p>
           </div>
 
           {/* Erişim Kontrolü — hat başına anti-abuse */}

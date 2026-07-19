@@ -354,7 +354,11 @@
     "emptyMeansAll": "empty = all",
     "blockVpnLabel": "Block VPN/proxy connections",
     "lockDeviceLabel": "Device lock",
-    "lockDeviceHint": "locks to the first device that connects"
+    "lockDeviceHint": "locks to the first device that connects",
+    "impersonate": "Log in as subscriber",
+    "impersonateBtn": "Open subscriber panel",
+    "impersonateHint": "Opens this subscriber's panel in a new tab without a password (for viewing/support).",
+    "impersonateError": "Could not log in"
   },
   "streams": {
     "title": "Channels",

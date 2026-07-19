@@ -178,3 +178,19 @@ export function useDeleteUser() {
     onError: () => toast.error('Silme başarısız'),
   });
 }
+
+
+export interface ImpersonateResult {
+  accessToken: string;
+  refreshToken: string;
+  user: { id: string; username: string; status: string; expiresAt: string; maxConnections: number };
+}
+
+export function useImpersonateUser() {
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await api.post<{ success: boolean; data: ImpersonateResult }>(`/auth/impersonate/${userId}`, {});
+      return res.data.data;
+    },
+  });
+}

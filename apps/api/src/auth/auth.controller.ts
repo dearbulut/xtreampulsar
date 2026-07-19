@@ -3,6 +3,7 @@ import {
   Post,
   Patch,
   Get,
+  Param,
   Body,
   Headers,
   Query,
@@ -18,6 +19,8 @@ import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorator';
 
 @Controller('auth')
@@ -141,6 +144,14 @@ export class AuthController {
   clientLogin(@Body() dto: LoginDto, @Req() req: Request) {
     const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
     return this.authService.clientLogin(dto, ip);
+  }
+
+  @Post('impersonate/:userId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  impersonate(@Param('userId') userId: string, @CurrentUser() admin: JwtUser) {
+    return this.authService.impersonateUser(userId, admin.id);
   }
 
   @Post('client/refresh')

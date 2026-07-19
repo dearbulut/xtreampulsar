@@ -42,6 +42,7 @@ interface AuthState {
   clientLogin: (username: string, password: string) => Promise<void>;
   clientRefresh: () => Promise<void>;
   clientLogout: () => void;
+  setClientSession: (token: string, refresh: string, user: ClientUser) => void;
 }
 
 type PersistedState = Pick<
@@ -167,6 +168,10 @@ export const useAuthStore = create<AuthState>()(
           clientUser: null,
           clientPassword: null,
         });
+      },
+
+      setClientSession(token, refresh, user) {
+        set({ clientToken: token, clientRefreshToken: refresh, clientUser: user, clientPassword: null });
       },
     }),
     {

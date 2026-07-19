@@ -354,7 +354,11 @@
     "emptyMeansAll": "boş = hepsi",
     "blockVpnLabel": "VPN/proxy bağlantılarını engelle",
     "lockDeviceLabel": "Cihaz kilidi",
-    "lockDeviceHint": "ilk bağlanan cihaza kilitlenir"
+    "lockDeviceHint": "ilk bağlanan cihaza kilitlenir",
+    "impersonate": "Abone olarak gir",
+    "impersonateBtn": "Abone panelini aç",
+    "impersonateHint": "Şifre gerekmeden bu abonenin panelini yeni sekmede açar (yalnız görüntüleme/destek için).",
+    "impersonateError": "Giriş yapılamadı"
   },
   "streams": {
     "title": "Kanallar",
