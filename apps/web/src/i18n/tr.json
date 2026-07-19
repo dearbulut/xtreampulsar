@@ -1660,7 +1660,12 @@
     "iptvCreated": "Oluşturulma",
     "iptvConns": "Bağlantı (aktif/maks)",
     "iptvServer": "Sunucu",
-    "iptvTimezone": "Saat Dilimi"
+    "iptvTimezone": "Saat Dilimi",
+    "fixTypesDesc": "Yanlış tipte (LIVE/VOD/SERIES) sınıflanmış içerikleri URL+grup+ada göre yeniden tespit edip doğru bölüme taşır.",
+    "fixTypesPreview": "Önizle",
+    "fixTypesApply": "Uygula ({{count}})",
+    "fixTypesDone": "{{count}} içerik doğru tipe taşındı",
+    "fixTypesResult": "{{checked}} kontrol edildi · {{changed}} taşınacak"
   },
   "ui": {
     "processing": "İşleniyor…",

@@ -15,10 +15,11 @@ import {
   CheckCircle,
   Terminal,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Wrench
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck } from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -33,7 +34,8 @@ type ToolId =
   | 'reencode-vods'
   | 'bulk-series'
   | 'system-stats'
-  | 'iptv-check';
+  | 'iptv-check'
+  | 'fix-types';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -45,6 +47,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'bulk-series', icon: Package, label: 'Bulk Series Import' },
   { id: 'system-stats', icon: Activity, label: 'System Stats' },
   { id: 'iptv-check', icon: ShieldCheck, label: 'IPTV Checker' },
+  { id: 'fix-types', icon: Wrench, label: 'Fix Stream Types' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -580,6 +583,58 @@ function formatUptime(seconds: number, t: (key: string, opts?: Record<string, un
   return parts.join(' ');
 }
 
+function FixStreamTypesPanel() {
+  const { t } = useTranslation();
+  const preview = useFixStreamTypes();
+  const apply = useFixStreamTypes();
+  const previewData = preview.data;
+
+  return (
+    <div>
+      <PanelTitle icon={Wrench}>Fix Stream Types</PanelTitle>
+      <PanelDesc>{t('tools.fixTypesDesc')}</PanelDesc>
+      <div className="flex gap-2">
+        <RunButton onClick={() => void preview.mutateAsync(true)} loading={preview.isPending}>
+          {t('tools.fixTypesPreview')}
+        </RunButton>
+        {previewData && previewData.changed > 0 && (
+          <button
+            className="btn-primary"
+            disabled={apply.isPending}
+            onClick={() => void apply.mutateAsync(false)}
+          >
+            {t('tools.fixTypesApply', { count: previewData.changed })}
+          </button>
+        )}
+      </div>
+
+      {apply.isSuccess && apply.data && (
+        <SuccessBox>{t('tools.fixTypesDone', { count: apply.data.changed })}</SuccessBox>
+      )}
+
+      {previewData && !apply.isSuccess && (
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-muted">{t('tools.fixTypesResult', { checked: previewData.checked, changed: previewData.changed })}</p>
+          {previewData.changed > 0 && (
+            <div className="max-h-72 overflow-y-auto card divide-y divide-border">
+              {previewData.details.slice(0, 200).map((d) => (
+                <div key={d.id} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                  <span className="truncate text-fg max-w-md">{d.name}</span>
+                  <span className="shrink-0 ml-2 tabular-nums">
+                    <span className="badge badge-gray">{d.oldType}</span>
+                    <span className="mx-1 text-muted">→</span>
+                    <span className="badge badge-success">{d.newType}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IptvCheckPanel() {
   const { t } = useTranslation();
   const [host, setHost] = useState('');
@@ -783,6 +838,7 @@ export function AdvancedToolsPage() {
           {active === 'bulk-series' && <BulkSeriesImportPanel />}
           {active === 'system-stats' && <SystemStatsPanel />}
           {active === 'iptv-check' && <IptvCheckPanel />}
+          {active === 'fix-types' && <FixStreamTypesPanel />}
         </div>
       </div>
     </div>

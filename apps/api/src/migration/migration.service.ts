@@ -1882,7 +1882,7 @@ export class MigrationService implements OnModuleInit {
 
     // ── 3. Group-title analysis (with 24/7 live-channel guard) ────────────
     const gt = groupTitle.toUpperCase();
-    const is247 = gt.includes('24/7') || gt.includes('24H');
+    const is247 = gt.includes('24/7') || gt.includes('7/24') || gt.includes('24H') || gt.includes('7-24') || gt.includes('24-7');
     const isChannel = gt.includes('KANAL') || gt.includes('CHANNEL');
 
     // Explicit live signals override everything else

@@ -203,3 +203,24 @@ export function useIptvCheck() {
     },
   });
 }
+
+
+// ─── Fix Stream Types ────────────────────────────────────────────────────────
+
+export interface FixStreamTypesResult {
+  checked: number;
+  changed: number;
+  details: Array<{ id: string; name: string; oldType: string; newType: string }>;
+}
+
+export function useFixStreamTypes() {
+  return useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const res = await api.post<{ success: boolean; data: FixStreamTypesResult }>(
+        '/migration/fix-stream-types',
+        { dryRun },
+      );
+      return res.data.data;
+    },
+  });
+}

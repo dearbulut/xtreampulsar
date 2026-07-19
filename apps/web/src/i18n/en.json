@@ -1660,7 +1660,12 @@
     "iptvCreated": "Created",
     "iptvConns": "Connections (active/max)",
     "iptvServer": "Server",
-    "iptvTimezone": "Timezone"
+    "iptvTimezone": "Timezone",
+    "fixTypesDesc": "Re-detect content mis-typed as LIVE/VOD/SERIES (by URL+group+name) and move to the correct section.",
+    "fixTypesPreview": "Preview",
+    "fixTypesApply": "Apply ({{count}})",
+    "fixTypesDone": "{{count}} items moved to correct type",
+    "fixTypesResult": "{{checked}} checked · {{changed}} to move"
   },
   "ui": {
     "processing": "Processing…",
