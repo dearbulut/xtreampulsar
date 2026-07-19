@@ -114,25 +114,33 @@ export class StreamService {
     }
   }
 
-  findLiveCategories() {
+  // Kategori listeleri de stream listeleri gibi kullanıcının bouquet'ine göre filtrelenir:
+  // aksi halde abone erişemediği (boş) kategori adlarını player'ında görür.
+  private async entitledCategories(userId: string, type: 'LIVE' | 'VOD' | 'SERIES') {
+    const bouquetIds = await this.getUserBouquetIds(userId);
     return this.prisma.category.findMany({
-      where: { isActive: true, type: 'LIVE' },
+      where: {
+        isActive: true,
+        type,
+        OR: [
+          { bouquetId: { in: bouquetIds } },
+          { streams: { some: { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } } },
+        ],
+      },
       orderBy: { sortOrder: 'asc' },
     });
   }
 
-  findVodCategories() {
-    return this.prisma.category.findMany({
-      where: { isActive: true, type: 'VOD' },
-      orderBy: { sortOrder: 'asc' },
-    });
+  findLiveCategories(userId: string) {
+    return this.entitledCategories(userId, 'LIVE');
   }
 
-  findSeriesCategories() {
-    return this.prisma.category.findMany({
-      where: { isActive: true, type: 'SERIES' },
-      orderBy: { sortOrder: 'asc' },
-    });
+  findVodCategories(userId: string) {
+    return this.entitledCategories(userId, 'VOD');
+  }
+
+  findSeriesCategories(userId: string) {
+    return this.entitledCategories(userId, 'SERIES');
   }
 
   async findByExternalId(externalId: number) {

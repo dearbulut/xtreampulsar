@@ -65,6 +65,7 @@ services:
     volumes:
       - hls_data:/tmp/xtreampulsar/hls
       - migration_data:/data/migrations
+      - backup_data:/opt/xtreampulsar/backups
     restart: always
     expose:
       - "3000"
@@ -149,6 +150,7 @@ volumes:
   redis_data:
   hls_data:
   migration_data:
+  backup_data:
 
 networks:
   internal:

@@ -102,7 +102,7 @@ export class XtreamService {
   }
 
   async getLiveCategories(userId: string): Promise<XtreamCategory[]> {
-    const cats = await this.streamService.findLiveCategories();
+    const cats = await this.streamService.findLiveCategories(userId);
     return cats.map((c) => ({
       category_id: String(c.externalId),
       category_name: c.name,
@@ -135,7 +135,7 @@ export class XtreamService {
   }
 
   async getVodCategories(userId: string): Promise<XtreamCategory[]> {
-    const cats = await this.streamService.findVodCategories();
+    const cats = await this.streamService.findVodCategories(userId);
     return cats.map((c) => ({
       category_id: String(c.externalId),
       category_name: c.name,
@@ -219,7 +219,7 @@ export class XtreamService {
   }
 
   async getSeriesCategories(userId: string): Promise<XtreamCategory[]> {
-    const cats = await this.streamService.findSeriesCategories();
+    const cats = await this.streamService.findSeriesCategories(userId);
     return cats.map((c) => ({
       category_id: String(c.externalId),
       category_name: c.name,
