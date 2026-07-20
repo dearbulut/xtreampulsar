@@ -526,7 +526,16 @@
     "backupUrlsHint": "Maks 3 yedek URL. Birincil URL çevrimdışıysa sırayla denenir.",
     "metaEditTitle": "Meta Düzenle — {{name}}",
     "recordCount_one": "{{count}} kayıt",
-    "recordCount_other": "{{count}} kayıt"
+    "recordCount_other": "{{count}} kayıt",
+    "tracks": "Parçalar (ses/altyazı)",
+    "tracksTitle": "Parçalar — {{name}}",
+    "tracksProbing": "Yayın inceleniyor (ffprobe)…",
+    "tracksError": "Parça bilgisi alınamadı — kaynak erişilemez olabilir.",
+    "trackVideo": "Video",
+    "trackAudio": "Ses parçaları",
+    "trackSubtitle": "Altyazı parçaları",
+    "trackNone": "Yok",
+    "tracksHint": "Bu bilgi kaynak medyadan (ffprobe) okunur; oynatıcı bu parçalar arasında geçiş yapar."
   },
   "categories": {
     "title": "Kategoriler",

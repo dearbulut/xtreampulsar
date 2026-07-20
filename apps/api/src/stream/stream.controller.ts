@@ -212,6 +212,11 @@ export class StreamController {
     return this.qualityService.analyzeStream(id);
   }
 
+  @Get(':id/tracks')
+  tracks(@Param('id') id: string) {
+    return this.qualityService.probeTracks(id);
+  }
+
   @Put(':id/backup-urls')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.OK)

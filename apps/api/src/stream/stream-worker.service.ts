@@ -70,6 +70,12 @@ export class StreamWorkerService implements OnModuleDestroy {
     const segmentPattern = path.join(outputDir, 'seg%05d.ts');
     const args = [
       '-i', activeUrl,
+      // Tum ses parcalarini koru: -map olmadan ffmpeg tek ses secer ve
+      // cok-dilli/dublaj parcalari duserdi. -map 0:a? ile hepsini gecir
+      // (? = ses yoksa hata verme). Ilk video + tum ses + (varsa) altyazi.
+      '-map', '0:v:0?',
+      '-map', '0:a?',
+      '-map', '0:s?',
       '-c', 'copy',
       '-f', 'hls',
       '-hls_time', '4',

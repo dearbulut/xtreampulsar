@@ -526,7 +526,16 @@
     "backupUrlsHint": "Max 3 backup URLs. Tried in order if the primary URL is offline.",
     "metaEditTitle": "Edit Metadata — {{name}}",
     "recordCount_one": "{{count}} record",
-    "recordCount_other": "{{count}} records"
+    "recordCount_other": "{{count}} records",
+    "tracks": "Tracks (audio/subtitle)",
+    "tracksTitle": "Tracks — {{name}}",
+    "tracksProbing": "Probing stream (ffprobe)…",
+    "tracksError": "Could not read tracks — source may be unreachable.",
+    "trackVideo": "Video",
+    "trackAudio": "Audio tracks",
+    "trackSubtitle": "Subtitle tracks",
+    "trackNone": "None",
+    "tracksHint": "Read from the source media (ffprobe); the player switches between these tracks."
   },
   "categories": {
     "title": "Categories",

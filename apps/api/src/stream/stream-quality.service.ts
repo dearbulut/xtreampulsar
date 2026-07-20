@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -7,12 +7,15 @@ import { PrismaService } from '../prisma/prisma.service';
 const execFileAsync = promisify(execFile);
 
 interface FfprobeStream {
+  index?: number;
   codec_type: string;
   codec_name?: string;
   width?: number;
   height?: number;
   avg_frame_rate?: string;
   bit_rate?: string;
+  channels?: number;
+  tags?: { language?: string; title?: string };
 }
 
 interface FfprobeFormat {
@@ -30,6 +33,12 @@ export interface QualityAnalysis {
   videoBitrate: number | null;
   videoCodec: string | null;
   fps: number | null;
+}
+
+export interface StreamTracks {
+  video: { codec: string | null; resolution: string | null; fps: number | null } | null;
+  audio: Array<{ index: number; codec: string | null; language: string | null; channels: number | null; title: string | null }>;
+  subtitle: Array<{ index: number; codec: string | null; language: string | null; title: string | null }>;
 }
 
 @Injectable()
@@ -116,6 +125,36 @@ export class StreamQualityService {
     });
 
     return analysis;
+  }
+
+  /** Bir yayinin ffprobe ile TUM ses ve altyazi parcalarini (dil/codec/kanal) dondurur. */
+  async probeTracks(streamId: string): Promise<StreamTracks> {
+    const stream = await this.prisma.stream.findUnique({ where: { id: streamId }, select: { primaryUrl: true } });
+    if (!stream) throw new BadRequestException('Yayin bulunamadi');
+    try {
+      const { stdout } = await execFileAsync(
+        this.ffprobePath,
+        ['-v', 'quiet', '-print_format', 'json', '-show_streams', stream.primaryUrl],
+        { timeout: 20_000, maxBuffer: 4 * 1024 * 1024 },
+      );
+      const data = JSON.parse(stdout) as FfprobeOutput;
+      const streams = data.streams ?? [];
+      const v = streams.find((x) => x.codec_type === 'video');
+      return {
+        video: v
+          ? { codec: v.codec_name ?? null, resolution: v.width && v.height ? `${v.width}x${v.height}` : null, fps: this.parseFps(v.avg_frame_rate) }
+          : null,
+        audio: streams
+          .filter((x) => x.codec_type === 'audio')
+          .map((x) => ({ index: x.index ?? 0, codec: x.codec_name ?? null, language: x.tags?.language ?? null, channels: x.channels ?? null, title: x.tags?.title ?? null })),
+        subtitle: streams
+          .filter((x) => x.codec_type === 'subtitle')
+          .map((x) => ({ index: x.index ?? 0, codec: x.codec_name ?? null, language: x.tags?.language ?? null, title: x.tags?.title ?? null })),
+      };
+    } catch (err) {
+      this.logger.warn(`probeTracks ${streamId}: ${(err as Error).message}`);
+      throw new BadRequestException(`Parça bilgisi alınamadı: ${(err as Error).message}`);
+    }
   }
 
   async getQualitySummary() {

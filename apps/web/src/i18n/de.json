@@ -116,7 +116,16 @@
     "codec": "Codec",
     "filters": "Filter",
     "clearFilters": "Filter löschen",
-    "updatedAfter": "Zuletzt aktualisiert"
+    "updatedAfter": "Zuletzt aktualisiert",
+    "tracks": "Spuren (Audio/Untertitel)",
+    "tracksTitle": "Spuren — {{name}}",
+    "tracksProbing": "Stream wird analysiert (ffprobe)…",
+    "tracksError": "Spuren konnten nicht gelesen werden — Quelle evtl. nicht erreichbar.",
+    "trackVideo": "Video",
+    "trackAudio": "Audiospuren",
+    "trackSubtitle": "Untertitelspuren",
+    "trackNone": "Keine",
+    "tracksHint": "Aus den Quellmedien gelesen (ffprobe); der Player wechselt zwischen diesen Spuren."
   },
   "categories": {
     "title": "Kategorien",

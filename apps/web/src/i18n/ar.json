@@ -116,7 +116,16 @@
     "codec": "الترميز",
     "filters": "الفلاتر",
     "clearFilters": "مسح الفلاتر",
-    "updatedAfter": "آخر تحديث"
+    "updatedAfter": "آخر تحديث",
+    "tracks": "المسارات (صوت/ترجمة)",
+    "tracksTitle": "المسارات — {{name}}",
+    "tracksProbing": "جارٍ فحص البث (ffprobe)…",
+    "tracksError": "تعذّر قراءة المسارات — قد يكون المصدر غير متاح.",
+    "trackVideo": "فيديو",
+    "trackAudio": "مسارات الصوت",
+    "trackSubtitle": "مسارات الترجمة",
+    "trackNone": "لا يوجد",
+    "tracksHint": "تُقرأ من وسائط المصدر (ffprobe)؛ يتنقّل المشغّل بين هذه المسارات."
   },
   "categories": {
     "title": "الفئات",

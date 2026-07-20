@@ -28,9 +28,11 @@ import {
   XCircle,
   Film,
   ListVideo,
+  AudioLines,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStreamHealth, useManualHealthCheck } from '@/hooks/useStreamHealth';
+import { useStreamTracks } from '@/hooks/useStreamTracks';
 import {
   DndContext,
   closestCenter,
@@ -243,6 +245,72 @@ function HlsPlayer({ src }: { src: string }) {
   );
 }
 
+function StreamTracksModal({ streamId, streamName, onClose }: { streamId: string; streamName: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { data, isLoading, isError, error } = useStreamTracks(streamId);
+  const errMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return (
+    <Modal open onClose={onClose} title={t('streams.tracksTitle', { name: streamName })} size="lg">
+      <div className="p-5 space-y-4">
+        {isLoading ? (
+          <div className="py-10 text-center text-sm text-muted">{t('streams.tracksProbing')}</div>
+        ) : isError ? (
+          <div className="py-8 text-center text-sm text-danger">{errMsg || t('streams.tracksError')}</div>
+        ) : (
+          <>
+            {data?.video && (
+              <div className="text-sm">
+                <div className="text-xs text-muted uppercase tracking-wider mb-1">{t('streams.trackVideo')}</div>
+                <div className="flex items-center gap-3 text-slate-200">
+                  <span className="badge bg-primary/10 text-primary uppercase">{data.video.codec ?? '—'}</span>
+                  <span>{data.video.resolution ?? '—'}</span>
+                  {data.video.fps ? <span className="text-muted">{data.video.fps} fps</span> : null}
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="text-xs text-muted uppercase tracking-wider mb-1.5">{t('streams.trackAudio')} ({data?.audio.length ?? 0})</div>
+              {(data?.audio.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted">{t('streams.trackNone')}</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {data!.audio.map((a) => (
+                    <div key={`a${a.index}`} className="flex items-center gap-3 text-sm bg-surface-2 rounded px-3 py-1.5">
+                      <span className="text-xs text-muted w-8">#{a.index}</span>
+                      <span className="badge bg-primary/10 text-primary uppercase">{a.language || '—'}</span>
+                      <span className="text-slate-200">{a.codec ?? '—'}</span>
+                      {a.channels ? <span className="text-muted text-xs">{a.channels}ch</span> : null}
+                      {a.title ? <span className="text-muted text-xs truncate">· {a.title}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs text-muted uppercase tracking-wider mb-1.5">{t('streams.trackSubtitle')} ({data?.subtitle.length ?? 0})</div>
+              {(data?.subtitle.length ?? 0) === 0 ? (
+                <div className="text-sm text-muted">{t('streams.trackNone')}</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {data!.subtitle.map((sb) => (
+                    <div key={`s${sb.index}`} className="flex items-center gap-3 text-sm bg-surface-2 rounded px-3 py-1.5">
+                      <span className="text-xs text-muted w-8">#{sb.index}</span>
+                      <span className="badge bg-info/10 text-info uppercase">{sb.language || '—'}</span>
+                      <span className="text-slate-200">{sb.codec ?? '—'}</span>
+                      {sb.title ? <span className="text-muted text-xs truncate">· {sb.title}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted">{t('streams.tracksHint')}</p>
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function StreamHealthModal({ streamId, streamName, onClose }: { streamId: string; streamName: string; onClose: () => void }) {
   const { t } = useTranslation();
   const [hours, setHours] = useState(24);
@@ -420,6 +488,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [previewInfo, setPreviewInfo] = useState<PreviewInfo | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [healthStream, setHealthStream] = useState<{ id: string; name: string } | null>(null);
+  const [tracksStream, setTracksStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [editStream, setEditStream] = useState<Stream | null>(null);
@@ -730,6 +799,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           />
           <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); }} />
           <ActionBtn icon={Activity} title={t('streams.healthReport')} color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
+          <ActionBtn icon={AudioLines} title={t('streams.tracks')} color="text-primary-light" onClick={() => setTracksStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title={t('common.delete')} color="text-red-400" onClick={() => setDeleteId(r.id)} />
           <ActionBtn icon={Eye} title={t('streams.showUrl')} color="text-muted" onClick={() => setPreviewInfo({ token: '', previewProxyUrl: '', hlsUrl: r.primaryUrl, name: r.name, streamMode: r.streamMode, externalId: r.externalId })} />
           {(!type || type === 'LIVE') && (
@@ -1432,6 +1502,15 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           streamId={healthStream.id}
           streamName={healthStream.name}
           onClose={() => setHealthStream(null)}
+        />
+      )}
+
+      {/* Stream tracks (ses/altyazi) modal */}
+      {tracksStream && (
+        <StreamTracksModal
+          streamId={tracksStream.id}
+          streamName={tracksStream.name}
+          onClose={() => setTracksStream(null)}
         />
       )}
 
