@@ -35,6 +35,7 @@ import { ApiKeyModule } from './api-key/api-key.module';
 import { UpdateModule } from './update/update.module';
 import { WhiteLabelModule } from './white-label/white-label.module';
 import { MetadataModule } from './metadata/metadata.module';
+import { ActivationModule } from './activation/activation.module';
 import { SearchModule } from './search/search.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { ControlModule } from './control/control.module';
@@ -77,6 +78,7 @@ import { ResellerApiModule } from './reseller-api/reseller-api.module';
     UpdateModule,
     WhiteLabelModule,
     MetadataModule,
+    ActivationModule,
     SearchModule,
     WebhookModule,
     ControlModule,

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ClientService } from './client.service';
+import { ActivationService } from '../activation/activation.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -10,7 +11,10 @@ import { CreateClientRequestDto } from './dto/create-client-request.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('USER')
 export class ClientController {
-  constructor(private readonly clientService: ClientService) {}
+  constructor(
+    private readonly clientService: ClientService,
+    private readonly activationService: ActivationService,
+  ) {}
 
   @Get('me')
   getMe(@CurrentUser() user: JwtUser) {
@@ -35,5 +39,10 @@ export class ClientController {
   @Post('me/requests/:id/messages')
   addRequestMessage(@CurrentUser() user: JwtUser, @Param('id') id: string, @Body('body') body: string) {
     return this.clientService.addMyRequestMessage(user.id, id, body);
+  }
+
+  @Post('redeem-code')
+  redeemCode(@CurrentUser() user: JwtUser, @Body('code') code: string) {
+    return this.activationService.redeem(code, user.id);
   }
 }

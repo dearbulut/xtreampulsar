@@ -29,7 +29,8 @@
       "management": "YÖNETİM"
     },
     "clientRequests": "Bildirim & İstekler",
-    "m3uSync": "Otomatik M3U Sync"
+    "m3uSync": "Otomatik M3U Sync",
+    "activationCodes": "Aktivasyon Kodları"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -831,7 +832,12 @@
     "noRequests": "Henüz bildirim/istek yok",
     "support": "Destek",
     "you": "Siz",
-    "replyPlaceholder": "Yanıt yaz…"
+    "replyPlaceholder": "Yanıt yaz…",
+    "redeemTitle": "Kod Kullan",
+    "redeemHint": "Yenileme kodunuz varsa girin, aboneliğiniz uzasın.",
+    "redeemBtn": "Kullan",
+    "redeemSuccess": "Aboneliğiniz {{days}} gün uzatıldı!",
+    "redeemError": "Kod kullanılamadı"
   },
   "errors": {
     "required": "Bu alan zorunludur",
@@ -1934,5 +1940,31 @@
     "epStatus": "durum degistir ({status: ACTIVE|DISABLED})",
     "epDelete": "abone sil",
     "whmcsNote": "WHMCS provisioning modulu ve tam dokumantasyon icin yoneticinizle iletisime gecin."
+  },
+  "activation": {
+    "title": "Aktivasyon Kodları",
+    "subtitle": "Ön-ödemeli yenileme kodları üret, sat, abone kendi panelinden kullanır.",
+    "generateTitle": "Yeni Kod Üret",
+    "count": "Adet",
+    "durationDays": "Süre (gün)",
+    "maxConnOptional": "Maks. bağlantı (ops.)",
+    "note": "Not",
+    "notePlaceholder": "ör. Bayi X partisi",
+    "generateBtn": "{{n}} Kod Üret",
+    "generated": "{{n}} kod üretildi",
+    "freshCodes": "Yeni üretilen {{n}} kod",
+    "copyAll": "Tümünü kopyala",
+    "copiedAll": "{{n}} kod kopyalandı",
+    "all": "Tümü",
+    "status": "Durum",
+    "statusActive": "Aktif",
+    "statusUsed": "Kullanıldı",
+    "statusDisabled": "Devre dışı",
+    "code": "Kod",
+    "maxConn": "Maks. bağ.",
+    "usedBy": "Kullanan",
+    "days": "gün",
+    "disable": "Devre dışı bırak",
+    "empty": "Kod yok — yukarıdan üretin."
   }
 }

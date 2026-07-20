@@ -159,6 +159,17 @@ export function useAddClientRequestMessage() {
   });
 }
 
+export function useRedeemCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const res = await clientApi.post<{ success: boolean; data: { durationDays: number; expiresAt: string } }>('/client/redeem-code', { code });
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['client-panel'] }),
+  });
+}
+
 export function useCreateClientRequest() {
   const qc = useQueryClient();
   return useMutation({

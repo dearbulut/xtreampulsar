@@ -29,7 +29,8 @@
       "management": "MANAGEMENT"
     },
     "clientRequests": "Reports & Requests",
-    "m3uSync": "Auto M3U Sync"
+    "m3uSync": "Auto M3U Sync",
+    "activationCodes": "Activation Codes"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -831,7 +832,12 @@
     "noRequests": "No reports/requests yet",
     "support": "Support",
     "you": "You",
-    "replyPlaceholder": "Write a reply…"
+    "replyPlaceholder": "Write a reply…",
+    "redeemTitle": "Redeem Code",
+    "redeemHint": "Have a renewal code? Enter it to extend your subscription.",
+    "redeemBtn": "Redeem",
+    "redeemSuccess": "Your subscription was extended by {{days}} days!",
+    "redeemError": "Could not redeem code"
   },
   "errors": {
     "required": "This field is required",
@@ -1934,5 +1940,31 @@
     "epStatus": "change status ({status: ACTIVE|DISABLED})",
     "epDelete": "delete subscriber",
     "whmcsNote": "Contact your administrator for the WHMCS provisioning module and full documentation."
+  },
+  "activation": {
+    "title": "Activation Codes",
+    "subtitle": "Generate prepaid renewal codes to sell; subscribers redeem them in their own panel.",
+    "generateTitle": "Generate Codes",
+    "count": "Count",
+    "durationDays": "Duration (days)",
+    "maxConnOptional": "Max connections (opt.)",
+    "note": "Note",
+    "notePlaceholder": "e.g. Reseller X batch",
+    "generateBtn": "Generate {{n}} codes",
+    "generated": "{{n}} codes generated",
+    "freshCodes": "{{n}} freshly generated codes",
+    "copyAll": "Copy all",
+    "copiedAll": "{{n}} codes copied",
+    "all": "All",
+    "status": "Status",
+    "statusActive": "Active",
+    "statusUsed": "Used",
+    "statusDisabled": "Disabled",
+    "code": "Code",
+    "maxConn": "Max conn.",
+    "usedBy": "Used by",
+    "days": "days",
+    "disable": "Disable",
+    "empty": "No codes — generate above."
   }
 }

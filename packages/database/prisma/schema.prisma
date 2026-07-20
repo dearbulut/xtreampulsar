@@ -1083,3 +1083,20 @@ model ResellerApiKey {
   @@index([resellerId])
   @@map("reseller_api_keys")
 }
+
+
+model ActivationCode {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  durationDays   Int
+  maxConnections Int?
+  status         String    @default("ACTIVE") // ACTIVE | USED | DISABLED
+  note           String?
+  usedByUserId   String?
+  usedByUsername String?
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([status])
+  @@map("activation_codes")
+}
