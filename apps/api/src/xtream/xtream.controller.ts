@@ -266,6 +266,35 @@ export class XtreamController {
       .send(playlist);
   }
 
+  @Get('xmltv.php')
+  async getXmltv(
+    @Query() query: GetPhpQuery,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { username = '', password = '' } = query;
+    const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) { res.status(429).send('Too many failed attempts'); return; }
+
+    const user = await this.xtream.authenticate(username, password);
+    if (!user) {
+      await this.recordXtreamFail(ip);
+      res.status(HttpStatus.UNAUTHORIZED).send('Invalid credentials');
+      return;
+    }
+    const access = await this.userService.checkSubscriptionActive(user.id);
+    if (!access.allowed) {
+      res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden');
+      return;
+    }
+
+    const xml = await this.xtream.buildXmltv(user.id);
+    res
+      .set('Content-Type', 'application/xml; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="epg.xml"`)
+      .send(xml);
+  }
+
   // ─── Stream proxy helpers ───────────────────────────────────────────────────
 
   private async authorizeAndGetUrl(

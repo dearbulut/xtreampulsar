@@ -220,6 +220,48 @@ export class StreamService {
     });
   }
 
+  /** Bir stream'in eşlenmiş EPG kanal(lar)ından program listesini döndürür (şimdiden itibaren). */
+  async getStreamProgrammes(streamId: string, limit = 12, fromNow = true) {
+    const mappings = await this.prisma.ePGMapping.findMany({
+      where: { streamId },
+      select: { epgChannelId: true, epgSourceId: true },
+    });
+    if (mappings.length === 0) return [];
+    const now = new Date();
+    const out: Array<{ id: string; epgId: string; start: Date; stop: Date; title: string; description: string | null }> = [];
+    for (const m of mappings) {
+      const channel = await this.prisma.ePGChannel.findUnique({
+        where: { epgSourceId_channelId: { epgSourceId: m.epgSourceId, channelId: m.epgChannelId } },
+        select: { id: true },
+      });
+      if (!channel) continue;
+      const progs = await this.prisma.ePGProgramme.findMany({
+        where: { epgChannelId: channel.id, ...(fromNow ? { stop: { gte: now } } : {}) },
+        orderBy: { start: 'asc' },
+        take: limit,
+        select: { id: true, start: true, stop: true, title: true, description: true },
+      });
+      for (const p of progs) out.push({ id: p.id, epgId: m.epgChannelId, start: p.start, stop: p.stop, title: p.title, description: p.description });
+    }
+    return out;
+  }
+
+  /** Kullanıcının (bouquet) canlı stream'leri + EPG kanal eşlemeleri — xmltv.php için. */
+  async getUserEpgChannels(userId: string) {
+    const streams = await this.findAllLive(userId);
+    const streamIds = streams.map((s) => s.id);
+    if (streamIds.length === 0) return [];
+    const mappings = await this.prisma.ePGMapping.findMany({
+      where: { streamId: { in: streamIds } },
+      select: { streamId: true, epgChannelId: true, epgSourceId: true },
+    });
+    const byStream = new Map(mappings.map((m) => [m.streamId, m]));
+    return streams
+      .filter((s) => byStream.has(s.id))
+      .map((s) => ({ stream: s, mapping: byStream.get(s.id)! }));
+  }
+
+
   // ─── Admin CRUD ────────────────────────────────────────────────────────────
 
   async findAllWithFilters(_userId: string, query: QueryStreamDto) {

@@ -227,26 +227,56 @@ export class XtreamService {
     }));
   }
 
-  async getEpgInfo(streamId: string): Promise<XtreamEpgResponse> {
-    const mappings = await this.streamService.findEpgMappings(streamId);
-    // EPG parse/serve is a separate concern — return empty listings for now
-    // XtreamPulsar EPG worker will populate epg_listings via Redis/DB
+  private fmtEpgDate(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
+  async getEpgInfo(streamId: string, limit = 12): Promise<XtreamEpgResponse> {
+    const progs = await this.streamService.getStreamProgrammes(streamId, limit, true);
+    const now = new Date();
     return {
-      epg_listings: mappings.map((m) => ({
-        id: m.id,
-        epg_id: m.epgChannelId,
-        title: '',
-        lang: 'en',
-        start: '',
-        end: '',
-        description: '',
-        channel_id: m.epgChannelId,
-        start_timestamp: '0',
-        stop_timestamp: '0',
-        now_playing: 0,
+      epg_listings: progs.map((p) => ({
+        id: p.id,
+        epg_id: p.epgId,
+        title: Buffer.from(p.title || '').toString('base64'),
+        lang: '',
+        start: this.fmtEpgDate(p.start),
+        end: this.fmtEpgDate(p.stop),
+        description: Buffer.from(p.description || '').toString('base64'),
+        channel_id: p.epgId,
+        start_timestamp: String(Math.floor(p.start.getTime() / 1000)),
+        stop_timestamp: String(Math.floor(p.stop.getTime() / 1000)),
+        now_playing: p.start <= now && p.stop > now ? 1 : 0,
         has_archive: 0,
       })),
     };
+  }
+
+  /** xmltv.php — kullanıcının kanalları için tam XMLTV çıktısı (TiviMate vb. için). */
+  async buildXmltv(userId: string): Promise<string> {
+    const channels = await this.streamService.getUserEpgChannels(userId);
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const xmltvDate = (d: Date): string => {
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())} +0000`;
+    };
+    let channelsXml = '';
+    let programmesXml = '';
+    for (const { stream, mapping } of channels) {
+      const chId = esc(mapping.epgChannelId);
+      channelsXml += `  <channel id="${chId}">\n    <display-name>${esc(stream.name)}</display-name>\n`;
+      if (stream.tvgLogo) channelsXml += `    <icon src="${esc(stream.tvgLogo)}" />\n`;
+      channelsXml += `  </channel>\n`;
+      const progs = await this.streamService.getStreamProgrammes(stream.id, 60, false);
+      for (const p of progs) {
+        programmesXml += `  <programme start="${xmltvDate(p.start)}" stop="${xmltvDate(p.stop)}" channel="${chId}">\n`;
+        programmesXml += `    <title>${esc(p.title || '')}</title>\n`;
+        if (p.description) programmesXml += `    <desc>${esc(p.description)}</desc>\n`;
+        programmesXml += `  </programme>\n`;
+      }
+    }
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<tv generator-info-name="XtreamPulsar">\n${channelsXml}${programmesXml}</tv>\n`;
   }
 
   async buildM3UPlaylist(
