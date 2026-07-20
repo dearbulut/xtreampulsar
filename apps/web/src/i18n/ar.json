@@ -30,7 +30,8 @@
     },
     "mostWatched": "الأكثر مشاهدة",
     "storeOrders": "طلبات المتجر",
-    "systemHealth": "صحة النظام"
+    "systemHealth": "صحة النظام",
+    "invoices": "الفواتير"
   },
   "common": {
     "save": "حفظ",
@@ -230,7 +231,9 @@
     "markPaid": "تعليم كمدفوع",
     "fulfill": "تنفيذ",
     "cancel": "إلغاء",
-    "fulfilled": "تم تنفيذ الطلب — أُنشئ الخط"
+    "fulfilled": "تم تنفيذ الطلب — أُنشئ الخط",
+    "createInvoice": "إنشاء فاتورة",
+    "invoiceCreated": "تم إنشاء الفاتورة"
   },
   "storefront": {
     "store": "المتجر",
@@ -312,5 +315,36 @@
     "uptimeDH": "يعمل {{d}}ي {{h}}س",
     "uptimeHM": "يعمل {{h}}س {{m}}د",
     "uptimeM": "يعمل {{m}}د"
+  },
+  "invoices": {
+    "title": "الفواتير",
+    "subtitle": "أنشئ فواتير العملاء/الموزّعين واطبعها وتابع الدفع.",
+    "new": "فاتورة جديدة",
+    "all": "الكل",
+    "statusUnpaid": "غير مدفوعة",
+    "statusPaid": "مدفوعة",
+    "statusCancelled": "ملغاة",
+    "empty": "لا فواتير.",
+    "number": "رقم",
+    "customer": "العميل",
+    "description": "الوصف",
+    "amount": "المبلغ",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "print": "طباعة",
+    "markPaid": "تعليم كمدفوعة",
+    "markUnpaid": "تعليم كغير مدفوعة",
+    "cancel": "إلغاء",
+    "deleteConfirm": "حذف هذه الفاتورة؟",
+    "totalPaid": "إجمالي المدفوع",
+    "totalUnpaid": "إجمالي المستحق",
+    "email": "البريد",
+    "descPlaceholder": "مثال: اشتراك IPTV - 12 شهرًا",
+    "notes": "ملاحظة",
+    "create": "إنشاء",
+    "created": "تم إنشاء الفاتورة",
+    "invoice": "فاتورة",
+    "billedTo": "إلى",
+    "total": "الإجمالي"
   }
 }

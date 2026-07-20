@@ -30,7 +30,8 @@
     },
     "mostWatched": "Meistgesehen",
     "storeOrders": "Shop-Bestellungen",
-    "systemHealth": "Systemzustand"
+    "systemHealth": "Systemzustand",
+    "invoices": "Rechnungen"
   },
   "common": {
     "save": "Speichern",
@@ -230,7 +231,9 @@
     "markPaid": "Als bezahlt markieren",
     "fulfill": "Erfüllen",
     "cancel": "Stornieren",
-    "fulfilled": "Bestellung erfüllt — Linie erstellt"
+    "fulfilled": "Bestellung erfüllt — Linie erstellt",
+    "createInvoice": "Rechnung erstellen",
+    "invoiceCreated": "Rechnung erstellt"
   },
   "storefront": {
     "store": "Shop",
@@ -312,5 +315,36 @@
     "uptimeDH": "{{d}}T {{h}}Std aktiv",
     "uptimeHM": "{{h}}Std {{m}}Min aktiv",
     "uptimeM": "{{m}}Min aktiv"
+  },
+  "invoices": {
+    "title": "Rechnungen",
+    "subtitle": "Kunden-/Händlerrechnungen erstellen, drucken und Zahlung verfolgen.",
+    "new": "Neue Rechnung",
+    "all": "Alle",
+    "statusUnpaid": "Unbezahlt",
+    "statusPaid": "Bezahlt",
+    "statusCancelled": "Storniert",
+    "empty": "Keine Rechnungen.",
+    "number": "Nr.",
+    "customer": "Kunde",
+    "description": "Beschreibung",
+    "amount": "Betrag",
+    "status": "Status",
+    "date": "Datum",
+    "print": "Drucken",
+    "markPaid": "Als bezahlt markieren",
+    "markUnpaid": "Als unbezahlt markieren",
+    "cancel": "Stornieren",
+    "deleteConfirm": "Diese Rechnung löschen?",
+    "totalPaid": "Bezahlt gesamt",
+    "totalUnpaid": "Offen gesamt",
+    "email": "E-Mail",
+    "descPlaceholder": "z. B. IPTV-Abo - 12 Monate",
+    "notes": "Notiz",
+    "create": "Erstellen",
+    "created": "Rechnung erstellt",
+    "invoice": "RECHNUNG",
+    "billedTo": "Rechnung an",
+    "total": "Gesamt"
   }
 }

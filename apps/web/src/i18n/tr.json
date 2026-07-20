@@ -33,7 +33,8 @@
     "activationCodes": "Aktivasyon Kodları",
     "mostWatched": "En Çok İzlenen",
     "storeOrders": "Mağaza Siparişleri",
-    "systemHealth": "Sistem Sağlığı"
+    "systemHealth": "Sistem Sağlığı",
+    "invoices": "Faturalar"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -2057,7 +2058,9 @@
     "markPaid": "Ödendi işaretle",
     "fulfill": "Karşıla",
     "cancel": "İptal et",
-    "fulfilled": "Sipariş karşılandı — hat oluşturuldu"
+    "fulfilled": "Sipariş karşılandı — hat oluşturuldu",
+    "createInvoice": "Fatura oluştur",
+    "invoiceCreated": "Fatura oluşturuldu"
   },
   "storefront": {
     "store": "Mağaza",
@@ -2111,5 +2114,36 @@
     "uptimeDH": "{{d}}g {{h}}sa çalışıyor",
     "uptimeHM": "{{h}}sa {{m}}dk çalışıyor",
     "uptimeM": "{{m}}dk çalışıyor"
+  },
+  "invoices": {
+    "title": "Faturalar",
+    "subtitle": "Müşteri/bayi faturaları oluştur, yazdır, ödeme durumunu takip et.",
+    "new": "Yeni Fatura",
+    "all": "Tümü",
+    "statusUnpaid": "Ödenmedi",
+    "statusPaid": "Ödendi",
+    "statusCancelled": "İptal",
+    "empty": "Fatura yok.",
+    "number": "No",
+    "customer": "Müşteri",
+    "description": "Açıklama",
+    "amount": "Tutar",
+    "status": "Durum",
+    "date": "Tarih",
+    "print": "Yazdır",
+    "markPaid": "Ödendi işaretle",
+    "markUnpaid": "Ödenmedi işaretle",
+    "cancel": "İptal et",
+    "deleteConfirm": "Bu fatura silinsin mi?",
+    "totalPaid": "Toplam ödenen",
+    "totalUnpaid": "Toplam bekleyen",
+    "email": "E-posta",
+    "descPlaceholder": "ör. IPTV Abonelik - 12 ay",
+    "notes": "Not",
+    "create": "Oluştur",
+    "created": "Fatura oluşturuldu",
+    "invoice": "FATURA",
+    "billedTo": "Müşteri",
+    "total": "Toplam"
   }
 }

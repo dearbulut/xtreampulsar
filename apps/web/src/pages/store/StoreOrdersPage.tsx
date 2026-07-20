@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, CircleCheck, Ban, CreditCard, ExternalLink } from 'lucide-react';
+import { Check, Copy, CircleCheck, Ban, CreditCard, ExternalLink, Receipt } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useStoreOrders, useFulfillOrder, useSetOrderStatus, type StoreOrder, type StoreOrderStatus } from '@/hooks/useStore';
+import { useInvoiceFromOrder } from '@/hooks/useInvoices';
 import { copyToClipboard } from '@/lib/utils';
 import { useCurrency } from '@/hooks/useCurrency';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ export function StoreOrdersPage() {
   const { data, isLoading } = useStoreOrders(statusFilter || undefined);
   const fulfill = useFulfillOrder();
   const setStatus = useSetOrderStatus();
+  const invoiceFromOrder = useInvoiceFromOrder();
   const currency = useCurrency();
   const [copied, setCopied] = useState<string | null>(null);
   const [creds, setCreds] = useState<Record<string, { username: string; password: string }>>({});
@@ -123,6 +125,12 @@ export function StoreOrdersPage() {
                       <td className="px-4 py-3"><span className={cn('badge', STATUS_BADGE[o.status])}>{t(`store.status${o.status.charAt(0) + o.status.slice(1).toLowerCase()}`)}</span></td>
                       <td className="px-4 py-3 text-muted whitespace-nowrap">{fmt(o.createdAt)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {o.status === 'FULFILLED' && (
+                          <button className="btn-ghost p-1.5" title={t('store.createInvoice')}
+                            onClick={() => invoiceFromOrder.mutate(o.id, { onSuccess: () => toast.success(t('store.invoiceCreated')), onError: () => toast.error(t('common.error')) })}>
+                            <Receipt className="w-4 h-4 text-primary" />
+                          </button>
+                        )}
                         {o.status !== 'FULFILLED' && o.status !== 'CANCELLED' && (
                           <div className="inline-flex items-center gap-1">
                             {o.status === 'PENDING' && (

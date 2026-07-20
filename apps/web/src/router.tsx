@@ -53,6 +53,7 @@ import { MostWatchedPage } from '@/pages/analytics/MostWatchedPage';
 import { StoreOrdersPage } from '@/pages/store/StoreOrdersPage';
 import { StorefrontPage } from '@/pages/store/StorefrontPage';
 import { SystemHealthPage } from '@/pages/system/SystemHealthPage';
+import { InvoicesPage } from '@/pages/invoices/InvoicesPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
@@ -294,6 +295,12 @@ const systemHealthRoute = createRoute({
   component: SystemHealthPage,
 });
 
+const invoicesRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/invoices',
+  component: InvoicesPage,
+});
+
 // Public self-servis magaza (auth yok, panel-moddan bagimsiz)
 const storefrontRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -475,6 +482,7 @@ const routeTree = rootRoute.addChildren([
     mostWatchedRoute,
     storeOrdersRoute,
     systemHealthRoute,
+    invoicesRoute,
     m3uSyncRoute,
   ]),
 ]);

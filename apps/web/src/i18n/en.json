@@ -33,7 +33,8 @@
     "activationCodes": "Activation Codes",
     "mostWatched": "Most Watched",
     "storeOrders": "Store Orders",
-    "systemHealth": "System Health"
+    "systemHealth": "System Health",
+    "invoices": "Invoices"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -2057,7 +2058,9 @@
     "markPaid": "Mark paid",
     "fulfill": "Fulfill",
     "cancel": "Cancel",
-    "fulfilled": "Order fulfilled — line created"
+    "fulfilled": "Order fulfilled — line created",
+    "createInvoice": "Create invoice",
+    "invoiceCreated": "Invoice created"
   },
   "storefront": {
     "store": "Store",
@@ -2111,5 +2114,36 @@
     "uptimeDH": "up {{d}}d {{h}}h",
     "uptimeHM": "up {{h}}h {{m}}m",
     "uptimeM": "up {{m}}m"
+  },
+  "invoices": {
+    "title": "Invoices",
+    "subtitle": "Create, print and track payment of customer/reseller invoices.",
+    "new": "New Invoice",
+    "all": "All",
+    "statusUnpaid": "Unpaid",
+    "statusPaid": "Paid",
+    "statusCancelled": "Cancelled",
+    "empty": "No invoices.",
+    "number": "No.",
+    "customer": "Customer",
+    "description": "Description",
+    "amount": "Amount",
+    "status": "Status",
+    "date": "Date",
+    "print": "Print",
+    "markPaid": "Mark paid",
+    "markUnpaid": "Mark unpaid",
+    "cancel": "Cancel",
+    "deleteConfirm": "Delete this invoice?",
+    "totalPaid": "Total paid",
+    "totalUnpaid": "Total outstanding",
+    "email": "Email",
+    "descPlaceholder": "e.g. IPTV Subscription - 12 months",
+    "notes": "Note",
+    "create": "Create",
+    "created": "Invoice created",
+    "invoice": "INVOICE",
+    "billedTo": "Billed to",
+    "total": "Total"
   }
 }

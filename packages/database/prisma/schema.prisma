@@ -578,6 +578,28 @@ model Package {
 
 // ─── StoreOrder (self-servis magaza siparisi) ────────────────────────────────
 
+// ─── PanelInvoice (operator → musteri/bayi faturasi) ─────────────────────────
+
+model PanelInvoice {
+  id            String    @id @default(cuid())
+  number        String    @unique
+  customerName  String
+  customerEmail String?
+  description   String
+  amount        Float     @default(0)
+  currency      String    @default("TRY")
+  status        String    @default("UNPAID") // UNPAID | PAID | CANCELLED
+  source        String    @default("MANUAL") // MANUAL | STORE
+  sourceId      String?
+  notes         String?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@map("panel_invoices")
+}
+
 model StoreOrder {
   id                  String   @id @default(cuid())
   packageId           String

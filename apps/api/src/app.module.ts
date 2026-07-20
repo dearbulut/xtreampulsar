@@ -30,6 +30,7 @@ import { GatewayModule } from './gateway/gateway.module';
 import { BackupModule } from './backup/backup.module';
 import { NotificationModule } from './notification/notification.module';
 import { MonitorModule } from './monitor/monitor.module';
+import { InvoiceModule } from './invoice/invoice.module';
 import { SecurityModule } from './security/security.module';
 import { StalkerModule } from './stalker/stalker.module';
 import { ApiKeyModule } from './api-key/api-key.module';
@@ -75,6 +76,7 @@ import { ResellerApiModule } from './reseller-api/reseller-api.module';
     BackupModule,
     NotificationModule,
     MonitorModule,
+    InvoiceModule,
     SecurityModule,
     StalkerModule,
     ApiKeyModule,
