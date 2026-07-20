@@ -664,6 +664,11 @@ model Settings {
   adminStreamingIps       String[] @default([])
   panelName               String   @default("XtreamPulsar")
   currency                String   @default("TRY") // panel geneli varsayilan para birimi (kod)
+  // Otomatik ban: kisa surede cok kez engellenen IP'leri otomatik banla
+  autoBanEnabled          Boolean  @default(false)
+  autoBanThreshold        Int      @default(10)
+  autoBanWindowMins       Int      @default(60)
+  autoBanDurationMins     Int      @default(1440)
   serverUrl               String   @default("")
   serverUrls              String[] @default([])
   primaryUrlIndex         Int      @default(0)

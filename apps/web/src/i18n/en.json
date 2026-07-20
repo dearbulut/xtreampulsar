@@ -1571,6 +1571,17 @@
       "DEVICE_LOCKED": "Device lock",
       "MAX_CONN": "Connection limit",
       "IP_CAP": "Per-IP limit"
+    },
+    "autoBan": {
+      "title": "Auto-Ban",
+      "on": "On",
+      "off": "Off",
+      "hint": "IPs whose blocked attempts exceed the threshold within the window are banned automatically (runs every 10 min).",
+      "threshold": "Threshold (attempts)",
+      "windowMins": "Window (min)",
+      "durationMins": "Ban duration (min)",
+      "runNow": "Run now",
+      "runResult": "{{scanned}} IPs scanned, {{banned}} banned"
     }
   },
   "servers": {

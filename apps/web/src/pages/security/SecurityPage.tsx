@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText, ShieldAlert } from 'lucide-react';
+import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText, ShieldAlert, Save, Play, Gavel } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
-import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt } from '@/hooks/useSecurity';
+import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, useAutoBanConfig, useUpdateAutoBan, useRunAutoBan, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt, type AutoBanConfig } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
 export function SecurityPage() {
@@ -252,6 +252,7 @@ export function SecurityPage() {
 
       {activeTab === 'accessBlocks' && (
         <div>
+          <AutoBanCard />
           <div className="flex flex-wrap gap-1.5 mb-3">
             {['', 'VPN_BLOCKED', 'COUNTRY_BLOCKED', 'IP_NOT_ALLOWED', 'DEVICE_LOCKED', 'MAX_CONN', 'IP_CAP'].map((c) => (
               <button key={c || 'all'} onClick={() => setAbCategory(c)}
@@ -309,6 +310,63 @@ export function SecurityPage() {
           </div>
         </form>
       </Modal>
+    </div>
+  );
+}
+
+
+function AutoBanCard() {
+  const { t } = useTranslation();
+  const { data: cfg } = useAutoBanConfig();
+  const update = useUpdateAutoBan();
+  const run = useRunAutoBan();
+  const [form, setForm] = useState<AutoBanConfig | null>(null);
+  const [runResult, setRunResult] = useState<{ scanned: number; banned: number } | null>(null);
+  useEffect(() => { if (cfg && !form) setForm(cfg); }, [cfg, form]);
+  if (!form) return null;
+
+  const num = (k: keyof AutoBanConfig) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [k]: Math.max(1, parseInt(e.target.value, 10) || 1) });
+
+  return (
+    <div className="card p-5 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Gavel className="w-4 h-4 text-primary" /> {t('security.autoBan.title')}
+        </div>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <span className="text-xs text-muted">{form.enabled ? t('security.autoBan.on') : t('security.autoBan.off')}</span>
+          <input type="checkbox" className="toggle" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
+        </label>
+      </div>
+      <p className="text-xs text-muted mb-4">{t('security.autoBan.hint')}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs text-muted mb-1">{t('security.autoBan.threshold')}</label>
+          <input type="number" min={1} className="input" value={form.threshold} onChange={num('threshold')} />
+        </div>
+        <div>
+          <label className="block text-xs text-muted mb-1">{t('security.autoBan.windowMins')}</label>
+          <input type="number" min={1} className="input" value={form.windowMins} onChange={num('windowMins')} />
+        </div>
+        <div>
+          <label className="block text-xs text-muted mb-1">{t('security.autoBan.durationMins')}</label>
+          <input type="number" min={1} className="input" value={form.durationMins} onChange={num('durationMins')} />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2">
+        <button className="btn-primary inline-flex items-center gap-1.5" disabled={update.isPending}
+          onClick={() => update.mutate(form)}>
+          <Save className="w-3.5 h-3.5" /> {update.isPending ? t('common.loading') : t('common.save')}
+        </button>
+        <button className="btn-ghost border border-border inline-flex items-center gap-1.5" disabled={run.isPending}
+          onClick={() => run.mutate(undefined, { onSuccess: (r) => setRunResult({ scanned: r.scanned, banned: r.banned }) })}>
+          <Play className="w-3.5 h-3.5" /> {run.isPending ? t('common.loading') : t('security.autoBan.runNow')}
+        </button>
+        {runResult && (
+          <span className="text-xs text-muted">{t('security.autoBan.runResult', { scanned: runResult.scanned, banned: runResult.banned })}</span>
+        )}
+      </div>
     </div>
   );
 }

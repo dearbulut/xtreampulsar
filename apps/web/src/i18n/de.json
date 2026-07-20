@@ -268,6 +268,17 @@
       "DEVICE_LOCKED": "Gerätesperre",
       "MAX_CONN": "Verbindungslimit",
       "IP_CAP": "Pro-IP-Limit"
+    },
+    "autoBan": {
+      "title": "Auto-Sperre",
+      "on": "An",
+      "off": "Aus",
+      "hint": "IPs, deren blockierte Versuche den Schwellenwert im Zeitfenster überschreiten, werden automatisch gesperrt (läuft alle 10 Min).",
+      "threshold": "Schwelle (Versuche)",
+      "windowMins": "Fenster (Min)",
+      "durationMins": "Sperrdauer (Min)",
+      "runNow": "Jetzt ausführen",
+      "runResult": "{{scanned}} IPs geprüft, {{banned}} gesperrt"
     }
   }
 }

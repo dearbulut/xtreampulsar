@@ -1571,6 +1571,17 @@
       "DEVICE_LOCKED": "Cihaz kilidi",
       "MAX_CONN": "Bağlantı limiti",
       "IP_CAP": "IP başına limit"
+    },
+    "autoBan": {
+      "title": "Otomatik Ban",
+      "on": "Açık",
+      "off": "Kapalı",
+      "hint": "Belirlenen sürede eşik sayısını aşan engellenen denemeye sahip IP'ler otomatik banlanır (10 dk'da bir çalışır).",
+      "threshold": "Eşik (deneme)",
+      "windowMins": "Pencere (dk)",
+      "durationMins": "Ban süresi (dk)",
+      "runNow": "Şimdi çalıştır",
+      "runResult": "{{scanned}} IP tarandı, {{banned}} banlandı"
     }
   },
   "servers": {

@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeConnectionWhere } from '../user/user.repository';
@@ -219,5 +220,68 @@ export class SecurityService {
     ]);
     const categories = Object.fromEntries(byCat.map((c) => [c.category, c._count._all]));
     return { items, total, page, limit, last24h, categories };
+  }
+
+  // ── Otomatik ban (tekrarlayan ihlalciler) ─────────────────────────────
+  async getAutoBanConfig() {
+    const s = await this.prisma.settings.upsert({
+      where: { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+      select: { autoBanEnabled: true, autoBanThreshold: true, autoBanWindowMins: true, autoBanDurationMins: true },
+    });
+    return {
+      enabled: s.autoBanEnabled,
+      threshold: s.autoBanThreshold,
+      windowMins: s.autoBanWindowMins,
+      durationMins: s.autoBanDurationMins,
+    };
+  }
+
+  async updateAutoBanConfig(dto: { enabled?: boolean; threshold?: number; windowMins?: number; durationMins?: number }) {
+    const data: {
+      autoBanEnabled?: boolean;
+      autoBanThreshold?: number;
+      autoBanWindowMins?: number;
+      autoBanDurationMins?: number;
+    } = {};
+    if (dto.enabled !== undefined) data.autoBanEnabled = Boolean(dto.enabled);
+    if (dto.threshold !== undefined) data.autoBanThreshold = Math.max(1, Math.floor(Number(dto.threshold)));
+    if (dto.windowMins !== undefined) data.autoBanWindowMins = Math.max(1, Math.floor(Number(dto.windowMins)));
+    if (dto.durationMins !== undefined) data.autoBanDurationMins = Math.max(1, Math.floor(Number(dto.durationMins)));
+    await this.prisma.settings.update({ where: { id: 'singleton' }, data });
+    return this.getAutoBanConfig();
+  }
+
+  /** blocked_attempts'i tarar; pencere icinde esigi asan IP'leri (henuz banli degilse) banlar. */
+  async runAutoBan(): Promise<{ scanned: number; banned: number; ips: string[] }> {
+    const cfg = await this.getAutoBanConfig();
+    const since = new Date(Date.now() - cfg.windowMins * 60_000);
+    const groups = await this.prisma.blockedAttempt.groupBy({
+      by: ['ip'],
+      where: { ip: { not: null }, createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    const offenders = groups.filter((g) => g.ip && g._count._all >= cfg.threshold);
+    const bannedIps: string[] = [];
+    for (const g of offenders) {
+      const ip = g.ip as string;
+      if (await this.isIpBanned(ip)) continue;
+      await this.banIp(ip, `Auto-ban: ${g._count._all} engellenen deneme (${cfg.windowMins}dk)`, cfg.durationMins, 'auto').catch(() => {});
+      bannedIps.push(ip);
+    }
+    return { scanned: groups.length, banned: bannedIps.length, ips: bannedIps };
+  }
+
+  @Cron('*/10 * * * *')
+  async autoBanScheduled(): Promise<void> {
+    try {
+      const cfg = await this.getAutoBanConfig();
+      if (!cfg.enabled) return;
+      const r = await this.runAutoBan();
+      if (r.banned > 0) this.logger.log(`Auto-ban: ${r.banned} IP banlandi (${r.ips.join(', ')})`);
+    } catch (err) {
+      this.logger.error(`autoBanScheduled: ${(err as Error).message}`);
+    }
   }
 }

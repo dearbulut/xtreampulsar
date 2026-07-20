@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { SecurityService } from './security.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -67,5 +67,20 @@ export class SecurityController {
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
+  }
+
+  @Get('autoban')
+  getAutoBan() {
+    return this.securityService.getAutoBanConfig();
+  }
+
+  @Patch('autoban')
+  updateAutoBan(@Body() body: { enabled?: boolean; threshold?: number; windowMins?: number; durationMins?: number }) {
+    return this.securityService.updateAutoBanConfig(body);
+  }
+
+  @Post('autoban/run')
+  runAutoBan() {
+    return this.securityService.runAutoBan();
   }
 }

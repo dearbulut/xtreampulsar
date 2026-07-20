@@ -153,3 +153,46 @@ export function useBlockedAttempts(category?: string) {
     refetchInterval: 30_000,
   });
 }
+
+// ─── Otomatik ban (tekrarlayan ihlalciler) ───────────────────────────────────
+export interface AutoBanConfig {
+  enabled: boolean;
+  threshold: number;
+  windowMins: number;
+  durationMins: number;
+}
+
+export function useAutoBanConfig() {
+  return useQuery({
+    queryKey: ['security', 'autoban'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: AutoBanConfig }>('/security/autoban');
+      return res.data.data;
+    },
+  });
+}
+
+export function useUpdateAutoBan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Partial<AutoBanConfig>) => {
+      const res = await api.patch<{ success: boolean; data: AutoBanConfig }>('/security/autoban', body);
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['security', 'autoban'] }),
+  });
+}
+
+export function useRunAutoBan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<{ success: boolean; data: { scanned: number; banned: number; ips: string[] } }>('/security/autoban/run', {});
+      return res.data.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['security', 'blocked-ips'] });
+      void qc.invalidateQueries({ queryKey: ['security', 'blocked-attempts'] });
+    },
+  });
+}
