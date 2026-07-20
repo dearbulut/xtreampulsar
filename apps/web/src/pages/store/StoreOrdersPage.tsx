@@ -4,6 +4,7 @@ import { Check, Copy, CircleCheck, Ban, CreditCard, ExternalLink } from 'lucide-
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useStoreOrders, useFulfillOrder, useSetOrderStatus, type StoreOrder, type StoreOrderStatus } from '@/hooks/useStore';
 import { copyToClipboard } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -20,6 +21,7 @@ export function StoreOrdersPage() {
   const { data, isLoading } = useStoreOrders(statusFilter || undefined);
   const fulfill = useFulfillOrder();
   const setStatus = useSetOrderStatus();
+  const currency = useCurrency();
   const [copied, setCopied] = useState<string | null>(null);
   const [creds, setCreds] = useState<Record<string, { username: string; password: string }>>({});
 
@@ -117,7 +119,7 @@ export function StoreOrdersPage() {
                           <button className="btn-ghost p-0.5" onClick={() => copy(o.contactEmail, o.id + 'e')}>{copied === o.id + 'e' ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}</button>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-muted">{o.price > 0 ? `₺${o.price.toFixed(2)}` : '—'}</td>
+                      <td className="px-4 py-3 text-muted">{o.price > 0 ? currency.format(o.price) : '—'}</td>
                       <td className="px-4 py-3"><span className={cn('badge', STATUS_BADGE[o.status])}>{t(`store.status${o.status.charAt(0) + o.status.slice(1).toLowerCase()}`)}</span></td>
                       <td className="px-4 py-3 text-muted whitespace-nowrap">{fmt(o.createdAt)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">

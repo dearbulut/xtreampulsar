@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 export interface GeneralSettings {
   panelName: string;
   timezone: string;
+  currency: string;
   language: string;
   serverUrl: string;
   serverUrls: string[];
@@ -135,6 +136,7 @@ const DEFAULTS: AllSettings = {
   general: {
     panelName: 'XtreamPulsar',
     timezone: 'Europe/Istanbul',
+    currency: 'TRY',
     language: 'tr',
     serverUrl: '',
     serverUrls: [],
@@ -165,6 +167,7 @@ interface DbSettings {
   urlHealthCheck?: boolean;
   serverPort: number;
   timezone: string;
+  currency?: string;
   trialUserLimit: number;
   trialDays?: number;
   trialMaxConnections?: number;
@@ -225,6 +228,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
       primaryUrlIndex: db.primaryUrlIndex ?? 0,
       urlHealthCheck: db.urlHealthCheck ?? true,
       timezone: db.timezone,
+      currency: db.currency ?? 'TRY',
       adminEmail: db.adminEmail ?? '',
       streamDownAlert: db.streamDownAlert ?? true,
       resellerNotifyExpiry: db.resellerNotifyExpiry ?? true,
@@ -299,6 +303,7 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     primaryUrlIndex: settings.general.primaryUrlIndex,
     urlHealthCheck: settings.general.urlHealthCheck,
     timezone: settings.general.timezone,
+    currency: settings.general.currency,
     adminEmail: settings.general.adminEmail,
     streamDownAlert: settings.general.streamDownAlert,
     resellerNotifyExpiry: settings.general.resellerNotifyExpiry,

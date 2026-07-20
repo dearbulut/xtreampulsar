@@ -752,7 +752,9 @@
     "resellerHost": "Reseller panel hostname",
     "resellerHostHint": "Örn: bayi.musteridomain.com (protokolsüz, sadece host).",
     "clientHost": "Client (müşteri) panel hostname",
-    "clientHostHint": "Örn: uye.musteridomain.com"
+    "clientHostHint": "Örn: uye.musteridomain.com",
+    "currency": "Para Birimi",
+    "currencyHint": "Fiyatların panel genelinde gösterileceği para birimi."
   },
   "auth": {
     "username": "Kullanıcı Adı",

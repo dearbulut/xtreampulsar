@@ -131,7 +131,9 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "language": "Sprache"
+    "language": "Sprache",
+    "currency": "Währung",
+    "currencyHint": "Währung zur Anzeige von Preisen im gesamten Panel."
   },
   "errors": {
     "required": "Dieses Feld ist erforderlich",

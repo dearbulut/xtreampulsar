@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, Clock, Users, Loader2, ShoppingCart, PartyPopper } from 'lucide-react';
 import api from '@/lib/axios';
 import { usePublicPackages, useCreateOrder, type StorePackage } from '@/hooks/useStore';
+import { useCurrency } from '@/hooks/useCurrency';
 import { cn } from '@/lib/utils';
 
 function usePublicPanelName() {
@@ -26,6 +27,7 @@ export function StorefrontPage() {
   const { data: packages, isLoading } = usePublicPackages();
   const { data: panelName } = usePublicPanelName();
   const createOrder = useCreateOrder();
+  const currency = useCurrency();
 
   const [selected, setSelected] = useState<StorePackage | null>(null);
   const [email, setEmail] = useState('');
@@ -78,7 +80,7 @@ export function StorefrontPage() {
                     <div className="font-semibold text-lg">{p.name}</div>
                     {p.description && <p className="text-sm text-muted mt-1 flex-1">{p.description}</p>}
                     <div className="mt-3 flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-primary">{p.price > 0 ? `₺${p.price.toFixed(2)}` : t('storefront.free')}</span>
+                      <span className="text-2xl font-bold text-primary">{p.price > 0 ? currency.format(p.price) : t('storefront.free')}</span>
                     </div>
                     <div className="mt-3 flex items-center gap-4 text-xs text-muted">
                       <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{p.durationDays} {t('storefront.days')}</span>

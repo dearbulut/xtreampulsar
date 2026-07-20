@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins, ToggleLeft, ToggleRight, Store } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '@/hooks/usePackages';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useBouquets } from '@/hooks/useBouquets';
 import type { Package } from '@/types';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ export function PackagesPage() {
   const { data: packages = [], isLoading } = usePackages();
   const { data: bouquets = [] } = useBouquets();
   const createPkg = useCreatePackage();
+  const currency = useCurrency();
   const updatePkg = useUpdatePackage();
   const deletePkg = useDeletePackage();
 
@@ -170,7 +172,7 @@ export function PackagesPage() {
               {pkg.price != null && pkg.price > 0 && (
                 <div className="border-t border-border pt-3 flex items-center justify-between">
                   <span className="text-xs text-muted">{t('packages.salePrice')}</span>
-                  <span className="text-sm font-bold text-slate-200">₺{pkg.price.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-slate-200">{currency.format(pkg.price)}</span>
                 </div>
               )}
             </div>

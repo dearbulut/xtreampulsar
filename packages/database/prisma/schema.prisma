@@ -663,6 +663,7 @@ model Settings {
   instantCloseConn        Boolean  @default(false)
   adminStreamingIps       String[] @default([])
   panelName               String   @default("XtreamPulsar")
+  currency                String   @default("TRY") // panel geneli varsayilan para birimi (kod)
   serverUrl               String   @default("")
   serverUrls              String[] @default([])
   primaryUrlIndex         Int      @default(0)

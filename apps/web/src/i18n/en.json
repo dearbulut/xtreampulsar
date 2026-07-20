@@ -752,7 +752,9 @@
     "resellerHost": "Reseller panel hostname",
     "resellerHostHint": "E.g. reseller.customerdomain.com (host only, no protocol).",
     "clientHost": "Client panel hostname",
-    "clientHostHint": "E.g. member.customerdomain.com"
+    "clientHostHint": "E.g. member.customerdomain.com",
+    "currency": "Currency",
+    "currencyHint": "Currency used to display prices across the panel."
   },
   "auth": {
     "username": "Username",

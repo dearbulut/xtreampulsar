@@ -6,6 +6,7 @@ import { TagInput } from '@/components/ui/TagInput';
 import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from '@/hooks/useSettings';
 import type { CreditPricingConfig } from '@/hooks/useSettings';
 import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
+import { CURRENCIES } from '@/lib/currency';
 import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, formatBytes } from '@/hooks/useBackup';
 import { useQueryClient } from '@tanstack/react-query';
 import { use2FAStatus, use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
@@ -209,6 +210,14 @@ export function SettingsPage() {
                   onChange={(e) => updateSettings('general', { timezone: e.target.value })}>
                   {['Europe/Istanbul', 'UTC', 'Europe/London', 'America/New_York'].map((tz) => (
                     <option key={tz} value={tz}>{tz}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t('settings.currency')} hint={t('settings.currencyHint')}>
+                <select className="input" value={settings.general.currency}
+                  onChange={(e) => updateSettings('general', { currency: e.target.value })}>
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.symbol} · {c.code} — {c.label}</option>
                   ))}
                 </select>
               </Field>

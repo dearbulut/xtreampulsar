@@ -15,7 +15,7 @@ export class SettingsService {
         where: { id: 'singleton' },
         update: {},
         create: { id: 'singleton' },
-        select: { panelName: true, resellerPanelHost: true, clientPanelHost: true },
+        select: { panelName: true, currency: true, resellerPanelHost: true, clientPanelHost: true },
       }),
       this.prisma.whiteLabel.findFirst({
         where: { isActive: true },
@@ -25,6 +25,7 @@ export class SettingsService {
 
     return {
       panelName: whiteLabel?.panelName ?? settings.panelName,
+      currency: settings.currency ?? 'TRY',
       logoUrl: whiteLabel?.logoUrl ?? null,
       primaryColor: whiteLabel?.primaryColor ?? null,
       resellerHost: settings.resellerPanelHost ?? null,
