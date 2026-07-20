@@ -1576,7 +1576,7 @@
       "title": "Otomatik Ban",
       "on": "Açık",
       "off": "Kapalı",
-      "hint": "Belirlenen sürede eşik sayısını aşan engellenen denemeye sahip IP'ler otomatik banlanır (10 dk'da bir çalışır).",
+      "hint": "Yalnızca politika ihlalleri (VPN/proxy, ülke engeli, izinsiz IP, cihaz kilidi) otomatik ban tetikler; bağlantı/IP limiti gibi kapasite aşımları banlanmaz. 10 dk'da bir çalışır.",
       "threshold": "Eşik (deneme)",
       "windowMins": "Pencere (dk)",
       "durationMins": "Ban süresi (dk)",

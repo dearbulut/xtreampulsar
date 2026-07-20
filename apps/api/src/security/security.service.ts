@@ -253,13 +253,22 @@ export class SecurityService {
     return this.getAutoBanConfig();
   }
 
+  // Otomatik ban YALNIZCA gercek politika ihlallerinde calisir. MAX_CONN/IP_CAP
+  // (abonenin kendi kapasite limiti; or. yayin cokunce VLC zap yaptiginda tetiklenir)
+  // asla ban sebebi degildir — mesru aboneyi banlamamak icin haric tutulur.
+  private static readonly AUTO_BAN_CATEGORIES = ['VPN_BLOCKED', 'COUNTRY_BLOCKED', 'IP_NOT_ALLOWED', 'DEVICE_LOCKED'];
+
   /** blocked_attempts'i tarar; pencere icinde esigi asan IP'leri (henuz banli degilse) banlar. */
   async runAutoBan(): Promise<{ scanned: number; banned: number; ips: string[] }> {
     const cfg = await this.getAutoBanConfig();
     const since = new Date(Date.now() - cfg.windowMins * 60_000);
     const groups = await this.prisma.blockedAttempt.groupBy({
       by: ['ip'],
-      where: { ip: { not: null }, createdAt: { gte: since } },
+      where: {
+        ip: { not: null },
+        category: { in: SecurityService.AUTO_BAN_CATEGORIES },
+        createdAt: { gte: since },
+      },
       _count: { _all: true },
     });
     const offenders = groups.filter((g) => g.ip && g._count._all >= cfg.threshold);

@@ -273,7 +273,7 @@
       "title": "Auto-Sperre",
       "on": "An",
       "off": "Aus",
-      "hint": "IPs, deren blockierte Versuche den Schwellenwert im Zeitfenster überschreiten, werden automatisch gesperrt (läuft alle 10 Min).",
+      "hint": "Nur Richtlinienverstöße (VPN/Proxy, Land, unerlaubte IP, Gerätesperre) lösen eine Auto-Sperre aus; Kapazitätslimits wie Verbindungs-/IP-Limits nie. Läuft alle 10 Min.",
       "threshold": "Schwelle (Versuche)",
       "windowMins": "Fenster (Min)",
       "durationMins": "Sperrdauer (Min)",

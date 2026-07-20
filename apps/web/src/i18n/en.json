@@ -1576,7 +1576,7 @@
       "title": "Auto-Ban",
       "on": "On",
       "off": "Off",
-      "hint": "IPs whose blocked attempts exceed the threshold within the window are banned automatically (runs every 10 min).",
+      "hint": "Only policy violations (VPN/proxy, country, IP-not-allowed, device lock) trigger an auto-ban; capacity limits like connection/IP caps never do. Runs every 10 min.",
       "threshold": "Threshold (attempts)",
       "windowMins": "Window (min)",
       "durationMins": "Ban duration (min)",
