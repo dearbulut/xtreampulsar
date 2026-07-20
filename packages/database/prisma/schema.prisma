@@ -1090,10 +1090,12 @@ model ActivationCode {
   code           String    @unique
   durationDays   Int
   maxConnections Int?
-  status         String    @default("ACTIVE") // ACTIVE | USED | DISABLED
+  status         String    @default("ACTIVE") // ACTIVE | DISABLED
   note           String?
-  usedByUserId   String?
-  usedByUsername String?
+  packageId      String?
+  userId         String?   // bagli abone hatti (username = password = code)
+  usedByUserId   String?   // legacy, kullanilmiyor
+  usedByUsername String?   // legacy, kullanilmiyor
   usedAt         DateTime?
   createdAt      DateTime  @default(now())
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Tv2, Radio, KeyRound, Copy, Check, Eye, EyeOff,
-  CalendarClock, Users, Clock, Wifi, ListVideo, MessageSquareWarning, Send, Ticket,
+  CalendarClock, Users, Clock, Wifi, ListVideo, MessageSquareWarning, Send,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import {
@@ -12,7 +12,6 @@ import {
   useCreateClientRequest,
   useMyClientRequests,
   useAddClientRequestMessage,
-  useRedeemCode,
   type ClientConnection,
   type ClientRequestItem,
 } from '@/hooks/useClientPanel';
@@ -90,40 +89,6 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 }
 
 // ─── Subscription card ───────────────────────────────────────────────────────
-
-function RedeemCard() {
-  const { t } = useTranslation();
-  const [code, setCode] = useState('');
-  const redeem = useRedeemCode();
-  const submit = () => {
-    const c = code.trim();
-    if (!c) return;
-    redeem.mutate(c, {
-      onSuccess: (d) => { toast.success(t('client.redeemSuccess', { days: d.durationDays })); setCode(''); },
-      onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('client.redeemError')),
-    });
-  };
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-2 mb-1 text-sm font-semibold">
-        <Ticket className="w-4 h-4 text-primary" /> {t('client.redeemTitle')}
-      </div>
-      <p className="text-xs text-muted mb-3">{t('client.redeemHint')}</p>
-      <div className="flex gap-2">
-        <input
-          className="input flex-1 font-mono"
-          placeholder="XP-XXXX-XXXX-XXXX"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        />
-        <button className="btn-primary whitespace-nowrap" disabled={!code.trim() || redeem.isPending} onClick={submit}>
-          {redeem.isPending ? t('common.loading') : t('client.redeemBtn')}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function SubscriptionCard() {
   const { t } = useTranslation();
@@ -435,7 +400,6 @@ export function ClientDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SubscriptionCard />
-        <RedeemCard />
         <PlaylistCard />
         <ConnectionsCard />
         <ChangePasswordCard />

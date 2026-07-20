@@ -3,10 +3,9 @@ import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SettingsModule } from '../settings/settings.module';
-import { ActivationModule } from '../activation/activation.module';
 
 @Module({
-  imports: [PrismaModule, SettingsModule, ActivationModule],
+  imports: [PrismaModule, SettingsModule],
   controllers: [ClientController],
   providers: [ClientService],
 })

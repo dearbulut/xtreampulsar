@@ -16,12 +16,20 @@ export class ActivationController {
   }
 
   @Post('generate')
-  generate(@Body() body: { count: number; durationDays: number; maxConnections?: number; note?: string }) {
-    return this.service.generate(body.count, body.durationDays, body.maxConnections, body.note);
+  generate(
+    @Body()
+    body: { count?: number; durationDays?: number; maxConnections?: number; packageId?: string; note?: string },
+  ) {
+    return this.service.generate(body);
   }
 
   @Post(':id/disable')
   disable(@Param('id') id: string) {
     return this.service.disable(id);
+  }
+
+  @Post(':id/enable')
+  enable(@Param('id') id: string) {
+    return this.service.enable(id);
   }
 }
