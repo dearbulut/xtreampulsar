@@ -953,7 +953,7 @@ export class UserService {
     type: string,
     subject: string,
     messageKey?: string,
-    messageParams?: Record<string, unknown>,
+    messageParams?: Prisma.InputJsonValue,
   ) {
     await this.prisma.notificationLog.create({
       data: {
