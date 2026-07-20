@@ -35,7 +35,6 @@ export class SubtitleService {
 
   async getConfig() {
     const c = await this.cfg();
-    // Şifreyi geri gönderme; yalnız ayarlı olup olmadığını bildir.
     return { enabled: c.enabled, apiKey: c.apiKey, username: c.username, passwordSet: !!c.password };
   }
 
@@ -46,7 +45,7 @@ export class SubtitleService {
     if (dto.username !== undefined) data.subtitleUsername = String(dto.username).trim();
     if (dto.password !== undefined && dto.password !== '') data.subtitlePassword = String(dto.password);
     await this.prisma.settings.update({ where: { id: 'singleton' }, data });
-    this.token = null; // yapılandırma değişti → token'ı sıfırla
+    this.token = null;
     return this.getConfig();
   }
 
@@ -110,32 +109,111 @@ export class SubtitleService {
     }
   }
 
-  /** file_id → gerçek altyazı metnini (srt) döndürür. İndirme için login gerekir. */
-  async download(fileId: number): Promise<{ filename: string; content: string }> {
+  /** file_id → gerçek altyazı metni (srt). İndirme için login gerekir. */
+  private async downloadContent(fileId: number): Promise<{ filename: string; content: string }> {
     const c = await this.cfg();
     if (!c.enabled || !c.apiKey) throw new BadRequestException('Altyazı sağlayıcı yapılandırılmamış.');
     if (!fileId) throw new BadRequestException('Geçersiz dosya');
     const token = await this.getToken(c);
+    const res = await fetch(`${BASE}/download`, {
+      method: 'POST',
+      headers: this.headers(c.apiKey, token ?? undefined),
+      body: JSON.stringify({ file_id: fileId }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 120)}`);
+    }
+    const data = (await res.json()) as { link?: string; file_name?: string };
+    if (!data.link) throw new Error('İndirme bağlantısı alınamadı (login gerekebilir)');
+    const srtRes = await fetch(data.link, { signal: AbortSignal.timeout(15_000) });
+    if (!srtRes.ok) throw new Error(`Altyazı indirilemedi: HTTP ${srtRes.status}`);
+    return { filename: data.file_name || `subtitle-${fileId}.srt`, content: await srtRes.text() };
+  }
+
+  /** Doğrudan .srt indirir (admin manuel indirme butonu için). */
+  async download(fileId: number): Promise<{ filename: string; content: string }> {
     try {
-      const res = await fetch(`${BASE}/download`, {
-        method: 'POST',
-        headers: this.headers(c.apiKey, token ?? undefined),
-        body: JSON.stringify({ file_id: fileId }),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text.slice(0, 120)}`);
-      }
-      const data = (await res.json()) as { link?: string; file_name?: string };
-      if (!data.link) throw new Error('İndirme bağlantısı alınamadı (login gerekebilir)');
-      const srtRes = await fetch(data.link, { signal: AbortSignal.timeout(15_000) });
-      if (!srtRes.ok) throw new Error(`Altyazı indirilemedi: HTTP ${srtRes.status}`);
-      const content = await srtRes.text();
-      return { filename: data.file_name || `subtitle-${fileId}.srt`, content };
+      return await this.downloadContent(fileId);
     } catch (err) {
       this.logger.error(`OpenSubtitles download: ${(err as Error).message}`);
       throw new BadRequestException(`İndirme başarısız: ${(err as Error).message}`);
     }
+  }
+
+  // ─── Kütüphane eşleştirme + manuel ekleme ───────────────────────────────────
+
+  /** Aranan terimle eşleşen kütüphanedeki FİLMLERİ (VOD) döndürür. */
+  async matchLibrary(query: string) {
+    const q = (query ?? '').trim();
+    if (q.length < 2) return [];
+    const rows = await this.prisma.stream.findMany({
+      where: { name: { contains: q, mode: 'insensitive' }, isActive: true, category: { type: 'VOD' } },
+      select: { id: true, externalId: true, name: true, posterUrl: true, tvgLogo: true },
+      take: 12,
+      orderBy: { name: 'asc' },
+    });
+    const ids = rows.map((r) => r.id);
+    const counts = ids.length
+      ? await this.prisma.streamSubtitle.groupBy({ by: ['streamId'], where: { streamId: { in: ids } }, _count: { _all: true } })
+      : [];
+    const cnt = new Map(counts.map((c) => [c.streamId, c._count._all]));
+    return rows.map((r) => ({
+      id: r.id,
+      externalId: r.externalId,
+      name: r.name,
+      poster: r.posterUrl ?? r.tvgLogo ?? null,
+      subtitleCount: cnt.get(r.id) ?? 0,
+    }));
+  }
+
+  /** Seçilen altyazıyı (fileId) belirli bir filme ekler: indir + önbellekle. */
+  async attach(dto: { streamId?: string; fileId?: number; language?: string; label?: string }) {
+    const streamId = (dto.streamId ?? '').trim();
+    const fileId = Number(dto.fileId);
+    const language = (dto.language ?? '').trim().toLowerCase();
+    if (!streamId || !fileId || !language) throw new BadRequestException('Film, altyazı ve dil gerekli');
+    const stream = await this.prisma.stream.findUnique({ where: { id: streamId }, select: { id: true } });
+    if (!stream) throw new BadRequestException('Film bulunamadı');
+    const { content } = await this.download(fileId);
+    if (!content) throw new BadRequestException('Altyazı içeriği boş');
+    await this.prisma.streamSubtitle.upsert({
+      where: { streamId_language: { streamId, language } },
+      update: { content, label: dto.label?.slice(0, 120) ?? null },
+      create: { streamId, language, content, label: dto.label?.slice(0, 120) ?? null },
+    });
+    this.logger.log(`Subtitle attached: stream=${streamId} lang=${language}`);
+    return { success: true, language };
+  }
+
+  async listAttached(streamId: string) {
+    return this.prisma.streamSubtitle.findMany({
+      where: { streamId },
+      select: { id: true, language: true, label: true, createdAt: true },
+      orderBy: { language: 'asc' },
+    });
+  }
+
+  async removeAttached(id: string) {
+    await this.prisma.streamSubtitle.delete({ where: { id } }).catch(() => {});
+    return { success: true };
+  }
+
+  /** Oynatıcı serving: önbellekten .srt döndür (isim-tahmini YOK). */
+  async getCachedContent(streamId: string, language: string): Promise<string | null> {
+    const lang = (language ?? '').trim().toLowerCase();
+    if (!streamId || !lang) return null;
+    const row = await this.prisma.streamSubtitle
+      .findUnique({ where: { streamId_language: { streamId, language: lang } }, select: { content: true } })
+      .catch(() => null);
+    return row?.content ?? null;
+  }
+
+  /** get_vod_info için: bir filme ELLE eklenmiş altyazıların dillerini döndürür. */
+  async attachedLanguages(streamId: string): Promise<Array<{ language: string; label: string | null }>> {
+    return this.prisma.streamSubtitle
+      .findMany({ where: { streamId }, select: { language: true, label: true }, orderBy: { language: 'asc' } })
+      .catch(() => []);
   }
 }

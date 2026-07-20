@@ -2166,6 +2166,14 @@
     "downloads": "İndirme",
     "download": "İndir",
     "downloaded": "Altyazı indirildi",
-    "downloadError": "İndirme başarısız"
+    "downloadError": "İndirme başarısız",
+    "targetTitle": "Hedef film (kütüphaneden)",
+    "noMatch": "Bu aramayla eşleşen film bulunamadı — altyazıyı yalnızca indirebilirsiniz.",
+    "targetSelected": "Seçili: {{movie}} — bir altyazı satırında Ekle'ye basın",
+    "syncWarning": "Otomatik eşleştirme yok; altyazıyı sen seçersin. Altyazı ile film sürümü farklıysa senkron kayabilir — ekledikten sonra kontrol et.",
+    "attach": "Ekle",
+    "attachTo": "{{movie}} filmine ekle",
+    "pickTargetFirst": "Önce yukarıdan hedef film seç",
+    "attached": "{{lang}} altyazı {{movie}} filmine eklendi"
   }
 }

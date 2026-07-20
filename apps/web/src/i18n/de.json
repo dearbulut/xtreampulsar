@@ -367,6 +367,14 @@
     "downloads": "Downloads",
     "download": "Herunterladen",
     "downloaded": "Untertitel heruntergeladen",
-    "downloadError": "Download fehlgeschlagen"
+    "downloadError": "Download fehlgeschlagen",
+    "targetTitle": "Zielfilm (aus Bibliothek)",
+    "noMatch": "Kein Film passt zu dieser Suche — du kannst den Untertitel nur herunterladen.",
+    "targetSelected": "Ausgewählt: {{movie}} — klicke bei einer Untertitelzeile auf Hinzufügen",
+    "syncWarning": "Keine Auto-Zuordnung; du wählst den Untertitel. Wenn Untertitel und Film-Release abweichen, kann die Synchronisation abweichen — nach dem Hinzufügen prüfen.",
+    "attach": "Hinzufügen",
+    "attachTo": "Zu {{movie}} hinzufügen",
+    "pickTargetFirst": "Zuerst oben einen Zielfilm wählen",
+    "attached": "{{lang}}-Untertitel zu {{movie}} hinzugefügt"
   }
 }

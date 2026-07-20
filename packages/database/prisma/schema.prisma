@@ -576,6 +576,21 @@ model Package {
   @@map("packages")
 }
 
+// ─── StreamSubtitle (icerik altyazi onbellegi — OpenSubtitles) ────────────────
+
+model StreamSubtitle {
+  id        String   @id @default(cuid())
+  streamId  String
+  language  String
+  label     String?
+  content   String
+  createdAt DateTime @default(now())
+
+  @@unique([streamId, language])
+  @@index([streamId])
+  @@map("stream_subtitles")
+}
+
 // ─── StoreOrder (self-servis magaza siparisi) ────────────────────────────────
 
 // ─── PanelInvoice (operator → musteri/bayi faturasi) ─────────────────────────

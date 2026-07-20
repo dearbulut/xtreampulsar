@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Download, Save, Captions, Loader2, Ear } from 'lucide-react';
+import { Search, Download, Save, Captions, Loader2, Ear, Plus, Film, Check, Trash2, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { useSubtitleConfig, useUpdateSubtitleConfig, useSearchSubtitles, downloadSubtitle, type SubtitleResult } from '@/hooks/useSubtitles';
+import {
+  useSubtitleConfig, useUpdateSubtitleConfig, useSearchSubtitles, useMatchLibrary,
+  useAttachSubtitle, useStreamSubtitles, useRemoveAttached, downloadSubtitle,
+  type SubtitleResult, type LibraryMatch,
+} from '@/hooks/useSubtitles';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -13,6 +17,8 @@ export function SubtitlesPage() {
   const { data: cfg } = useSubtitleConfig();
   const update = useUpdateSubtitleConfig();
   const search = useSearchSubtitles();
+  const match = useMatchLibrary();
+  const attach = useAttachSubtitle();
 
   const [form, setForm] = useState<{ enabled: boolean; apiKey: string; username: string; password: string } | null>(null);
   const c = form ?? (cfg ? { enabled: cfg.enabled, apiKey: cfg.apiKey, username: cfg.username, password: '' } : null);
@@ -20,7 +26,12 @@ export function SubtitlesPage() {
   const [query, setQuery] = useState('');
   const [lang, setLang] = useState('en');
   const [results, setResults] = useState<SubtitleResult[]>([]);
-  const [downloading, setDownloading] = useState<number | null>(null);
+  const [matches, setMatches] = useState<LibraryMatch[]>([]);
+  const [target, setTarget] = useState<LibraryMatch | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const attached = useStreamSubtitles(target?.id ?? null);
+  const removeAtt = useRemoveAttached(target?.id ?? null);
 
   const saveConfig = () => {
     if (!c) return;
@@ -32,23 +43,31 @@ export function SubtitlesPage() {
 
   const doSearch = () => {
     if (!query.trim()) return;
+    setTarget(null);
     search.mutate({ query: query.trim(), languages: lang }, {
       onSuccess: (r) => setResults(r),
       onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('common.error')),
     });
+    match.mutate(query.trim(), { onSuccess: (m) => { setMatches(m); if (m.length === 1) setTarget(m[0]); } });
   };
 
   const doDownload = async (r: SubtitleResult) => {
     if (!r.fileId) return;
-    setDownloading(r.fileId);
-    try {
-      await downloadSubtitle(r.fileId, r.release);
-      toast.success(t('subtitles.downloaded'));
-    } catch (e) {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('subtitles.downloadError'));
-    } finally {
-      setDownloading(null);
-    }
+    setBusy(r.fileId);
+    try { await downloadSubtitle(r.fileId, r.release); toast.success(t('subtitles.downloaded')); }
+    catch (e) { toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('subtitles.downloadError')); }
+    finally { setBusy(null); }
+  };
+
+  const doAttach = (r: SubtitleResult) => {
+    if (!r.fileId || !target) return;
+    attach.mutate(
+      { streamId: target.id, fileId: r.fileId, language: r.language || lang, label: r.release },
+      {
+        onSuccess: (d) => toast.success(t('subtitles.attached', { movie: target.name, lang: d.language.toUpperCase() })),
+        onError: (e: unknown) => toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message || t('common.error')),
+      },
+    );
   };
 
   return (
@@ -69,18 +88,12 @@ export function SubtitlesPage() {
         {c && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-muted mb-1">{t('subtitles.apiKey')}</label>
-                <input className="input" value={c.apiKey} onChange={(e) => setForm({ ...c, apiKey: e.target.value })} placeholder="OpenSubtitles API Key" />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">{t('subtitles.username')}</label>
-                <input className="input" value={c.username} onChange={(e) => setForm({ ...c, username: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1">{t('subtitles.password')} {cfg?.passwordSet && <span className="text-success">✓</span>}</label>
-                <input type="password" className="input" value={c.password} onChange={(e) => setForm({ ...c, password: e.target.value })} placeholder={cfg?.passwordSet ? '••••••' : ''} />
-              </div>
+              <div><label className="block text-xs text-muted mb-1">{t('subtitles.apiKey')}</label>
+                <input className="input" value={c.apiKey} onChange={(e) => setForm({ ...c, apiKey: e.target.value })} placeholder="OpenSubtitles API Key" /></div>
+              <div><label className="block text-xs text-muted mb-1">{t('subtitles.username')}</label>
+                <input className="input" value={c.username} onChange={(e) => setForm({ ...c, username: e.target.value })} /></div>
+              <div><label className="block text-xs text-muted mb-1">{t('subtitles.password')} {cfg?.passwordSet && <span className="text-success">✓</span>}</label>
+                <input type="password" className="input" value={c.password} onChange={(e) => setForm({ ...c, password: e.target.value })} placeholder={cfg?.passwordSet ? '••••••' : ''} /></div>
             </div>
             <button className="btn-primary mt-4 inline-flex items-center gap-1.5" disabled={update.isPending} onClick={saveConfig}>
               <Save className="w-3.5 h-3.5" /> {update.isPending ? t('common.loading') : t('common.save')}
@@ -100,6 +113,50 @@ export function SubtitlesPage() {
           </button>
         </div>
 
+        {results.length > 0 && (
+          <>
+            {/* Hedef film seçici (kütüphane eşleşmeleri) */}
+            <div className="mb-3 rounded-lg border border-border bg-surface-2/40 p-3">
+              <div className="text-xs font-semibold text-slate-200 mb-2 flex items-center gap-1.5"><Film className="w-3.5 h-3.5 text-primary" /> {t('subtitles.targetTitle')}</div>
+              {match.isPending ? (
+                <div className="text-xs text-muted">{t('common.loading')}</div>
+              ) : matches.length === 0 ? (
+                <div className="text-xs text-muted">{t('subtitles.noMatch')}</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {matches.map((m) => (
+                    <button key={m.id} onClick={() => setTarget(m)}
+                      className={cn('inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border', target?.id === m.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-muted hover:text-fg')}>
+                      {target?.id === m.id && <Check className="w-3 h-3" />}
+                      <span className="max-w-[220px] truncate">{m.name}</span>
+                      {m.subtitleCount > 0 && <span className="text-[10px] opacity-70">· {m.subtitleCount}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {target && (
+                <div className="mt-2 text-xs text-success">{t('subtitles.targetSelected', { movie: target.name })}</div>
+              )}
+              {/* Seçili filmin ekli altyazıları */}
+              {target && (attached.data?.length ?? 0) > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {attached.data!.map((a) => (
+                    <span key={a.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface text-xs text-slate-200 border border-border">
+                      <span className="uppercase text-primary">{a.language}</span>
+                      <button className="text-danger hover:opacity-70" onClick={() => removeAtt.mutate(a.id)}><Trash2 className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-3 flex items-start gap-2 text-xs text-warning bg-warning/10 rounded-lg p-2.5">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>{t('subtitles.syncWarning')}</span>
+            </div>
+          </>
+        )}
+
         {results.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted">{search.isPending ? t('common.loading') : t('subtitles.noResults')}</div>
         ) : (
@@ -115,11 +172,16 @@ export function SubtitlesPage() {
                 {results.map((r, i) => (
                   <tr key={`${r.fileId}-${i}`} className="border-b border-border last:border-0 hover:bg-surface-2/50">
                     <td className="px-3 py-2"><span className="badge bg-primary/10 text-primary uppercase">{r.language || '—'}</span>{r.hearingImpaired && <Ear className="inline w-3.5 h-3.5 ml-1.5 text-muted" />}</td>
-                    <td className="px-3 py-2 text-muted truncate max-w-[360px]" title={r.release}>{r.release || '—'}</td>
+                    <td className="px-3 py-2 text-muted truncate max-w-[320px]" title={r.release}>{r.release || '—'}</td>
                     <td className="px-3 py-2 text-muted">{r.downloads.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button className="btn-ghost p-1.5 disabled:opacity-40" disabled={!r.fileId || downloading === r.fileId} title={t('subtitles.download')} onClick={() => doDownload(r)}>
-                        {downloading === r.fileId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className={cn('w-4 h-4', r.fileId ? 'text-primary' : 'text-muted')} />}
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <button className="btn-ghost text-xs py-1 px-2 inline-flex items-center gap-1 disabled:opacity-40"
+                        disabled={!r.fileId || !target || attach.isPending} title={target ? t('subtitles.attachTo', { movie: target.name }) : t('subtitles.pickTargetFirst')}
+                        onClick={() => doAttach(r)}>
+                        <Plus className="w-3.5 h-3.5" /> {t('subtitles.attach')}
+                      </button>
+                      <button className="btn-ghost p-1.5 disabled:opacity-40" disabled={!r.fileId || busy === r.fileId} title={t('subtitles.download')} onClick={() => doDownload(r)}>
+                        {busy === r.fileId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className={cn('w-4 h-4', r.fileId ? 'text-primary' : 'text-muted')} />}
                       </button>
                     </td>
                   </tr>

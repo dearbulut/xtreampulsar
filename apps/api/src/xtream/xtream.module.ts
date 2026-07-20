@@ -9,9 +9,10 @@ import { SecurityModule } from '../security/security.module';
 import { ServerModule } from '../server/server.module';
 import { WebhookModule } from '../webhook/webhook.module';
 import { SettingsModule } from '../settings/settings.module';
+import { SubtitleModule } from '../subtitle/subtitle.module';
 
 @Module({
-  imports: [UserModule, StreamModule, GatewayModule, SecurityModule, ServerModule, WebhookModule, SettingsModule],
+  imports: [UserModule, StreamModule, GatewayModule, SecurityModule, ServerModule, WebhookModule, SettingsModule, SubtitleModule],
   controllers: [XtreamController, XtreamAdminController],
   providers: [XtreamService],
 })

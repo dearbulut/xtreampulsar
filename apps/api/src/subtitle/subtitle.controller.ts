@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { SubtitleService } from './subtitle.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -24,6 +24,28 @@ export class SubtitleController {
   @Get('search')
   search(@Query('query') query: string, @Query('languages') languages?: string) {
     return this.service.search(query, languages ?? 'en');
+  }
+
+  /** Aranan terimle eşleşen kütüphane filmleri (ekleme hedefi seçmek için). */
+  @Get('match')
+  match(@Query('query') query: string) {
+    return this.service.matchLibrary(query ?? '');
+  }
+
+  /** Seçilen altyazıyı belirli bir filme ekle. */
+  @Post('attach')
+  attach(@Body() body: { streamId?: string; fileId?: number; language?: string; label?: string }) {
+    return this.service.attach(body);
+  }
+
+  @Get('stream/:streamId')
+  listAttached(@Param('streamId') streamId: string) {
+    return this.service.listAttached(streamId);
+  }
+
+  @Delete('attached/:id')
+  removeAttached(@Param('id') id: string) {
+    return this.service.removeAttached(id);
   }
 
   @Get('download/:fileId')

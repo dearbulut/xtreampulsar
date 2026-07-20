@@ -17,6 +17,21 @@ export interface SubtitleResult {
   hearingImpaired: boolean;
 }
 
+export interface LibraryMatch {
+  id: string;
+  externalId: number;
+  name: string;
+  poster: string | null;
+  subtitleCount: number;
+}
+
+export interface AttachedSubtitle {
+  id: string;
+  language: string;
+  label: string | null;
+  createdAt: string;
+}
+
 export function useSubtitleConfig() {
   return useQuery({
     queryKey: ['subtitles', 'config'],
@@ -46,6 +61,45 @@ export function useSearchSubtitles() {
       );
       return res.data.data;
     },
+  });
+}
+
+export function useMatchLibrary() {
+  return useMutation({
+    mutationFn: async (query: string) => {
+      const res = await api.get<{ success: boolean; data: LibraryMatch[] }>(`/subtitles/match?query=${encodeURIComponent(query)}`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useAttachSubtitle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { streamId: string; fileId: number; language: string; label?: string }) => {
+      const res = await api.post<{ success: boolean; data: { success: boolean; language: string } }>('/subtitles/attach', body);
+      return res.data.data;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['subtitles', 'stream', v.streamId] }),
+  });
+}
+
+export function useStreamSubtitles(streamId: string | null) {
+  return useQuery({
+    queryKey: ['subtitles', 'stream', streamId],
+    enabled: !!streamId,
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: AttachedSubtitle[] }>(`/subtitles/stream/${streamId}`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useRemoveAttached(streamId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/subtitles/attached/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['subtitles', 'stream', streamId] }),
   });
 }
 

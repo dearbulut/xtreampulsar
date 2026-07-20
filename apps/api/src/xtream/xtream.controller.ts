@@ -25,6 +25,7 @@ import { StreamPrefetchService } from '../stream/stream-prefetch.service';
 import { StreamWorkerService } from '../stream/stream-worker.service';
 import { UserService } from '../user/user.service';
 import { UserActivityService } from '../user/user-activity.service';
+import { SubtitleService } from '../subtitle/subtitle.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
 import { RestreamDetectorService } from '../security/restream-detector.service';
@@ -69,6 +70,7 @@ export class XtreamController {
     private readonly streamService: StreamService,
     private readonly userService: UserService,
     private readonly userActivityService: UserActivityService,
+    private readonly subtitleService: SubtitleService,
     private readonly prisma: PrismaService,
     private readonly securityService: SecurityService,
     private readonly restreamDetector: RestreamDetectorService,
@@ -80,6 +82,57 @@ export class XtreamController {
     @Optional() private readonly gateway?: EventsGateway,
     @Optional() private readonly webhookService?: WebhookService,
   ) {}
+
+  // ─── Altyazi (OpenSubtitles) — on-demand + onbellek ─────────────────────────
+  /** get_vod_info yanitina, otomatik altyazi acikken, dil basina .srt URL'leri ekler. */
+  private async injectVodSubtitles(
+    vinfo: unknown,
+    externalId: number,
+    username: string,
+    password: string,
+    req: Request,
+  ): Promise<void> {
+    try {
+      const vod = await this.streamService.findByExternalId(externalId);
+      if (!vod) return;
+      const attached = await this.subtitleService.attachedLanguages(vod.id);
+      if (!attached.length) return;
+      const host = req.headers.host;
+      const info = (vinfo as { info?: Record<string, unknown> })?.info;
+      if (!host || !info) return;
+      const base = `http://${host}`;
+      info.subtitles = attached.map((a) => ({
+        language: a.language,
+        url: `${base}/subtitle/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${externalId}/${a.language}.srt`,
+      }));
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+  /** Oynaticinin cektigi altyazi: dogrula → onbellekten/OpenSubtitles'tan .srt dondur. */
+  @Get('subtitle/:username/:password/:streamId/:lang')
+  async serveSubtitle(
+    @Param('username') username: string,
+    @Param('password') password: string,
+    @Param('streamId') streamId: string,
+    @Param('lang') lang: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const user = await this.xtream.authenticate(username, password);
+    if (!user) { res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized'); return; }
+    const externalId = parseInt(streamId.replace(/\.[a-z0-9]+$/i, ''), 10);
+    const cleanLang = lang.replace(/\.srt$/i, '');
+    if (isNaN(externalId)) { res.status(HttpStatus.BAD_REQUEST).send('Invalid id'); return; }
+    const vod = await this.streamService.findByExternalId(externalId);
+    if (!vod) { res.status(HttpStatus.NOT_FOUND).send('Not found'); return; }
+    const content = await this.subtitleService.getCachedContent(vod.id, cleanLang);
+    if (!content) { res.status(HttpStatus.NOT_FOUND).send('No subtitle'); return; }
+    res.setHeader('Content-Type', 'application/x-subrip; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(content);
+  }
 
   // ─── Xtream brute-force koruması ────────────────────────────────────────────
 
@@ -199,7 +252,9 @@ export class XtreamController {
       case 'get_vod_info': {
         const vid = parseInt(query.vod_id ?? '', 10);
         if (isNaN(vid)) { res.status(400).json({ error: 'vod_id required' }); break; }
-        res.json(await this.xtream.getVodInfo(vid));
+        const vinfo = await this.xtream.getVodInfo(vid);
+        await this.injectVodSubtitles(vinfo, vid, username, password, req);
+        res.json(vinfo);
         break;
       }
 

@@ -2166,6 +2166,14 @@
     "downloads": "Downloads",
     "download": "Download",
     "downloaded": "Subtitle downloaded",
-    "downloadError": "Download failed"
+    "downloadError": "Download failed",
+    "targetTitle": "Target movie (from library)",
+    "noMatch": "No movie matches this search — you can only download the subtitle.",
+    "targetSelected": "Selected: {{movie}} — click Attach on a subtitle row",
+    "syncWarning": "No auto-matching; you choose the subtitle. If the subtitle and the movie release differ, sync may drift — verify after attaching.",
+    "attach": "Attach",
+    "attachTo": "Attach to {{movie}}",
+    "pickTargetFirst": "Pick a target movie above first",
+    "attached": "{{lang}} subtitle attached to {{movie}}"
   }
 }
