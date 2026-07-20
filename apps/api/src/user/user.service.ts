@@ -14,6 +14,7 @@ import * as qrcode from 'qrcode';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository, activeConnectionWhere } from './user.repository';
+import { UserActivityService } from './user-activity.service';
 import { WebhookService } from '../webhook/webhook.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -28,6 +29,7 @@ export class UserService {
     private readonly userRepo: UserRepository,
     private readonly prisma: PrismaService,
     private readonly webhookService: WebhookService,
+    private readonly userActivity: UserActivityService,
   ) {}
 
   // ─── Xtream-facing (unchanged) ─────────────────────────────────────────────
@@ -113,8 +115,11 @@ export class UserService {
       return { allowed: false, reason };
     };
 
-    const active = await this.userRepo.countActiveConnections(userId);
-    if (active >= user.maxConnections) {
+    // Zap-dostu: istegi yapan cihazin kendi (eski/hayalet) baglantilarini saymaz;
+    // yalnizca FARKLI cihazlari sayar → kanal degistiren tek izleyici bloklanmaz.
+    const otherDevices = await this.userRepo.countActiveOtherDevices(userId, ip, _userAgent);
+    if (otherDevices >= user.maxConnections) {
+      this.logConnectionLimitAttempt(userId, ip, _userAgent);
       return deny(`Max connections reached (${user.maxConnections})`, 'MAX_CONN');
     }
 
@@ -912,6 +917,36 @@ export class UserService {
     } catch (err) {
       this.logger.error(`Expiry warning email failed: ${(err as Error).message}`);
     }
+  }
+
+  /**
+   * Bir hattin baglanti limiti asilinca (FARKLI cihaz/IP'den yayin acma girisimi)
+   * o kullanicinin aktivite/audit log'una kaydeder → Kullanicilar sayfasinda o
+   * kullaniciya tiklayinca gorunur. Fire-and-forget + 15 dk dedup (spam onleme).
+   */
+  private logConnectionLimitAttempt(userId: string, ip: string, userAgent?: string): void {
+    void (async () => {
+      try {
+        const recent = await this.prisma.userActivityLog.findFirst({
+          where: {
+            userId,
+            action: 'CONNECTION_LIMIT',
+            ip: ip || undefined,
+            createdAt: { gte: new Date(Date.now() - 15 * 60_000) },
+          },
+          select: { id: true },
+        });
+        if (recent) return; // ayni cihaz/IP icin yakin zamanda zaten kaydedildi
+        let country: string | undefined;
+        if (ip) {
+          const m = await this.lookupIpMeta(ip);
+          country = m?.cc || undefined;
+        }
+        await this.userActivity.logActivity({ userId, action: 'CONNECTION_LIMIT', ip: ip || undefined, userAgent, country });
+      } catch {
+        /* non-fatal */
+      }
+    })();
   }
 
   /** Engellenen baglanti denemesini kaydeder. Fire-and-forget; ulke yoksa cache'li ip-api ile zenginlestirir. */

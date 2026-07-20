@@ -90,7 +90,14 @@
     "deleteUser": "حذف مستخدم",
     "package": "الحزمة",
     "notes": "ملاحظات",
-    "credits": "الرصيد"
+    "credits": "الرصيد",
+    "activityAction": {
+      "CONNECTION_LIMIT": "حد الاتصالات — تم الحظر من جهاز آخر",
+      "LOGIN": "تسجيل الدخول",
+      "STREAM_START": "بدأ البث",
+      "STREAM_STOP": "توقف البث",
+      "PASSWORD_CHANGE": "تغيير كلمة المرور"
+    }
   },
   "streams": {
     "title": "القنوات",

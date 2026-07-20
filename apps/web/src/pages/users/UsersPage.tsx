@@ -1556,7 +1556,12 @@ const ACTION_BADGE: Record<string, string> = {
   STREAM_START: 'bg-success/20 text-success',
   STREAM_STOP: 'bg-danger/20 text-danger',
   PASSWORD_CHANGE: 'bg-warning/20 text-warning',
+  CONNECTION_LIMIT: 'bg-danger/20 text-danger',
 };
+
+function activityLabel(action: string, t: (k: string, o?: Record<string, unknown>) => string): string {
+  return t(`users.activityAction.${action}`, { defaultValue: action });
+}
 
 function ActivityModal({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { t } = useTranslation();
@@ -1572,13 +1577,15 @@ function ActivityModal({ userId, onClose }: { userId: string; onClose: () => voi
         {data?.items.map((log) => (
           <div key={log.id} className="flex items-start gap-3 text-sm py-2 border-b border-border/30">
             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', ACTION_BADGE[log.action] ?? 'bg-surface-2 text-muted')}>
-              {log.action}
+              {activityLabel(log.action, t)}
             </span>
             <div className="flex-1 min-w-0">
               {log.ip && <span className="font-mono text-xs text-muted mr-2">{log.ip}</span>}
+              {log.country && <span className="text-xs text-muted mr-2">{log.country}</span>}
+              {log.deviceType && log.deviceType !== 'unknown' && <span className="text-xs text-muted mr-2">{log.deviceType}</span>}
               {log.streamId && <span className="text-xs text-muted">Stream: {log.streamId.slice(0, 8)}…</span>}
             </div>
-            <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString('tr-TR')}</span>
+            <span className="text-xs text-muted flex-shrink-0">{new Date(log.createdAt).toLocaleString()}</span>
           </div>
         ))}
       </div>

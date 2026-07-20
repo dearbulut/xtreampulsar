@@ -90,7 +90,14 @@
     "deleteUser": "Benutzer löschen",
     "package": "Paket",
     "notes": "Notizen",
-    "credits": "Credits"
+    "credits": "Credits",
+    "activityAction": {
+      "CONNECTION_LIMIT": "Verbindungslimit — von anderem Gerät blockiert",
+      "LOGIN": "Anmeldung",
+      "STREAM_START": "Stream gestartet",
+      "STREAM_STOP": "Stream gestoppt",
+      "PASSWORD_CHANGE": "Passwortänderung"
+    }
   },
   "streams": {
     "title": "Kanäle",

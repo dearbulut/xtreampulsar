@@ -361,7 +361,14 @@
     "impersonate": "Abone olarak gir",
     "impersonateBtn": "Abone panelini aç",
     "impersonateHint": "Şifre gerekmeden bu abonenin panelini yeni sekmede açar (yalnız görüntüleme/destek için).",
-    "impersonateError": "Giriş yapılamadı"
+    "impersonateError": "Giriş yapılamadı",
+    "activityAction": {
+      "CONNECTION_LIMIT": "Bağlantı limiti — farklı cihazdan giriş engellendi",
+      "LOGIN": "Giriş",
+      "STREAM_START": "Yayın başladı",
+      "STREAM_STOP": "Yayın durdu",
+      "PASSWORD_CHANGE": "Şifre değişikliği"
+    }
   },
   "streams": {
     "title": "Kanallar",

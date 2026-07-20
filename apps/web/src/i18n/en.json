@@ -361,7 +361,14 @@
     "impersonate": "Log in as subscriber",
     "impersonateBtn": "Open subscriber panel",
     "impersonateHint": "Opens this subscriber's panel in a new tab without a password (for viewing/support).",
-    "impersonateError": "Could not log in"
+    "impersonateError": "Could not log in",
+    "activityAction": {
+      "CONNECTION_LIMIT": "Connection limit — blocked from another device",
+      "LOGIN": "Login",
+      "STREAM_START": "Stream started",
+      "STREAM_STOP": "Stream stopped",
+      "PASSWORD_CHANGE": "Password change"
+    }
   },
   "streams": {
     "title": "Channels",

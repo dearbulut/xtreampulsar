@@ -51,6 +51,24 @@ export class UserRepository {
     });
   }
 
+  // Zap-dostu sayim: kullanicinin AKTIF baglantilarinda, istegi yapan cihaz
+  // (ip + userAgent) HARIC kac FARKLI cihaz var? Tek cihaz kanal degistirince
+  // (zap) kendi eski/hayalet baglantisi sayilmaz → mesru izleyici bloklanmaz.
+  // Farkli cihazlar (kimlik paylasimi) ayri sayilir → maxConnections dogru calisir.
+  async countActiveOtherDevices(userId: string, ip: string, userAgent?: string): Promise<number> {
+    const rows = await this.prisma.connection.findMany({
+      where: { userId, ...activeConnectionWhere() },
+      select: { ip: true, userAgent: true },
+    });
+    const self = `${ip}|${userAgent ?? ''}`;
+    const others = new Set<string>();
+    for (const r of rows) {
+      const key = `${r.ip}|${r.userAgent ?? ''}`;
+      if (key !== self) others.add(key);
+    }
+    return others.size;
+  }
+
   // Anti-restream: aynı IP'den GERÇEKTEN aktif (endedAt=null + taze) bağlantı sayısı.
   countActiveConnectionsByIp(ip: string): Promise<number> {
     return this.prisma.connection.count({
