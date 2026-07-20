@@ -252,5 +252,22 @@
     "expired": "انتهى اشتراك {{username}}",
     "expiryWarning": "ينتهي {{username}} خلال {{days}} يوم",
     "streamDown": "{{streamName}} أصبح غير متصل"
+  },
+  "security": {
+    "tabAccessBlocks": "حظر الوصول",
+    "allCategories": "الكل",
+    "time": "الوقت",
+    "reason": "السبب",
+    "user": "المستخدم",
+    "country": "الدولة",
+    "emptyAccessBlocks": "لا محاولات محظورة.",
+    "cat": {
+      "VPN_BLOCKED": "VPN/بروكسي",
+      "COUNTRY_BLOCKED": "حظر الدولة",
+      "IP_NOT_ALLOWED": "IP غير مسموح",
+      "DEVICE_LOCKED": "قفل الجهاز",
+      "MAX_CONN": "حد الاتصالات",
+      "IP_CAP": "حد لكل IP"
+    }
   }
 }

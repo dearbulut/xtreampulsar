@@ -119,3 +119,37 @@ export function useAuditLogs(filter: AuditLogFilter = {}) {
     placeholderData: (prev) => prev,
   });
 }
+
+// ─── Blocked connection attempts (anti-abuse görünürlüğü) ────────────────────
+export interface BlockedAttempt {
+  id: string;
+  userId: string | null;
+  username: string | null;
+  ip: string | null;
+  country: string | null;
+  reason: string;
+  category: string;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface BlockedAttemptsResponse {
+  items: BlockedAttempt[];
+  total: number;
+  page: number;
+  limit: number;
+  last24h: number;
+  categories: Record<string, number>;
+}
+
+export function useBlockedAttempts(category?: string) {
+  return useQuery({
+    queryKey: ['security', 'blocked-attempts', category ?? 'all'],
+    queryFn: async () => {
+      const q = category ? `?category=${category}` : '';
+      const res = await api.get<{ success: boolean; data: BlockedAttemptsResponse }>(`/security/blocked-attempts${q}`);
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
+  });
+}

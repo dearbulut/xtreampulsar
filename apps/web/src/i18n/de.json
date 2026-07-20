@@ -252,5 +252,22 @@
     "expired": "Abonnement von {{username}} ist abgelaufen",
     "expiryWarning": "{{username}} läuft in {{days}} Tag(en) ab",
     "streamDown": "{{streamName}} ist offline gegangen"
+  },
+  "security": {
+    "tabAccessBlocks": "Zugriffssperren",
+    "allCategories": "Alle",
+    "time": "Zeit",
+    "reason": "Grund",
+    "user": "Benutzer",
+    "country": "Land",
+    "emptyAccessBlocks": "Keine blockierten Versuche.",
+    "cat": {
+      "VPN_BLOCKED": "VPN/Proxy",
+      "COUNTRY_BLOCKED": "Ländersperre",
+      "IP_NOT_ALLOWED": "IP nicht erlaubt",
+      "DEVICE_LOCKED": "Gerätesperre",
+      "MAX_CONN": "Verbindungslimit",
+      "IP_CAP": "Pro-IP-Limit"
+    }
   }
 }

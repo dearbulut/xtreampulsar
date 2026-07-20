@@ -748,6 +748,24 @@ model BackupLog {
 
 // ─── NotificationLog ─────────────────────────────────────────────────────────
 
+// ─── BlockedAttempt (engellenen baglanti denemeleri — anti-abuse gorunurlugu) ─
+
+model BlockedAttempt {
+  id        String   @id @default(cuid())
+  userId    String?
+  username  String?
+  ip        String?
+  country   String?
+  reason    String
+  category  String   // MAX_CONN | IP_CAP | IP_NOT_ALLOWED | COUNTRY_BLOCKED | VPN_BLOCKED | DEVICE_LOCKED
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([category])
+  @@map("blocked_attempts")
+}
+
 model NotificationLog {
   id            String   @id @default(cuid())
   type          String

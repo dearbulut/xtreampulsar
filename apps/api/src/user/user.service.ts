@@ -106,9 +106,16 @@ export class UserService {
     if (!user.expiresAt || user.expiresAt < new Date()) {
       return { allowed: false, reason: 'Account expired' };
     }
+
+    // Engellenen denemeleri kaydeden yardimci (fire-and-forget — deny gecikmesine etkisi yok)
+    const deny = (reason: string, category: string, cc?: string | null) => {
+      this.logBlockedAttempt({ userId, username: user.username, ip, userAgent: _userAgent, reason, category, cc: cc ?? null });
+      return { allowed: false, reason };
+    };
+
     const active = await this.userRepo.countActiveConnections(userId);
     if (active >= user.maxConnections) {
-      return { allowed: false, reason: `Max connections reached (${user.maxConnections})` };
+      return deny(`Max connections reached (${user.maxConnections})`, 'MAX_CONN');
     }
 
     // Anti-restream: per-IP aktif bağlantı tavanı. Çağıran (guard) verirse onu,
@@ -117,7 +124,7 @@ export class UserService {
     if (cap > 0 && ip) {
       const ipActive = await this.userRepo.countActiveConnectionsByIp(ip);
       if (ipActive >= cap) {
-        return { allowed: false, reason: `IP connection limit reached (${cap})` };
+        return deny(`IP connection limit reached (${cap})`, 'IP_CAP');
       }
     }
 
@@ -125,7 +132,7 @@ export class UserService {
     // IP allowlist (lookup gerektirmez)
     const allowedIps = (user as { allowedIps?: string[] }).allowedIps ?? [];
     if (allowedIps.length > 0 && ip && !allowedIps.includes(ip)) {
-      return { allowed: false, reason: 'IP not allowed for this line' };
+      return deny('IP not allowed for this line', 'IP_NOT_ALLOWED');
     }
     // Ülke kilidi + VPN engelleme (yalnız gerektiğinde ip-api sorgusu)
     const allowedCountries = (user as { allowedCountries?: string[] }).allowedCountries ?? [];
@@ -134,10 +141,10 @@ export class UserService {
       const meta = await this.lookupIpMeta(ip);
       if (meta) {
         if (allowedCountries.length > 0 && meta.cc && !allowedCountries.includes(meta.cc)) {
-          return { allowed: false, reason: `Country ${meta.cc} not allowed for this line` };
+          return deny(`Country ${meta.cc} not allowed for this line`, 'COUNTRY_BLOCKED', meta.cc);
         }
         if (blockVpn && meta.proxy) {
-          return { allowed: false, reason: 'VPN/proxy not allowed for this line' };
+          return deny('VPN/proxy not allowed for this line', 'VPN_BLOCKED', meta.cc);
         }
       }
     }
@@ -149,7 +156,7 @@ export class UserService {
       if (!locked) {
         await this.prisma.user.update({ where: { id: userId }, data: { lockedDeviceId: fp } });
       } else if (locked !== fp) {
-        return { allowed: false, reason: 'Device locked to another device' };
+        return deny('Device locked to another device', 'DEVICE_LOCKED');
       }
     }
 
@@ -905,6 +912,40 @@ export class UserService {
     } catch (err) {
       this.logger.error(`Expiry warning email failed: ${(err as Error).message}`);
     }
+  }
+
+  /** Engellenen baglanti denemesini kaydeder. Fire-and-forget; ulke yoksa cache'li ip-api ile zenginlestirir. */
+  private logBlockedAttempt(d: {
+    userId?: string;
+    username?: string | null;
+    ip?: string;
+    userAgent?: string;
+    reason: string;
+    category: string;
+    cc?: string | null;
+  }): void {
+    void (async () => {
+      try {
+        let country = d.cc ?? null;
+        if (!country && d.ip) {
+          const m = await this.lookupIpMeta(d.ip);
+          country = m?.cc || null;
+        }
+        await this.prisma.blockedAttempt.create({
+          data: {
+            userId: d.userId ?? null,
+            username: d.username ?? null,
+            ip: d.ip || null,
+            country,
+            reason: d.reason,
+            category: d.category,
+            userAgent: d.userAgent ? d.userAgent.slice(0, 200) : null,
+          },
+        });
+      } catch {
+        /* fire-and-forget */
+      }
+    })();
   }
 
   private async logNotification(

@@ -55,4 +55,17 @@ export class SecurityController {
   async removeXtreamBlock(@Param('ip') ip: string): Promise<void> {
     await this.securityService.removeXtreamBlock(ip);
   }
+
+  @Get('blocked-attempts')
+  getBlockedAttempts(
+    @Query('category') category?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.securityService.listBlockedAttempts({
+      category,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
 }

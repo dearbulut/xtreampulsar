@@ -204,4 +204,20 @@ export class SecurityService {
       .map(([code, v]) => ({ countryCode: code, country: v.country, connections: v.count }))
       .sort((a, b) => b.connections - a.connections);
   }
+
+  /** Engellenen baglanti denemeleri — anti-abuse gorunurlugu. */
+  async listBlockedAttempts(params: { category?: string; page?: number; limit?: number }) {
+    const page = Number(params.page) > 0 ? Number(params.page) : 1;
+    const limit = Number(params.limit) > 0 ? Math.min(Number(params.limit), 200) : 50;
+    const where = params.category ? { category: params.category } : {};
+    const since = new Date(Date.now() - 24 * 3_600_000);
+    const [items, total, last24h, byCat] = await Promise.all([
+      this.prisma.blockedAttempt.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.blockedAttempt.count({ where }),
+      this.prisma.blockedAttempt.count({ where: { createdAt: { gte: since } } }),
+      this.prisma.blockedAttempt.groupBy({ by: ['category'], _count: { _all: true } }),
+    ]);
+    const categories = Object.fromEntries(byCat.map((c) => [c.category, c._count._all]));
+    return { items, total, page, limit, last24h, categories };
+  }
 }

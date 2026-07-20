@@ -1558,7 +1558,20 @@
     "emptyAuditDesc": "Henüz kayıtlı aksiyon yok.",
     "reasonPlaceholder": "Manuel engelleme",
     "durationLabel": "Süre (dakika, 0 = süresiz)",
-    "block": "Engelle"
+    "block": "Engelle",
+    "tabAccessBlocks": "Erişim Engelleri",
+    "allCategories": "Tümü",
+    "time": "Zaman",
+    "country": "Ülke",
+    "emptyAccessBlocks": "Engellenen deneme yok.",
+    "cat": {
+      "VPN_BLOCKED": "VPN/Proxy",
+      "COUNTRY_BLOCKED": "Ülke engeli",
+      "IP_NOT_ALLOWED": "İzinsiz IP",
+      "DEVICE_LOCKED": "Cihaz kilidi",
+      "MAX_CONN": "Bağlantı limiti",
+      "IP_CAP": "IP başına limit"
+    }
   },
   "servers": {
     "guardSubtitle": "Otomatik IP engelleme sistemi",

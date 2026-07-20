@@ -1558,7 +1558,20 @@
     "emptyAuditDesc": "No actions logged yet.",
     "reasonPlaceholder": "Manual block",
     "durationLabel": "Duration (minutes, 0 = indefinite)",
-    "block": "Block"
+    "block": "Block",
+    "tabAccessBlocks": "Access Blocks",
+    "allCategories": "All",
+    "time": "Time",
+    "country": "Country",
+    "emptyAccessBlocks": "No blocked attempts.",
+    "cat": {
+      "VPN_BLOCKED": "VPN/Proxy",
+      "COUNTRY_BLOCKED": "Country block",
+      "IP_NOT_ALLOWED": "IP not allowed",
+      "DEVICE_LOCKED": "Device lock",
+      "MAX_CONN": "Connection limit",
+      "IP_CAP": "Per-IP limit"
+    }
   },
   "servers": {
     "guardSubtitle": "Automatic IP blocking system",

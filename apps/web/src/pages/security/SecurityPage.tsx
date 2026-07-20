@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText } from 'lucide-react';
+import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText, ShieldAlert } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
-import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, type BlockedIP, type BruteForceLog, type AuditLog } from '@/hooks/useSecurity';
+import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
 export function SecurityPage() {
@@ -13,6 +13,7 @@ export function SecurityPage() {
     { id: 'blocks', label: t('security.tabBlocks') },
     { id: 'bruteforce', label: t('security.tabBruteForce') },
     { id: 'audit', label: t('security.tabAudit'), icon: ScrollText },
+    { id: 'accessBlocks', label: t('security.tabAccessBlocks'), icon: ShieldAlert },
   ];
   const [activeTab, setActiveTab] = useState('blocks');
   const [showBlock, setShowBlock] = useState(false);
@@ -24,6 +25,22 @@ export function SecurityPage() {
   const { data: auditData, isLoading: auditLoading } = useAuditLogs({ page: auditPage, limit: 50 });
   const unblock = useUnblockIP();
   const blockIP = useBlockIP();
+  const [abCategory, setAbCategory] = useState('');
+  const { data: abData, isLoading: abLoading } = useBlockedAttempts(abCategory || undefined);
+  const AB_CAT_BADGE: Record<string, string> = {
+    VPN_BLOCKED: 'badge-danger', DEVICE_LOCKED: 'badge-danger',
+    COUNTRY_BLOCKED: 'badge-warning', IP_NOT_ALLOWED: 'badge-warning',
+    MAX_CONN: 'badge-primary', IP_CAP: 'badge-primary',
+  };
+  const attemptColumns: Column<BlockedAttempt>[] = [
+    { key: 'createdAt', header: t('security.time'), render: (r) => new Date(r.createdAt).toLocaleString() },
+    { key: 'category', header: t('security.reason'), render: (r) => (
+      <span className={cn('badge', AB_CAT_BADGE[r.category] ?? 'badge')}>{t(`security.cat.${r.category}`, r.category)}</span>
+    ) },
+    { key: 'username', header: t('security.user'), render: (r) => <span className="font-mono text-xs">{r.username ?? '\u2014'}</span> },
+    { key: 'ip', header: 'IP', render: (r) => <span className="font-mono text-xs">{r.ip ?? '\u2014'}</span> },
+    { key: 'country', header: t('security.country'), render: (r) => r.country ?? '\u2014' },
+  ];
 
   const handleUnblock = async (ip: string) => {
     if (!confirm(t('security.unblockConfirm', { ip }))) return;
@@ -231,6 +248,27 @@ export function SecurityPage() {
           emptyTitle={t('security.emptyAuditTitle')}
           emptyDescription={t('security.emptyAuditDesc')}
         />
+      )}
+
+      {activeTab === 'accessBlocks' && (
+        <div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {['', 'VPN_BLOCKED', 'COUNTRY_BLOCKED', 'IP_NOT_ALLOWED', 'DEVICE_LOCKED', 'MAX_CONN', 'IP_CAP'].map((c) => (
+              <button key={c || 'all'} onClick={() => setAbCategory(c)}
+                className={cn('px-3 py-1.5 rounded-lg text-sm inline-flex items-center gap-1.5', abCategory === c ? 'bg-primary text-white' : 'bg-surface-2 text-muted hover:text-fg')}>
+                {c ? t(`security.cat.${c}`, c) : t('security.allCategories')}
+                {c && abData?.categories?.[c] ? <span className="text-xs opacity-70">{abData.categories[c]}</span> : null}
+              </button>
+            ))}
+          </div>
+          <DataTable
+            columns={attemptColumns}
+            data={abData?.items ?? []}
+            keyExtractor={(r) => r.id}
+            isLoading={abLoading}
+            emptyMessage={t('security.emptyAccessBlocks')}
+          />
+        </div>
       )}
 
       <Modal open={showBlock} onClose={() => setShowBlock(false)} title={t('security.blockIP')} size="sm">
