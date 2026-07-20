@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Lock, Bell, BarChart2, Loader2, CheckCircle, Palette, Upload, X } from 'lucide-react';
+import { User, Lock, Bell, BarChart2, Loader2, CheckCircle, Palette, Upload, X, Gift, Copy } from 'lucide-react';
 import {
   useResellerMe,
   useResellerStats,
@@ -8,8 +8,11 @@ import {
   useResellerChangePassword,
   useUpdateResellerBranding,
   useUploadBrandingLogo,
+  useResellerReferral,
 } from '@/hooks/useResellerPanel';
 import { cn } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
@@ -391,6 +394,42 @@ function BrandingSection() {
   );
 }
 
+function ReferralSection() {
+  const { t } = useTranslation();
+  const { data, isLoading } = useResellerReferral();
+  if (isLoading) return <div className="text-sm text-muted py-2">{t('common.loading')}</div>;
+  if (!data) return null;
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-xs font-medium text-muted block mb-1">{t('reseller.profile.referralCode')}</label>
+        <div className="flex items-center gap-2">
+          <input value={data.referralCode} readOnly className="input flex-1 font-mono" />
+          <button type="button" className="btn btn-ghost text-sm inline-flex items-center gap-1"
+            onClick={() => { void copyToClipboard(data.referralCode); toast.success(t('common.copied')); }}>
+            <Copy className="w-4 h-4" /> {t('common.copy')}
+          </button>
+        </div>
+        <p className="text-xs text-muted mt-1">{t('reseller.profile.referralHint')}</p>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-surface-2 p-3 text-center">
+          <div className="text-lg font-bold text-slate-100">{data.referrals}</div>
+          <div className="text-[11px] text-muted">{t('reseller.profile.referrals')}</div>
+        </div>
+        <div className="rounded-lg bg-surface-2 p-3 text-center">
+          <div className="text-lg font-bold text-warning">{data.pendingCredits}</div>
+          <div className="text-[11px] text-muted">{t('reseller.profile.pendingCredits')}</div>
+        </div>
+        <div className="rounded-lg bg-surface-2 p-3 text-center">
+          <div className="text-lg font-bold text-success">{data.paidCredits}</div>
+          <div className="text-[11px] text-muted">{t('reseller.profile.paidCredits')}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ResellerProfilePage() {
@@ -420,6 +459,10 @@ export function ResellerProfilePage() {
 
       <Section title={t('reseller.profile.accountTitle')} icon={BarChart2}>
         <AccountSummarySection />
+      </Section>
+
+      <Section title={t('reseller.profile.referralTitle')} icon={Gift}>
+        <ReferralSection />
       </Section>
     </div>
   );

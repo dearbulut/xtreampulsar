@@ -53,6 +53,7 @@ import { MostWatchedPage } from '@/pages/analytics/MostWatchedPage';
 import { StoreOrdersPage } from '@/pages/store/StoreOrdersPage';
 import { StorefrontPage } from '@/pages/store/StorefrontPage';
 import { SystemHealthPage } from '@/pages/system/SystemHealthPage';
+import { CommissionsPage } from '@/pages/commissions/CommissionsPage';
 import { InvoicesPage } from '@/pages/invoices/InvoicesPage';
 import { SubtitlesPage } from '@/pages/subtitles/SubtitlesPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
@@ -296,6 +297,12 @@ const systemHealthRoute = createRoute({
   component: SystemHealthPage,
 });
 
+const commissionsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/commissions',
+  component: CommissionsPage,
+});
+
 const invoicesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/invoices',
@@ -489,6 +496,7 @@ const routeTree = rootRoute.addChildren([
     mostWatchedRoute,
     storeOrdersRoute,
     systemHealthRoute,
+    commissionsRoute,
     invoicesRoute,
     subtitlesRoute,
     m3uSyncRoute,

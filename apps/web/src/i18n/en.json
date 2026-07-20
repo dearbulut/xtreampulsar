@@ -35,7 +35,8 @@
     "storeOrders": "Store Orders",
     "systemHealth": "System Health",
     "invoices": "Invoices",
-    "subtitles": "Subtitles"
+    "subtitles": "Subtitles",
+    "commissions": "Commissions"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -79,7 +80,9 @@
     "of": "of",
     "rows": "rows",
     "comingSoon": "This page is under construction. Coming soon.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1112,7 +1115,13 @@
       "maxSize": "Max. 2 MB",
       "brandName": "Brand Name",
       "brandPlaceholder": "Reseller Panel",
-      "brandHint": "If left empty, \"Reseller Panel\" is shown"
+      "brandHint": "If left empty, \"Reseller Panel\" is shown",
+      "referralTitle": "Referral & Commission",
+      "referralCode": "Your referral code",
+      "referralHint": "Give this code to new resellers; once the admin assigns it, you earn commission as your referral buys credits.",
+      "referrals": "Your referrals",
+      "pendingCredits": "Pending credits",
+      "paidCredits": "Paid credits"
     },
     "quick": {
       "createdTitle": "User Created",
@@ -2184,5 +2193,30 @@
     "attachTo": "Attach to {{movie}}",
     "pickTargetFirst": "Pick a target movie above first",
     "attached": "{{lang}} subtitle attached to {{movie}}"
+  },
+  "commissions": {
+    "title": "Commissions",
+    "subtitle": "Affiliate: credit commission for referring resellers.",
+    "all": "All",
+    "statusPending": "Pending",
+    "statusPaid": "Paid",
+    "pendingTotal": "Pending total",
+    "paidTotal": "Paid total",
+    "credits": "credits",
+    "rate": "Commission rate (%)",
+    "setReferrerTitle": "Assign referrer",
+    "setReferrerHint": "Match a reseller with the referral code of whoever referred them. Then, as that reseller buys credits, commission accrues to the referrer.",
+    "pickReseller": "Pick reseller",
+    "referrerCode": "Referral code (REF…)",
+    "referrerSet": "Referrer assigned",
+    "assign": "Assign",
+    "empty": "No commissions.",
+    "earner": "Earner",
+    "source": "Source reseller",
+    "amount": "Amount",
+    "status": "Status",
+    "date": "Date",
+    "markPaid": "Pay (in credits)",
+    "paidToast": "Commission paid; credits added to the earner"
   }
 }

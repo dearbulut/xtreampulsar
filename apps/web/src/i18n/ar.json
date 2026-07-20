@@ -32,7 +32,8 @@
     "storeOrders": "طلبات المتجر",
     "systemHealth": "صحة النظام",
     "invoices": "الفواتير",
-    "subtitles": "الترجمات"
+    "subtitles": "الترجمات",
+    "commissions": "العمولات"
   },
   "common": {
     "save": "حفظ",
@@ -63,7 +64,9 @@
     "page": "صفحة",
     "of": "من",
     "rows": "صفوف",
-    "saved": "تم الحفظ"
+    "saved": "تم الحفظ",
+    "copy": "نسخ",
+    "copied": "تم النسخ"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -385,5 +388,40 @@
     "attachTo": "إضافة إلى {{movie}}",
     "pickTargetFirst": "اختر فيلمًا هدفًا من الأعلى أولاً",
     "attached": "أُضيفت ترجمة {{lang}} إلى {{movie}}"
+  },
+  "commissions": {
+    "title": "العمولات",
+    "subtitle": "الإحالة: عمولة رصيد للموزّعين المُحيلين.",
+    "all": "الكل",
+    "statusPending": "قيد الانتظار",
+    "statusPaid": "مدفوعة",
+    "pendingTotal": "إجمالي المعلّق",
+    "paidTotal": "إجمالي المدفوع",
+    "credits": "رصيد",
+    "rate": "نسبة العمولة (%)",
+    "setReferrerTitle": "تعيين المُحيل",
+    "setReferrerHint": "طابِق موزّعًا مع رمز إحالة من أحاله. بعدها تُحتسب العمولة للمُحيل كلما اشترى ذلك الموزّع رصيدًا.",
+    "pickReseller": "اختر موزّعًا",
+    "referrerCode": "رمز الإحالة (REF…)",
+    "referrerSet": "تم تعيين المُحيل",
+    "assign": "تعيين",
+    "empty": "لا عمولات.",
+    "earner": "المستفيد",
+    "source": "الموزّع المصدر",
+    "amount": "المبلغ",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "markPaid": "دفع (رصيدًا)",
+    "paidToast": "دُفعت العمولة؛ أُضيف الرصيد للمستفيد"
+  },
+  "reseller": {
+    "profile": {
+      "referralTitle": "الإحالة والعمولة",
+      "referralCode": "رمز الإحالة الخاص بك",
+      "referralHint": "أعطِ هذا الرمز للموزّعين الجدد؛ بمجرد تعيين المسؤول له، تكسب عمولة كلما اشترى مُحالك رصيدًا.",
+      "referrals": "إحالاتك",
+      "pendingCredits": "رصيد معلّق",
+      "paidCredits": "رصيد مدفوع"
+    }
   }
 }

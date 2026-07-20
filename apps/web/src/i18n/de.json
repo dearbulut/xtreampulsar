@@ -32,7 +32,8 @@
     "storeOrders": "Shop-Bestellungen",
     "systemHealth": "Systemzustand",
     "invoices": "Rechnungen",
-    "subtitles": "Untertitel"
+    "subtitles": "Untertitel",
+    "commissions": "Provisionen"
   },
   "common": {
     "save": "Speichern",
@@ -63,7 +64,9 @@
     "page": "Seite",
     "of": "von",
     "rows": "Zeilen",
-    "saved": "Gespeichert"
+    "saved": "Gespeichert",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -385,5 +388,40 @@
     "attachTo": "Zu {{movie}} hinzufügen",
     "pickTargetFirst": "Zuerst oben einen Zielfilm wählen",
     "attached": "{{lang}}-Untertitel zu {{movie}} hinzugefügt"
+  },
+  "commissions": {
+    "title": "Provisionen",
+    "subtitle": "Affiliate: Kredit-Provision für werbende Händler.",
+    "all": "Alle",
+    "statusPending": "Ausstehend",
+    "statusPaid": "Bezahlt",
+    "pendingTotal": "Ausstehend gesamt",
+    "paidTotal": "Bezahlt gesamt",
+    "credits": "Credits",
+    "rate": "Provisionssatz (%)",
+    "setReferrerTitle": "Werber zuweisen",
+    "setReferrerHint": "Ordne einem Händler den Referral-Code seines Werbers zu. Danach fällt Provision an den Werber an, sobald dieser Händler Credits kauft.",
+    "pickReseller": "Händler wählen",
+    "referrerCode": "Referral-Code (REF…)",
+    "referrerSet": "Werber zugewiesen",
+    "assign": "Zuweisen",
+    "empty": "Keine Provisionen.",
+    "earner": "Empfänger",
+    "source": "Quell-Händler",
+    "amount": "Betrag",
+    "status": "Status",
+    "date": "Datum",
+    "markPaid": "Auszahlen (Credits)",
+    "paidToast": "Provision ausgezahlt; Credits gutgeschrieben"
+  },
+  "reseller": {
+    "profile": {
+      "referralTitle": "Empfehlung & Provision",
+      "referralCode": "Dein Referral-Code",
+      "referralHint": "Gib diesen Code an neue Händler; sobald der Admin ihn zuweist, verdienst du Provision, wenn dein Geworbener Credits kauft.",
+      "referrals": "Deine Empfehlungen",
+      "pendingCredits": "Ausstehende Credits",
+      "paidCredits": "Bezahlte Credits"
+    }
   }
 }

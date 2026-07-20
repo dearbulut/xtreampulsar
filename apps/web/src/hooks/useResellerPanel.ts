@@ -808,3 +808,13 @@ export function useRevokeResellerApiKey() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller-panel', 'api-keys'] }),
   });
 }
+
+export function useResellerReferral() {
+  return useQuery({
+    queryKey: ['reseller-panel', 'referral'],
+    queryFn: async () => {
+      const res = await resellerApi.get<{ success: boolean; data: { referralCode: string; referrals: number; pendingCredits: number; paidCredits: number } }>('/commissions/me');
+      return res.data.data;
+    },
+  });
+}

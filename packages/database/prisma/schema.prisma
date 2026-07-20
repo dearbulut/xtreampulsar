@@ -417,6 +417,12 @@ model Reseller {
   parent   Reseller?  @relation("ResellerHierarchy", fields: [parentId], references: [id])
   children Reseller[] @relation("ResellerHierarchy")
 
+  // Affiliate: bu bayiyi kim getirdi (referans)
+  referralCode String?    @unique
+  referredById String?
+  referredBy   Reseller?  @relation("ResellerReferral", fields: [referredById], references: [id])
+  referrals    Reseller[] @relation("ResellerReferral")
+
   users         User[]
   creditLogs    ResellerCreditLog[]
   notifications ResellerNotification[]
@@ -591,6 +597,22 @@ model StreamSubtitle {
   @@map("stream_subtitles")
 }
 
+// ─── ResellerCommission (affiliate komisyonu — kredi bazli) ──────────────────
+
+model ResellerCommission {
+  id               String    @id @default(cuid())
+  resellerId       String    // komisyonu kazanan (referans veren) bayi
+  sourceResellerId String?   // komisyonu ureten (referans edilen) bayi
+  amount           Int       // kazanilan kredi
+  note             String?
+  status           String    @default("PENDING") // PENDING | PAID
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([resellerId, status])
+  @@map("reseller_commissions")
+}
+
 // ─── StoreOrder (self-servis magaza siparisi) ────────────────────────────────
 
 // ─── PanelInvoice (operator → musteri/bayi faturasi) ─────────────────────────
@@ -701,6 +723,7 @@ model Settings {
   adminStreamingIps       String[] @default([])
   panelName               String   @default("XtreamPulsar")
   currency                String   @default("TRY") // panel geneli varsayilan para birimi (kod)
+  commissionRate          Int      @default(0) // affiliate komisyon yuzdesi (0 = kapali)
   // Otomatik ban: kisa surede cok kez engellenen IP'leri otomatik banla
   autoBanEnabled          Boolean  @default(false)
   autoBanThreshold        Int      @default(10)

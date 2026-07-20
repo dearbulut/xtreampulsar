@@ -35,7 +35,8 @@
     "storeOrders": "Mağaza Siparişleri",
     "systemHealth": "Sistem Sağlığı",
     "invoices": "Faturalar",
-    "subtitles": "Altyazılar"
+    "subtitles": "Altyazılar",
+    "commissions": "Komisyonlar"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -79,7 +80,9 @@
     "of": "/",
     "rows": "satır",
     "comingSoon": "Bu sayfa yapım aşamasındadır. Yakında eklenecek.",
-    "saved": "Kaydedildi"
+    "saved": "Kaydedildi",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1112,7 +1115,13 @@
       "maxSize": "Maks. 2 MB",
       "brandName": "Marka Adı",
       "brandPlaceholder": "Bayi Paneli",
-      "brandHint": "Boş bırakılırsa \"Bayi Paneli\" gösterilir"
+      "brandHint": "Boş bırakılırsa \"Bayi Paneli\" gösterilir",
+      "referralTitle": "Referans & Komisyon",
+      "referralCode": "Referans kodun",
+      "referralHint": "Bu kodu yeni bayilere ver; panel yöneticisi kodu atadığında, getirdiğin bayi kredi aldıkça komisyon kazanırsın.",
+      "referrals": "Getirdiğin bayi",
+      "pendingCredits": "Bekleyen kredi",
+      "paidCredits": "Ödenen kredi"
     },
     "quick": {
       "createdTitle": "Kullanıcı Oluşturuldu",
@@ -2184,5 +2193,30 @@
     "attachTo": "{{movie}} filmine ekle",
     "pickTargetFirst": "Önce yukarıdan hedef film seç",
     "attached": "{{lang}} altyazı {{movie}} filmine eklendi"
+  },
+  "commissions": {
+    "title": "Komisyonlar",
+    "subtitle": "Affiliate: referans eden bayilere kredi komisyonu.",
+    "all": "Tümü",
+    "statusPending": "Bekliyor",
+    "statusPaid": "Ödendi",
+    "pendingTotal": "Bekleyen toplam",
+    "paidTotal": "Ödenen toplam",
+    "credits": "kredi",
+    "rate": "Komisyon oranı (%)",
+    "setReferrerTitle": "Bayiye referans ata",
+    "setReferrerHint": "Bir bayiyi, onu getiren bayinin referans kodu ile eşleştir. Sonra o bayi kredi aldıkça referans verene komisyon işlenir.",
+    "pickReseller": "Bayi seç",
+    "referrerCode": "Referans kodu (REF…)",
+    "referrerSet": "Referans atandı",
+    "assign": "Ata",
+    "empty": "Komisyon yok.",
+    "earner": "Kazanan",
+    "source": "Kaynak bayi",
+    "amount": "Tutar",
+    "status": "Durum",
+    "date": "Tarih",
+    "markPaid": "Öde (krediyle)",
+    "paidToast": "Komisyon ödendi, kazanan bayiye kredi eklendi"
   }
 }

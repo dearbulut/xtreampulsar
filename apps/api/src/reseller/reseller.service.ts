@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@xtreampulsar/database';
 import { PaymentRequiredException } from '../common/exceptions/payment-required.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { CommissionService } from '../commission/commission.service';
 import { activeConnectionWhere } from '../user/user.repository';
 import { CreateResellerDto } from './dto/create-reseller.dto';
 import { UpdateResellerDto } from './dto/update-reseller.dto';
@@ -23,6 +24,7 @@ export class ResellerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly commission: CommissionService,
   ) {}
 
   findAll() {
@@ -252,6 +254,9 @@ export class ResellerService {
         data: { resellerId: id, amount, type: 'ADD', reason, balanceAfter, adminId },
       }),
     ]);
+
+    // Affiliate: bu bayiyi referans eden varsa komisyon tahakkuk ettir (fire-and-forget)
+    this.commission.accrue(id, amount);
 
     return updated;
   }

@@ -35,6 +35,7 @@ import {
   ShoppingBag,
   Receipt,
   Captions,
+  HandCoins,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -117,6 +118,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
       { label: 'nav.storeOrders', to: '/store-orders', icon: ShoppingBag },
       { label: 'nav.invoices', to: '/invoices', icon: Receipt },
+      { label: 'nav.commissions', to: '/commissions', icon: HandCoins },
       { label: 'nav.activationCodes', to: '/activation-codes', icon: Ticket },
       { label: 'nav.settings', to: '/settings', icon: Settings },
     ],
