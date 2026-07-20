@@ -32,7 +32,8 @@
     "m3uSync": "Otomatik M3U Sync",
     "activationCodes": "Aktivasyon Kodları",
     "mostWatched": "En Çok İzlenen",
-    "storeOrders": "Mağaza Siparişleri"
+    "storeOrders": "Mağaza Siparişleri",
+    "systemHealth": "Sistem Sağlığı"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -2085,6 +2086,30 @@
   "notif": {
     "expired": "{{username}} aboneliği sona erdi",
     "expiryWarning": "{{username}} {{days}} gün içinde sona eriyor",
-    "streamDown": "{{streamName}} çevrimdışı oldu"
+    "streamDown": "{{streamName}} çevrimdışı oldu",
+    "systemAlert": "{{metric}} kullanımı %{{value}} (eşik %{{threshold}})"
+  },
+  "system": {
+    "title": "Sistem Sağlığı",
+    "subtitle": "Sunucu CPU, RAM ve disk kullanımı — eşik aşımında uyarı.",
+    "cpu": "İşlemci (CPU)",
+    "ram": "Bellek (RAM)",
+    "disk": "Disk",
+    "cores": "{{n}} çekirdek",
+    "load": "yük",
+    "on": "Açık",
+    "off": "Kapalı",
+    "alertsTitle": "Eşik Uyarıları",
+    "alertsHint": "Kullanım eşiği aşılınca Discord/Telegram/panel bildirimi gönderilir (5 dk'da bir kontrol, metrik başına 30 dk soğuma).",
+    "cpuThreshold": "CPU eşiği (%)",
+    "memThreshold": "RAM eşiği (%)",
+    "diskThreshold": "Disk eşiği (%)",
+    "checkNow": "Şimdi kontrol et",
+    "checkOk": "Tüm metrikler eşik altında",
+    "checkAlerted": "Uyarı gönderildi: {{list}}",
+    "autoRefresh": "5 sn'de bir güncellenir",
+    "uptimeDH": "{{d}}g {{h}}sa çalışıyor",
+    "uptimeHM": "{{h}}sa {{m}}dk çalışıyor",
+    "uptimeM": "{{m}}dk çalışıyor"
   }
 }

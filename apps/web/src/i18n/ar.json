@@ -29,7 +29,8 @@
       "management": "الإدارة"
     },
     "mostWatched": "الأكثر مشاهدة",
-    "storeOrders": "طلبات المتجر"
+    "storeOrders": "طلبات المتجر",
+    "systemHealth": "صحة النظام"
   },
   "common": {
     "save": "حفظ",
@@ -258,7 +259,8 @@
   "notif": {
     "expired": "انتهى اشتراك {{username}}",
     "expiryWarning": "ينتهي {{username}} خلال {{days}} يوم",
-    "streamDown": "{{streamName}} أصبح غير متصل"
+    "streamDown": "{{streamName}} أصبح غير متصل",
+    "systemAlert": "استخدام {{metric}} ‏{{value}}% (الحد {{threshold}}%)"
   },
   "security": {
     "tabAccessBlocks": "حظر الوصول",
@@ -287,5 +289,28 @@
       "runNow": "تشغيل الآن",
       "runResult": "فُحص {{scanned}} IP، حُظر {{banned}}"
     }
+  },
+  "system": {
+    "title": "صحة النظام",
+    "subtitle": "استخدام المعالج والذاكرة والقرص — تنبيهات عند تجاوز الحد.",
+    "cpu": "المعالج (CPU)",
+    "ram": "الذاكرة (RAM)",
+    "disk": "القرص",
+    "cores": "{{n}} نواة",
+    "load": "الحمل",
+    "on": "مفعّل",
+    "off": "معطّل",
+    "alertsTitle": "تنبيهات الحدود",
+    "alertsHint": "يُرسل تنبيه Discord/Telegram/اللوحة عند تجاوز الحد (فحص كل 5 دقائق، تهدئة 30 دقيقة لكل مقياس).",
+    "cpuThreshold": "حد المعالج (%)",
+    "memThreshold": "حد الذاكرة (%)",
+    "diskThreshold": "حد القرص (%)",
+    "checkNow": "افحص الآن",
+    "checkOk": "جميع المقاييس تحت الحدود",
+    "checkAlerted": "أُرسل التنبيه: {{list}}",
+    "autoRefresh": "يُحدَّث كل 5 ثوانٍ",
+    "uptimeDH": "يعمل {{d}}ي {{h}}س",
+    "uptimeHM": "يعمل {{h}}س {{m}}د",
+    "uptimeM": "يعمل {{m}}د"
   }
 }

@@ -32,7 +32,8 @@
     "m3uSync": "Auto M3U Sync",
     "activationCodes": "Activation Codes",
     "mostWatched": "Most Watched",
-    "storeOrders": "Store Orders"
+    "storeOrders": "Store Orders",
+    "systemHealth": "System Health"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -2085,6 +2086,30 @@
   "notif": {
     "expired": "{{username}}'s subscription has expired",
     "expiryWarning": "{{username}} expires in {{days}} day(s)",
-    "streamDown": "{{streamName}} went offline"
+    "streamDown": "{{streamName}} went offline",
+    "systemAlert": "{{metric}} usage {{value}}% (threshold {{threshold}}%)"
+  },
+  "system": {
+    "title": "System Health",
+    "subtitle": "Server CPU, RAM and disk usage — alerts on threshold breach.",
+    "cpu": "Processor (CPU)",
+    "ram": "Memory (RAM)",
+    "disk": "Disk",
+    "cores": "{{n}} cores",
+    "load": "load",
+    "on": "On",
+    "off": "Off",
+    "alertsTitle": "Threshold Alerts",
+    "alertsHint": "Sends a Discord/Telegram/panel alert when usage exceeds a threshold (checks every 5 min, 30 min cooldown per metric).",
+    "cpuThreshold": "CPU threshold (%)",
+    "memThreshold": "RAM threshold (%)",
+    "diskThreshold": "Disk threshold (%)",
+    "checkNow": "Check now",
+    "checkOk": "All metrics below thresholds",
+    "checkAlerted": "Alert sent: {{list}}",
+    "autoRefresh": "Refreshes every 5s",
+    "uptimeDH": "up {{d}}d {{h}}h",
+    "uptimeHM": "up {{h}}h {{m}}m",
+    "uptimeM": "up {{m}}m"
   }
 }

@@ -108,6 +108,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
       { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'nav.security', to: '/security', icon: Shield },
+      { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },
       { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },

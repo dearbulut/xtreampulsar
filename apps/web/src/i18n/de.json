@@ -29,7 +29,8 @@
       "management": "VERWALTUNG"
     },
     "mostWatched": "Meistgesehen",
-    "storeOrders": "Shop-Bestellungen"
+    "storeOrders": "Shop-Bestellungen",
+    "systemHealth": "Systemzustand"
   },
   "common": {
     "save": "Speichern",
@@ -258,7 +259,8 @@
   "notif": {
     "expired": "Abonnement von {{username}} ist abgelaufen",
     "expiryWarning": "{{username}} läuft in {{days}} Tag(en) ab",
-    "streamDown": "{{streamName}} ist offline gegangen"
+    "streamDown": "{{streamName}} ist offline gegangen",
+    "systemAlert": "{{metric}}-Nutzung {{value}}% (Schwelle {{threshold}}%)"
   },
   "security": {
     "tabAccessBlocks": "Zugriffssperren",
@@ -287,5 +289,28 @@
       "runNow": "Jetzt ausführen",
       "runResult": "{{scanned}} IPs geprüft, {{banned}} gesperrt"
     }
+  },
+  "system": {
+    "title": "Systemzustand",
+    "subtitle": "Server-CPU, -RAM und -Festplatte — Warnungen bei Schwellenüberschreitung.",
+    "cpu": "Prozessor (CPU)",
+    "ram": "Arbeitsspeicher (RAM)",
+    "disk": "Festplatte",
+    "cores": "{{n}} Kerne",
+    "load": "Last",
+    "on": "An",
+    "off": "Aus",
+    "alertsTitle": "Schwellenwarnungen",
+    "alertsHint": "Sendet eine Discord/Telegram/Panel-Warnung bei Überschreitung (Prüfung alle 5 Min, 30 Min Abklingzeit pro Metrik).",
+    "cpuThreshold": "CPU-Schwelle (%)",
+    "memThreshold": "RAM-Schwelle (%)",
+    "diskThreshold": "Festplatten-Schwelle (%)",
+    "checkNow": "Jetzt prüfen",
+    "checkOk": "Alle Metriken unter den Schwellen",
+    "checkAlerted": "Warnung gesendet: {{list}}",
+    "autoRefresh": "Alle 5s aktualisiert",
+    "uptimeDH": "{{d}}T {{h}}Std aktiv",
+    "uptimeHM": "{{h}}Std {{m}}Min aktiv",
+    "uptimeM": "{{m}}Min aktiv"
   }
 }

@@ -52,6 +52,7 @@ import { ActivationCodesPage } from '@/pages/activation/ActivationCodesPage';
 import { MostWatchedPage } from '@/pages/analytics/MostWatchedPage';
 import { StoreOrdersPage } from '@/pages/store/StoreOrdersPage';
 import { StorefrontPage } from '@/pages/store/StorefrontPage';
+import { SystemHealthPage } from '@/pages/system/SystemHealthPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
@@ -287,6 +288,12 @@ const storeOrdersRoute = createRoute({
   component: StoreOrdersPage,
 });
 
+const systemHealthRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/system-health',
+  component: SystemHealthPage,
+});
+
 // Public self-servis magaza (auth yok, panel-moddan bagimsiz)
 const storefrontRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -467,6 +474,7 @@ const routeTree = rootRoute.addChildren([
     activationCodesRoute,
     mostWatchedRoute,
     storeOrdersRoute,
+    systemHealthRoute,
     m3uSyncRoute,
   ]),
 ]);
