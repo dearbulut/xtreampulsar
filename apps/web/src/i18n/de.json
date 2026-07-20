@@ -31,7 +31,8 @@
     "mostWatched": "Meistgesehen",
     "storeOrders": "Shop-Bestellungen",
     "systemHealth": "Systemzustand",
-    "invoices": "Rechnungen"
+    "invoices": "Rechnungen",
+    "subtitles": "Untertitel"
   },
   "common": {
     "save": "Speichern",
@@ -61,7 +62,8 @@
     "total": "Gesamt",
     "page": "Seite",
     "of": "von",
-    "rows": "Zeilen"
+    "rows": "Zeilen",
+    "saved": "Gespeichert"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -346,5 +348,25 @@
     "invoice": "RECHNUNG",
     "billedTo": "Rechnung an",
     "total": "Gesamt"
+  },
+  "subtitles": {
+    "title": "Untertitel",
+    "subtitle": "Untertitel (.srt) über OpenSubtitles suchen und herunterladen.",
+    "providerTitle": "Anbieter (OpenSubtitles)",
+    "providerHint": "Erfordert einen OpenSubtitles-API-Key; zum Herunterladen zusätzlich Benutzername + Passwort. Leer = Funktion inaktiv.",
+    "on": "An",
+    "off": "Aus",
+    "apiKey": "API-Key",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "searchPlaceholder": "Film-/Serientitel suchen…",
+    "search": "Suchen",
+    "noResults": "Keine Ergebnisse — Suche starten.",
+    "language": "Sprache",
+    "release": "Release",
+    "downloads": "Downloads",
+    "download": "Herunterladen",
+    "downloaded": "Untertitel heruntergeladen",
+    "downloadError": "Download fehlgeschlagen"
   }
 }

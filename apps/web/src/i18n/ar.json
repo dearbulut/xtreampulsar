@@ -31,7 +31,8 @@
     "mostWatched": "الأكثر مشاهدة",
     "storeOrders": "طلبات المتجر",
     "systemHealth": "صحة النظام",
-    "invoices": "الفواتير"
+    "invoices": "الفواتير",
+    "subtitles": "الترجمات"
   },
   "common": {
     "save": "حفظ",
@@ -61,7 +62,8 @@
     "total": "الإجمالي",
     "page": "صفحة",
     "of": "من",
-    "rows": "صفوف"
+    "rows": "صفوف",
+    "saved": "تم الحفظ"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -346,5 +348,25 @@
     "invoice": "فاتورة",
     "billedTo": "إلى",
     "total": "الإجمالي"
+  },
+  "subtitles": {
+    "title": "الترجمات",
+    "subtitle": "ابحث ونزّل الترجمات (.srt) عبر OpenSubtitles.",
+    "providerTitle": "المزوّد (OpenSubtitles)",
+    "providerHint": "يتطلب مفتاح OpenSubtitles؛ التنزيل يتطلب أيضًا اسم مستخدم + كلمة مرور. فارغ = الميزة نائمة.",
+    "on": "مفعّل",
+    "off": "معطّل",
+    "apiKey": "مفتاح API",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "searchPlaceholder": "ابحث باسم فيلم/مسلسل…",
+    "search": "بحث",
+    "noResults": "لا نتائج — ابدأ بحثًا.",
+    "language": "اللغة",
+    "release": "الإصدار",
+    "downloads": "التنزيلات",
+    "download": "تنزيل",
+    "downloaded": "تم تنزيل الترجمة",
+    "downloadError": "فشل التنزيل"
   }
 }

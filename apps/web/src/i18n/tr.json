@@ -34,7 +34,8 @@
     "mostWatched": "En Çok İzlenen",
     "storeOrders": "Mağaza Siparişleri",
     "systemHealth": "Sistem Sağlığı",
-    "invoices": "Faturalar"
+    "invoices": "Faturalar",
+    "subtitles": "Altyazılar"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -77,7 +78,8 @@
     "page": "Sayfa",
     "of": "/",
     "rows": "satır",
-    "comingSoon": "Bu sayfa yapım aşamasındadır. Yakında eklenecek."
+    "comingSoon": "Bu sayfa yapım aşamasındadır. Yakında eklenecek.",
+    "saved": "Kaydedildi"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2145,5 +2147,25 @@
     "invoice": "FATURA",
     "billedTo": "Müşteri",
     "total": "Toplam"
+  },
+  "subtitles": {
+    "title": "Altyazılar",
+    "subtitle": "OpenSubtitles üzerinden altyazı ara ve indir (.srt).",
+    "providerTitle": "Sağlayıcı (OpenSubtitles)",
+    "providerHint": "OpenSubtitles API anahtarı gerekli; indirme için kullanıcı adı + şifre de gerekir. Boşsa özellik uykudadır.",
+    "on": "Açık",
+    "off": "Kapalı",
+    "apiKey": "API Anahtarı",
+    "username": "Kullanıcı adı",
+    "password": "Şifre",
+    "searchPlaceholder": "Film/dizi adı ara…",
+    "search": "Ara",
+    "noResults": "Sonuç yok — arama yapın.",
+    "language": "Dil",
+    "release": "Sürüm",
+    "downloads": "İndirme",
+    "download": "İndir",
+    "downloaded": "Altyazı indirildi",
+    "downloadError": "İndirme başarısız"
   }
 }

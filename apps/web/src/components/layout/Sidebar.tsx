@@ -34,6 +34,7 @@ import {
   Flame,
   ShoppingBag,
   Receipt,
+  Captions,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -108,6 +109,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
       { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
       { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
+      { label: 'nav.subtitles', to: '/subtitles', icon: Captions },
       { label: 'nav.security', to: '/security', icon: Shield },
       { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },

@@ -34,7 +34,8 @@
     "mostWatched": "Most Watched",
     "storeOrders": "Store Orders",
     "systemHealth": "System Health",
-    "invoices": "Invoices"
+    "invoices": "Invoices",
+    "subtitles": "Subtitles"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -77,7 +78,8 @@
     "page": "Page",
     "of": "of",
     "rows": "rows",
-    "comingSoon": "This page is under construction. Coming soon."
+    "comingSoon": "This page is under construction. Coming soon.",
+    "saved": "Saved"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2145,5 +2147,25 @@
     "invoice": "INVOICE",
     "billedTo": "Billed to",
     "total": "Total"
+  },
+  "subtitles": {
+    "title": "Subtitles",
+    "subtitle": "Search and download subtitles (.srt) via OpenSubtitles.",
+    "providerTitle": "Provider (OpenSubtitles)",
+    "providerHint": "Requires an OpenSubtitles API key; downloading also needs a username + password. Empty = feature dormant.",
+    "on": "On",
+    "off": "Off",
+    "apiKey": "API Key",
+    "username": "Username",
+    "password": "Password",
+    "searchPlaceholder": "Search a movie/series title…",
+    "search": "Search",
+    "noResults": "No results — run a search.",
+    "language": "Language",
+    "release": "Release",
+    "downloads": "Downloads",
+    "download": "Download",
+    "downloaded": "Subtitle downloaded",
+    "downloadError": "Download failed"
   }
 }

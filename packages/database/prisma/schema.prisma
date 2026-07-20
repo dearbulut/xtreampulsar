@@ -696,6 +696,11 @@ model Settings {
   cpuAlertPct             Int      @default(90)
   memAlertPct             Int      @default(90)
   diskAlertPct            Int      @default(90)
+  // Altyazi arama/indirme (OpenSubtitles) — anahtar girilene kadar uykuda
+  subtitleEnabled         Boolean  @default(false)
+  subtitleApiKey          String   @default("")
+  subtitleUsername        String   @default("")
+  subtitlePassword        String   @default("")
   serverUrl               String   @default("")
   serverUrls              String[] @default([])
   primaryUrlIndex         Int      @default(0)

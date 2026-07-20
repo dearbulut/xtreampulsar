@@ -31,6 +31,7 @@ import { BackupModule } from './backup/backup.module';
 import { NotificationModule } from './notification/notification.module';
 import { MonitorModule } from './monitor/monitor.module';
 import { InvoiceModule } from './invoice/invoice.module';
+import { SubtitleModule } from './subtitle/subtitle.module';
 import { SecurityModule } from './security/security.module';
 import { StalkerModule } from './stalker/stalker.module';
 import { ApiKeyModule } from './api-key/api-key.module';
@@ -77,6 +78,7 @@ import { ResellerApiModule } from './reseller-api/reseller-api.module';
     NotificationModule,
     MonitorModule,
     InvoiceModule,
+    SubtitleModule,
     SecurityModule,
     StalkerModule,
     ApiKeyModule,
