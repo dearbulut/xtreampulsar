@@ -850,7 +850,7 @@ export class UserService {
     for (const u of expired) {
       await this.prisma.user.update({ where: { id: u.id }, data: { status: 'EXPIRED' } });
       await this.userRepo.closeAllUserConnections(u.id).catch(() => {});
-      await this.logNotification(u.id, 'EXPIRED', `${u.username} aboneliği sona erdi`);
+      await this.logNotification(u.id, 'EXPIRED', `${u.username} aboneliği sona erdi`, 'expired', { username: u.username });
     }
     if (expired.length > 0) this.logger.log(`Expired ${expired.length} users`);
 
@@ -882,7 +882,7 @@ export class UserService {
         if (already) continue;
 
         await this.sendExpiryWarning(u, days);
-        await this.logNotification(u.id, `EXPIRY_${days}D`, `${u.username} ${days} gün içinde sona eriyor`);
+        await this.logNotification(u.id, `EXPIRY_${days}D`, `${u.username} ${days} gün içinde sona eriyor`, 'expiryWarning', { username: u.username, days });
       }
     }
   }
@@ -907,9 +907,22 @@ export class UserService {
     }
   }
 
-  private async logNotification(recipient: string, type: string, subject: string) {
+  private async logNotification(
+    recipient: string,
+    type: string,
+    subject: string,
+    messageKey?: string,
+    messageParams?: Record<string, unknown>,
+  ) {
     await this.prisma.notificationLog.create({
-      data: { type, recipient, subject, status: 'SENT' },
+      data: {
+        type,
+        recipient,
+        subject,
+        status: 'SENT',
+        ...(messageKey ? { messageKey } : {}),
+        ...(messageParams ? { messageParams } : {}),
+      },
     }).catch(() => {});
   }
 

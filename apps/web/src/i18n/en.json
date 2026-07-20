@@ -2050,5 +2050,10 @@
     "sending": "Sending…",
     "placeOrder": "Place order",
     "orderHint": "Payment details will be shared by email."
+  },
+  "notif": {
+    "expired": "{{username}}'s subscription has expired",
+    "expiryWarning": "{{username}} expires in {{days}} day(s)",
+    "streamDown": "{{streamName}} went offline"
   }
 }

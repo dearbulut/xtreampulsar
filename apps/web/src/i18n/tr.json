@@ -2050,5 +2050,10 @@
     "sending": "Gönderiliyor…",
     "placeOrder": "Sipariş ver",
     "orderHint": "Ödeme bilgileri e-posta ile paylaşılacaktır."
+  },
+  "notif": {
+    "expired": "{{username}} aboneliği sona erdi",
+    "expiryWarning": "{{username}} {{days}} gün içinde sona eriyor",
+    "streamDown": "{{streamName}} çevrimdışı oldu"
   }
 }

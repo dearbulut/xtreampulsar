@@ -117,6 +117,8 @@ export class NotificationService {
             type: 'STREAM_DOWN',
             recipient: settings.adminEmail,
             subject,
+            messageKey: 'streamDown',
+            messageParams: { streamName },
             status: sent ? 'SENT' : 'FAILED',
           },
         });
@@ -157,6 +159,8 @@ export class NotificationService {
           type: 'USER_EXPIRING',
           recipient: resellerEmail,
           subject,
+          messageKey: 'expiryWarning',
+          messageParams: { username, days: daysLeft },
           status: 'SENT',
         },
       });

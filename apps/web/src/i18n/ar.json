@@ -247,5 +247,10 @@
     "sending": "جارٍ الإرسال…",
     "placeOrder": "إرسال الطلب",
     "orderHint": "ستُشارك تفاصيل الدفع عبر البريد الإلكتروني."
+  },
+  "notif": {
+    "expired": "انتهى اشتراك {{username}}",
+    "expiryWarning": "ينتهي {{username}} خلال {{days}} يوم",
+    "streamDown": "{{streamName}} أصبح غير متصل"
   }
 }

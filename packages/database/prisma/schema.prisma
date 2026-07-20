@@ -749,13 +749,15 @@ model BackupLog {
 // ─── NotificationLog ─────────────────────────────────────────────────────────
 
 model NotificationLog {
-  id        String   @id @default(cuid())
-  type      String
-  recipient String
-  subject   String
-  status    String   @default("SENT")
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  type          String
+  recipient     String
+  subject       String   // ham metin (e-posta + eski kayitlar icin yedek)
+  messageKey    String?  // i18n anahtari — panelde izleyenin diline gore cevrilir
+  messageParams Json?    // i18n interpolasyon parametreleri ( or. {username, days})
+  status        String   @default("SENT")
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   @@map("notification_logs")
 }

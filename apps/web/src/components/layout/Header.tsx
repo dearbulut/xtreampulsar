@@ -18,6 +18,8 @@ interface NotificationLog {
   type: string;
   recipient: string;
   subject: string;
+  messageKey?: string | null;
+  messageParams?: Record<string, unknown> | null;
   status: 'SENT' | 'FAILED' | 'PENDING';
   isRead: boolean;
   createdAt: string;
@@ -516,7 +518,7 @@ export function Header({ title, breadcrumb }: Props) {
                     >
                       {notifIcon(n.type)}
                       <div className="flex-1 min-w-0">
-                        <div className={cn('text-xs truncate', n.isRead ? 'text-muted' : 'text-slate-200 font-medium')}>{n.subject}</div>
+                        <div className={cn('text-xs truncate', n.isRead ? 'text-muted' : 'text-slate-200 font-medium')}>{n.messageKey ? t(`notif.${n.messageKey}`, { ...(n.messageParams ?? {}), defaultValue: n.subject }) : n.subject}</div>
                         <div className="text-[11px] text-muted truncate">{n.recipient}</div>
                         <div className="text-[10px] text-muted/60 mt-0.5">{relativeTime(n.createdAt, t)}</div>
                       </div>

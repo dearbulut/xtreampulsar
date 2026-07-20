@@ -247,5 +247,10 @@
     "sending": "Senden…",
     "placeOrder": "Bestellen",
     "orderHint": "Zahlungsdetails werden per E-Mail mitgeteilt."
+  },
+  "notif": {
+    "expired": "Abonnement von {{username}} ist abgelaufen",
+    "expiryWarning": "{{username}} läuft in {{days}} Tag(en) ab",
+    "streamDown": "{{streamName}} ist offline gegangen"
   }
 }
