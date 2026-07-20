@@ -31,7 +31,8 @@
     "clientRequests": "Reports & Requests",
     "m3uSync": "Auto M3U Sync",
     "activationCodes": "Activation Codes",
-    "mostWatched": "Most Watched"
+    "mostWatched": "Most Watched",
+    "storeOrders": "Store Orders"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -565,7 +566,9 @@
     "bouquetsHint": "Users who receive this package automatically get the selected bouquets. If left empty, the user is assigned the default bouquet.",
     "noBouquets": "No bouquets yet.",
     "packageCount_one": "{{count}} package",
-    "packageCount_other": "{{count}} packages"
+    "packageCount_other": "{{count}} packages",
+    "storeShow": "Show in store",
+    "storeHide": "Hide from store"
   },
   "settings": {
     "title": "Settings",
@@ -1998,5 +2001,52 @@
     "minShortBare": "min",
     "hourShort": "h",
     "empty": "No watch data in this range."
+  },
+  "store": {
+    "ordersTitle": "Store Orders",
+    "ordersSubtitle": "Orders from the self-service store. Fulfill → a line is created automatically.",
+    "openStorefront": "Open store",
+    "all": "All",
+    "statusPending": "Pending",
+    "statusPaid": "Paid",
+    "statusFulfilled": "Fulfilled",
+    "statusCancelled": "Cancelled",
+    "noOrders": "No orders.",
+    "package": "Package",
+    "contact": "Contact",
+    "price": "Price",
+    "status": "Status",
+    "date": "Date",
+    "desiredUsername": "Requested username",
+    "username": "Username",
+    "password": "Password",
+    "markPaid": "Mark paid",
+    "fulfill": "Fulfill",
+    "cancel": "Cancel",
+    "fulfilled": "Order fulfilled — line created"
+  },
+  "storefront": {
+    "store": "Store",
+    "thanksTitle": "Order received!",
+    "thanksBody": "We'll reach out by email shortly. Thank you.",
+    "heroTitle": "Choose your subscription",
+    "heroSubtitle": "Pick a package and leave your details — we'll set up your account and get back to you.",
+    "noPackages": "No packages on sale right now.",
+    "free": "Free",
+    "days": "days",
+    "conn": "conn.",
+    "selected": "Selected",
+    "choose": "Choose",
+    "orderTitle": "Order details",
+    "orderFor": "Package",
+    "email": "Email",
+    "desiredUsername": "Preferred username",
+    "optional": "optional",
+    "note": "Note",
+    "notePlaceholder": "Any note you'd like to add (opt.)",
+    "error": "Could not place order",
+    "sending": "Sending…",
+    "placeOrder": "Place order",
+    "orderHint": "Payment details will be shared by email."
   }
 }

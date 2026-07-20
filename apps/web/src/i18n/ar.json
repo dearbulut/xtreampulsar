@@ -28,7 +28,8 @@
       "analytics": "التحليلات",
       "management": "الإدارة"
     },
-    "mostWatched": "الأكثر مشاهدة"
+    "mostWatched": "الأكثر مشاهدة",
+    "storeOrders": "طلبات المتجر"
   },
   "common": {
     "save": "حفظ",
@@ -124,7 +125,9 @@
     "creditCost": "الرصيد",
     "price": "السعر",
     "users": "المستخدمون",
-    "addPackage": "إضافة حزمة"
+    "addPackage": "إضافة حزمة",
+    "storeShow": "إظهار في المتجر",
+    "storeHide": "إخفاء من المتجر"
   },
   "settings": {
     "title": "الإعدادات",
@@ -195,5 +198,52 @@
     "minShortBare": "د",
     "hourShort": "س",
     "empty": "لا بيانات مشاهدة في هذه الفترة."
+  },
+  "store": {
+    "ordersTitle": "طلبات المتجر",
+    "ordersSubtitle": "الطلبات من المتجر ذاتي الخدمة. عند التنفيذ يُنشأ خط تلقائيًا.",
+    "openStorefront": "فتح المتجر",
+    "all": "الكل",
+    "statusPending": "قيد الانتظار",
+    "statusPaid": "مدفوع",
+    "statusFulfilled": "منفّذ",
+    "statusCancelled": "ملغى",
+    "noOrders": "لا طلبات.",
+    "package": "الباقة",
+    "contact": "التواصل",
+    "price": "السعر",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "desiredUsername": "اسم المستخدم المطلوب",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "markPaid": "تعليم كمدفوع",
+    "fulfill": "تنفيذ",
+    "cancel": "إلغاء",
+    "fulfilled": "تم تنفيذ الطلب — أُنشئ الخط"
+  },
+  "storefront": {
+    "store": "المتجر",
+    "thanksTitle": "تم استلام طلبك!",
+    "thanksBody": "سنتواصل معك عبر البريد قريبًا. شكرًا لك.",
+    "heroTitle": "اختر اشتراكك",
+    "heroSubtitle": "اختر باقة واترك بياناتك — سنجهّز حسابك ونعاود التواصل.",
+    "noPackages": "لا باقات معروضة حاليًا.",
+    "free": "مجاني",
+    "days": "يوم",
+    "conn": "اتصال",
+    "selected": "مُختار",
+    "choose": "اختيار",
+    "orderTitle": "تفاصيل الطلب",
+    "orderFor": "الباقة",
+    "email": "البريد الإلكتروني",
+    "desiredUsername": "اسم المستخدم المفضّل",
+    "optional": "اختياري",
+    "note": "ملاحظة",
+    "notePlaceholder": "أي ملاحظة تود إضافتها (اختياري)",
+    "error": "تعذّر إرسال الطلب",
+    "sending": "جارٍ الإرسال…",
+    "placeOrder": "إرسال الطلب",
+    "orderHint": "ستُشارك تفاصيل الدفع عبر البريد الإلكتروني."
   }
 }

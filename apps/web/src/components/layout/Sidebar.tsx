@@ -32,6 +32,7 @@ import {
   Rss,
   Ticket,
   Flame,
+  ShoppingBag,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -110,6 +111,7 @@ const NAV: NavGroup[] = [
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },
       { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
+      { label: 'nav.storeOrders', to: '/store-orders', icon: ShoppingBag },
       { label: 'nav.activationCodes', to: '/activation-codes', icon: Ticket },
       { label: 'nav.settings', to: '/settings', icon: Settings },
     ],

@@ -31,7 +31,8 @@
     "clientRequests": "Bildirim & İstekler",
     "m3uSync": "Otomatik M3U Sync",
     "activationCodes": "Aktivasyon Kodları",
-    "mostWatched": "En Çok İzlenen"
+    "mostWatched": "En Çok İzlenen",
+    "storeOrders": "Mağaza Siparişleri"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -565,7 +566,9 @@
     "bouquetsHint": "Bu paketi alan kullanıcılar seçilen bouquet'leri otomatik alır. Boş bırakılırsa kullanıcıya varsayılan bouquet atanır.",
     "noBouquets": "Henüz bouquet yok.",
     "packageCount_one": "{{count}} paket",
-    "packageCount_other": "{{count}} paket"
+    "packageCount_other": "{{count}} paket",
+    "storeShow": "Mağazada göster",
+    "storeHide": "Mağazadan gizle"
   },
   "settings": {
     "title": "Ayarlar",
@@ -1998,5 +2001,52 @@
     "minShortBare": "dk",
     "hourShort": "sa",
     "empty": "Bu aralıkta izlenme verisi yok."
+  },
+  "store": {
+    "ordersTitle": "Mağaza Siparişleri",
+    "ordersSubtitle": "Self-servis mağazadan gelen siparişler. Karşıla → hat otomatik oluşur.",
+    "openStorefront": "Mağazayı aç",
+    "all": "Tümü",
+    "statusPending": "Bekliyor",
+    "statusPaid": "Ödendi",
+    "statusFulfilled": "Karşılandı",
+    "statusCancelled": "İptal",
+    "noOrders": "Sipariş yok.",
+    "package": "Paket",
+    "contact": "İletişim",
+    "price": "Fiyat",
+    "status": "Durum",
+    "date": "Tarih",
+    "desiredUsername": "İstenen kullanıcı adı",
+    "username": "Kullanıcı adı",
+    "password": "Şifre",
+    "markPaid": "Ödendi işaretle",
+    "fulfill": "Karşıla",
+    "cancel": "İptal et",
+    "fulfilled": "Sipariş karşılandı — hat oluşturuldu"
+  },
+  "storefront": {
+    "store": "Mağaza",
+    "thanksTitle": "Siparişiniz alındı!",
+    "thanksBody": "En kısa sürede e-posta ile iletişime geçeceğiz. Teşekkürler.",
+    "heroTitle": "Abonelik paketini seç",
+    "heroSubtitle": "Paketini seç, bilgilerini bırak — hesabın hazırlanınca sana ulaşalım.",
+    "noPackages": "Şu an satışta paket yok.",
+    "free": "Ücretsiz",
+    "days": "gün",
+    "conn": "bağlantı",
+    "selected": "Seçildi",
+    "choose": "Seç",
+    "orderTitle": "Sipariş bilgileri",
+    "orderFor": "Paket",
+    "email": "E-posta",
+    "desiredUsername": "İstediğin kullanıcı adı",
+    "optional": "opsiyonel",
+    "note": "Not",
+    "notePlaceholder": "Eklemek istediğin bir not (ops.)",
+    "error": "Sipariş gönderilemedi",
+    "sending": "Gönderiliyor…",
+    "placeOrder": "Sipariş ver",
+    "orderHint": "Ödeme bilgileri e-posta ile paylaşılacaktır."
   }
 }

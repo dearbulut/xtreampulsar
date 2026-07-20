@@ -50,6 +50,8 @@ import { SupportPage } from '@/pages/support/SupportPage';
 import { ClientRequestsPage } from '@/pages/client-requests/ClientRequestsPage';
 import { ActivationCodesPage } from '@/pages/activation/ActivationCodesPage';
 import { MostWatchedPage } from '@/pages/analytics/MostWatchedPage';
+import { StoreOrdersPage } from '@/pages/store/StoreOrdersPage';
+import { StorefrontPage } from '@/pages/store/StorefrontPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
@@ -279,6 +281,19 @@ const mostWatchedRoute = createRoute({
   component: MostWatchedPage,
 });
 
+const storeOrdersRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/store-orders',
+  component: StoreOrdersPage,
+});
+
+// Public self-servis magaza (auth yok, panel-moddan bagimsiz)
+const storefrontRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/store',
+  component: StorefrontPage,
+});
+
 const m3uSyncRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/m3u-sources',
@@ -402,6 +417,7 @@ const clientDashboardRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  storefrontRoute,
   setup2FARoute,
   resellerLoginRoute,
   resellerLayoutRoute.addChildren([
@@ -450,6 +466,7 @@ const routeTree = rootRoute.addChildren([
     clientRequestsRoute,
     activationCodesRoute,
     mostWatchedRoute,
+    storeOrdersRoute,
     m3uSyncRoute,
   ]),
 ]);

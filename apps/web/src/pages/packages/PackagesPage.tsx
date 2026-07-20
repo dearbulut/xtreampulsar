@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Edit2, Package as PackageIcon, Clock, Users, Coins, ToggleLeft, ToggleRight, Store } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { usePackages, useCreatePackage, useUpdatePackage, useDeletePackage } from '@/hooks/usePackages';
 import { useBouquets } from '@/hooks/useBouquets';
@@ -122,6 +122,13 @@ export function PackagesPage() {
                     {pkg.isActive
                       ? <ToggleRight className="w-4 h-4 text-emerald-400" />
                       : <ToggleLeft className="w-4 h-4 text-muted" />}
+                  </button>
+                  <button
+                    className="btn btn-ghost p-1.5"
+                    title={pkg.isPublic ? t('packages.storeHide') : t('packages.storeShow')}
+                    onClick={() => updatePkg.mutate({ id: pkg.id, data: { isPublic: !pkg.isPublic } })}
+                  >
+                    <Store className={cn('w-3.5 h-3.5', pkg.isPublic ? 'text-primary' : 'text-muted')} />
                   </button>
                   <button className="btn btn-ghost p-1.5" onClick={() => openEdit(pkg)}>
                     <Edit2 className="w-3.5 h-3.5" />

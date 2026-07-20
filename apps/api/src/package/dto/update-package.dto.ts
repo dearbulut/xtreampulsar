@@ -47,6 +47,10 @@ export class UpdatePackageDto {
   isActive?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   bouquetIds?: string[];

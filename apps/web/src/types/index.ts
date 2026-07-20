@@ -206,6 +206,7 @@ export interface Package {
   price: number;
   description?: string;
   isActive: boolean;
+  isPublic?: boolean;
   createdAt: string;
   _count?: { users: number };
   bouquets?: { id: string; name: string }[];

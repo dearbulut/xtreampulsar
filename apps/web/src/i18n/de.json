@@ -28,7 +28,8 @@
       "analytics": "ANALYTIK",
       "management": "VERWALTUNG"
     },
-    "mostWatched": "Meistgesehen"
+    "mostWatched": "Meistgesehen",
+    "storeOrders": "Shop-Bestellungen"
   },
   "common": {
     "save": "Speichern",
@@ -124,7 +125,9 @@
     "creditCost": "Credits",
     "price": "Preis",
     "users": "Benutzer",
-    "addPackage": "Paket hinzufügen"
+    "addPackage": "Paket hinzufügen",
+    "storeShow": "Im Shop anzeigen",
+    "storeHide": "Aus Shop ausblenden"
   },
   "settings": {
     "title": "Einstellungen",
@@ -195,5 +198,52 @@
     "minShortBare": "Min",
     "hourShort": "Std",
     "empty": "Keine Sehdaten in diesem Zeitraum."
+  },
+  "store": {
+    "ordersTitle": "Shop-Bestellungen",
+    "ordersSubtitle": "Bestellungen aus dem Self-Service-Shop. Erfüllen → eine Linie wird automatisch erstellt.",
+    "openStorefront": "Shop öffnen",
+    "all": "Alle",
+    "statusPending": "Ausstehend",
+    "statusPaid": "Bezahlt",
+    "statusFulfilled": "Erfüllt",
+    "statusCancelled": "Storniert",
+    "noOrders": "Keine Bestellungen.",
+    "package": "Paket",
+    "contact": "Kontakt",
+    "price": "Preis",
+    "status": "Status",
+    "date": "Datum",
+    "desiredUsername": "Gewünschter Benutzername",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "markPaid": "Als bezahlt markieren",
+    "fulfill": "Erfüllen",
+    "cancel": "Stornieren",
+    "fulfilled": "Bestellung erfüllt — Linie erstellt"
+  },
+  "storefront": {
+    "store": "Shop",
+    "thanksTitle": "Bestellung erhalten!",
+    "thanksBody": "Wir melden uns in Kürze per E-Mail. Vielen Dank.",
+    "heroTitle": "Wähle dein Abo",
+    "heroSubtitle": "Wähle ein Paket und hinterlasse deine Daten — wir richten dein Konto ein und melden uns.",
+    "noPackages": "Derzeit keine Pakete im Verkauf.",
+    "free": "Kostenlos",
+    "days": "Tage",
+    "conn": "Verb.",
+    "selected": "Ausgewählt",
+    "choose": "Wählen",
+    "orderTitle": "Bestelldetails",
+    "orderFor": "Paket",
+    "email": "E-Mail",
+    "desiredUsername": "Bevorzugter Benutzername",
+    "optional": "optional",
+    "note": "Notiz",
+    "notePlaceholder": "Eine Notiz, die du hinzufügen möchtest (opt.)",
+    "error": "Bestellung fehlgeschlagen",
+    "sending": "Senden…",
+    "placeOrder": "Bestellen",
+    "orderHint": "Zahlungsdetails werden per E-Mail mitgeteilt."
   }
 }

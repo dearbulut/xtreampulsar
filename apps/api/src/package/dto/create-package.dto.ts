@@ -42,6 +42,10 @@ export class CreatePackageDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
   // Bu paketi alan kullanıcı bu bouquet'leri miras alır.
   @IsOptional()
   @IsArray()

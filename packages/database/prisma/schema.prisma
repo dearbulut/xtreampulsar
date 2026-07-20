@@ -565,6 +565,7 @@ model Package {
   price          Float    @default(0)
   description    String?
   isActive       Boolean  @default(true)
+  isPublic       Boolean  @default(false) // self-servis magazada satisa acik
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -573,6 +574,27 @@ model Package {
   bouquets Bouquet[]
 
   @@map("packages")
+}
+
+// ─── StoreOrder (self-servis magaza siparisi) ────────────────────────────────
+
+model StoreOrder {
+  id                  String   @id @default(cuid())
+  packageId           String
+  packageName         String
+  price               Float    @default(0)
+  contactEmail        String
+  desiredUsername     String?
+  note                String?
+  status              String   @default("PENDING") // PENDING | PAID | FULFILLED | CANCELLED
+  provisionedUserId   String?
+  provisionedUsername String?
+  provisionedPassword String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+  @@map("store_orders")
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
