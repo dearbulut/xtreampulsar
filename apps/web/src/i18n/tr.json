@@ -30,7 +30,8 @@
     },
     "clientRequests": "Bildirim & İstekler",
     "m3uSync": "Otomatik M3U Sync",
-    "activationCodes": "Aktivasyon Kodları"
+    "activationCodes": "Aktivasyon Kodları",
+    "mostWatched": "En Çok İzlenen"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -1976,5 +1977,26 @@
     "enable": "Aktifleştir",
     "empty": "Kod yok — yukarıdan üretin.",
     "days": "gün"
+  },
+  "mostWatched": {
+    "title": "En Çok İzlenen",
+    "subtitle": "Film ve dizi içeriklerinin izlenme sıralaması — oturum, benzersiz izleyici ve toplam izleme süresi.",
+    "range24h": "24 saat",
+    "range7d": "7 gün",
+    "range30d": "30 gün",
+    "typeAll": "Tümü",
+    "typeLive": "Canlı",
+    "typeVod": "Film",
+    "typeSeries": "Dizi",
+    "sessions": "Oturum sayısı",
+    "sessionsShort": "Oturum",
+    "uniqueViewers": "Benzersiz izleyici",
+    "viewersShort": "İzleyici",
+    "watchTime": "Toplam izleme süresi",
+    "watchShort": "Süre",
+    "minShort": "{{n}} dk",
+    "minShortBare": "dk",
+    "hourShort": "sa",
+    "empty": "Bu aralıkta izlenme verisi yok."
   }
 }

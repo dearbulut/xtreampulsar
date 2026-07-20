@@ -38,6 +38,16 @@ export class AnalyticsController {
     return this.analyticsService.getTopStreams(limit ? parseInt(limit, 10) : 10);
   }
 
+  @Get('most-watched')
+  getMostWatched(@Query('range') range?: string, @Query('type') type?: string, @Query('limit') limit?: string) {
+    const hours = range === '7d' ? 168 : range === '30d' ? 720 : 24;
+    const t = ['live', 'vod', 'series'].includes((type ?? '').toLowerCase())
+      ? ((type as string).toLowerCase() as 'live' | 'vod' | 'series')
+      : 'all';
+    const lim = limit ? Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100) : 20;
+    return this.analyticsService.getMostWatched(hours, t, lim);
+  }
+
   @Get('top-users')
   getTopUsers(@Query('limit') limit?: string) {
     return this.analyticsService.getTopUsers(limit ? parseInt(limit, 10) : 10);

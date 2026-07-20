@@ -203,6 +203,80 @@ export class AnalyticsService {
     }
   }
 
+  /**
+   * Zaman aralikli "en cok izlenen" icerik. getTopStreams'ten farki: tarihsel
+   * (baslama tarihine gore), oturum sayisi + benzersiz izleyici + toplam izleme
+   * dakikasi verir ve tipe gore (canli/film/dizi) filtrelenir.
+   */
+  async getMostWatched(
+    rangeHours: number,
+    type: 'all' | 'live' | 'vod' | 'series',
+    limit: number,
+  ): Promise<Array<{
+    streamId: string;
+    name: string;
+    poster: string | null;
+    category: string | null;
+    type: string;
+    sessions: number;
+    uniqueViewers: number;
+    watchMinutes: number;
+  }>> {
+    try {
+      const since = new Date(Date.now() - rangeHours * 3_600_000);
+      const rows = await this.prisma.$queryRaw<
+        Array<{ streamId: string; sessions: bigint; viewers: bigint; secs: number }>
+      >`
+        SELECT "streamId",
+               COUNT(*)::bigint AS sessions,
+               COUNT(DISTINCT "userId")::bigint AS viewers,
+               COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("endedAt", NOW()) - "startedAt"))), 0)::float8 AS secs
+        FROM "connections"
+        WHERE "startedAt" >= ${since}
+        GROUP BY "streamId"
+        ORDER BY sessions DESC
+        LIMIT 300
+      `;
+      if (!rows.length) return [];
+
+      const ids = rows.map((r) => r.streamId);
+      const streams = await this.prisma.stream.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          name: true,
+          posterUrl: true,
+          tvgLogo: true,
+          category: { select: { name: true, type: true } },
+        },
+      });
+      const sMap = new Map(streams.map((s) => [s.id, s]));
+
+      const out = rows
+        .map((r) => {
+          const s = sMap.get(r.streamId);
+          if (!s) return null;
+          return {
+            streamId: r.streamId,
+            name: s.name,
+            poster: s.posterUrl ?? s.tvgLogo ?? null,
+            category: s.category?.name ?? null,
+            type: s.category?.type ?? 'LIVE',
+            sessions: Number(r.sessions),
+            uniqueViewers: Number(r.viewers),
+            watchMinutes: Math.round(Number(r.secs) / 60),
+          };
+        })
+        .filter((v): v is NonNullable<typeof v> => v !== null);
+
+      const filtered = type === 'all' ? out : out.filter((o) => o.type === type.toUpperCase());
+      return filtered.slice(0, limit);
+    } catch (err) {
+      this.logger.error(`getMostWatched: ${(err as Error).message}`);
+      return [];
+    }
+  }
+
   async getTopUsers(limit = 10) {
     try {
       const rows = await this.prisma.connection.groupBy({

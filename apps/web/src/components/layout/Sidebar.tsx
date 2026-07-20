@@ -31,6 +31,7 @@ import {
   MessageSquareWarning,
   Rss,
   Ticket,
+  Flame,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -94,6 +95,7 @@ const NAV: NavGroup[] = [
   {
     label: 'nav.groups.analytics',
     items: [
+      { label: 'nav.mostWatched', to: '/analytics/most-watched', icon: Flame },
       { label: 'nav.revenueReport', to: '/analytics/revenue', icon: TrendingUp },
     ],
   },

@@ -30,7 +30,8 @@
     },
     "clientRequests": "Reports & Requests",
     "m3uSync": "Auto M3U Sync",
-    "activationCodes": "Activation Codes"
+    "activationCodes": "Activation Codes",
+    "mostWatched": "Most Watched"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -1976,5 +1977,26 @@
     "enable": "Enable",
     "empty": "No codes — generate some above.",
     "days": "days"
+  },
+  "mostWatched": {
+    "title": "Most Watched",
+    "subtitle": "Popularity ranking for movie & series content — sessions, unique viewers and total watch time.",
+    "range24h": "24 hours",
+    "range7d": "7 days",
+    "range30d": "30 days",
+    "typeAll": "All",
+    "typeLive": "Live",
+    "typeVod": "Movies",
+    "typeSeries": "Series",
+    "sessions": "Sessions",
+    "sessionsShort": "Plays",
+    "uniqueViewers": "Unique viewers",
+    "viewersShort": "Viewers",
+    "watchTime": "Total watch time",
+    "watchShort": "Time",
+    "minShort": "{{n}} min",
+    "minShortBare": "min",
+    "hourShort": "h",
+    "empty": "No watch data in this range."
   }
 }

@@ -27,7 +27,8 @@
       "epg": "EPG",
       "analytics": "التحليلات",
       "management": "الإدارة"
-    }
+    },
+    "mostWatched": "الأكثر مشاهدة"
   },
   "common": {
     "save": "حفظ",
@@ -173,5 +174,26 @@
     "enable": "تفعيل",
     "empty": "لا رموز — ولّدها من الأعلى.",
     "days": "أيام"
+  },
+  "mostWatched": {
+    "title": "الأكثر مشاهدة",
+    "subtitle": "ترتيب شعبية محتوى الأفلام والمسلسلات — الجلسات والمشاهدون الفريدون وإجمالي وقت المشاهدة.",
+    "range24h": "24 ساعة",
+    "range7d": "7 أيام",
+    "range30d": "30 يومًا",
+    "typeAll": "الكل",
+    "typeLive": "مباشر",
+    "typeVod": "أفلام",
+    "typeSeries": "مسلسلات",
+    "sessions": "الجلسات",
+    "sessionsShort": "تشغيل",
+    "uniqueViewers": "مشاهدون فريدون",
+    "viewersShort": "مشاهدون",
+    "watchTime": "إجمالي وقت المشاهدة",
+    "watchShort": "المدة",
+    "minShort": "{{n}} د",
+    "minShortBare": "د",
+    "hourShort": "س",
+    "empty": "لا بيانات مشاهدة في هذه الفترة."
   }
 }

@@ -49,6 +49,7 @@ import { ResellerApiPage } from '@/pages/reseller/ResellerApiPage';
 import { SupportPage } from '@/pages/support/SupportPage';
 import { ClientRequestsPage } from '@/pages/client-requests/ClientRequestsPage';
 import { ActivationCodesPage } from '@/pages/activation/ActivationCodesPage';
+import { MostWatchedPage } from '@/pages/analytics/MostWatchedPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
@@ -272,6 +273,12 @@ const activationCodesRoute = createRoute({
   component: ActivationCodesPage,
 });
 
+const mostWatchedRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/analytics/most-watched',
+  component: MostWatchedPage,
+});
+
 const m3uSyncRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/m3u-sources',
@@ -442,6 +449,7 @@ const routeTree = rootRoute.addChildren([
     supportRoute,
     clientRequestsRoute,
     activationCodesRoute,
+    mostWatchedRoute,
     m3uSyncRoute,
   ]),
 ]);

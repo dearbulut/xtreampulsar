@@ -27,7 +27,8 @@
       "epg": "EPG",
       "analytics": "ANALYTIK",
       "management": "VERWALTUNG"
-    }
+    },
+    "mostWatched": "Meistgesehen"
   },
   "common": {
     "save": "Speichern",
@@ -173,5 +174,26 @@
     "enable": "Aktivieren",
     "empty": "Keine Codes — oben erzeugen.",
     "days": "Tage"
+  },
+  "mostWatched": {
+    "title": "Meistgesehen",
+    "subtitle": "Beliebtheitsranking für Film- und Serieninhalte — Sitzungen, eindeutige Zuschauer und Gesamtsehdauer.",
+    "range24h": "24 Stunden",
+    "range7d": "7 Tage",
+    "range30d": "30 Tage",
+    "typeAll": "Alle",
+    "typeLive": "Live",
+    "typeVod": "Filme",
+    "typeSeries": "Serien",
+    "sessions": "Sitzungen",
+    "sessionsShort": "Wdg.",
+    "uniqueViewers": "Eindeutige Zuschauer",
+    "viewersShort": "Zuschauer",
+    "watchTime": "Gesamtsehdauer",
+    "watchShort": "Dauer",
+    "minShort": "{{n}} Min",
+    "minShortBare": "Min",
+    "hourShort": "Std",
+    "empty": "Keine Sehdaten in diesem Zeitraum."
   }
 }
