@@ -5,6 +5,8 @@ export interface MonitorStatus {
   cpu: number;
   mem: number;
   disk: number;
+  rxMbps: number;
+  txMbps: number;
   memTotalMb: number;
   memUsedMb: number;
   loadAvg: number[];
@@ -17,6 +19,7 @@ export interface MonitorConfig {
   cpuAlertPct: number;
   memAlertPct: number;
   diskAlertPct: number;
+  netAlertMbps: number;
 }
 
 export function useMonitorStatus() {

@@ -2110,7 +2110,7 @@
     "expired": "{{username}}'s subscription has expired",
     "expiryWarning": "{{username}} expires in {{days}} day(s)",
     "streamDown": "{{streamName}} went offline",
-    "systemAlert": "{{metric}} usage {{value}}% (threshold {{threshold}}%)"
+    "systemAlert": "{{metric}}: {{value}}{{unit}} (threshold {{threshold}}{{unit}})"
   },
   "system": {
     "title": "System Health",
@@ -2133,7 +2133,10 @@
     "autoRefresh": "Refreshes every 5s",
     "uptimeDH": "up {{d}}d {{h}}h",
     "uptimeHM": "up {{h}}h {{m}}m",
-    "uptimeM": "up {{m}}m"
+    "uptimeM": "up {{m}}m",
+    "network": "Network",
+    "netHint": "Current in/out throughput (approx).",
+    "netThreshold": "Network threshold (Mbps)"
   },
   "invoices": {
     "title": "Invoices",

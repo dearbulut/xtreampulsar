@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cpu, MemoryStick, HardDrive, Save, Play, Activity, Bell } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Save, Play, Activity, Bell, ArrowDownUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import {
   useMonitorStatus,
@@ -56,13 +56,23 @@ export function SystemHealthPage() {
     <div>
       <PageHeader title={t('system.title')} description={t('system.subtitle')} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <Gauge icon={Cpu} label={t('system.cpu')} value={status?.cpu ?? 0} threshold={form?.cpuAlertPct ?? 90}
           sub={status ? t('system.cores', { n: status.cores }) + ' · ' + t('system.load') + ' ' + (status.loadAvg[0] ?? 0) : undefined} />
         <Gauge icon={MemoryStick} label={t('system.ram')} value={status?.mem ?? 0} threshold={form?.memAlertPct ?? 90}
           sub={status ? `${status.memUsedMb} / ${status.memTotalMb} MB` : undefined} />
         <Gauge icon={HardDrive} label={t('system.disk')} value={status?.disk ?? 0} threshold={form?.diskAlertPct ?? 90}
           sub={status ? fmtUptime(status.uptimeSecs, t) : undefined} />
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-sm text-muted"><ArrowDownUp className="w-4 h-4" /> {t('system.network')}</div>
+          </div>
+          <div className="flex items-baseline gap-4">
+            <div><span className="text-lg font-bold text-success">↓ {status?.rxMbps ?? 0}</span> <span className="text-xs text-muted">Mbps</span></div>
+            <div><span className="text-lg font-bold text-primary-light">↑ {status?.txMbps ?? 0}</span> <span className="text-xs text-muted">Mbps</span></div>
+          </div>
+          <div className="text-xs text-muted mt-2">{t('system.netHint')}</div>
+        </div>
       </div>
 
       <div className="card p-5">
@@ -80,7 +90,7 @@ export function SystemHealthPage() {
         <p className="text-xs text-muted mb-4">{t('system.alertsHint')}</p>
         {form && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs text-muted mb-1">{t('system.cpuThreshold')}</label>
                 <input type="number" min={1} max={100} className="input" value={form.cpuAlertPct} onChange={num('cpuAlertPct')} />
@@ -92,6 +102,11 @@ export function SystemHealthPage() {
               <div>
                 <label className="block text-xs text-muted mb-1">{t('system.diskThreshold')}</label>
                 <input type="number" min={1} max={100} className="input" value={form.diskAlertPct} onChange={num('diskAlertPct')} />
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1">{t('system.netThreshold')}</label>
+                <input type="number" min={0} className="input" value={form.netAlertMbps}
+                  onChange={(e) => setForm((f) => (f ? { ...f, netAlertMbps: Math.max(0, parseInt(e.target.value, 10) || 0) } : f))} />
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2">

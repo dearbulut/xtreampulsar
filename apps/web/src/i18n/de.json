@@ -277,7 +277,7 @@
     "expired": "Abonnement von {{username}} ist abgelaufen",
     "expiryWarning": "{{username}} läuft in {{days}} Tag(en) ab",
     "streamDown": "{{streamName}} ist offline gegangen",
-    "systemAlert": "{{metric}}-Nutzung {{value}}% (Schwelle {{threshold}}%)"
+    "systemAlert": "{{metric}}: {{value}}{{unit}} (Schwelle {{threshold}}{{unit}})"
   },
   "security": {
     "tabAccessBlocks": "Zugriffssperren",
@@ -328,7 +328,10 @@
     "autoRefresh": "Alle 5s aktualisiert",
     "uptimeDH": "{{d}}T {{h}}Std aktiv",
     "uptimeHM": "{{h}}Std {{m}}Min aktiv",
-    "uptimeM": "{{m}}Min aktiv"
+    "uptimeM": "{{m}}Min aktiv",
+    "network": "Netzwerk",
+    "netHint": "Aktueller Ein-/Ausgangsdurchsatz (ca.).",
+    "netThreshold": "Netzwerk-Schwelle (Mbps)"
   },
   "invoices": {
     "title": "Rechnungen",

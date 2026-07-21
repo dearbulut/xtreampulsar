@@ -277,7 +277,7 @@
     "expired": "انتهى اشتراك {{username}}",
     "expiryWarning": "ينتهي {{username}} خلال {{days}} يوم",
     "streamDown": "{{streamName}} أصبح غير متصل",
-    "systemAlert": "استخدام {{metric}} ‏{{value}}% (الحد {{threshold}}%)"
+    "systemAlert": "{{metric}}: {{value}}{{unit}} (الحد {{threshold}}{{unit}})"
   },
   "security": {
     "tabAccessBlocks": "حظر الوصول",
@@ -328,7 +328,10 @@
     "autoRefresh": "يُحدَّث كل 5 ثوانٍ",
     "uptimeDH": "يعمل {{d}}ي {{h}}س",
     "uptimeHM": "يعمل {{h}}س {{m}}د",
-    "uptimeM": "يعمل {{m}}د"
+    "uptimeM": "يعمل {{m}}د",
+    "network": "الشبكة",
+    "netHint": "معدل النقل الوارد/الصادر الحالي (تقريبي).",
+    "netThreshold": "حد الشبكة (Mbps)"
   },
   "invoices": {
     "title": "الفواتير",

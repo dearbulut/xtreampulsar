@@ -734,6 +734,7 @@ model Settings {
   cpuAlertPct             Int      @default(90)
   memAlertPct             Int      @default(90)
   diskAlertPct            Int      @default(90)
+  netAlertMbps            Int      @default(0) // toplam ag throughput uyari esigi (Mbps, 0 = kapali)
   // Altyazi arama/indirme (OpenSubtitles) — anahtar girilene kadar uykuda
   subtitleEnabled         Boolean  @default(false)
   subtitleApiKey          String   @default("")

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import * as os from 'os';
+import * as fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +19,7 @@ export class MonitorService {
   private readonly logger = new Logger(MonitorService.name);
   // Uyarı tekrarını önle: metrik başına son uyarı zamanı (30 dk soğuma).
   private readonly lastAlert = new Map<string, number>();
+  private lastNet: { rx: number; tx: number; at: number } | null = null;
   private static readonly COOLDOWN_MS = 30 * 60_000;
 
   constructor(
@@ -61,13 +63,48 @@ export class MonitorService {
     }
   }
 
+  private readNetTotals(): { rx: number; tx: number } {
+    try {
+      const data = fs.readFileSync('/proc/net/dev', 'utf8');
+      let rx = 0;
+      let tx = 0;
+      for (const line of data.split('\n')) {
+        const m = line.match(/^\s*([^:]+):\s*(.+)$/);
+        if (!m) continue;
+        if (m[1].trim() === 'lo') continue;
+        const cols = m[2].trim().split(/\s+/).map(Number);
+        rx += cols[0] || 0;
+        tx += cols[8] || 0;
+      }
+      return { rx, tx };
+    } catch {
+      return { rx: 0, tx: 0 };
+    }
+  }
+
+  /** Son çağrıya göre ağ throughput'u (Mbps). İlk çağrı 0 döner. */
+  private netThroughput(): { rxMbps: number; txMbps: number } {
+    const now = this.readNetTotals();
+    const at = Date.now();
+    const prev = this.lastNet;
+    this.lastNet = { rx: now.rx, tx: now.tx, at };
+    if (!prev || at <= prev.at) return { rxMbps: 0, txMbps: 0 };
+    const secs = (at - prev.at) / 1000;
+    const rxMbps = Math.max(0, ((now.rx - prev.rx) * 8) / secs / 1e6);
+    const txMbps = Math.max(0, ((now.tx - prev.tx) * 8) / secs / 1e6);
+    return { rxMbps: Math.round(rxMbps * 10) / 10, txMbps: Math.round(txMbps * 10) / 10 };
+  }
+
   /** Anlık kaynak durumu. */
   async getStatus() {
     const [cpu, disk] = await Promise.all([this.cpuPercent(), this.diskPercent()]);
+    const net = this.netThroughput();
     return {
       cpu,
       mem: this.memPercent(),
       disk,
+      rxMbps: net.rxMbps,
+      txMbps: net.txMbps,
       memTotalMb: Math.round(os.totalmem() / 1_048_576),
       memUsedMb: Math.round((os.totalmem() - os.freemem()) / 1_048_576),
       loadAvg: os.loadavg().map((n) => Math.round(n * 100) / 100),
@@ -81,18 +118,19 @@ export class MonitorService {
       where: { id: 'singleton' },
       update: {},
       create: { id: 'singleton' },
-      select: { sysMonitorEnabled: true, cpuAlertPct: true, memAlertPct: true, diskAlertPct: true },
+      select: { sysMonitorEnabled: true, cpuAlertPct: true, memAlertPct: true, diskAlertPct: true, netAlertMbps: true },
     });
-    return { enabled: s.sysMonitorEnabled, cpuAlertPct: s.cpuAlertPct, memAlertPct: s.memAlertPct, diskAlertPct: s.diskAlertPct };
+    return { enabled: s.sysMonitorEnabled, cpuAlertPct: s.cpuAlertPct, memAlertPct: s.memAlertPct, diskAlertPct: s.diskAlertPct, netAlertMbps: s.netAlertMbps };
   }
 
-  async updateConfig(dto: { enabled?: boolean; cpuAlertPct?: number; memAlertPct?: number; diskAlertPct?: number }) {
+  async updateConfig(dto: { enabled?: boolean; cpuAlertPct?: number; memAlertPct?: number; diskAlertPct?: number; netAlertMbps?: number }) {
     const clamp = (n: number) => Math.max(1, Math.min(100, Math.floor(Number(n))));
-    const data: { sysMonitorEnabled?: boolean; cpuAlertPct?: number; memAlertPct?: number; diskAlertPct?: number } = {};
+    const data: { sysMonitorEnabled?: boolean; cpuAlertPct?: number; memAlertPct?: number; diskAlertPct?: number; netAlertMbps?: number } = {};
     if (dto.enabled !== undefined) data.sysMonitorEnabled = Boolean(dto.enabled);
     if (dto.cpuAlertPct !== undefined) data.cpuAlertPct = clamp(dto.cpuAlertPct);
     if (dto.memAlertPct !== undefined) data.memAlertPct = clamp(dto.memAlertPct);
     if (dto.diskAlertPct !== undefined) data.diskAlertPct = clamp(dto.diskAlertPct);
+    if (dto.netAlertMbps !== undefined) data.netAlertMbps = Math.max(0, Math.floor(Number(dto.netAlertMbps)));
     await this.prisma.settings.update({ where: { id: 'singleton' }, data });
     return this.getConfig();
   }
@@ -112,6 +150,7 @@ export class MonitorService {
       ['RAM', status.mem, cfg.memAlertPct],
       ['DISK', status.disk, cfg.diskAlertPct],
     ];
+    if (cfg.netAlertMbps > 0) checks.push(['NET', Math.round(status.rxMbps + status.txMbps), cfg.netAlertMbps]);
     for (const [metric, value, threshold] of checks) {
       if (value < threshold) continue;
       if (!force && this.onCooldown(metric)) continue;
@@ -125,11 +164,11 @@ export class MonitorService {
   }
 
   private async sendAlert(metric: string, value: number, threshold: number): Promise<void> {
-    const title = `⚠️ Sistem uyarısı: ${metric} %${value}`;
-    const body = `${metric} kullanımı %${value} (eşik %${threshold}).`;
+    const unit = metric === 'NET' ? ' Mbps' : '%';
+    const title = `⚠️ Sistem uyarısı: ${metric} ${value}${unit}`;
+    const body = `${metric}: ${value}${unit} (eşik ${threshold}${unit}).`;
     await this.notifications.sendDiscordAlert(title, body, 15158332).catch(() => {});
     await this.notifications.sendTelegramAlert(`⚠️ <b>${title}</b>\n${body}`).catch(() => {});
-    // Panel zili için i18n'li kayıt
     await this.prisma.notificationLog
       .create({
         data: {
@@ -137,7 +176,7 @@ export class MonitorService {
           recipient: 'admin',
           subject: body,
           messageKey: 'systemAlert',
-          messageParams: { metric, value, threshold },
+          messageParams: { metric, value, threshold, unit: unit.trim() || '%' },
           status: 'SENT',
         },
       })

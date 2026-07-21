@@ -2110,7 +2110,7 @@
     "expired": "{{username}} aboneliği sona erdi",
     "expiryWarning": "{{username}} {{days}} gün içinde sona eriyor",
     "streamDown": "{{streamName}} çevrimdışı oldu",
-    "systemAlert": "{{metric}} kullanımı %{{value}} (eşik %{{threshold}})"
+    "systemAlert": "{{metric}}: {{value}}{{unit}} (eşik {{threshold}}{{unit}})"
   },
   "system": {
     "title": "Sistem Sağlığı",
@@ -2133,7 +2133,10 @@
     "autoRefresh": "5 sn'de bir güncellenir",
     "uptimeDH": "{{d}}g {{h}}sa çalışıyor",
     "uptimeHM": "{{h}}sa {{m}}dk çalışıyor",
-    "uptimeM": "{{m}}dk çalışıyor"
+    "uptimeM": "{{m}}dk çalışıyor",
+    "network": "Ağ",
+    "netHint": "Anlık gelen/giden trafik (yaklaşık).",
+    "netThreshold": "Ağ eşiği (Mbps)"
   },
   "invoices": {
     "title": "Faturalar",
