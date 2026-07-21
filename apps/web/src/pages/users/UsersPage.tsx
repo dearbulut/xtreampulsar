@@ -1224,7 +1224,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                   { label: 'M3U', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u` },
                   { label: 'TS', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u_plus&output=ts` },
                   { label: 'Player API', suffix: `player_api.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}` },
-                  { label: 'Enigma2', suffix: `enigma2.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}` },
+                  { label: 'Enigma2', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=enigma2` },
                 ]).map(({ label, suffix }) => {
                   const url = `${xtreamBaseUrl}/${suffix}`;
                   return (

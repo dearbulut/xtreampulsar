@@ -36,4 +36,8 @@ export class CreateServerDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  apiSecret?: string;
 }

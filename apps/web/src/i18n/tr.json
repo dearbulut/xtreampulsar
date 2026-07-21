@@ -1651,6 +1651,20 @@
     "maxConnections": "Maks Bağlantı",
     "role": "Rol",
     "locationOptional": "Konum (opsiyonel)",
+    "disk": "Disk",
+    "network": "Ağ",
+    "activeConnections": "Aktif Bağlantı",
+    "apiSecret": "API Secret (Node Anahtarı)",
+    "apiSecretKeep": "Değiştirmemek için boş bırakın",
+    "apiSecretPlaceholder": "Uzak node ile paylaşılan gizli anahtar",
+    "apiSecretHint": "Sistem sağlığını (CPU/RAM/Disk) görebilmek için uzak sunucu, XtreamPulsar node'unu NODE_SECRET bu değere eşit olacak şekilde çalıştırmalıdır.",
+    "sysReason": {
+      "unavailable": "Sistem metrikleri kullanılamıyor",
+      "no-secret": "API secret girilmemiş — sistem metrikleri kapalı",
+      "bad-secret": "API secret hatalı — node erişimi reddetti",
+      "unreachable": "Node'a ulaşılamıyor (port/güvenlik duvarı)",
+      "not-found": "Sunucu bulunamadı"
+    },
     "serverCount_one": "{{count}} sunucu kayıtlı",
     "serverCount_other": "{{count}} sunucu kayıtlı"
   },

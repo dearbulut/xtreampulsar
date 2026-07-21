@@ -143,6 +143,7 @@ model Server {
   maxClients    Int        @default(1000)
   isOnline      Boolean    @default(false)
   location      String?
+  apiSecret     String?    // edge node NODE_SECRET ile eslesir — metrik cekmek icin
   lastCheckedAt DateTime?
   responseTime  Int?
   createdAt     DateTime   @default(now())

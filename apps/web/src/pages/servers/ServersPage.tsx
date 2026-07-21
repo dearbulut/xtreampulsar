@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Server, Plus, Wifi, WifiOff, Trash2, RefreshCw, MapPin,
-  Activity, Edit2, MoreVertical, Shield, Lock, Cpu, MemoryStick, Clock,
+  Activity, Edit2, MoreVertical, Shield, Lock, Cpu, MemoryStick, Clock, Info, Users,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { MiniSparkline } from '@/components/ui/MiniSparkline';
@@ -32,14 +32,36 @@ function GaugeBar({ value, label }: { value: number; label: string }) {
 }
 
 function ServerMetricsPanel({ serverId, isOnline }: { serverId: string; isOnline: boolean }) {
+  const { t } = useTranslation();
   const { data: metrics } = useServerMetrics(serverId, isOnline);
-  if (!metrics || !isOnline) return null;
+  if (!metrics) return null;
 
+  const sys = metrics.systemAvailable;
   return (
     <div className="border-t border-border/50 pt-3 mt-1 space-y-2">
-      <GaugeBar value={metrics.cpu} label="CPU" />
-      <GaugeBar value={metrics.memory} label="RAM" />
+      {sys ? (
+        <>
+          <GaugeBar value={metrics.cpu} label="CPU" />
+          <GaugeBar value={metrics.memory} label="RAM" />
+          <GaugeBar value={metrics.disk} label={t('servers.disk')} />
+          <div className="flex justify-between text-[10px] mt-1">
+            <span className="text-muted flex items-center gap-1"><Activity className="w-3 h-3" /> {t('servers.network')}</span>
+            <span className="font-mono font-semibold text-slate-300">
+              ↓{metrics.rxMbps.toFixed(1)} ↑{metrics.txMbps.toFixed(1)} Mbps
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="text-[10px] text-muted bg-surface-2/50 rounded px-2 py-1.5 flex items-start gap-1.5">
+          <Info className="w-3 h-3 mt-px shrink-0" />
+          <span>{t(`servers.sysReason.${metrics.systemReason ?? 'unavailable'}`, { defaultValue: t('servers.sysReason.unavailable') })}</span>
+        </div>
+      )}
       <div className="flex justify-between text-[10px] mt-1">
+        <span className="text-muted flex items-center gap-1"><Users className="w-3 h-3" /> {t('servers.activeConnections')}</span>
+        <span className="font-mono font-semibold text-slate-300">{metrics.connections}/{metrics.maxClients}</span>
+      </div>
+      <div className="flex justify-between text-[10px]">
         <span className="text-muted flex items-center gap-1"><Clock className="w-3 h-3" /> Ping</span>
         <span className={cn('font-mono font-semibold', metrics.responseTime > 300 ? 'text-danger' : metrics.responseTime > 100 ? 'text-warning' : 'text-success')}>
           {metrics.responseTime}ms
@@ -73,6 +95,7 @@ interface FormState {
   maxClients: string;
   role: 'MAIN' | 'LOAD_BALANCER';
   location: string;
+  apiSecret: string;
 }
 
 const FORM_DEFAULT: FormState = {
@@ -82,6 +105,7 @@ const FORM_DEFAULT: FormState = {
   maxClients: '1000',
   role: 'MAIN',
   location: '',
+  apiSecret: '',
 };
 
 function ServerGuardPanel({ serverId }: { serverId: string }) {
@@ -238,7 +262,7 @@ export function ServersPage() {
 
   const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setEditTab('details'); setShowAdd(true); };
   const openEdit = (s: (typeof servers)[0]) => {
-    setForm({ name: s.name, ip: s.ip, port: String(s.port), maxClients: String(s.maxClients), role: s.role as 'MAIN' | 'LOAD_BALANCER', location: s.location ?? '' });
+    setForm({ name: s.name, ip: s.ip, port: String(s.port), maxClients: String(s.maxClients), role: s.role as 'MAIN' | 'LOAD_BALANCER', location: s.location ?? '', apiSecret: '' });
     setEditTarget(s.id);
     setEditTab('details');
     setShowAdd(true);
@@ -253,6 +277,7 @@ export function ServersPage() {
       maxClients: parseInt(form.maxClients, 10),
       role: form.role,
       location: form.location || undefined,
+      apiSecret: form.apiSecret.trim() || undefined,
     };
     if (editTarget) {
       await updateServer.mutateAsync({ id: editTarget, data: payload });
@@ -510,6 +535,11 @@ export function ServersPage() {
               <div className="col-span-2">
                 <label className="label">{t('servers.locationOptional')}</label>
                 <input className="input" value={form.location} onChange={f('location')} placeholder="İstanbul, TR" />
+              </div>
+              <div className="col-span-2">
+                <label className="label">{t('servers.apiSecret')}</label>
+                <input className="input font-mono" value={form.apiSecret} onChange={f('apiSecret')} placeholder={editTarget ? t('servers.apiSecretKeep') : t('servers.apiSecretPlaceholder')} autoComplete="off" />
+                <p className="text-[11px] text-muted mt-1">{t('servers.apiSecretHint')}</p>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">

@@ -24,6 +24,7 @@ export function useCreateServer() {
       maxClients: number;
       role: 'MAIN' | 'LOAD_BALANCER';
       location?: string;
+      apiSecret?: string;
     }) => api.post<{ success: boolean; data: Server }>('/servers', data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['servers'] });
@@ -70,12 +71,17 @@ export function useServerHealth() {
 export interface ServerMetrics {
   cpu: number;
   memory: number;
+  disk: number;
+  rxMbps: number;
+  txMbps: number;
   connections: number;
   maxClients: number;
   responseTime: number;
   uptime: number;
   isOnline: boolean;
   lastCheckedAt: string | null;
+  systemAvailable: boolean;
+  systemReason?: string;
 }
 
 export function useServerMetrics(serverId: string, enabled = true) {

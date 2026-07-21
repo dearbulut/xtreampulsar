@@ -304,6 +304,16 @@ export class XtreamController {
       return;
     }
 
+    // Enigma2 (VU+/Dreambox) bouquet — get.php uzerinden (nginx zaten get.php'yi gecirir)
+    if (type === 'enigma2') {
+      const { content, filename } = await this.xtream.buildEnigma2Bouquet(user.id, username, password);
+      res
+        .set('Content-Type', 'text/plain; charset=utf-8')
+        .set('Content-Disposition', `attachment; filename="${filename}"`)
+        .send(content);
+      return;
+    }
+
     const streamType: 'all' | 'live' | 'vod' | 'series' =
       type === 'live' ? 'live'
       : type === 'vod' ? 'vod'

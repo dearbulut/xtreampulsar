@@ -1651,6 +1651,20 @@
     "maxConnections": "Max Connections",
     "role": "Role",
     "locationOptional": "Location (optional)",
+    "disk": "Disk",
+    "network": "Network",
+    "activeConnections": "Active Connections",
+    "apiSecret": "API Secret (Node Key)",
+    "apiSecretKeep": "Leave blank to keep unchanged",
+    "apiSecretPlaceholder": "Shared secret with the remote node",
+    "apiSecretHint": "To view system health (CPU/RAM/Disk), the remote server must run the XtreamPulsar node with NODE_SECRET set to this value.",
+    "sysReason": {
+      "unavailable": "System metrics unavailable",
+      "no-secret": "No API secret set — system metrics disabled",
+      "bad-secret": "API secret rejected by node",
+      "unreachable": "Node unreachable (port/firewall)",
+      "not-found": "Server not found"
+    },
     "serverCount_one": "{{count}} server registered",
     "serverCount_other": "{{count}} servers registered"
   },
