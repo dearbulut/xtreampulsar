@@ -508,6 +508,10 @@ export function ServersPage() {
         {/* Details form */}
         {(!editTarget || editTab === 'details') && (
           <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4 p-6">
+            <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2.5 text-[12px] text-slate-300">
+              <Info className="w-4 h-4 mt-px shrink-0 text-info" />
+              <span>{t('servers.addServerHint')}</span>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="label">{t('servers.serverName')}</label>

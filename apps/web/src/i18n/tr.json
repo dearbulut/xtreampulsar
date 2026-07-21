@@ -1658,6 +1658,7 @@
     "apiSecretKeep": "Değiştirmemek için boş bırakın",
     "apiSecretPlaceholder": "Uzak node ile paylaşılan gizli anahtar",
     "apiSecretHint": "Sistem sağlığını (CPU/RAM/Disk) görebilmek için uzak sunucu, XtreamPulsar node'unu NODE_SECRET bu değere eşit olacak şekilde çalıştırmalıdır.",
+    "addServerHint": "Bu form sunucuyu yalnızca panele tanıtır; oraya kurulum yapmaz veya bağlanıp kontrol etmez. Edge sunucuda önce XtreamPulsar kurulu olmalı (lb-install.sh çalıştırılmış). Panel bu adrese gidip sağlık ve sistem metriğini okur; Yük Dengeleyici rolündeyse yayın trafiği de yönlendirir.",
     "sysReason": {
       "unavailable": "Sistem metrikleri kullanılamıyor",
       "no-secret": "API secret girilmemiş — sistem metrikleri kapalı",

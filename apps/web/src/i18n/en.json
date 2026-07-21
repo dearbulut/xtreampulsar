@@ -1658,6 +1658,7 @@
     "apiSecretKeep": "Leave blank to keep unchanged",
     "apiSecretPlaceholder": "Shared secret with the remote node",
     "apiSecretHint": "To view system health (CPU/RAM/Disk), the remote server must run the XtreamPulsar node with NODE_SECRET set to this value.",
+    "addServerHint": "This form only registers the server with the panel; it does not install anything on it or connect to control it. The edge server must already have XtreamPulsar installed (run lb-install.sh first). The panel connects to this address to read health and system metrics, and routes stream traffic to it when its role is Load Balancer.",
     "sysReason": {
       "unavailable": "System metrics unavailable",
       "no-secret": "No API secret set — system metrics disabled",
