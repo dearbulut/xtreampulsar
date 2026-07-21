@@ -71,22 +71,61 @@ export class StreamWorkerService implements OnModuleDestroy {
 
     const outputFile = path.join(outputDir, 'index.m3u8');
     const segmentPattern = path.join(outputDir, 'seg%05d.ts');
-    const args = [
-      '-i', activeUrl,
-      // Tum ses parcalarini koru: -map olmadan ffmpeg tek ses secer ve
-      // cok-dilli/dublaj parcalari duserdi. -map 0:a? ile hepsini gecir
-      // (? = ses yoksa hata verme). Ilk video + tum ses + (varsa) altyazi.
-      '-map', '0:v:0?',
-      '-map', '0:a?',
-      '-map', '0:s?',
-      '-c', 'copy',
-      '-f', 'hls',
-      '-hls_time', '4',
-      '-hls_list_size', '10',
-      '-hls_flags', 'append_list',
-      '-hls_segment_filename', segmentPattern,
-      outputFile,
-    ];
+
+    let args: string[];
+    if ((stream.streamMode ?? 'PROXY') === 'LOOP') {
+      // 24/7 sahte-canli kanal: kaynak listesini concat demuxer + sonsuz dongu ile
+      // birlestir, uniform H.264/AAC'ye yeniden kodla (heterojen kaynaklar sorunsuz
+      // birlessin) ve canli HLS uret. `-re` gercek-zaman hizinda okur.
+      const rawSources = (stream.loopSources && stream.loopSources.length
+        ? stream.loopSources
+        : [stream.primaryUrl]
+      ).filter((u): u is string => !!u);
+      if (stream.loopShuffle) {
+        for (let i = rawSources.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [rawSources[i], rawSources[j]] = [rawSources[j], rawSources[i]];
+        }
+      }
+      const listPath = path.join(outputDir, 'playlist.txt');
+      const listContent =
+        rawSources.map((u) => `file '${u.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
+      fs.writeFileSync(listPath, listContent);
+      args = [
+        '-re',
+        '-stream_loop', '-1',
+        '-f', 'concat',
+        '-safe', '0',
+        '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
+        '-i', listPath,
+        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-g', '48',
+        '-c:a', 'aac', '-ar', '44100', '-b:a', '128k',
+        '-fflags', '+genpts',
+        '-f', 'hls',
+        '-hls_time', '4',
+        '-hls_list_size', '10',
+        '-hls_flags', 'append_list+delete_segments+omit_endlist',
+        '-hls_segment_filename', segmentPattern,
+        outputFile,
+      ];
+    } else {
+      args = [
+        '-i', activeUrl,
+        // Tum ses parcalarini koru: -map olmadan ffmpeg tek ses secer ve
+        // cok-dilli/dublaj parcalari duserdi. -map 0:a? ile hepsini gecir
+        // (? = ses yoksa hata verme). Ilk video + tum ses + (varsa) altyazi.
+        '-map', '0:v:0?',
+        '-map', '0:a?',
+        '-map', '0:s?',
+        '-c', 'copy',
+        '-f', 'hls',
+        '-hls_time', '4',
+        '-hls_list_size', '10',
+        '-hls_flags', 'append_list',
+        '-hls_segment_filename', segmentPattern,
+        outputFile,
+      ];
+    }
 
     this.logger.log(`Starting worker for stream ${streamId}`);
     this.logger.log(`FFmpeg path: ${this.ffmpegPath}`);

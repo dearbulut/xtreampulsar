@@ -160,7 +160,9 @@ interface CreateForm {
   backupUrl: string;
   serverId: string;
   tvgLogo: string;
-  streamMode: 'PROXY' | 'TRANSCODE';
+  streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
+  loopSources: string[];
+  loopShuffle: boolean;
   overview: string;
   posterUrl: string;
   backdropUrl: string;
@@ -171,6 +173,7 @@ interface CreateForm {
 
 const EMPTY_FORM: CreateForm = {
   name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY',
+  loopSources: [], loopShuffle: false,
   overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
 };
 
@@ -1163,8 +1166,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           </div>
           <div>
             <label className="label">{t('streams.streamMode')}</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['PROXY', 'TRANSCODE'] as const).map((mode) => (
+            <div className="grid grid-cols-3 gap-2">
+              {(['PROXY', 'TRANSCODE', 'LOOP'] as const).map((mode) => (
                 <button
                   key={mode}
                   type="button"
@@ -1176,18 +1179,67 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   }`}
                 >
                   <span className="font-semibold">
-                    {mode === 'PROXY' ? t('streams.modeProxy') : t('streams.modeTranscode')}
+                    {mode === 'PROXY' ? t('streams.modeProxy') : mode === 'TRANSCODE' ? t('streams.modeTranscode') : t('streams.modeLoop')}
                     {mode === 'PROXY' && <span className="ml-1.5 text-emerald-400 text-[10px]">{t('streams.recommended')}</span>}
                   </span>
                   <span className="text-[10px] leading-snug opacity-70">
                     {mode === 'PROXY'
                       ? t('streams.modeProxyDesc')
-                      : t('streams.modeTranscodeDesc')}
+                      : mode === 'TRANSCODE'
+                      ? t('streams.modeTranscodeDesc')
+                      : t('streams.modeLoopDesc')}
                   </span>
                 </button>
               ))}
             </div>
           </div>
+          {createForm.streamMode === 'LOOP' && (
+            <div className="space-y-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3">
+              <p className="text-[11px] text-muted leading-snug">{t('streams.loopHint')}</p>
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <input
+                  type="checkbox"
+                  className="accent-indigo-500"
+                  checked={createForm.loopShuffle}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, loopShuffle: e.target.checked }))}
+                />
+                {t('streams.loopShuffle')}
+              </label>
+              <div>
+                <label className="label">{t('streams.loopExtraSources')}</label>
+                <div className="space-y-2">
+                  {createForm.loopSources.map((src, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        className="input font-mono text-xs"
+                        placeholder={t('streams.urlPlaceholder')}
+                        value={src}
+                        onChange={(e) => setCreateForm((f) => {
+                          const next = [...f.loopSources];
+                          next[i] = e.target.value;
+                          return { ...f, loopSources: next };
+                        })}
+                      />
+                      <button
+                        type="button"
+                        className="btn-ghost px-2 shrink-0"
+                        onClick={() => setCreateForm((f) => ({ ...f, loopSources: f.loopSources.filter((_, idx) => idx !== i) }))}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    onClick={() => setCreateForm((f) => ({ ...f, loopSources: [...f.loopSources, ''] }))}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {t('streams.loopAddSource')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {(type === 'VOD' || type === 'SERIES') && (
             <div className="space-y-3 pt-3 border-t border-border">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide">{t('streams.metadataOptional')}</p>
@@ -1276,6 +1328,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   primaryUrl: createForm.primaryUrl,
                   categoryId: createForm.categoryId,
                   streamMode: createForm.streamMode,
+                  ...(createForm.streamMode === 'LOOP' && {
+                    loopSources: [createForm.primaryUrl, ...createForm.loopSources].map((u) => u.trim()).filter(Boolean),
+                    loopShuffle: createForm.loopShuffle,
+                  }),
                   ...(createForm.backupUrl && { backupUrl: createForm.backupUrl }),
                   ...(createForm.serverId && { serverId: createForm.serverId }),
                   ...(createForm.tvgLogo && { tvgLogo: createForm.tvgLogo }),

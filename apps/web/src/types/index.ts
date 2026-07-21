@@ -31,7 +31,9 @@ export interface Stream {
   primaryUrl: string;
   backupUrl?: string;
   backupUrls?: string[];
-  streamMode: 'PROXY' | 'TRANSCODE';
+  streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
+  loopSources?: string[];
+  loopShuffle?: boolean;
   status: StreamStatus;
   workerStatus: WorkerStatus;
   restartCount: number;

@@ -48,8 +48,18 @@ export class CreateStreamDto {
   isActive?: boolean = true;
 
   @IsOptional()
-  @IsIn(['PROXY', 'TRANSCODE'])
+  @IsIn(['PROXY', 'TRANSCODE', 'LOOP'])
   streamMode?: string = 'PROXY';
+
+  // ─── LOOP modu (24/7 sahte-canli kanal) ────────────────────────────────────
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  loopSources?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  loopShuffle?: boolean;
 
   // ─── TMDB / VOD metadata (manuel düzenlenebilir) ───────────────────────────
   @IsOptional()

@@ -243,7 +243,9 @@ model Stream {
   backupUrl       String?
   backupUrls      String[] @default([])
   ffmpegPid       Int?
-  streamMode      String       @default("PROXY") // PROXY | TRANSCODE
+  streamMode      String       @default("PROXY") // PROXY | TRANSCODE | LOOP
+  loopSources     String[]     @default([]) // LOOP modu: 24/7 dongulenen kaynak listesi (URL)
+  loopShuffle     Boolean      @default(false) // LOOP: her dongude sirayi karistir
   workerStatus    WorkerStatus @default(IDLE)
   restartCount    Int          @default(0)
   status          StreamStatus @default(OFFLINE)
