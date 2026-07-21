@@ -456,6 +456,17 @@ export function SettingsPage() {
                 <Toggle checked={settings.streaming.enableConxExceedLog}
                   onChange={(v) => updateSettings('streaming', { enableConxExceedLog: v })} />
               </Field>
+              <SectionTitle>{t('settings.idleSleepTitle')}</SectionTitle>
+              <Field label={t('settings.idleSleepEnabled')} hint={t('settings.idleSleepHint')}>
+                <Toggle checked={settings.streaming.idleSleepEnabled}
+                  onChange={(v) => updateSettings('streaming', { idleSleepEnabled: v })} />
+              </Field>
+              <Field label={t('settings.idleSleepMins')} hint={t('settings.idleSleepMinsHint')}>
+                <input type="number" min={1} max={240} className="input w-32"
+                  value={settings.streaming.idleSleepMins}
+                  disabled={!settings.streaming.idleSleepEnabled}
+                  onChange={(e) => updateSettings('streaming', { idleSleepMins: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
+              </Field>
               <SectionTitle>{t('settings.videoRedirects')}</SectionTitle>
               <Field label={t('settings.streamDownUrl')}>
                 <input className="input" value={settings.streaming.streamDownUrl}

@@ -11,6 +11,8 @@ import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../gateway/events.gateway';
 import { NotificationService } from '../notification/notification.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { activeConnectionWhere } from '../user/user.repository';
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 2000;
@@ -22,6 +24,7 @@ interface WorkerState {
   stopping: boolean;
   activeUrl: string;
   stderrTail: string[]; // FFmpeg'in son stderr satırları — çökme sebebini görmek için
+  lastViewerAt: Date;   // son izleyici görülme anı — on-demand uyutma için
 }
 
 @Injectable()
@@ -107,6 +110,7 @@ export class StreamWorkerService implements OnModuleDestroy {
       stopping: false,
       activeUrl,
       stderrTail: [],
+      lastViewerAt: new Date(),
     };
 
     this.workers.set(streamId, state);
@@ -248,6 +252,66 @@ export class StreamWorkerService implements OnModuleDestroy {
       });
 
       this.gateway?.emitStreamStatus(streamId, finalStatus);
+    }
+  }
+
+  /** On-demand uyutma: izleyici kalmayinca worker'i durdur + HLS ciktisini sil.
+   *  Controller'daki auto-start guard'i (`!fs.existsSync(index.m3u8)` + workerStatus IDLE)
+   *  bir sonraki istekte yayini otomatik uyandirir. */
+  private async sleepWorker(streamId: string): Promise<void> {
+    const state = this.workers.get(streamId);
+    if (!state) return;
+    state.stopping = true;
+    state.process.kill('SIGTERM');
+    this.workers.delete(streamId);
+
+    const outputDir = path.join(this.hlsOutputPath, streamId);
+    try {
+      fs.rmSync(outputDir, { recursive: true, force: true });
+    } catch {
+      /* dizin yoksa yok say */
+    }
+
+    await this.prisma.stream
+      .update({ where: { id: streamId }, data: { workerStatus: 'IDLE', ffmpegPid: null } })
+      .catch(() => {});
+
+    this.gateway?.emitStreamStatus(streamId, 'IDLE');
+    this.logger.log(
+      `Stream ${streamId} izleyicisiz — uyutuldu (istek gelince otomatik uyanir)`,
+    );
+  }
+
+  /** Her dakika: idle-sleep acikken izleyicisi 0 olan TRANSCODE worker'lari
+   *  ayarlanan sure kadar bos kaldiktan sonra uyutur (CPU/RAM tasarrufu). Ayar
+   *  kapaliyken (default) hicbir sey yapmaz — dormant-safe. */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async reapIdleWorkers(): Promise<void> {
+    if (this.workers.size === 0) return;
+
+    const settings = await this.prisma.settings
+      .findUnique({
+        where: { id: 'singleton' },
+        select: { idleSleepEnabled: true, idleSleepMins: true },
+      })
+      .catch(() => null);
+    if (!settings?.idleSleepEnabled) return;
+
+    const idleMs = Math.max(1, settings.idleSleepMins ?? 10) * 60_000;
+    const now = Date.now();
+
+    for (const [streamId, state] of this.workers) {
+      if (state.stopping) continue;
+      const viewers = await this.prisma.connection
+        .count({ where: { streamId, ...activeConnectionWhere() } })
+        .catch(() => 1); // sayim hatasi olursa uyutma (guvenli taraf)
+      if (viewers > 0) {
+        state.lastViewerAt = new Date();
+        continue;
+      }
+      if (now - state.lastViewerAt.getTime() >= idleMs) {
+        await this.sleepWorker(streamId);
+      }
     }
   }
 

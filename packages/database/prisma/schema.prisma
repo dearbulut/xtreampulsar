@@ -736,6 +736,9 @@ model Settings {
   memAlertPct             Int      @default(90)
   diskAlertPct            Int      @default(90)
   netAlertMbps            Int      @default(0) // toplam ag throughput uyari esigi (Mbps, 0 = kapali)
+  // On-demand uyutma — izleyicisi olmayan TRANSCODE yayinini durdur, istek gelince otomatik uyandir (uykuda: default kapali)
+  idleSleepEnabled        Boolean  @default(false)
+  idleSleepMins           Int      @default(10) // kac dk 0 izleyiciden sonra uyut
   // Altyazi arama/indirme (OpenSubtitles) — anahtar girilene kadar uykuda
   subtitleEnabled         Boolean  @default(false)
   subtitleApiKey          String   @default("")

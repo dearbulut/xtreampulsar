@@ -150,13 +150,18 @@ export class SettingsService {
       'resellerNotifyExpiry', 'streamDownAlert', 'enableLocalBackups', 'enableRemoteBackup',
       'discordAlerts', 'telegramAlerts', 'registrationOpen', 'enableGuard', 'denyInvalidStreamIds',
       'autoEnrichMetadata', 'geoBlockEnabled', 'urlHealthCheck', 'aiEnabled',
+      'idleSleepEnabled',
     ]);
+    const NUMBER_FIELDS = new Set(['idleSleepMins']);
 
     const clean: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined) continue;
       if (BOOLEAN_FIELDS.has(key)) {
         clean[key] = value === true || value === 'true' || value === 1;
+      } else if (NUMBER_FIELDS.has(key)) {
+        const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+        if (!Number.isNaN(n)) clean[key] = n;
       } else {
         clean[key] = value;
       }

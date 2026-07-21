@@ -92,6 +92,8 @@ export interface StreamingSettings {
   instantCloseConn: boolean;
   enableConxExceedLog: boolean;
   priorityBackup: boolean;
+  idleSleepEnabled: boolean;
+  idleSleepMins: number;
   streamDownUrl: string;
   bannedUserUrl: string;
   expiredUserUrl: string;
@@ -154,7 +156,7 @@ const DEFAULTS: AllSettings = {
   },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0, trialDays: 7, trialMaxConnections: 1 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING },
-  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
+  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, idleSleepEnabled: false, idleSleepMins: 10, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
   security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '', backupEncryptionKey: '' },
 };
@@ -179,6 +181,8 @@ interface DbSettings {
   adminStreamingIps: string[];
   instantCloseConn: boolean;
   enableConxExceedLog: boolean;
+  idleSleepEnabled?: boolean;
+  idleSleepMins?: number;
   streamDownVideo: string | null;
   bannedVideo: string | null;
   expiredVideo: string | null;
@@ -261,6 +265,8 @@ function mapDbToStore(db: DbSettings): AllSettings {
       adminStreamingIps: db.adminStreamingIps,
       instantCloseConn: db.instantCloseConn,
       enableConxExceedLog: db.enableConxExceedLog,
+      idleSleepEnabled: db.idleSleepEnabled ?? false,
+      idleSleepMins: db.idleSleepMins ?? 10,
       streamDownUrl: db.streamDownVideo ?? '',
       bannedUserUrl: db.bannedVideo ?? '',
       expiredUserUrl: db.expiredVideo ?? '',
@@ -330,6 +336,8 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     adminStreamingIps: settings.streaming.adminStreamingIps,
     instantCloseConn: settings.streaming.instantCloseConn,
     enableConxExceedLog: settings.streaming.enableConxExceedLog,
+    idleSleepEnabled: settings.streaming.idleSleepEnabled,
+    idleSleepMins: settings.streaming.idleSleepMins,
     streamDownVideo: settings.streaming.streamDownUrl || null,
     bannedVideo: settings.streaming.bannedUserUrl || null,
     expiredVideo: settings.streaming.expiredUserUrl || null,
