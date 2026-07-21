@@ -321,6 +321,35 @@ export class XtreamController {
       .send(playlist);
   }
 
+  @Get('enigma2.php')
+  async getEnigma2(
+    @Query() query: GetPhpQuery,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { username = '', password = '' } = query;
+    const ip = this.clientIpOf(req);
+    if (await this.isXtreamBlocked(ip)) { res.status(429).send('Too many failed attempts'); return; }
+
+    const user = await this.xtream.authenticate(username, password);
+    if (!user) {
+      await this.recordXtreamFail(ip);
+      res.status(HttpStatus.UNAUTHORIZED).send('Invalid credentials');
+      return;
+    }
+    const access = await this.userService.checkSubscriptionActive(user.id);
+    if (!access.allowed) {
+      res.status(HttpStatus.FORBIDDEN).send(access.reason ?? 'Forbidden');
+      return;
+    }
+
+    const { content, filename } = await this.xtream.buildEnigma2Bouquet(user.id, username, password);
+    res
+      .set('Content-Type', 'text/plain; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(content);
+  }
+
   @Get('xmltv.php')
   async getXmltv(
     @Query() query: GetPhpQuery,

@@ -323,4 +323,23 @@ export class XtreamService {
 
     return lines.join('\n');
   }
+
+  /** Enigma2 (VU+/Dreambox) userbouquet — kullanicinin canli kanallari, 4097 IPTV service ref. */
+  async buildEnigma2Bouquet(
+    userId: string,
+    username: string,
+    password: string,
+  ): Promise<{ content: string; filename: string }> {
+    const serverInfo = await this.buildServerInfo();
+    const baseUrl = `${serverInfo.url}:${serverInfo.port}`;
+    const streams = await this.streamService.findAllLive(userId);
+    const lines: string[] = [`#NAME ${username} IPTV`];
+    for (const s of streams) {
+      const url = `${baseUrl}/live/${username}/${password}/${s.externalId}.ts`;
+      const enc = url.replace(/:/g, '%3a');
+      const name = (s.name || '').replace(/[:\r\n]+/g, ' ').trim();
+      lines.push(`#SERVICE 4097:0:1:0:0:0:0:0:0:0:${enc}:${name}`, `#DESCRIPTION ${name}`);
+    }
+    return { content: lines.join('\n') + '\n', filename: `userbouquet.${username.replace(/[^\w.-]/g, '')}.tv` };
+  }
 }
