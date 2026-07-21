@@ -91,16 +91,22 @@ export class StreamWorkerService implements OnModuleDestroy {
       const listContent =
         rawSources.map((u) => `file '${u.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
       fs.writeFileSync(listPath, listContent);
+      // NORMALIZASYON: farkli cozunurluk/fps/ses kaynaklarini sabit 720p30 +
+      // 44.1kHz stereo'ya getir. scale+pad kareleri sabitler → encoder asla
+      // "input dimensions changed" ile cokmez; operator farkli kaynaklari
+      // dusunmeden karistirabilir. `-re` gercek-zaman, `-stream_loop -1` sonsuz dongu.
       args = [
         '-re',
+        '-fflags', '+genpts',
         '-stream_loop', '-1',
         '-f', 'concat',
         '-safe', '0',
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
         '-i', listPath,
-        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-g', '48',
-        '-c:a', 'aac', '-ar', '44100', '-b:a', '128k',
-        '-fflags', '+genpts',
+        '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p',
+        '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-g', '60', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '128k',
+        '-max_muxing_queue_size', '1024',
         '-f', 'hls',
         '-hls_time', '4',
         '-hls_list_size', '10',
