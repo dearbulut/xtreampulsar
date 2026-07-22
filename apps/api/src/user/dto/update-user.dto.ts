@@ -60,5 +60,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsBoolean()
+  blockDatacenter?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   lockDevice?: boolean;
 }

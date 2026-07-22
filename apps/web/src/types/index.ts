@@ -108,6 +108,7 @@ export interface User {
   allowedIps?: string[];
   allowedCountries?: string[];
   blockVpn?: boolean;
+  blockDatacenter?: boolean;
   lockDevice?: boolean;
   _count?: { connections: number };
 }

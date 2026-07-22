@@ -65,5 +65,9 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsBoolean()
+  blockDatacenter?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   lockDevice?: boolean;
 }

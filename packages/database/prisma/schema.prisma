@@ -498,6 +498,7 @@ model User {
   allowedIps       String[]   @default([])
   allowedCountries String[]   @default([])
   blockVpn         Boolean    @default(false)
+  blockDatacenter  Boolean    @default(false)
   lockDevice       Boolean    @default(false)
   lockedDeviceId   String?
   trialEndsAt      DateTime?

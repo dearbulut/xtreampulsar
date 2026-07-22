@@ -73,20 +73,22 @@ export class UserService {
     return this.userRepo.findById(id);
   }
 
-  private ipMetaCache = new Map<string, { cc: string; proxy: boolean; ts: number }>();
+  private ipMetaCache = new Map<string, { cc: string; proxy: boolean; hosting: boolean; ts: number }>();
   /** ip-api.com ile ülke + proxy/hosting (VPN) tespiti — 1 saat cache, özel IP'lerde atla. */
-  private async lookupIpMeta(ip: string): Promise<{ cc: string; proxy: boolean } | null> {
+  private async lookupIpMeta(ip: string): Promise<{ cc: string; proxy: boolean; hosting: boolean } | null> {
     if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) return null;
     const cached = this.ipMetaCache.get(ip);
     const now = Date.now();
-    if (cached && now - cached.ts < 3_600_000) return { cc: cached.cc, proxy: cached.proxy };
+    if (cached && now - cached.ts < 3_600_000) return { cc: cached.cc, proxy: cached.proxy, hosting: cached.hosting };
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode,proxy,hosting`, { signal: controller.signal });
       clearTimeout(timer);
       const d = (await res.json()) as { countryCode?: string; proxy?: boolean; hosting?: boolean };
-      const meta = { cc: d.countryCode ?? '', proxy: Boolean(d.proxy || d.hosting) };
+      // proxy = anonim proxy/VPN; hosting = datacenter/hosting IP (restreamer sinyali).
+      // Ayri tutulur: blockVpn her ikisini kapsar (eski davranis), blockDatacenter yalniz hosting.
+      const meta = { cc: d.countryCode ?? '', proxy: Boolean(d.proxy), hosting: Boolean(d.hosting) };
       this.ipMetaCache.set(ip, { ...meta, ts: now });
       return meta;
     } catch {
@@ -143,14 +145,20 @@ export class UserService {
     // Ülke kilidi + VPN engelleme (yalnız gerektiğinde ip-api sorgusu)
     const allowedCountries = (user as { allowedCountries?: string[] }).allowedCountries ?? [];
     const blockVpn = (user as { blockVpn?: boolean }).blockVpn ?? false;
-    if ((allowedCountries.length > 0 || blockVpn) && ip) {
+    const blockDatacenter = (user as { blockDatacenter?: boolean }).blockDatacenter ?? false;
+    if ((allowedCountries.length > 0 || blockVpn || blockDatacenter) && ip) {
       const meta = await this.lookupIpMeta(ip);
       if (meta) {
         if (allowedCountries.length > 0 && meta.cc && !allowedCountries.includes(meta.cc)) {
           return deny(`Country ${meta.cc} not allowed for this line`, 'COUNTRY_BLOCKED', meta.cc);
         }
-        if (blockVpn && meta.proxy) {
+        // blockVpn: proxy VEYA hosting → engelle (eski davranis korunur).
+        if (blockVpn && (meta.proxy || meta.hosting)) {
           return deny('VPN/proxy not allowed for this line', 'VPN_BLOCKED', meta.cc);
+        }
+        // blockDatacenter: yalniz hosting/datacenter IP → restreamer sunuculari engellenir.
+        if (blockDatacenter && meta.hosting) {
+          return deny('Datacenter/hosting IP not allowed for this line', 'DATACENTER_BLOCKED', meta.cc);
         }
       }
     }
@@ -253,7 +261,7 @@ export class UserService {
           id: true, username: true, role: true, status: true,
           maxConnections: true, expiresAt: true, notes: true,
           plainPassword: true,
-          allowedIps: true, allowedCountries: true, blockVpn: true, lockDevice: true,
+          allowedIps: true, allowedCountries: true, blockVpn: true, blockDatacenter: true, lockDevice: true,
           createdAt: true, resellerId: true,
           // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
           _count: { select: { connections: { where: activeConnectionWhere() } } },

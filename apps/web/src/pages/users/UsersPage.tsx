@@ -994,7 +994,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
   const [editingAccess, setEditingAccess] = useState(false);
-  const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, lockDevice: false });
+  const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; blockDatacenter: boolean; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, blockDatacenter: false, lockDevice: false });
   const kickUser = useKickUser();
   const impersonate = useImpersonateUser();
   const setClientSession = useAuthStore((st) => st.setClientSession);
@@ -1161,6 +1161,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                       allowedIps: user.allowedIps ?? [],
                       allowedCountries: user.allowedCountries ?? [],
                       blockVpn: user.blockVpn ?? false,
+                      blockDatacenter: user.blockDatacenter ?? false,
                       lockDevice: user.lockDevice ?? false,
                     });
                     setEditingAccess(true);
@@ -1181,8 +1182,9 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                   <span className="badge bg-surface-2 text-slate-300">{t('users.countries')}: {user.allowedCountries!.join(', ')}</span>
                 )}
                 {user.blockVpn && <span className="badge bg-warning/10 text-warning">{t('users.vpnBlocked')}</span>}
+                {user.blockDatacenter && <span className="badge bg-warning/10 text-warning">{t('users.datacenterBlocked')}</span>}
                 {user.lockDevice && <span className="badge bg-primary/10 text-primary-light">{t('users.deviceLocked')}</span>}
-                {!(user.allowedIps?.length || user.allowedCountries?.length || user.blockVpn || user.lockDevice) && (
+                {!(user.allowedIps?.length || user.allowedCountries?.length || user.blockVpn || user.blockDatacenter || user.lockDevice) && (
                   <span className="text-muted">{t('users.noRestrictions')}</span>
                 )}
               </div>
@@ -1199,6 +1201,10 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={accessDraft.blockVpn} onChange={(e) => setAccessDraft((a) => ({ ...a, blockVpn: e.target.checked }))} />
                   {t('users.blockVpnLabel')}
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={accessDraft.blockDatacenter} onChange={(e) => setAccessDraft((a) => ({ ...a, blockDatacenter: e.target.checked }))} />
+                  {t('users.blockDatacenterLabel')} <span className="text-[11px] text-muted">({t('users.blockDatacenterHint')})</span>
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={accessDraft.lockDevice} onChange={(e) => setAccessDraft((a) => ({ ...a, lockDevice: e.target.checked }))} />
