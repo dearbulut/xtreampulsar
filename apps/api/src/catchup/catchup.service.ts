@@ -5,13 +5,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 
-const SEGMENT_SECS = 60;         // arsiv segment suresi
-const MAX_RESTARTS = 5;
+const SEGMENT_SECS = 60;             // arsiv segment suresi
+const MAX_RESTARTS = 5;              // kisa surede pes pese cokme siniri
 const RESTART_DELAY_MS = 5000;
+const MIN_HEALTHY_MS = 120_000;      // >=2dk calistiysa saglikli say → sayaci sifirla
+const COOLDOWN_MS = 30 * 60_000;     // sinir asilinca 30dk bekle (sonlu/bozuk kaynak storm'unu keser)
+const MIN_START_INTERVAL_MS = 8000;  // ayni yayin icin min baslatma araligi (rate-limit)
 
 interface Archiver {
   proc: ChildProcess;
-  restarts: number;
+  startedAt: number;
   stopping: boolean;
   stderrTail: string[];
 }
@@ -28,6 +31,9 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
   private readonly archiveDir = process.env.ARCHIVE_PATH ?? '/data/archive';
   private readonly ffmpegPath = process.env.FFMPEG_PATH || '/usr/bin/ffmpeg';
   private readonly archivers = new Map<string, Archiver>();
+  private readonly cooldownUntil = new Map<string, number>();
+  private readonly restartCount = new Map<string, number>();
+  private readonly lastStartAt = new Map<string, number>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -49,6 +55,12 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
 
   private startArchiver(streamId: string, source: string): void {
     if (this.archivers.has(streamId)) return;
+    const now = Date.now();
+    const cd = this.cooldownUntil.get(streamId);
+    if (cd && cd > now) return; // cooldown'da — dokunma
+    const last = this.lastStartAt.get(streamId) ?? 0;
+    if (now - last < MIN_START_INTERVAL_MS) return; // rate-limit
+    this.lastStartAt.set(streamId, now);
     const dir = this.streamDir(streamId);
     fs.mkdirSync(dir, { recursive: true });
     const pattern = path.join(dir, '%Y%m%d-%H%M%S.ts');
@@ -66,7 +78,7 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
       pattern,
     ];
     const proc = spawn(this.ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
-    const state: Archiver = { proc, restarts: 0, stopping: false, stderrTail: [] };
+    const state: Archiver = { proc, startedAt: Date.now(), stopping: false, stderrTail: [] };
     this.archivers.set(streamId, state);
     proc.stderr?.on('data', (b: Buffer) => {
       for (const l of b.toString().split(/\r?\n/)) { const t = l.trim(); if (t) { state.stderrTail.push(t); if (state.stderrTail.length > 15) state.stderrTail.shift(); } }
@@ -81,27 +93,37 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
     a.stopping = true;
     try { a.proc.kill('SIGTERM'); } catch { /* */ }
     this.archivers.delete(streamId);
+    this.cooldownUntil.delete(streamId);
+    this.restartCount.delete(streamId);
     this.logger.log(`Catch-up kaydi durdu: ${streamId}`);
   }
 
-  private async onExit(streamId: string, code: number | null, source: string): Promise<void> {
+  private async onExit(streamId: string, code: number | null, _source: string): Promise<void> {
     const a = this.archivers.get(streamId);
     this.archivers.delete(streamId);
     if (!a || a.stopping) return;
-    // hala catchupEnabled ise yeniden basla (backoff)
+
     const stream = await this.prisma.stream.findUnique({ where: { id: streamId }, select: { catchupEnabled: true, primaryUrl: true, isActive: true } }).catch(() => null);
-    if (!stream?.catchupEnabled || !stream.isActive) return;
-    if (a.restarts >= MAX_RESTARTS) {
-      this.logger.error(`Catch-up ${streamId} max restart asti (kod ${code}): ${a.stderrTail.slice(-3).join(' | ')}`);
+    if (!stream?.catchupEnabled || !stream.isActive) { this.restartCount.delete(streamId); return; }
+
+    const ranMs = Date.now() - a.startedAt;
+    if (ranMs >= MIN_HEALTHY_MS) {
+      // Saglikli calisiyordu, kaynak gecici koptu → sayaci sifirla, kisa gecikmeyle devam.
+      this.restartCount.set(streamId, 0);
+      setTimeout(() => this.startArchiver(streamId, stream.primaryUrl), RESTART_DELAY_MS);
       return;
     }
-    setTimeout(() => {
-      if (!this.archivers.has(streamId)) {
-        this.startArchiver(streamId, stream.primaryUrl);
-        const na = this.archivers.get(streamId);
-        if (na) na.restarts = a.restarts + 1;
-      }
-    }, RESTART_DELAY_MS);
+
+    // Kisa surede cikti (muhtemelen sonlu/bozuk kaynak — mux test klibi gibi kod 0 ile biter).
+    const n = (this.restartCount.get(streamId) ?? 0) + 1;
+    this.restartCount.set(streamId, n);
+    if (n >= MAX_RESTARTS) {
+      this.cooldownUntil.set(streamId, Date.now() + COOLDOWN_MS);
+      this.restartCount.set(streamId, 0);
+      this.logger.warn(`Catch-up ${streamId} kaynagi kisa surede kapaniyor (kod ${code}) — ${Math.round(COOLDOWN_MS / 60000)}dk cooldown. Canli olmayan/bozuk kaynak? ${a.stderrTail.slice(-2).join(' | ')}`);
+      return;
+    }
+    setTimeout(() => this.startArchiver(streamId, stream.primaryUrl), RESTART_DELAY_MS);
   }
 
   /** catchupEnabled yayinlarla calisan arsivleyicileri esitle (yeni basla, kapatilani durdur). */
@@ -112,7 +134,13 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
       select: { id: true, primaryUrl: true },
     }).catch(() => []);
     const wantIds = new Set(enabled.map((s) => s.id));
-    for (const s of enabled) if (!this.archivers.has(s.id)) this.startArchiver(s.id, s.primaryUrl);
+    const now = Date.now();
+    for (const s of enabled) {
+      if (this.archivers.has(s.id)) continue;
+      const cd = this.cooldownUntil.get(s.id);
+      if (cd && cd > now) continue; // cooldown'da
+      this.startArchiver(s.id, s.primaryUrl);
+    }
     for (const id of [...this.archivers.keys()]) if (!wantIds.has(id)) this.stopArchiver(id);
   }
 
