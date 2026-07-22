@@ -88,16 +88,17 @@ export class UserRepository {
     ip: string,
     userAgent: string | undefined,
   ): Promise<{ count: number }> {
-    const cutoff = new Date(Date.now() - ZAP_STALE_MS);
+    // YALNIZ AYNI CIHAZIN (ip+ua) diger-yayin baglantilarini kapat = zapping temizligi.
+    // BASKA cihazin baglantisini burada KAPATMA — aksi halde 2. cihaz, 1. cihazin
+    // (henuz taze olmayan) baglantisini "bayat" diye kapatip maxConn limitini
+    // BYPASS ediyordu. Gercekten bayat/hayalet baglantilar 90sn stale-cron ile temizlenir.
     return this.prisma.connection.updateMany({
       where: {
         userId,
         streamId: { not: keepStreamId },
         endedAt: null,
-        OR: [
-          { updatedAt: { lt: cutoff } },
-          { ip, userAgent: userAgent ?? null },
-        ],
+        ip,
+        userAgent: userAgent ?? null,
       },
       data: { endedAt: new Date() },
     });
