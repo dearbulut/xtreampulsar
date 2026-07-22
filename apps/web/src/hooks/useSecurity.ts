@@ -196,3 +196,63 @@ export function useRunAutoBan() {
     },
   });
 }
+
+// ─── Restreamer / scraper tespiti ─────────────────────────────────────────────
+export interface SuspiciousLine {
+  userId: string;
+  username: string;
+  status: string;
+  distinctStreams: number;
+  totalConns: number;
+  avgSecs: number;
+  lastSeen: string;
+}
+
+export interface RestreamConfig {
+  restreamDetectEnabled: boolean;
+  restreamWindowMins: number;
+  restreamDistinctThreshold: number;
+  restreamAutoBan: boolean;
+}
+
+export function useSuspiciousLines(windowMins = 60, threshold = 40) {
+  return useQuery({
+    queryKey: ['security', 'suspicious', windowMins, threshold],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: SuspiciousLine[] }>(
+        `/security/suspicious-lines?window=${windowMins}&threshold=${threshold}`,
+      );
+      return res.data.data;
+    },
+    refetchInterval: 30_000,
+  });
+}
+
+export function useRestreamConfig() {
+  return useQuery({
+    queryKey: ['security', 'restream-config'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: RestreamConfig }>('/security/restream-config');
+      return res.data.data;
+    },
+  });
+}
+
+export function useUpdateRestreamConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { enabled?: boolean; windowMins?: number; threshold?: number; autoBan?: boolean }) => {
+      const res = await api.patch<{ success: boolean; data: RestreamConfig }>('/security/restream-config', body);
+      return res.data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['security', 'restream-config'] }),
+  });
+}
+
+export function useBanLine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => api.post(`/security/ban-user/${userId}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['security', 'suspicious'] }),
+  });
+}

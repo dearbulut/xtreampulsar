@@ -293,4 +293,77 @@ export class SecurityService {
       this.logger.error(`autoBanScheduled: ${(err as Error).message}`);
     }
   }
+
+  /** Bir hatti (line) id ile banla — supheli hat listesinden manuel aksiyon. */
+  async banUserById(id: string): Promise<{ ok: boolean }> {
+    await this.prisma.user.update({ where: { id }, data: { status: 'BANNED' } }).catch(() => {});
+    return { ok: true };
+  }
+
+  // ─── Restreamer / scraper tespiti ───────────────────────────────────────────
+  /**
+   * Bir pencerede anormal sayida FARKLI kanala baglanan hatlari dondurur (ripper sinyali).
+   * Xtream UI find_suspicious_lines mantigi: cok sayida distinct canli kanal + kisa oturum.
+   */
+  async getSuspiciousLines(windowMins = 60, threshold = 40): Promise<Array<{
+    userId: string; username: string; status: string;
+    distinctStreams: number; totalConns: number; avgSecs: number; lastSeen: Date;
+  }>> {
+    const w = Math.min(1440, Math.max(5, Math.floor(windowMins)));
+    const th = Math.max(2, Math.floor(threshold));
+    const rows = await this.prisma.$queryRaw<Array<{
+      userId: string; username: string; status: string;
+      distinctStreams: number; totalConns: number; avgSecs: number; lastSeen: Date;
+    }>>`
+      SELECT c."userId" AS "userId", u.username AS username, u.status::text AS status,
+        COUNT(DISTINCT c."streamId")::int AS "distinctStreams",
+        COUNT(*)::int AS "totalConns",
+        COALESCE(AVG(EXTRACT(EPOCH FROM (COALESCE(c."endedAt", NOW()) - c."startedAt"))), 0)::int AS "avgSecs",
+        MAX(c."startedAt") AS "lastSeen"
+      FROM connections c
+      JOIN users u ON u.id = c."userId"
+      WHERE c."startedAt" > NOW() - make_interval(mins => ${w})
+      GROUP BY c."userId", u.username, u.status
+      HAVING COUNT(DISTINCT c."streamId") >= ${th}
+      ORDER BY "distinctStreams" DESC
+      LIMIT 100;
+    `;
+    return rows;
+  }
+
+  async getRestreamConfig() {
+    const s = await this.prisma.settings.upsert({
+      where: { id: 'singleton' }, update: {}, create: { id: 'singleton' },
+      select: { restreamDetectEnabled: true, restreamWindowMins: true, restreamDistinctThreshold: true, restreamAutoBan: true },
+    });
+    return s;
+  }
+
+  async updateRestreamConfig(dto: { enabled?: boolean; windowMins?: number; threshold?: number; autoBan?: boolean }) {
+    const data: Record<string, unknown> = {};
+    if (typeof dto.enabled === 'boolean') data.restreamDetectEnabled = dto.enabled;
+    if (typeof dto.windowMins === 'number') data.restreamWindowMins = Math.min(1440, Math.max(5, Math.floor(dto.windowMins)));
+    if (typeof dto.threshold === 'number') data.restreamDistinctThreshold = Math.max(2, Math.floor(dto.threshold));
+    if (typeof dto.autoBan === 'boolean') data.restreamAutoBan = dto.autoBan;
+    await this.prisma.settings.update({ where: { id: 'singleton' }, data }).catch(() => {});
+    return this.getRestreamConfig();
+  }
+
+  /** Her 15 dk: tespit acik VE autoBan acikken esigi asan ACTIVE hatlari banla (yanlis-pozitife karsi opt-in). */
+  @Cron('*/15 * * * *')
+  async restreamScanScheduled(): Promise<void> {
+    try {
+      const cfg = await this.getRestreamConfig();
+      if (!cfg.restreamDetectEnabled || !cfg.restreamAutoBan) return;
+      const rows = await this.getSuspiciousLines(cfg.restreamWindowMins, cfg.restreamDistinctThreshold);
+      const toBan = rows.filter((r) => r.status === 'ACTIVE');
+      for (const r of toBan) {
+        await this.prisma.user.update({ where: { id: r.userId }, data: { status: 'BANNED' } }).catch(() => {});
+        this.logger.warn(`Restream auto-ban: ${r.username} (${r.distinctStreams} farkli kanal / ${cfg.restreamWindowMins}dk)`);
+      }
+      if (toBan.length) this.logger.log(`Restream tespiti: ${toBan.length} hat banlandi`);
+    } catch (err) {
+      this.logger.error(`restreamScanScheduled: ${(err as Error).message}`);
+    }
+  }
 }

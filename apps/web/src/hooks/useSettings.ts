@@ -113,6 +113,7 @@ export interface SecuritySettings {
   denyInvalidStreamIds: boolean;
   geoBlockEnabled: boolean;
   allowedCountries: string[];
+  realIpMode: string;
 }
 
 export interface DatabaseSettings {
@@ -157,7 +158,7 @@ const DEFAULTS: AllSettings = {
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0, trialDays: 7, trialMaxConnections: 1 },
   reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING },
   streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, idleSleepEnabled: false, idleSleepMins: 10, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
-  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [] },
+  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [], realIpMode: 'auto' },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '', backupEncryptionKey: '' },
 };
 
@@ -210,6 +211,7 @@ interface DbSettings {
   // Security
   geoBlockEnabled?: boolean;
   allowedCountries?: string[];
+  realIpMode?: string;
   enableGuard?: boolean;
   maxConnsPerIp?: number;
   maxHitsNormal?: number;
@@ -286,6 +288,7 @@ function mapDbToStore(db: DbSettings): AllSettings {
       openPorts: db.openPorts ?? ['80', '443', '25461'],
       geoBlockEnabled: db.geoBlockEnabled ?? false,
       allowedCountries: db.allowedCountries ?? [],
+      realIpMode: db.realIpMode ?? 'auto',
     },
     database: {
       ...DEFAULTS.database,
@@ -355,6 +358,7 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     openPorts: settings.security.openPorts,
     geoBlockEnabled: settings.security.geoBlockEnabled,
     allowedCountries: settings.security.allowedCountries,
+    realIpMode: settings.security.realIpMode,
     // Database / Backup
     enableLocalBackups: settings.database.enableLocalBackups,
     localBackupDir: settings.database.localBackupDir,

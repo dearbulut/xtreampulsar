@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText, ShieldAlert, Save, Play, Gavel } from 'lucide-react';
+import { Shield, Ban, RefreshCw, AlertTriangle, Globe, ScrollText, ShieldAlert, Save, Play, Gavel, Radar } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
-import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, useAutoBanConfig, useUpdateAutoBan, useRunAutoBan, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt, type AutoBanConfig } from '@/hooks/useSecurity';
+import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, useAutoBanConfig, useUpdateAutoBan, useRunAutoBan, useSuspiciousLines, useRestreamConfig, useUpdateRestreamConfig, useBanLine, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt, type AutoBanConfig, type SuspiciousLine, type RestreamConfig } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
 export function SecurityPage() {
@@ -14,6 +14,7 @@ export function SecurityPage() {
     { id: 'bruteforce', label: t('security.tabBruteForce') },
     { id: 'audit', label: t('security.tabAudit'), icon: ScrollText },
     { id: 'accessBlocks', label: t('security.tabAccessBlocks'), icon: ShieldAlert },
+    { id: 'restream', label: t('security.tabRestream'), icon: Radar },
   ];
   const [activeTab, setActiveTab] = useState('blocks');
   const [showBlock, setShowBlock] = useState(false);
@@ -272,6 +273,8 @@ export function SecurityPage() {
         </div>
       )}
 
+      {activeTab === 'restream' && <RestreamTab />}
+
       <Modal open={showBlock} onClose={() => setShowBlock(false)} title={t('security.blockIP')} size="sm">
         <form onSubmit={(e) => { void handleBlock(e); }} className="space-y-4 p-6">
           <div>
@@ -367,6 +370,73 @@ function AutoBanCard() {
           <span className="text-xs text-muted">{t('security.autoBan.runResult', { scanned: runResult.scanned, banned: runResult.banned })}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function RestreamTab() {
+  const { t } = useTranslation();
+  const { data: cfg } = useRestreamConfig();
+  const update = useUpdateRestreamConfig();
+  const banLine = useBanLine();
+  const [form, setForm] = useState<RestreamConfig | null>(null);
+  useEffect(() => { if (cfg && !form) setForm(cfg); }, [cfg, form]);
+
+  const win = form?.restreamWindowMins ?? 60;
+  const th = form?.restreamDistinctThreshold ?? 40;
+  const { data: lines = [], isLoading } = useSuspiciousLines(win, th);
+
+  const cols: Column<SuspiciousLine>[] = [
+    { key: 'username', header: t('security.restream.line'), render: (r) => <span className="font-medium">{r.username}</span> },
+    { key: 'distinctStreams', header: t('security.restream.distinct'), render: (r) => <span className="font-bold text-danger tabular-nums">{r.distinctStreams}</span> },
+    { key: 'totalConns', header: t('security.restream.total'), render: (r) => <span className="tabular-nums text-muted">{r.totalConns}</span> },
+    { key: 'avgSecs', header: t('security.restream.avg'), render: (r) => <span className="tabular-nums text-muted">{r.avgSecs}sn</span> },
+    { key: 'status', header: t('security.restream.status'), render: (r) => <span className={cn('text-xs px-2 py-0.5 rounded', r.status === 'BANNED' ? 'bg-danger/15 text-danger' : 'bg-success/15 text-success')}>{r.status}</span> },
+    {
+      key: 'actions', header: '', render: (r) => r.status !== 'BANNED' ? (
+        <button className="btn-ghost text-xs text-danger inline-flex items-center gap-1" onClick={() => banLine.mutate(r.userId)}>
+          <Ban className="w-3.5 h-3.5" /> {t('security.restream.ban')}
+        </button>
+      ) : null,
+    },
+  ];
+
+  return (
+    <div>
+      {form && (
+        <div className="card p-5 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-sm font-semibold"><Radar className="w-4 h-4 text-primary" /> {t('security.restream.title')}</div>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <span className="text-xs text-muted">{form.restreamDetectEnabled ? t('security.autoBan.on') : t('security.autoBan.off')}</span>
+              <input type="checkbox" className="toggle" checked={form.restreamDetectEnabled} onChange={(e) => setForm({ ...form, restreamDetectEnabled: e.target.checked })} />
+            </label>
+          </div>
+          <p className="text-xs text-muted mb-4">{t('security.restream.hint')}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-muted mb-1">{t('security.restream.window')}</label>
+              <input type="number" min={5} className="input" value={form.restreamWindowMins} onChange={(e) => setForm({ ...form, restreamWindowMins: Math.max(5, parseInt(e.target.value, 10) || 5) })} />
+            </div>
+            <div>
+              <label className="block text-xs text-muted mb-1">{t('security.restream.threshold')}</label>
+              <input type="number" min={2} className="input" value={form.restreamDistinctThreshold} onChange={(e) => setForm({ ...form, restreamDistinctThreshold: Math.max(2, parseInt(e.target.value, 10) || 2) })} />
+            </div>
+            <div className="flex items-end">
+              <label className="inline-flex items-center gap-2 cursor-pointer pb-2">
+                <input type="checkbox" className="toggle" checked={form.restreamAutoBan} onChange={(e) => setForm({ ...form, restreamAutoBan: e.target.checked })} />
+                <span className="text-xs">{t('security.restream.autoBan')}</span>
+              </label>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button className="btn-primary inline-flex items-center gap-1.5" disabled={update.isPending} onClick={() => update.mutate({ enabled: form.restreamDetectEnabled, windowMins: form.restreamWindowMins, threshold: form.restreamDistinctThreshold, autoBan: form.restreamAutoBan })}>
+              <Save className="w-3.5 h-3.5" /> {update.isPending ? t('common.loading') : t('common.save')}
+            </button>
+          </div>
+        </div>
+      )}
+      <DataTable columns={cols} data={lines} keyExtractor={(r) => r.userId} isLoading={isLoading} emptyMessage={t('security.restream.empty')} />
     </div>
   );
 }

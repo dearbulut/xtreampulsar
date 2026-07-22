@@ -556,6 +556,15 @@ export function SettingsPage() {
                   placeholder="TR, US, DE…"
                 />
               </Field>
+              <Field label={t('settings.realIpMode')} hint={t('settings.realIpModeHint')}>
+                <select className="input" value={settings.security.realIpMode}
+                  onChange={(e) => updateSettings('security', { realIpMode: e.target.value })}>
+                  <option value="auto">{t('settings.realIpAuto')}</option>
+                  <option value="cf">{t('settings.realIpCf')}</option>
+                  <option value="xff-first">{t('settings.realIpXffFirst')}</option>
+                  <option value="xff-last">{t('settings.realIpXffLast')}</option>
+                </select>
+              </Field>
             </div>
             <TwoFactorSection />
           </>

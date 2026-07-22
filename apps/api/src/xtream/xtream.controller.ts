@@ -136,12 +136,47 @@ export class XtreamController {
 
   // ─── Xtream brute-force koruması ────────────────────────────────────────────
 
+  private realIpMode = 'auto';
+  private realIpModeAt = 0;
+
+  /** real-IP modunu ayarlardan al (60sn throttle, fire-and-forget → hot-path'e maliyet yok). */
+  private refreshRealIpMode(): void {
+    const now = Date.now();
+    if (now - this.realIpModeAt < 60_000) return;
+    this.realIpModeAt = now;
+    void this.prisma.settings
+      .findUnique({ where: { id: 'singleton' }, select: { realIpMode: true } })
+      .then((sx) => { if (sx?.realIpMode) this.realIpMode = sx.realIpMode; })
+      .catch(() => {});
+  }
+
+  /**
+   * Gercek client IP. Cloudflare/proxy arkasi icin ayarlanabilir (realIpMode):
+   * - auto (default): X-Real-IP → XFF son hop → req.ip (dogrudan nginx icin dogru).
+   * - cf: CF-Connecting-IP (Cloudflare arkasi — spoofing'e karsi ACIK opt-in).
+   * - xff-first: XFF ilk deger (diger CDN'ler).
+   * - xff-last: XFF son deger.
+   * NOT: CF-Connecting-IP'yi auto'da GUVENME — CF arkasi degilsen istemci sahte header yollar.
+   */
   private clientIpOf(req: Request): string {
+    this.refreshRealIpMode();
+    const cf = (req.headers['cf-connecting-ip'] as string | undefined)?.trim();
     const real = (req.headers['x-real-ip'] as string | undefined)?.trim();
-    if (real) return real;
-    const xff = req.headers['x-forwarded-for'] as string | undefined;
-    if (xff) return xff.split(',').pop()!.trim(); // son hop = nginx'in eklediği gerçek IP
-    return req.ip ?? '';
+    const xffRaw = req.headers['x-forwarded-for'] as string | undefined;
+    const xff = xffRaw ? xffRaw.split(',').map((x) => x.trim()).filter(Boolean) : [];
+
+    switch (this.realIpMode) {
+      case 'cf':
+        return cf || real || (xff.length ? xff[xff.length - 1] : '') || req.ip || '';
+      case 'xff-first':
+        return (xff.length ? xff[0] : '') || real || req.ip || '';
+      case 'xff-last':
+        return (xff.length ? xff[xff.length - 1] : '') || real || req.ip || '';
+      default: // auto
+        if (real) return real;
+        if (xff.length) return xff[xff.length - 1];
+        return req.ip ?? '';
+    }
   }
 
   private async isXtreamBlocked(ip: string): Promise<boolean> {

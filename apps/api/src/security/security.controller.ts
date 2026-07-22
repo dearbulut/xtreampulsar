@@ -83,4 +83,28 @@ export class SecurityController {
   runAutoBan() {
     return this.securityService.runAutoBan();
   }
+
+  // ─── Restreamer / scraper tespiti ───────────────────────────────────────────
+  @Get('suspicious-lines')
+  suspiciousLines(@Query('window') window?: string, @Query('threshold') threshold?: string) {
+    return this.securityService.getSuspiciousLines(
+      window ? parseInt(window, 10) : 60,
+      threshold ? parseInt(threshold, 10) : 40,
+    );
+  }
+
+  @Get('restream-config')
+  getRestreamConfig() {
+    return this.securityService.getRestreamConfig();
+  }
+
+  @Patch('restream-config')
+  updateRestreamConfig(@Body() body: { enabled?: boolean; windowMins?: number; threshold?: number; autoBan?: boolean }) {
+    return this.securityService.updateRestreamConfig(body);
+  }
+
+  @Post('ban-user/:id')
+  banUser(@Param('id') id: string) {
+    return this.securityService.banUserById(id);
+  }
 }

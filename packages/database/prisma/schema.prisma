@@ -745,6 +745,13 @@ model Settings {
   downloadSpeedKbps       Int      @default(0)  // indirme-basi max hiz KB/s (0=sinirsiz)
   downloadConcurrency     Int      @default(3)  // ayni anda max indirme
   downloadAutoVod         Boolean  @default(false) // tamamlaninca otomatik VOD ekle (varsayilan)
+  // Anti-piracy / real-IP
+  realIpMode              String   @default("auto") // auto | cf | xff-first | xff-last (Cloudflare/proxy arkasi gercek client IP)
+  // Restreamer/scraper tespiti (bir pencerede anormal sayida farkli kanal = ripper)
+  restreamDetectEnabled   Boolean  @default(false)
+  restreamWindowMins      Int      @default(60)
+  restreamDistinctThreshold Int    @default(40) // pencerede kac farkli kanal supheli
+  restreamAutoBan         Boolean  @default(false) // esigi asani otomatik banla (varsayilan: sadece listele)
   // Altyazi arama/indirme (OpenSubtitles) — anahtar girilene kadar uykuda
   subtitleEnabled         Boolean  @default(false)
   subtitleApiKey          String   @default("")
