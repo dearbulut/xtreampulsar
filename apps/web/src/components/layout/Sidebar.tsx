@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import {
+  Download,
   LayoutDashboard,
   Server,
   Tv,
@@ -78,6 +79,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.subtitles', to: '/subtitles', icon: Captions },
       { label: 'nav.categories', to: '/categories', icon: FolderOpen },
       { label: 'nav.bouquets', to: '/bouquets', icon: BookMarked },
+      { label: 'nav.downloads', to: '/downloads', icon: Download },
     ],
   },
   {

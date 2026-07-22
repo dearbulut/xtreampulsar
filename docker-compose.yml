@@ -60,12 +60,14 @@ services:
       SERVER_PORT: ${SERVER_PORT:-25461}
       FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
       HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}
+      MEDIA_PATH: ${MEDIA_PATH:-/data/media}
       MIGRATION_DATA_PATH: ${MIGRATION_DATA_PATH:-/data/migrations}
       NODE_ENV: production
     volumes:
       - hls_data:/tmp/xtreampulsar/hls
       - migration_data:/data/migrations
       - backup_data:/opt/xtreampulsar/backups
+      - media_data:/data/media
     restart: always
     expose:
       - "3000"
@@ -151,6 +153,7 @@ volumes:
   hls_data:
   migration_data:
   backup_data:
+  media_data:
 
 networks:
   internal:

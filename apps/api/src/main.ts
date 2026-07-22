@@ -6,6 +6,12 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
+// Prisma BigInt alanlarini JSON'a string olarak ver (aksi halde JSON.stringify
+// "Do not know how to serialize a BigInt" ile patlar — indirme/baglanti byte alanlari).
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (this: bigint): string {
+  return this.toString();
+};
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

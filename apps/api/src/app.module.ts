@@ -49,6 +49,7 @@ import { ClientModule } from './client/client.module';
 import { ClientRequestsModule } from './client-requests/client-requests.module';
 import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
 import { ResellerApiModule } from './reseller-api/reseller-api.module';
+import { DownloadModule } from './download/download.module';
 
 @Module({
   imports: [
@@ -97,6 +98,7 @@ import { ResellerApiModule } from './reseller-api/reseller-api.module';
     ClientRequestsModule,
     M3uSyncModule,
     ResellerApiModule,
+    DownloadModule,
   ],
   controllers: [AppController],
   providers: [

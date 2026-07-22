@@ -18,7 +18,7 @@ RUN pnpm --filter @xtreampulsar/api build
 
 FROM node:20-alpine
 WORKDIR /repo
-RUN apk add --no-cache ffmpeg openssl postgresql-client
+RUN apk add --no-cache ffmpeg aria2 openssl postgresql-client
 
 ENV NODE_ENV=production
 

@@ -1227,3 +1227,23 @@ model ActivationCode {
   @@index([status])
   @@map("activation_codes")
 }
+
+
+model DownloadJob {
+  id              String   @id @default(cuid())
+  url             String
+  filename        String   // hedef dosya adi (sanitize edilmis)
+  status          String   @default("QUEUED") // QUEUED | DOWNLOADING | PAUSED | COMPLETED | FAILED | CANCELED
+  totalBytes      BigInt   @default(0)
+  downloadedBytes BigInt   @default(0)
+  speedBps        Int      @default(0) // anlik hiz (byte/sn)
+  connections     Int      @default(16) // aria2 baglanti sayisi
+  error           String?
+  categoryId      String?  // VOD olarak eklenince kullanilacak kategori
+  createdStreamId String?  // olusturulan VOD stream id
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@map("download_jobs")
+}

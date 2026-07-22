@@ -36,6 +36,7 @@
     "systemHealth": "System Health",
     "invoices": "Invoices",
     "subtitles": "Subtitles",
+    "downloads": "Downloads",
     "commissions": "Commissions"
   },
   "activityLog": {
@@ -2194,6 +2195,34 @@
     "invoice": "INVOICE",
     "billedTo": "Billed to",
     "total": "Total"
+  },
+  "downloads": {
+    "title": "Downloads",
+    "subtitle": "Download from a URL in the background with multi-connection (resume + queue), add completed files as VOD",
+    "url": "Download URL",
+    "filenameOptional": "Filename (optional)",
+    "filenameAuto": "Blank: auto from URL",
+    "connections": "Connections",
+    "targetCategory": "Target VOD category",
+    "noCategoryOption": "— No category (download only) —",
+    "categoryHint": "If you pick a category, the completed file can be added as VOD with one click.",
+    "startDownload": "Download",
+    "legalNote": "This is a neutral downloader. The URL you enter and the legality of the source are your responsibility — do not download copyrighted content without permission.",
+    "empty": "No downloads yet.",
+    "pause": "Pause",
+    "resume": "Resume",
+    "cancel": "Cancel",
+    "addToVod": "Add as VOD",
+    "addedToVod": "Added to VOD",
+    "noCategory": "No category selected",
+    "status": {
+      "QUEUED": "Queued",
+      "DOWNLOADING": "Downloading",
+      "PAUSED": "Paused",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed",
+      "CANCELED": "Canceled"
+    }
   },
   "subtitles": {
     "title": "Subtitles",

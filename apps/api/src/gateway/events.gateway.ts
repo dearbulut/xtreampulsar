@@ -32,4 +32,8 @@ export class EventsGateway {
   emitConnectionClose(connectionId: string): void {
     this.server.emit('connection:close', { connectionId });
   }
+
+  emitDownloadProgress(payload: Record<string, unknown>): void {
+    this.server.emit('download:progress', payload);
+  }
 }

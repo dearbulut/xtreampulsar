@@ -36,6 +36,7 @@
     "systemHealth": "Sistem Sağlığı",
     "invoices": "Faturalar",
     "subtitles": "Altyazılar",
+    "downloads": "İndirmeler",
     "commissions": "Komisyonlar"
   },
   "activityLog": {
@@ -2194,6 +2195,34 @@
     "invoice": "FATURA",
     "billedTo": "Müşteri",
     "total": "Toplam"
+  },
+  "downloads": {
+    "title": "İndirmeler",
+    "subtitle": "URL'den arka planda çok-bağlantılı indir (resume + kuyruk), tamamlananı VOD olarak ekle",
+    "url": "İndirme URL'si",
+    "filenameOptional": "Dosya adı (opsiyonel)",
+    "filenameAuto": "Boş: URL'den otomatik",
+    "connections": "Bağlantı sayısı",
+    "targetCategory": "Hedef VOD kategorisi",
+    "noCategoryOption": "— Kategori yok (sadece indir) —",
+    "categoryHint": "Kategori seçersen, indirme bitince tek tıkla VOD olarak eklenebilir.",
+    "startDownload": "İndir",
+    "legalNote": "Bu araç nötr bir indiricidir. Hangi URL'yi girdiğin ve kaynağın yasallığı senin sorumluluğundadır — telifli içeriği izinsiz indirme.",
+    "empty": "Henüz indirme yok.",
+    "pause": "Duraklat",
+    "resume": "Devam",
+    "cancel": "İptal",
+    "addToVod": "VOD olarak ekle",
+    "addedToVod": "VOD'a eklendi",
+    "noCategory": "Kategori seçilmedi",
+    "status": {
+      "QUEUED": "Kuyrukta",
+      "DOWNLOADING": "İndiriliyor",
+      "PAUSED": "Duraklatıldı",
+      "COMPLETED": "Tamamlandı",
+      "FAILED": "Başarısız",
+      "CANCELED": "İptal edildi"
+    }
   },
   "subtitles": {
     "title": "Altyazılar",
