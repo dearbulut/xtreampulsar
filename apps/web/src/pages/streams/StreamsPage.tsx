@@ -498,6 +498,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [editStream, setEditStream] = useState<Stream | null>(null);
   const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
+  const [editForm, setEditForm] = useState<{ name: string; categoryId: string; primaryUrl: string; serverId: string; tvgLogo: string; streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP'; catchupEnabled: boolean; catchupDays: string }>({ name: '', categoryId: '', primaryUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY', catchupEnabled: false, catchupDays: '7' });
   const [metaStream, setMetaStream] = useState<Stream | null>(null);
   const [metaForm, setMetaForm] = useState<MetaForm>(EMPTY_META);
   const [episodeSeries, setEpisodeSeries] = useState<Stream | null>(null);
@@ -802,7 +803,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             onClick={() => restart.mutate(r.id)}
             loading={restart.isPending && restart.variables === r.id}
           />
-          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); }} />
+          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); setEditForm({ name: r.name, categoryId: r.categoryId ?? '', primaryUrl: r.primaryUrl, serverId: r.serverId ?? '', tvgLogo: r.tvgLogo ?? '', streamMode: (r.streamMode as 'PROXY' | 'TRANSCODE' | 'LOOP') ?? 'PROXY', catchupEnabled: r.catchupEnabled ?? false, catchupDays: String(r.catchupDays ?? 7) }); }} />
           <ActionBtn icon={Activity} title={t('streams.healthReport')} color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={AudioLines} title={t('streams.tracks')} color="text-primary-light" onClick={() => setTracksStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title={t('common.delete')} color="text-red-400" onClick={() => setDeleteId(r.id)} />
@@ -1401,10 +1402,57 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         size="md"
       >
         <div className="space-y-4">
-          <div>
-            <label className="label">{t('streams.sourceUrlPrimary')}</label>
-            <input className="input font-mono text-xs" readOnly value={editStream?.primaryUrl ?? ''} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="label">{t('streams.streamName')}</label>
+              <input className="input" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="label">{t('streams.category')}</label>
+              <select className="input" value={editForm.categoryId} onChange={(e) => setEditForm((f) => ({ ...f, categoryId: e.target.value }))}>
+                <option value="">{t('streams.selectCategory')}</option>
+                {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">{t('streams.sourceUrlPrimary')}</label>
+              <input className="input font-mono text-xs" value={editForm.primaryUrl} onChange={(e) => setEditForm((f) => ({ ...f, primaryUrl: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">{t('streams.server')}</label>
+              <select className="input" value={editForm.serverId} onChange={(e) => setEditForm((f) => ({ ...f, serverId: e.target.value }))}>
+                <option value="">{t('streams.selectServer')}</option>
+                {servers?.map((sv) => <option key={sv.id} value={sv.id}>{sv.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">{t('streams.streamMode')}</label>
+              <select className="input" value={editForm.streamMode} onChange={(e) => setEditForm((f) => ({ ...f, streamMode: e.target.value as 'PROXY' | 'TRANSCODE' | 'LOOP' }))}>
+                <option value="PROXY">{t('streams.modeProxy')}</option>
+                <option value="TRANSCODE">{t('streams.modeTranscode')}</option>
+                <option value="LOOP">{t('streams.modeLoop')}</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">{t('streams.logoUrl')}</label>
+              <input className="input" value={editForm.tvgLogo} onChange={(e) => setEditForm((f) => ({ ...f, tvgLogo: e.target.value }))} placeholder={t('streams.logoUrlPlaceholder')} />
+            </div>
           </div>
+          {editStream && editStream.category?.type !== 'VOD' && editStream.category?.type !== 'SERIES' && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <input type="checkbox" className="accent-indigo-500" checked={editForm.catchupEnabled} onChange={(e) => setEditForm((f) => ({ ...f, catchupEnabled: e.target.checked }))} />
+                {t('streams.catchupEnabled')}
+              </label>
+              {editForm.catchupEnabled && (
+                <div>
+                  <label className="label">{t('streams.catchupDays')}</label>
+                  <input type="number" min={1} max={30} className="input w-32" value={editForm.catchupDays} onChange={(e) => setEditForm((f) => ({ ...f, catchupDays: e.target.value }))} />
+                  <p className="text-[11px] text-muted mt-1">{t('streams.catchupHint')}</p>
+                </div>
+              )}
+            </div>
+          )}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="label mb-0">{t('streams.backupUrls')}</label>
@@ -1451,18 +1499,28 @@ export function StreamsPage({ type }: { type?: StreamType }) {
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
             <button onClick={() => setEditStream(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
-              disabled={updateBackupUrls.isPending}
+              disabled={updateStream.isPending || updateBackupUrls.isPending || !editForm.name || !editForm.primaryUrl}
               onClick={() => {
                 if (!editStream) return;
                 const urls = editBackupUrls.filter((u) => u.trim() !== '');
-                updateBackupUrls.mutate(
-                  { id: editStream.id, backupUrls: urls },
-                  { onSuccess: () => setEditStream(null) },
-                );
+                void (async () => {
+                  await updateStream.mutateAsync({ id: editStream.id, data: {
+                    name: editForm.name,
+                    categoryId: editForm.categoryId,
+                    primaryUrl: editForm.primaryUrl,
+                    serverId: editForm.serverId || undefined,
+                    tvgLogo: editForm.tvgLogo,
+                    streamMode: editForm.streamMode,
+                    catchupEnabled: editForm.catchupEnabled,
+                    catchupDays: parseInt(editForm.catchupDays, 10) || 7,
+                  } as Partial<Stream> });
+                  await updateBackupUrls.mutateAsync({ id: editStream.id, backupUrls: urls });
+                  setEditStream(null);
+                })();
               }}
               className="btn-primary"
             >
-              {updateBackupUrls.isPending ? t('streams.saving') : t('common.save')}
+              {updateStream.isPending || updateBackupUrls.isPending ? t('streams.saving') : t('common.save')}
             </button>
           </div>
         </div>
