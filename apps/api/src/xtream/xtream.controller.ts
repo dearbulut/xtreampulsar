@@ -26,6 +26,7 @@ import { StreamWorkerService } from '../stream/stream-worker.service';
 import { UserService } from '../user/user.service';
 import { UserActivityService } from '../user/user-activity.service';
 import { SubtitleService } from '../subtitle/subtitle.service';
+import { CatchupService } from '../catchup/catchup.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityService } from '../security/security.service';
 import { RestreamDetectorService } from '../security/restream-detector.service';
@@ -81,6 +82,7 @@ export class XtreamController {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Optional() private readonly gateway?: EventsGateway,
     @Optional() private readonly webhookService?: WebhookService,
+    @Optional() private readonly catchupService?: CatchupService,
   ) {}
 
   // ─── Altyazi (OpenSubtitles) — on-demand + onbellek ─────────────────────────
@@ -823,6 +825,31 @@ export class XtreamController {
 
     const clientIp = clientIpRaw;
     const clientUa = req.headers['user-agent'] ?? '';
+
+    // ── Catch-up / DVR oynatma: ?utc=&duration= varsa arşivden servis et ──────
+    // utc = baslangic unix saniye, duration = saniye. Player catchup-source ile kurar.
+    const utcRaw = req.query.utc as string | undefined;
+    if (utcRaw && this.catchupService) {
+      const startSec = parseInt(utcRaw, 10);
+      const durSec = parseInt((req.query.duration as string) ?? '3600', 10) || 3600;
+      if (!isNaN(startSec)) {
+        const segments = this.catchupService.getSegmentsInRange(streamRecord.id, startSec * 1000, durSec);
+        if (segments.length === 0) { res.status(HttpStatus.NOT_FOUND).send('No archive for this time range'); return; }
+        res.set({ 'Content-Type': 'video/mp2t', 'Cache-Control': 'no-cache' });
+        for (const seg of segments) {
+          if (res.writableEnded || res.destroyed) break;
+          await new Promise<void>((resolve) => {
+            const rs = fs.createReadStream(seg);
+            rs.on('end', () => resolve());
+            rs.on('error', () => resolve());
+            res.on('close', () => { rs.destroy(); resolve(); });
+            rs.pipe(res, { end: false });
+          });
+        }
+        if (!res.writableEnded) res.end();
+        return;
+      }
+    }
 
     // ZAP FIX: yeni stream açılıyor — kullanıcının DİĞER stream'lerdeki eski/aynı-cihaz
     // bağlantılarını KAPAT, sonra limiti değerlendir. Böylece kanal değiştiren cihazın

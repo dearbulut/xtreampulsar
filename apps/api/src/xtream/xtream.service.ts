@@ -85,20 +85,23 @@ export class XtreamService {
 
   async getLiveStreams(userId: string): Promise<XtreamLiveStream[]> {
     const streams = await this.streamService.findAllLive(userId);
-    return streams.map((s, i) => ({
-      num: i + 1,
-      name: s.name,
-      stream_type: 'live',
-      stream_id: s.externalId,
-      stream_icon: s.tvgLogo ?? '',
-      epg_channel_id: s.tvgId ?? '',
-      added: String(Math.floor(s.createdAt.getTime() / 1000)),
-      category_id: String(s.category.externalId),
-      custom_sid: '',
-      tv_archive: 0,
-      direct_source: '',
-      tv_archive_duration: 0,
-    }));
+    return streams.map((s, i) => {
+      const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number };
+      return {
+        num: i + 1,
+        name: s.name,
+        stream_type: 'live',
+        stream_id: s.externalId,
+        stream_icon: s.tvgLogo ?? '',
+        epg_channel_id: s.tvgId ?? '',
+        added: String(Math.floor(s.createdAt.getTime() / 1000)),
+        category_id: String(s.category.externalId),
+        custom_sid: '',
+        tv_archive: sc.catchupEnabled ? 1 : 0,
+        direct_source: '',
+        tv_archive_duration: sc.catchupEnabled ? (sc.catchupDays ?? 7) : 0,
+      };
+    });
   }
 
   async getLiveCategories(userId: string): Promise<XtreamCategory[]> {
@@ -294,8 +297,12 @@ export class XtreamService {
     if (type === 'all' || type === 'live') {
       const streams = await this.streamService.findAllLive(userId);
       for (const s of streams) {
+        const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number };
+        const catchup = sc.catchupEnabled
+          ? ` catchup="default" catchup-days="${sc.catchupDays ?? 7}" tv-archive="1" tv-archive-duration="${sc.catchupDays ?? 7}" catchup-source="${baseUrl}/live/${username}/${password}/${s.externalId}.ts?utc={utc}&duration={duration}"`
+          : '';
         lines.push(
-          `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`,
+          `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}"${catchup} group-title="${s.category.name}",${s.name}`,
           `${baseUrl}/live/${username}/${password}/${s.externalId}.${ext}`,
         );
       }

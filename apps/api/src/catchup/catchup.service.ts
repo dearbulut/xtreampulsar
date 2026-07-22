@@ -173,6 +173,29 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
     return Date.UTC(+y, +mo - 1, +d, +h, +mi, +sec);
   }
 
+  /**
+   * Verilen [startMs, startMs+durationSec) penceresine denk gelen arsiv segment
+   * dosya yollarini (zaman sirali) dondurur. Catch-up oynatma icin.
+   */
+  getSegmentsInRange(streamId: string, startMs: number, durationSec: number): string[] {
+    const dir = this.streamDir(streamId);
+    let files: string[] = [];
+    try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.ts')); } catch { return []; }
+    const endMs = startMs + Math.max(1, durationSec) * 1000;
+    const segs = files
+      .map((f) => ({ f, at: this.parseSegTime(f) }))
+      .filter((x): x is { f: string; at: number } => x.at !== null)
+      .sort((a, b) => a.at - b.at);
+    const out: string[] = [];
+    for (let i = 0; i < segs.length; i++) {
+      const at = segs[i].at;
+      const nextAt = i + 1 < segs.length ? segs[i + 1].at : at + SEGMENT_SECS * 1000;
+      // segment [at, nextAt) pencereyle kesisiyor mu?
+      if (nextAt > startMs && at < endMs) out.push(path.join(dir, segs[i].f));
+    }
+    return out;
+  }
+
   /** UI/dogrulama: bir yayinin arsiv durumu. */
   async getArchiveInfo(streamId: string): Promise<{ recording: boolean; fileCount: number; sizeBytes: number; oldestAt: number | null; newestAt: number | null }> {
     const dir = this.streamDir(streamId);
