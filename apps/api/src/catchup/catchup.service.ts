@@ -68,8 +68,13 @@ export class CatchupService implements OnModuleInit, OnModuleDestroy {
       '-nostdin', '-hide_banner', '-loglevel', 'warning',
       '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
       '-i', source,
+      // Sadece video + ses (ilk video + tum ses). Data/SCTE-35/altyazi akislari
+      // mpegts segment muxer'i '-c copy' ile bozuyordu ("Invalid argument").
+      '-map', '0:v:0?',
+      '-map', '0:a?',
+      '-dn', '-sn',
+      '-ignore_unknown',
       '-c', 'copy',
-      '-map', '0',
       '-f', 'segment',
       '-segment_time', String(SEGMENT_SECS),
       '-segment_format', 'mpegts',
