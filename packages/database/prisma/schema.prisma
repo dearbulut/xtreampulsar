@@ -741,6 +741,10 @@ model Settings {
   // On-demand uyutma — izleyicisi olmayan TRANSCODE yayinini durdur, istek gelince otomatik uyandir (uykuda: default kapali)
   idleSleepEnabled        Boolean  @default(false)
   idleSleepMins           Int      @default(10) // kac dk 0 izleyiciden sonra uyut
+  // Indirme yoneticisi
+  downloadSpeedKbps       Int      @default(0)  // indirme-basi max hiz KB/s (0=sinirsiz)
+  downloadConcurrency     Int      @default(3)  // ayni anda max indirme
+  downloadAutoVod         Boolean  @default(false) // tamamlaninca otomatik VOD ekle (varsayilan)
   // Altyazi arama/indirme (OpenSubtitles) — anahtar girilene kadar uykuda
   subtitleEnabled         Boolean  @default(false)
   subtitleApiKey          String   @default("")
@@ -1238,6 +1242,8 @@ model DownloadJob {
   downloadedBytes BigInt   @default(0)
   speedBps        Int      @default(0) // anlik hiz (byte/sn)
   connections     Int      @default(16) // aria2 baglanti sayisi
+  autoVod         Boolean  @default(false) // tamamlaninca otomatik VOD ekle
+  priority        Int      @default(0)     // kuyruk onceligi (buyuk = once)
   error           String?
   categoryId      String?  // VOD olarak eklenince kullanilacak kategori
   createdStreamId String?  // olusturulan VOD stream id
