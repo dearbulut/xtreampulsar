@@ -94,7 +94,7 @@ export class UserService {
     }
   }
 
-  async validateConnection(userId: string, ip: string, _userAgent?: string, perIpCap?: number) {
+  async validateConnection(userId: string, ip: string, _userAgent?: string, perIpCap?: number, currentStreamId?: string) {
     const user = await this.userRepo.findById(userId);
     if (!user || user.deletedAt) return { allowed: false, reason: 'User not found' };
     if (user.status !== 'ACTIVE') {
@@ -115,10 +115,11 @@ export class UserService {
       return { allowed: false, reason };
     };
 
-    // Zap-dostu: istegi yapan cihazin kendi (eski/hayalet) baglantilarini saymaz;
-    // yalnizca FARKLI cihazlari sayar → kanal degistiren tek izleyici bloklanmaz.
-    const otherDevices = await this.userRepo.countActiveOtherDevices(userId, ip, _userAgent);
-    if (otherDevices >= user.maxConnections) {
+    // Ham eszamanli yayin sayisi (current stream haric). closeSupersededConnections
+    // cagiran yolda ONCE calisir → ayni cihazin eski yayini kapanmis olur, bu sayim
+    // dogru kalir. NAT+ayni-UA iki cihaz artik BYPASS edemez (cihaz ayirt edilmez).
+    const activeStreams = await this.userRepo.countActiveConnections(userId, currentStreamId);
+    if (activeStreams >= user.maxConnections) {
       this.logConnectionLimitAttempt(userId, ip, _userAgent);
       return deny(`Max connections reached (${user.maxConnections})`, 'MAX_CONN');
     }

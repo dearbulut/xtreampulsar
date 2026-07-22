@@ -453,11 +453,20 @@ export class XtreamController {
     }
 
     try {
+      // Internal stream kaydını ÖNCE çöz (superseded + connection sayımı streamId ister).
+      const rec = await this.streamService.findByExternalId(externalId);
+      if (!rec) {
+        if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
+        res.status(HttpStatus.NOT_FOUND).send('Stream not found');
+        return null;
+      }
+      const ua = (res.req as Request).headers['user-agent'] ?? '';
+
+      // Zap temizliği: aynı cihazın (ip+ua) diğer yayınlarını kapat — LIVE ile aynı davranış.
+      await this.userService.closeSupersededConnections(user.id, rec.id, ip, ua).catch(() => {});
+
       const validation = await this.userService.validateConnection(
-        user.id,
-        ip,
-        (res.req as Request).headers['user-agent'],
-        wl ? 0 : guard.maxConnsPerIp,
+        user.id, ip, ua, wl ? 0 : guard.maxConnsPerIp, rec.id,
       );
       if (!validation.allowed) {
         await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden');
@@ -471,14 +480,6 @@ export class XtreamController {
           res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil');
           return null;
         }
-      }
-
-      // Internal stream kaydını çöz (connection-tracking için streamId gerekli).
-      const rec = await this.streamService.findByExternalId(externalId);
-      if (!rec) {
-        if (guard.denyInvalidStreamIds && !wl) await this.recordInvalidStreamId(ip);
-        res.status(HttpStatus.NOT_FOUND).send('Stream not found');
-        return null;
       }
 
       const url = await this.streamService.getStreamUrl(externalId);
@@ -832,7 +833,7 @@ export class XtreamController {
 
     // Validate connection limits (zap temizliğinden SONRA → doğru sayım)
     try {
-      const validation = await this.userService.validateConnection(user.id, clientIp, clientUa, wl ? 0 : guard.maxConnsPerIp);
+      const validation = await this.userService.validateConnection(user.id, clientIp, clientUa, wl ? 0 : guard.maxConnsPerIp, streamRecord.id);
       if (!validation.allowed) {
         await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden');
         return;
@@ -1160,8 +1161,9 @@ export class XtreamController {
           if (!canAccess) { res.status(HttpStatus.FORBIDDEN).send('Bu içerik paketinizde mevcut değil'); return; }
         }
         const ua = req.headers['user-agent'] ?? '';
-        // Episode path'te cap enforce edilmiyordu — VOD/live ile aynı per-IP/user tavanını uygula.
-        const validation = await this.userService.validateConnection(user.id, ip, ua, wl ? 0 : guard.maxConnsPerIp);
+        // Episode path'te cap enforce edilmiyordu — VOD/live ile aynı tavanı uygula (+ zap temizliği).
+        await this.userService.closeSupersededConnections(user.id, episode.seriesId, ip, ua).catch(() => {});
+        const validation = await this.userService.validateConnection(user.id, ip, ua, wl ? 0 : guard.maxConnsPerIp, episode.seriesId);
         if (!validation.allowed) { await this.denyWithVideo(res, HttpStatus.FORBIDDEN, validation.reason ?? 'Forbidden'); return; }
         await this.proxyWithConnection(episode.primaryUrl, req, res, {
           userId: user.id, streamId: episode.seriesId, ip, ua,

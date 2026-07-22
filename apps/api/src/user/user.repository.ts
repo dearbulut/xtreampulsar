@@ -45,16 +45,22 @@ export class UserRepository {
 
   // Yalnız GERÇEKTEN aktif (endedAt=null VE son STALE_CONNECTION_MS içinde aktivite)
   // bağlantıları sayar — hayalet kayıtlar maxConnections kotasını bloke etmesin.
-  countActiveConnections(userId: string): Promise<number> {
-    return this.prisma.connection.count({
-      where: { userId, ...activeConnectionWhere() },
+  // Hattin AKTIF eszamanli yayin sayisi. maxConnections = ham eszamanlı yayin
+  // (Xtream modeli, cihaz ayirt etmez → NAT+ayni-UA bypass edemez). Distinct streamId
+  // (ayni yayin cift row olsa da 1 sayilir). excludeStreamId: acilmakta olan yayini
+  // sayma (kendi baglantisini yeniden dogrularken self-block olmasin).
+  async countActiveConnections(userId: string, excludeStreamId?: string): Promise<number> {
+    const rows = await this.prisma.connection.findMany({
+      where: {
+        userId,
+        ...activeConnectionWhere(),
+        ...(excludeStreamId ? { streamId: { not: excludeStreamId } } : {}),
+      },
+      select: { streamId: true },
     });
+    return new Set(rows.map((r) => r.streamId)).size;
   }
 
-  // Zap-dostu sayim: kullanicinin AKTIF baglantilarinda, istegi yapan cihaz
-  // (ip + userAgent) HARIC kac FARKLI cihaz var? Tek cihaz kanal degistirince
-  // (zap) kendi eski/hayalet baglantisi sayilmaz → mesru izleyici bloklanmaz.
-  // Farkli cihazlar (kimlik paylasimi) ayri sayilir → maxConnections dogru calisir.
   async countActiveOtherDevices(userId: string, ip: string, userAgent?: string): Promise<number> {
     const rows = await this.prisma.connection.findMany({
       where: { userId, ...activeConnectionWhere() },
