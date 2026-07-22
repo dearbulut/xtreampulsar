@@ -50,6 +50,7 @@ import { ClientRequestsModule } from './client-requests/client-requests.module';
 import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
 import { ResellerApiModule } from './reseller-api/reseller-api.module';
 import { DownloadModule } from './download/download.module';
+import { CatchupModule } from './catchup/catchup.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { DownloadModule } from './download/download.module';
     M3uSyncModule,
     ResellerApiModule,
     DownloadModule,
+    CatchupModule,
   ],
   controllers: [AppController],
   providers: [

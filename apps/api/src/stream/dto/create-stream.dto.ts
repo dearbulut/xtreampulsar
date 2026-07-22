@@ -61,6 +61,17 @@ export class CreateStreamDto {
   @IsBoolean()
   loopShuffle?: boolean;
 
+  // ─── Catch-up / DVR ─────────────────────────────────────────────────────────
+  @IsOptional()
+  @IsBoolean()
+  catchupEnabled?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  catchupDays?: number;
+
   // ─── TMDB / VOD metadata (manuel düzenlenebilir) ───────────────────────────
   @IsOptional()
   @Type(() => Number)

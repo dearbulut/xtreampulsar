@@ -246,6 +246,8 @@ model Stream {
   streamMode      String       @default("PROXY") // PROXY | TRANSCODE | LOOP
   loopSources     String[]     @default([]) // LOOP modu: 24/7 dongulenen kaynak listesi (URL)
   loopShuffle     Boolean      @default(false) // LOOP: her dongude sirayi karistir
+  catchupEnabled  Boolean      @default(false) // catch-up/DVR: yayini arsivle (geriye sarma)
+  catchupDays     Int          @default(7)     // arsivi kac gun tut
   workerStatus    WorkerStatus @default(IDLE)
   restartCount    Int          @default(0)
   status          StreamStatus @default(OFFLINE)

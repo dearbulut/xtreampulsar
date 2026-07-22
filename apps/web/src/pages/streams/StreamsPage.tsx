@@ -163,6 +163,8 @@ interface CreateForm {
   streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
   loopSources: string[];
   loopShuffle: boolean;
+  catchupEnabled: boolean;
+  catchupDays: string;
   overview: string;
   posterUrl: string;
   backdropUrl: string;
@@ -173,7 +175,7 @@ interface CreateForm {
 
 const EMPTY_FORM: CreateForm = {
   name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY',
-  loopSources: [], loopShuffle: false,
+  loopSources: [], loopShuffle: false, catchupEnabled: false, catchupDays: '7',
   overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
 };
 
@@ -1240,6 +1242,23 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               </div>
             </div>
           )}
+          {type !== 'VOD' && type !== 'SERIES' && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <input type="checkbox" className="accent-indigo-500" checked={createForm.catchupEnabled}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, catchupEnabled: e.target.checked }))} />
+                {t('streams.catchupEnabled')}
+              </label>
+              {createForm.catchupEnabled && (
+                <div>
+                  <label className="label">{t('streams.catchupDays')}</label>
+                  <input type="number" min={1} max={30} className="input w-32" value={createForm.catchupDays}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, catchupDays: e.target.value }))} />
+                  <p className="text-[11px] text-muted mt-1">{t('streams.catchupHint')}</p>
+                </div>
+              )}
+            </div>
+          )}
           {(type === 'VOD' || type === 'SERIES') && (
             <div className="space-y-3 pt-3 border-t border-border">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide">{t('streams.metadataOptional')}</p>
@@ -1328,6 +1347,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   primaryUrl: createForm.primaryUrl,
                   categoryId: createForm.categoryId,
                   streamMode: createForm.streamMode,
+                  ...(type !== 'VOD' && type !== 'SERIES' && createForm.catchupEnabled && {
+                    catchupEnabled: true,
+                    catchupDays: parseInt(createForm.catchupDays, 10) || 7,
+                  }),
                   ...(createForm.streamMode === 'LOOP' && {
                     loopSources: [createForm.primaryUrl, ...createForm.loopSources].map((u) => u.trim()).filter(Boolean),
                     loopShuffle: createForm.loopShuffle,

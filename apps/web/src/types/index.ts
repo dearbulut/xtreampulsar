@@ -34,6 +34,8 @@ export interface Stream {
   streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
   loopSources?: string[];
   loopShuffle?: boolean;
+  catchupEnabled?: boolean;
+  catchupDays?: number;
   status: StreamStatus;
   workerStatus: WorkerStatus;
   restartCount: number;
