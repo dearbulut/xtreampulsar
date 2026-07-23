@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { DemoModeGuard } from './common/demo-mode.guard';
 import { PanelGeoBlockGuard } from './security/panel-geo-block.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -105,6 +106,7 @@ import { CatchupModule } from './catchup/catchup.module';
   controllers: [AppController],
   providers: [
     AppService,
+    { provide: APP_GUARD, useClass: DemoModeGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: PanelGeoBlockGuard },
     { provide: APP_GUARD, useClass: LicenseGuard },
