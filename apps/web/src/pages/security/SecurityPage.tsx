@@ -7,6 +7,18 @@ import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { useBlockedIPs, useBruteForceLogs, useUnblockIP, useBlockIP, useAuditLogs, useBlockedAttempts, useAutoBanConfig, useUpdateAutoBan, useRunAutoBan, useSuspiciousLines, useRestreamConfig, useUpdateRestreamConfig, useBanLine, type BlockedIP, type BruteForceLog, type AuditLog, type BlockedAttempt, type AutoBanConfig, type SuspiciousLine, type RestreamConfig } from '@/hooks/useSecurity';
 import { cn } from '@/lib/utils';
 
+
+const AUDIT_CATEGORIES: { key: string; label: string; resource: string }[] = [
+  { key: 'all', label: 'security.auditCat.all', resource: '' },
+  { key: 'users', label: 'security.auditCat.users', resource: 'users' },
+  { key: 'auth', label: 'security.auditCat.auth', resource: 'auth' },
+  { key: 'streams', label: 'security.auditCat.streams', resource: 'streams' },
+  { key: 'resellers', label: 'security.auditCat.resellers', resource: 'resellers' },
+  { key: 'devices', label: 'security.auditCat.devices', resource: 'mag-devices,enigma2-devices' },
+  { key: 'content', label: 'security.auditCat.content', resource: 'bouquets,categories,packages' },
+  { key: 'system', label: 'security.auditCat.system', resource: 'settings,servers,backup,rbac' },
+];
+
 export function SecurityPage() {
   const { t } = useTranslation();
   const SECURITY_TABS: TabItem[] = [
@@ -20,10 +32,11 @@ export function SecurityPage() {
   const [showBlock, setShowBlock] = useState(false);
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', durationMinutes: '0' });
   const [auditPage, setAuditPage] = useState(1);
+  const [auditCategory, setAuditCategory] = useState('');
 
   const { data: blocks = [], isLoading: bLoading } = useBlockedIPs();
   const { data: bfLogs = [], isLoading: bfLoading } = useBruteForceLogs();
-  const { data: auditData, isLoading: auditLoading } = useAuditLogs({ page: auditPage, limit: 50 });
+  const { data: auditData, isLoading: auditLoading } = useAuditLogs({ page: auditPage, limit: 50, resource: auditCategory || undefined });
   const unblock = useUnblockIP();
   const blockIP = useBlockIP();
   const [abCategory, setAbCategory] = useState('');
@@ -237,18 +250,36 @@ export function SecurityPage() {
       )}
 
       {activeTab === 'audit' && (
-        <DataTable
-          columns={auditColumns}
-          data={auditData?.items ?? []}
-          keyExtractor={(r) => r.id}
-          isLoading={auditLoading}
-          page={auditPage}
-          totalPages={auditData?.totalPages}
-          total={auditData?.total}
-          onPageChange={setAuditPage}
-          emptyTitle={t('security.emptyAuditTitle')}
-          emptyDescription={t('security.emptyAuditDesc')}
-        />
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {AUDIT_CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => { setAuditCategory(c.resource); setAuditPage(1); }}
+                className={
+                  auditCategory === c.resource
+                    ? 'px-3 py-1 rounded-full text-xs bg-primary text-white'
+                    : 'px-3 py-1 rounded-full text-xs bg-surface-2 text-muted hover:text-fg'
+                }
+              >
+                {t(c.label)}
+              </button>
+            ))}
+          </div>
+          <DataTable
+            columns={auditColumns}
+            data={auditData?.items ?? []}
+            keyExtractor={(r) => r.id}
+            isLoading={auditLoading}
+            page={auditPage}
+            totalPages={auditData?.totalPages}
+            total={auditData?.total}
+            onPageChange={setAuditPage}
+            emptyTitle={t('security.emptyAuditTitle')}
+            emptyDescription={t('security.emptyAuditDesc')}
+          />
+        </div>
       )}
 
       {activeTab === 'accessBlocks' && (

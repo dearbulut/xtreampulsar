@@ -40,7 +40,11 @@ export class AuditService {
   async getLogs({ page = 1, limit = 100, adminId, resource, action, dateFrom, dateTo }: AuditLogQuery) {
     const where = {
       ...(adminId ? { actorId: adminId } : {}),
-      ...(resource ? { entityType: resource } : {}),
+      ...(resource
+        ? resource.includes(',')
+          ? { entityType: { in: resource.split(',').map((r) => r.trim()).filter(Boolean) } }
+          : { entityType: resource }
+        : {}),
       ...(action ? { action: action as AuditAction } : {}),
       ...((dateFrom || dateTo) ? {
         createdAt: {

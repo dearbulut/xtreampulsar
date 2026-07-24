@@ -3,11 +3,19 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { Connection, PaginatedResponse } from '@/types';
 
+export interface ConnectionSummary {
+  active: number;
+  activeUsers: number;
+  totalBytesIn: string;
+  totalBytesOut: string;
+}
+export type LiveConnectionsData = PaginatedResponse<Connection> & { summary?: ConnectionSummary };
+
 export function useLiveConnections(page = 1, limit = 50, autoRefresh = true) {
   return useQuery({
     queryKey: ['connections', 'live', page, limit],
     queryFn: async () => {
-      const res = await api.get<{ success: boolean; data: PaginatedResponse<Connection> }>(
+      const res = await api.get<{ success: boolean; data: LiveConnectionsData }>(
         `/analytics/connections?page=${page}&limit=${limit}`,
       );
       return res.data.data;

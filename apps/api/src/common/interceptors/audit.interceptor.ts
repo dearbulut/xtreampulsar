@@ -12,7 +12,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtUser } from '../decorators/current-user.decorator';
 import type { AuditAction } from '@xtreampulsar/database';
 
-const AUDITED_RESOURCES = new Set(['users', 'streams', 'resellers', 'settings', 'bouquets']);
+const AUDITED_RESOURCES = new Set([
+  'users', 'streams', 'resellers', 'settings', 'bouquets',
+  'packages', 'categories', 'servers', 'mag-devices', 'enigma2-devices',
+  'backup', 'rbac', 'auth',
+]);
 
 const METHOD_TO_ACTION: Record<string, AuditAction> = {
   POST: 'CREATE',

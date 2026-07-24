@@ -111,6 +111,25 @@ export class AnalyticsService {
         this.prisma.connection.count({ where: activeConnectionWhere() }),
       ]);
 
+      // Roadmap F — aktif bağlantıların toplam giriş/çıkış throughput'u + benzersiz kullanıcı
+      const [agg, distinctUsers] = await Promise.all([
+        this.prisma.connection.aggregate({
+          where: activeConnectionWhere(),
+          _sum: { bytesIn: true, bytesOut: true },
+        }),
+        this.prisma.connection.findMany({
+          where: activeConnectionWhere(),
+          select: { userId: true },
+          distinct: ['userId'],
+        }),
+      ]);
+      const summary = {
+        active: total,
+        activeUsers: distinctUsers.length,
+        totalBytesIn: (agg._sum.bytesIn ?? BigInt(0)).toString(),
+        totalBytesOut: (agg._sum.bytesOut ?? BigInt(0)).toString(),
+      };
+
       const items = raw.map((c) => ({
         id: c.id,
         userId: c.userId,
@@ -127,10 +146,10 @@ export class AnalyticsService {
         duration: Math.floor((Date.now() - c.startedAt.getTime()) / 1000),
       }));
 
-      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit), summary };
     } catch (err) {
       this.logger.error(`getLiveConnections: ${(err as Error).message}`);
-      return { items: [], total: 0, page, limit, totalPages: 0 };
+      return { items: [], total: 0, page, limit, totalPages: 0, summary: { active: 0, activeUsers: 0, totalBytesIn: '0', totalBytesOut: '0' } };
     }
   }
 

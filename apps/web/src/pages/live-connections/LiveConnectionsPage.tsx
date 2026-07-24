@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Wifi, ToggleRight, ToggleLeft } from 'lucide-react';
+import { RefreshCw, Wifi, ToggleRight, ToggleLeft, Download, Upload, Users, Activity } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { useLiveConnections, useKickConnection } from '@/hooks/useConnections';
@@ -21,6 +21,37 @@ function fmtDuration(seconds: number): string {
   if (h > 0) return `${h}s ${m}d ${s}s`;
   if (m > 0) return `${m}d ${s}s`;
   return `${s}s`;
+}
+
+function fmtBytes(n: number): string {
+  if (!n || n <= 0) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), u.length - 1);
+  return `${(n / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+}
+
+function fmtRate(bytes: number, seconds: number): string {
+  if (!seconds || seconds <= 0) return '—';
+  const bitsPerSec = (bytes * 8) / seconds;
+  const u = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+  let i = 0;
+  let v = bitsPerSec;
+  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+  return `${v.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+}
+
+function StatTile({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string; color: string }) {
+  return (
+    <div className="card p-3 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <div>
+        <div className="text-lg font-semibold tabular-nums leading-tight">{value}</div>
+        <div className="text-[11px] text-muted">{label}</div>
+      </div>
+    </div>
+  );
 }
 
 export function LiveConnectionsPage() {
@@ -94,6 +125,29 @@ export function LiveConnectionsPage() {
       ),
     },
     {
+      key: 'traffic',
+      header: t('liveConnections.colTraffic'),
+      render: (r) => {
+        const out = Number(r.bytesOut ?? 0);
+        const inB = Number(r.bytesIn ?? 0);
+        return (
+          <div className="text-xs tabular-nums">
+            <div className="flex items-center gap-1 text-emerald-400"><Download className="w-3 h-3" /> {fmtBytes(out)}</div>
+            <div className="flex items-center gap-1 text-blue-400"><Upload className="w-3 h-3" /> {fmtBytes(inB)}</div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'rate',
+      header: t('liveConnections.colRate'),
+      render: (r) => (
+        <span className="text-xs text-muted tabular-nums" title={t('liveConnections.avgRateHint')}>
+          {fmtRate(Number(r.bytesOut ?? 0), r.duration ?? 0)}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       header: '',
       className: 'w-20',
@@ -153,6 +207,15 @@ export function LiveConnectionsPage() {
           {connected ? t('liveConnections.wsConnected') : t('liveConnections.wsDisconnected')}
         </div>
       </div>
+
+      {data?.summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <StatTile icon={Activity} label={t('liveConnections.statActive')} value={String(data.summary.active)} color="bg-emerald-500/15 text-emerald-400" />
+          <StatTile icon={Users} label={t('liveConnections.statUsers')} value={String(data.summary.activeUsers)} color="bg-indigo-500/15 text-indigo-400" />
+          <StatTile icon={Download} label={t('liveConnections.statOut')} value={fmtBytes(Number(data.summary.totalBytesOut))} color="bg-emerald-500/15 text-emerald-400" />
+          <StatTile icon={Upload} label={t('liveConnections.statIn')} value={fmtBytes(Number(data.summary.totalBytesIn))} color="bg-blue-500/15 text-blue-400" />
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <DataTable
