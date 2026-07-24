@@ -28,10 +28,12 @@ import { QueryStreamDto } from './dto/query-stream.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorator';
 
 @Controller('streams')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class StreamController {
   constructor(
     private readonly streamService: StreamService,
@@ -56,6 +58,7 @@ export class StreamController {
 
   @Post()
   @Roles('ADMIN')
+  @RequirePermission('streams.create')
   create(@Body() dto: CreateStreamDto) {
     return this.streamService.create(dto);
   }
@@ -89,12 +92,14 @@ export class StreamController {
   @Patch('reorder')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('streams.edit')
   async reorderStreams(@Body() body: { streamIds: string[] }): Promise<void> {
     await this.streamService.reorderStreams(body.streamIds);
   }
 
   @Patch('bulk-move')
   @Roles('ADMIN')
+  @RequirePermission('streams.edit')
   bulkMoveCategory(@Body() body: { streamIds: string[]; categoryId: string }) {
     return this.streamService.bulkMoveCategory(body.streamIds, body.categoryId);
   }
@@ -220,6 +225,7 @@ export class StreamController {
   @Put(':id/backup-urls')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.OK)
+  @RequirePermission('streams.edit')
   async updateBackupUrls(
     @Param('id') id: string,
     @Body('backupUrls') backupUrls: string[],
@@ -230,6 +236,7 @@ export class StreamController {
 
   @Post(':id/clone')
   @Roles('ADMIN')
+  @RequirePermission('streams.create')
   cloneStream(@Param('id') id: string, @Body() body?: { name?: string; primaryUrl?: string }) {
     return this.streamService.cloneStream(id, body);
   }
@@ -241,6 +248,7 @@ export class StreamController {
 
   @Patch(':id')
   @Roles('ADMIN')
+  @RequirePermission('streams.edit')
   update(@Param('id') id: string, @Body() dto: UpdateStreamDto) {
     return this.streamService.update(id, dto);
   }
@@ -248,6 +256,7 @@ export class StreamController {
   @Delete(':id')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('streams.delete')
   async remove(@Param('id') id: string): Promise<void> {
     await this.streamService.remove(id);
   }

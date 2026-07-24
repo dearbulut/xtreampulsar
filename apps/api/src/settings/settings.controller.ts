@@ -1,6 +1,8 @@
 import { Controller, Get, Put, Patch, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 @Controller('settings')
 export class SettingsController {
@@ -42,7 +44,8 @@ export class SettingsController {
   }
 
   @Patch()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('settings.edit')
   updateSettings(@Body() body: Record<string, unknown>) {
     return this.settingsService.updateSettings(body as Parameters<SettingsService['updateSettings']>[0]);
   }

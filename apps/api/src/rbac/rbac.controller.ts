@@ -5,6 +5,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorator';
 
 interface GroupBody {
   name?: string;
@@ -24,6 +25,12 @@ export class RbacController {
   @Get('catalog')
   catalog() {
     return this.rbac.getCatalog();
+  }
+
+  /** Oturumdaki kullanicinin etkin izinleri — frontend menu/buton kosullamasi icin. */
+  @Get('me')
+  me(@CurrentUser() user: JwtUser) {
+    return this.rbac.getEffectivePermissions(user.id, user.role);
   }
 
   @Get('groups')

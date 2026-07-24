@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
 import { CountedBouquetSelector } from '@/components/ui/CountedBouquetSelector';
 import { Tabs } from '@/components/ui/Tabs';
+import { useMyPermissions } from '@/hooks/usePermissions';
 import { TagInput } from '@/components/ui/TagInput';
 import { useAuthStore } from '@/store/auth.store';
 import {
@@ -111,6 +112,7 @@ export function UsersPage() {
   const [extendId, setExtendId] = useState<string | null>(null);
   const [extendDays, setExtendDays] = useState(30);
   const [showCreate, setShowCreate] = useState(false);
+  const { can } = useMyPermissions();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [qrUserId, setQrUserId] = useState<string | null>(null);
@@ -350,10 +352,12 @@ export function UsersPage() {
               <Zap className="w-4 h-4" />
               <span className="hidden sm:inline">{t('users.quickAdd')}</span>
             </button>
+            {can('users.create') && (
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">{t('users.addUser')}</span>
             </button>
+            )}
           </>
         }
       />

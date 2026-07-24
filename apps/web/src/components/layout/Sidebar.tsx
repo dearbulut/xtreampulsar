@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { useMyPermissions } from '@/hooks/usePermissions';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -55,6 +56,7 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   badgeVariant?: 'hot' | 'count';
+  perm?: string;
 }
 
 interface NavGroup {
@@ -119,7 +121,7 @@ const NAV: NavGroup[] = [
     label: 'nav.groups.infrastructure',
     icon: Server,
     items: [
-      { label: 'nav.servers', to: '/servers', icon: Server },
+      { label: 'nav.servers', to: '/servers', icon: Server, perm: 'servers.view' },
       { label: 'nav.providers', to: '/providers', icon: Cloud },
       { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
@@ -138,12 +140,12 @@ const NAV: NavGroup[] = [
     label: 'nav.groups.system',
     icon: Settings,
     items: [
-      { label: 'nav.security', to: '/security', icon: Shield },
-      { label: 'nav.groupsPerms', to: '/groups', icon: KeyRound },
+      { label: 'nav.security', to: '/security', icon: Shield, perm: 'security.view' },
+      { label: 'nav.groupsPerms', to: '/groups', icon: KeyRound, perm: 'groups.manage' },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
       { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },
-      { label: 'nav.settings', to: '/settings', icon: Settings },
+      { label: 'nav.settings', to: '/settings', icon: Settings, perm: 'settings.view' },
     ],
   },
 ];
@@ -155,7 +157,12 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
   const { t } = useTranslation();
 
   const pathname = useRouterState({ select: (st) => st.location.pathname });
-  const activeGroup = NAV.find((g) => g.items.some((i) => pathname.startsWith(i.to)))?.label;
+  const { can } = useMyPermissions();
+  const visibleTop = TOP.filter((i) => can(i.perm));
+  const visibleNav = NAV
+    .map((g) => ({ ...g, items: g.items.filter((i) => can(i.perm)) }))
+    .filter((g) => g.items.length > 0);
+  const activeGroup = visibleNav.find((g) => g.items.some((i) => pathname.startsWith(i.to)))?.label;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const isGroupOpen = (label: string) => openGroups[label] ?? label === activeGroup;
   const toggleGroup = (label: string) =>
@@ -200,14 +207,14 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
         {/* Sabit üst maddeler */}
-        {TOP.map((item) => (
+        {visibleTop.map((item) => (
           <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
         ))}
 
         <div className="h-px bg-border my-3 mx-2" />
 
         {/* Katlanabilir gruplar */}
-        {NAV.map((group) => {
+        {visibleNav.map((group) => {
           const GroupIcon = group.icon;
           const open = isGroupOpen(group.label);
           if (collapsed) {

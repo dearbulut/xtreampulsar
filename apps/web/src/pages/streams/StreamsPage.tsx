@@ -55,6 +55,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
+import { useMyPermissions } from '@/hooks/usePermissions';
 import { EpisodeManagerModal } from './EpisodeManagerModal';
 import { StreamAdvancedFields, EMPTY_ADVANCED, advancedFromStream, advancedToPayload, type StreamAdvanced } from './StreamAdvancedFields';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
@@ -502,6 +503,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [healthStream, setHealthStream] = useState<{ id: string; name: string } | null>(null);
   const [tracksStream, setTracksStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const { can } = useMyPermissions();
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [createAdv, setCreateAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
   const [editAdv, setEditAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
@@ -907,10 +909,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 {t('streams.moveSelected', { n: selectedStreamIds.size })}
               </button>
             )}
+            {can('streams.create') && (
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">{t('streams.addChannel')}</span>
             </button>
+            )}
           </>
         }
       />

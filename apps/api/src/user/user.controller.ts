@@ -24,10 +24,12 @@ import { BulkExtendDto, BulkDeleteDto, ExtendDto, BulkActionDto } from './dto/bu
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorator';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -59,18 +61,21 @@ export class UserController {
 
   @Post('bulk')
   @Roles('ADMIN')
+  @RequirePermission('users.create')
   bulkAction(@Body() dto: BulkActionDto) {
     return this.userService.bulkAction(dto);
   }
 
   @Post('bulk-extend')
   @Roles('ADMIN')
+  @RequirePermission('users.extend')
   bulkExtend(@Body() dto: BulkExtendDto) {
     return this.userService.bulkExtend(dto.userIds, dto.days);
   }
 
   @Post('bulk-delete')
   @Roles('ADMIN')
+  @RequirePermission('users.delete')
   bulkDelete(@Body() dto: BulkDeleteDto) {
     return this.userService.bulkSoftDelete(dto.userIds);
   }
@@ -134,6 +139,7 @@ export class UserController {
 
   @Patch(':id')
   @Roles('ADMIN')
+  @RequirePermission('users.edit')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.userService.update(id, dto);
   }
@@ -141,12 +147,14 @@ export class UserController {
   @Delete(':id')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('users.delete')
   async remove(@Param('id') id: string): Promise<void> {
     await this.userService.softDelete(id);
   }
 
   @Post(':id/extend')
   @Roles('ADMIN')
+  @RequirePermission('users.extend')
   extend(@Param('id') id: string, @Body() dto: ExtendDto) {
     return this.userService.extend(id, dto.days);
   }
@@ -154,6 +162,7 @@ export class UserController {
   @Patch(':id/require-2fa')
   @Roles('ADMIN')
   @HttpCode(HttpStatus.OK)
+  @RequirePermission('users.edit')
   async setRequire2FA(
     @Param('id') id: string,
     @Body('require2FA') require2FA: boolean,
@@ -171,6 +180,7 @@ export class UserController {
 
   @Post(':id/unban')
   @Roles('ADMIN')
+  @RequirePermission('users.ban')
   unban(@Param('id') id: string) {
     return this.userService.unban(id);
   }
@@ -202,12 +212,14 @@ export class UserController {
 
   @Post('bulk-renew')
   @Roles('ADMIN')
+  @RequirePermission('users.extend')
   bulkRenew(@Body() body: { userIds: string[]; packageId: string }) {
     return this.userService.bulkRenew(body.userIds, body.packageId);
   }
 
   @Post('trial')
   @Roles('ADMIN')
+  @RequirePermission('users.create')
   createTrial(
     @Body() body: { username?: string; password?: string; durationDays?: number; maxConnections?: number },
   ) {
@@ -216,6 +228,7 @@ export class UserController {
 
   @Post('quick-create')
   @Roles('ADMIN')
+  @RequirePermission('users.create')
   quickCreate(
     @Body() body: { username?: string; password?: string; durationDays: number; maxConnections: number; notes?: string },
   ) {
