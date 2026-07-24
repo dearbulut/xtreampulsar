@@ -3,6 +3,8 @@
 <img width="820" alt="XtreamPulsar — modern self-hosted IPTV panel dashboard" src="https://github.com/user-attachments/assets/9e55790e-8f88-4425-b34d-ad5d7f88b4a5" />
 
 # XtreamPulsar
+You can contact me directly.
+Telegram: https://t.me/bulutworksdev
 
 ### The modern, self-hosted IPTV panel — an open, Docker-native alternative to XtreamUI, XUI.ONE and Xtream-Masters.
 
