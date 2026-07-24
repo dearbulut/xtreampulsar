@@ -33,6 +33,7 @@ export class ResellerService {
       select: {
         id: true, username: true, email: true, credits: true,
         tier: true, isActive: true, parentId: true, notes: true, createdAt: true,
+        badgeText: true, badgeColor: true,
         _count: { select: { users: true } },
         parent: { select: { id: true, username: true } },
         children: {

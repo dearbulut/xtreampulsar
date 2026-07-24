@@ -35,7 +35,7 @@ export function ResellersPage() {
     username: '', email: '', password: '', credits: 0, tier: 'BASIC', notes: '', parentId: '',
   });
   const [editForm, setEditForm] = useState({
-    tier: 'BASIC', isActive: true, parentId: '', notes: '', maxUsers: 0,
+    tier: 'BASIC', isActive: true, parentId: '', notes: '', maxUsers: 0, badgeText: '', badgeColor: '#6366f1',
   });
 
   const { data: resellers, isLoading } = useResellers();
@@ -52,6 +52,8 @@ export function ResellersPage() {
       parentId: r.parentId ?? '',
       notes: r.notes ?? '',
       maxUsers: r.maxUsers ?? 0,
+      badgeText: r.badgeText ?? '',
+      badgeColor: r.badgeColor ?? '#6366f1',
     });
   };
 
@@ -85,9 +87,15 @@ export function ResellersPage() {
       key: 'tier',
       header: t('resellersAdmin.tier'),
       render: (r) => (
-        <span className={cn('badge', TIER_COLORS[r.tier] ?? 'text-muted bg-muted/10')}>
-          {r.tier}
-        </span>
+        r.badgeText ? (
+          <span className="badge" style={{ backgroundColor: (r.badgeColor || '#6366f1') + '22', color: r.badgeColor || '#6366f1' }}>
+            {r.badgeText}
+          </span>
+        ) : (
+          <span className={cn('badge', TIER_COLORS[r.tier] ?? 'text-muted bg-muted/10')}>
+            {r.tier}
+          </span>
+        )
       ),
     },
     {
@@ -364,6 +372,23 @@ export function ResellersPage() {
             <p className="text-xs text-muted mt-1">{t('resellersAdmin.zeroUnlimited')}</p>
           </div>
           <div>
+            <label className="label">{t('resellersAdmin.badgeLabel')}</label>
+            <div className="flex gap-2 items-center">
+              <input className="input flex-1" placeholder={t('resellersAdmin.badgePlaceholder')} maxLength={16}
+                value={editForm.badgeText}
+                onChange={(e) => setEditForm((f) => ({ ...f, badgeText: e.target.value }))} />
+              <input type="color" className="w-11 h-10 rounded-lg border border-border bg-surface-2 cursor-pointer p-0.5"
+                value={editForm.badgeColor || '#6366f1'}
+                onChange={(e) => setEditForm((f) => ({ ...f, badgeColor: e.target.value }))} />
+              {editForm.badgeText && (
+                <span className="badge" style={{ backgroundColor: (editForm.badgeColor || '#6366f1') + '22', color: editForm.badgeColor || '#6366f1' }}>
+                  {editForm.badgeText}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-1">{t('resellersAdmin.badgeHint')}</p>
+          </div>
+          <div>
             <label className="label">{t('resellersAdmin.note')}</label>
             <textarea className="input min-h-[60px] resize-none" placeholder={t('resellersAdmin.notePlaceholder')}
               value={editForm.notes}
@@ -383,6 +408,8 @@ export function ResellersPage() {
                     parentId: editForm.parentId || null,
                     notes: editForm.notes,
                     maxUsers: editForm.maxUsers,
+                    badgeText: editForm.badgeText || null,
+                    badgeColor: editForm.badgeText ? (editForm.badgeColor || null) : null,
                   },
                   { onSuccess: () => setEditReseller(null) },
                 );

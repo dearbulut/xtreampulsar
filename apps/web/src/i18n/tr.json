@@ -1590,7 +1590,10 @@
     "deleteTitle": "Reseller Sil",
     "deleteMessage": "Bu reseller ve tüm ilişkili verileri silinecek.",
     "resellerCount_one": "{{count}} reseller",
-    "resellerCount_other": "{{count}} reseller"
+    "resellerCount_other": "{{count}} reseller",
+    "badgeLabel": "Özel rozet (isim + renk)",
+    "badgePlaceholder": "ör. ADMIN, VIP",
+    "badgeHint": "Boş bırakılırsa tier rozeti gösterilir"
   },
   "security": {
     "tabBlocks": "Aktif Bloklar",

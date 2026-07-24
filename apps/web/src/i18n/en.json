@@ -1590,7 +1590,10 @@
     "deleteTitle": "Delete Reseller",
     "deleteMessage": "This reseller and all associated data will be deleted.",
     "resellerCount_one": "{{count}} reseller",
-    "resellerCount_other": "{{count}} resellers"
+    "resellerCount_other": "{{count}} resellers",
+    "badgeLabel": "Custom badge (name + color)",
+    "badgePlaceholder": "e.g. ADMIN, VIP",
+    "badgeHint": "If empty, the tier badge is shown"
   },
   "security": {
     "tabBlocks": "Active Blocks",

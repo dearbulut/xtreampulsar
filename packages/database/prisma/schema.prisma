@@ -414,6 +414,8 @@ model Reseller {
   notes      String?
   brandName  String?
   logoUrl    String?
+  badgeText  String?
+  badgeColor String?
   deletedAt  DateTime?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

@@ -41,4 +41,12 @@ export class UpdateResellerDto {
   @IsInt()
   @Min(0)
   maxUsers?: number;
+
+  @IsOptional()
+  @IsString()
+  badgeText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  badgeColor?: string | null;
 }
