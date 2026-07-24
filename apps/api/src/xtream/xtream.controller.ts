@@ -358,8 +358,9 @@ export class XtreamController {
       : 'all';
 
     const safeOutput: 'm3u8' | 'ts' = output === 'ts' ? 'ts' : 'm3u8';
+    const plus = type !== 'm3u'; // m3u = sade liste (tvg attribute yok), m3u_plus = tam
     const playlist = await this.xtream.buildM3UPlaylist(
-      user.id, username, password, streamType, safeOutput,
+      user.id, username, password, streamType, safeOutput, plus,
     );
 
     res

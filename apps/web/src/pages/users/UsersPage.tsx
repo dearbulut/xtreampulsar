@@ -1247,26 +1247,48 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
           <div className="border-t border-border pt-4">
             <div className="text-xs text-muted mb-2">{t('users.connectionUrls')}</div>
             {user.plainPassword ? (
-              <div className="space-y-1.5">
-                {([
-                  { label: 'M3U+', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u_plus` },
-                  { label: 'M3U', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u` },
-                  { label: 'TS', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=m3u_plus&output=ts` },
-                  { label: 'Player API', suffix: `player_api.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}` },
-                  { label: 'Enigma2', suffix: `get.php?username=${encodeURIComponent(user.username)}&password=${encodeURIComponent(user.plainPassword)}&type=enigma2` },
-                ]).map(({ label, suffix }) => {
-                  const url = `${xtreamBaseUrl}/${suffix}`;
-                  return (
-                    <div key={label} className="flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5">
-                      <span className="text-[10px] font-semibold text-primary-light w-16 shrink-0">{label}</span>
-                      <span className="font-mono text-[11px] text-slate-300 truncate flex-1" title={url}>{url}</span>
-                      <button onClick={() => { void copyToClipboard(url); setCopiedUrl(label); setTimeout(() => setCopiedUrl(null), 1500); }} className="btn-ghost p-1 shrink-0" title={t('users.copy')}>
-                        {copiedUrl === label ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+              (() => {
+                const u = encodeURIComponent(user.username);
+                const pw = encodeURIComponent(user.plainPassword);
+                const groups: { group: string; items: { label: string; suffix: string }[] }[] = [
+                  { group: t('users.fmtPlaylists'), items: [
+                    { label: 'M3U Plus — HLS', suffix: `get.php?username=${u}&password=${pw}&type=m3u_plus&output=m3u8` },
+                    { label: 'M3U Plus — MPEG-TS', suffix: `get.php?username=${u}&password=${pw}&type=m3u_plus&output=ts` },
+                    { label: 'M3U — HLS', suffix: `get.php?username=${u}&password=${pw}&type=m3u&output=m3u8` },
+                    { label: 'M3U — MPEG-TS', suffix: `get.php?username=${u}&password=${pw}&type=m3u&output=ts` },
+                  ]},
+                  { group: t('users.fmtEnigma'), items: [
+                    { label: 'Enigma2 (OE 2.0)', suffix: `get.php?username=${u}&password=${pw}&type=enigma2` },
+                    { label: 'Enigma2 (.php)', suffix: `enigma2.php?username=${u}&password=${pw}` },
+                  ]},
+                  { group: t('users.fmtApi'), items: [
+                    { label: 'Player API', suffix: `player_api.php?username=${u}&password=${pw}` },
+                    { label: 'XMLTV EPG', suffix: `xmltv.php?username=${u}&password=${pw}` },
+                  ]},
+                ];
+                return (
+                  <div className="space-y-3">
+                    {groups.map(({ group, items }) => (
+                      <div key={group} className="space-y-1.5">
+                        <div className="text-[10px] uppercase tracking-wide text-muted/70 font-semibold">{group}</div>
+                        {items.map(({ label, suffix }) => {
+                          const url = `${xtreamBaseUrl}/${suffix}`;
+                          return (
+                            <div key={label} className="flex items-center gap-2 bg-surface-2 rounded-lg px-2.5 py-1.5">
+                              <span className="text-[10px] font-semibold text-primary-light w-32 shrink-0">{label}</span>
+                              <span className="font-mono text-[11px] text-slate-300 truncate flex-1" title={url}>{url}</span>
+                              <a href={url} target="_blank" rel="noreferrer" className="btn-ghost p-1 shrink-0" title={t('users.open')}><ExternalLink className="w-3.5 h-3.5" /></a>
+                              <button onClick={() => { void copyToClipboard(url); setCopiedUrl(label); setTimeout(() => setCopiedUrl(null), 1500); }} className="btn-ghost p-1 shrink-0" title={t('users.copy')}>
+                                {copiedUrl === label ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
             ) : (
               <p className="text-xs text-muted">{t('users.noPasswordForUrls')}</p>
             )}

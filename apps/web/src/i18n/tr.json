@@ -391,7 +391,10 @@
       "PASSWORD_CHANGE": "Şifre değişikliği"
     },
     "hiddenCategories": "Gizli kategoriler",
-    "hiddenCategoriesHint": "seçilenler bu kullanıcıya gösterilmez"
+    "hiddenCategoriesHint": "seçilenler bu kullanıcıya gösterilmez",
+    "fmtPlaylists": "Oynatma listeleri",
+    "fmtEnigma": "Enigma2 / STB",
+    "fmtApi": "API"
   },
   "streams": {
     "title": "Kanallar",

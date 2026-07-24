@@ -288,6 +288,7 @@ export class XtreamService {
     password: string,
     type: 'all' | 'live' | 'vod' | 'series' = 'all',
     output: 'm3u8' | 'ts' = 'm3u8',
+    plus = true,
   ): Promise<string> {
     const serverInfo = await this.buildServerInfo();
     const baseUrl = `${serverInfo.url}:${serverInfo.port}`;
@@ -302,7 +303,9 @@ export class XtreamService {
           ? ` catchup="default" catchup-days="${sc.catchupDays ?? 7}" tv-archive="1" tv-archive-duration="${sc.catchupDays ?? 7}" catchup-source="${baseUrl}/live/${username}/${password}/${s.externalId}.ts?utc={utc}&duration={duration}"`
           : '';
         lines.push(
-          `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}"${catchup} group-title="${s.category.name}",${s.name}`,
+          plus
+            ? `#EXTINF:-1 tvg-id="${s.tvgId ?? ''}" tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}"${catchup} group-title="${s.category.name}",${s.name}`
+            : `#EXTINF:-1,${s.name}`,
           `${baseUrl}/live/${username}/${password}/${s.externalId}.${ext}`,
         );
       }
@@ -312,7 +315,9 @@ export class XtreamService {
       const streams = await this.streamService.findAllVod(userId);
       for (const s of streams) {
         lines.push(
-          `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`,
+          plus
+            ? `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`
+            : `#EXTINF:-1,${s.name}`,
           `${baseUrl}/movie/${username}/${password}/${s.externalId}.mp4`,
         );
       }
@@ -322,7 +327,9 @@ export class XtreamService {
       const streams = await this.streamService.findAllSeries(userId);
       for (const s of streams) {
         lines.push(
-          `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`,
+          plus
+            ? `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`
+            : `#EXTINF:-1,${s.name}`,
           `${baseUrl}/series/${username}/${password}/${s.externalId}.mkv`,
         );
       }

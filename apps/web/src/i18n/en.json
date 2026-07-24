@@ -391,7 +391,10 @@
       "PASSWORD_CHANGE": "Password change"
     },
     "hiddenCategories": "Hidden categories",
-    "hiddenCategoriesHint": "selected ones are hidden from this user"
+    "hiddenCategoriesHint": "selected ones are hidden from this user",
+    "fmtPlaylists": "Playlists",
+    "fmtEnigma": "Enigma2 / STB",
+    "fmtApi": "API"
   },
   "streams": {
     "title": "Channels",
