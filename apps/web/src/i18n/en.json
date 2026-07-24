@@ -386,7 +386,9 @@
       "STREAM_START": "Stream started",
       "STREAM_STOP": "Stream stopped",
       "PASSWORD_CHANGE": "Password change"
-    }
+    },
+    "hiddenCategories": "Hidden categories",
+    "hiddenCategoriesHint": "selected ones are hidden from this user"
   },
   "streams": {
     "title": "Channels",

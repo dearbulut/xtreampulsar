@@ -5,6 +5,7 @@ import type { ActivityFilters } from '@/hooks/useUserActivity';
 import { useBulkAction } from '@/hooks/useBulkAction';
 import type { BulkActionResult } from '@/hooks/useBulkAction';
 import { useResellers } from '@/hooks/useResellers';
+import { useCategories } from '@/hooks/useCategories';
 import { useUserActivity } from '@/hooks/useUserActivity';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -994,7 +995,8 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
   const [editingBouquets, setEditingBouquets] = useState(false);
   const [bouquetDraft, setBouquetDraft] = useState<string[]>([]);
   const [editingAccess, setEditingAccess] = useState(false);
-  const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; blockDatacenter: boolean; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, blockDatacenter: false, lockDevice: false });
+  const [accessDraft, setAccessDraft] = useState<{ allowedIps: string[]; allowedCountries: string[]; blockVpn: boolean; blockDatacenter: boolean; hiddenCategoryIds: string[]; lockDevice: boolean }>({ allowedIps: [], allowedCountries: [], blockVpn: false, blockDatacenter: false, hiddenCategoryIds: [], lockDevice: false });
+  const { data: categories = [] } = useCategories();
   const kickUser = useKickUser();
   const impersonate = useImpersonateUser();
   const setClientSession = useAuthStore((st) => st.setClientSession);
@@ -1162,6 +1164,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                       allowedCountries: user.allowedCountries ?? [],
                       blockVpn: user.blockVpn ?? false,
                       blockDatacenter: user.blockDatacenter ?? false,
+                      hiddenCategoryIds: user.hiddenCategoryIds ?? [],
                       lockDevice: user.lockDevice ?? false,
                     });
                     setEditingAccess(true);
@@ -1183,8 +1186,9 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                 )}
                 {user.blockVpn && <span className="badge bg-warning/10 text-warning">{t('users.vpnBlocked')}</span>}
                 {user.blockDatacenter && <span className="badge bg-warning/10 text-warning">{t('users.datacenterBlocked')}</span>}
+                {(user.hiddenCategoryIds?.length ?? 0) > 0 && <span className="badge bg-surface-2 text-slate-300">{t('users.hiddenCategories')}: {user.hiddenCategoryIds!.length}</span>}
                 {user.lockDevice && <span className="badge bg-primary/10 text-primary-light">{t('users.deviceLocked')}</span>}
-                {!(user.allowedIps?.length || user.allowedCountries?.length || user.blockVpn || user.blockDatacenter || user.lockDevice) && (
+                {!(user.allowedIps?.length || user.allowedCountries?.length || user.blockVpn || user.blockDatacenter || user.hiddenCategoryIds?.length || user.lockDevice) && (
                   <span className="text-muted">{t('users.noRestrictions')}</span>
                 )}
               </div>
@@ -1210,6 +1214,25 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
                   <input type="checkbox" checked={accessDraft.lockDevice} onChange={(e) => setAccessDraft((a) => ({ ...a, lockDevice: e.target.checked }))} />
                   {t('users.lockDeviceLabel')} <span className="text-[11px] text-muted">({t('users.lockDeviceHint')})</span>
                 </label>
+                <div>
+                  <div className="text-[11px] text-muted mb-1">{t('users.hiddenCategories')} <span className="opacity-60">({t('users.hiddenCategoriesHint')})</span></div>
+                  {categories.length === 0 ? (
+                    <p className="text-xs text-muted">—</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 rounded-lg bg-surface-2 border border-border">
+                      {categories.map((c) => {
+                        const hidden = accessDraft.hiddenCategoryIds.includes(c.id);
+                        return (
+                          <button key={c.id} type="button"
+                            onClick={() => setAccessDraft((a) => ({ ...a, hiddenCategoryIds: hidden ? a.hiddenCategoryIds.filter((x) => x !== c.id) : [...a.hiddenCategoryIds, c.id] }))}
+                            className={cn('text-[11px] px-2 py-1 rounded-full border transition-colors', hidden ? 'bg-danger/15 text-danger border-danger/40 line-through' : 'bg-surface text-muted border-border hover:text-fg')}>
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button className="btn-primary text-sm" onClick={() => { onUpdate(userId, accessDraft); setEditingAccess(false); }}>
                     {t('common.save')}

@@ -68,6 +68,11 @@ export class CreateUserDto {
   blockDatacenter?: boolean;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hiddenCategoryIds?: string[];
+
+  @IsOptional()
   @IsBoolean()
   lockDevice?: boolean;
 }

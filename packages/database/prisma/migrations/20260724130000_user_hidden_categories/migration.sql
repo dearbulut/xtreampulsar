@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "hiddenCategoryIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

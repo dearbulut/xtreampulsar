@@ -261,7 +261,7 @@ export class UserService {
           id: true, username: true, role: true, status: true,
           maxConnections: true, expiresAt: true, notes: true,
           plainPassword: true,
-          allowedIps: true, allowedCountries: true, blockVpn: true, blockDatacenter: true, lockDevice: true,
+          allowedIps: true, allowedCountries: true, blockVpn: true, blockDatacenter: true, hiddenCategoryIds: true, lockDevice: true,
           createdAt: true, resellerId: true,
           // Yalnız gerçekten aktif (taze) bağlantıları say — hayalet "1/1" olmasın.
           _count: { select: { connections: { where: activeConnectionWhere() } } },

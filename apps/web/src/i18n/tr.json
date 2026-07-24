@@ -386,7 +386,9 @@
       "STREAM_START": "Yayın başladı",
       "STREAM_STOP": "Yayın durdu",
       "PASSWORD_CHANGE": "Şifre değişikliği"
-    }
+    },
+    "hiddenCategories": "Gizli kategoriler",
+    "hiddenCategoriesHint": "seçilenler bu kullanıcıya gösterilmez"
   },
   "streams": {
     "title": "Kanallar",

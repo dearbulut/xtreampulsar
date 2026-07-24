@@ -26,6 +26,15 @@ export class StreamService {
     return userBouquets.map((ub) => ub.bouquetId);
   }
 
+  // Bu kullanıcıdan gizlenmiş kategori id'leri (reseller/admin per-user ayarı).
+  private async getUserHiddenCategoryIds(userId: string): Promise<string[]> {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { hiddenCategoryIds: true },
+    });
+    return (u as { hiddenCategoryIds?: string[] } | null)?.hiddenCategoryIds ?? [];
+  }
+
   // Bir kullanıcının, istenen stream'e erişip erişemeyeceğini döner. Entitlement
   // KATEGORİ-bazlıdır: stream'in kategorisi (Category.bouquetId) kullanıcının
   // bouquet'lerinden birine bağlıysa izin. Bouquet'i yoksa fail-closed → false.
@@ -35,9 +44,11 @@ export class StreamService {
   ): Promise<boolean> {
     const bouquetIds = await this.getUserBouquetIds(userId);
     if (bouquetIds.length === 0) return false;
+    const hidden = await this.getUserHiddenCategoryIds(userId);
     const stream = await this.prisma.stream.findFirst({
       where: {
         ...(target.streamId ? { id: target.streamId } : { externalId: target.externalId }),
+        ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
         // Entitlement: kategori-bazlı VEYA yayın-bazlı (BouquetStream) bouquet bağı.
         OR: [
           { category: { bouquetId: { in: bouquetIds } } },
@@ -52,12 +63,12 @@ export class StreamService {
   async findAllLive(userId: string) {
     try {
       const bouquetIds = await this.getUserBouquetIds(userId);
+      const hidden = await this.getUserHiddenCategoryIds(userId);
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
-          // Entitlement: tip LIVE VE (kategori-bouquet VEYA yayın-bouquet/BouquetStream).
-          // bouquetIds boşsa her iki dal da in:[] → hiçbir şey eşleşmez (fail-closed).
           category: { type: 'LIVE' },
+          ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
           OR: [
             { category: { bouquetId: { in: bouquetIds } } },
             { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } },
@@ -75,10 +86,12 @@ export class StreamService {
   async findAllVod(userId: string) {
     try {
       const bouquetIds = await this.getUserBouquetIds(userId);
+      const hidden = await this.getUserHiddenCategoryIds(userId);
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
           category: { type: 'VOD' },
+          ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
           OR: [
             { category: { bouquetId: { in: bouquetIds } } },
             { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } },
@@ -96,10 +109,12 @@ export class StreamService {
   async findAllSeries(userId: string) {
     try {
       const bouquetIds = await this.getUserBouquetIds(userId);
+      const hidden = await this.getUserHiddenCategoryIds(userId);
       return await this.prisma.stream.findMany({
         where: {
           isActive: true,
           category: { type: 'SERIES' },
+          ...(hidden.length ? { categoryId: { notIn: hidden } } : {}),
           OR: [
             { category: { bouquetId: { in: bouquetIds } } },
             { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } },
@@ -118,10 +133,12 @@ export class StreamService {
   // aksi halde abone erişemediği (boş) kategori adlarını player'ında görür.
   private async entitledCategories(userId: string, type: 'LIVE' | 'VOD' | 'SERIES') {
     const bouquetIds = await this.getUserBouquetIds(userId);
+    const hidden = await this.getUserHiddenCategoryIds(userId);
     return this.prisma.category.findMany({
       where: {
         isActive: true,
         type,
+        ...(hidden.length ? { id: { notIn: hidden } } : {}),
         OR: [
           { bouquetId: { in: bouquetIds } },
           { streams: { some: { bouquetStreams: { some: { bouquetId: { in: bouquetIds } } } } } },
