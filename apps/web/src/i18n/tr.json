@@ -2450,6 +2450,33 @@
     "createdOk": "Widget oluşturuldu",
     "updatedOk": "Widget güncellendi",
     "deletedOk": "Silindi",
-    "saveErr": "Kaydetme başarısız"
+    "saveErr": "Kaydetme başarısız",
+    "hosted": {
+      "trialTitle": "Ücretsiz deneme",
+      "storeTitle": "Paket seç",
+      "renewTitle": "Aboneliği yenile",
+      "email": "E-posta",
+      "emailOptional": "E-posta (opsiyonel)",
+      "username": "Kullanıcı adın",
+      "package": "Paket",
+      "getTrial": "Ücretsiz dene",
+      "buy": "Sipariş ver",
+      "renew": "Yenileme talebi",
+      "working": "Lütfen bekleyin…",
+      "trialReady": "Denemen hazır!",
+      "orderReceived": "Siparişin alındı. En kısa sürede iletişime geçeceğiz.",
+      "renewReceived": "Yenileme talebin alındı. En kısa sürede iletişime geçeceğiz.",
+      "yourLogin": "Giriş bilgilerin",
+      "usernameL": "Kullanıcı adı",
+      "passwordL": "Şifre",
+      "m3uL": "M3U URL",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "again": "Baştan başla",
+      "unavailable": "Bu sayfa kullanılamıyor.",
+      "poweredBy": "Destekleyen"
+    },
+    "hostedLink": "Hazır sayfa",
+    "openPage": "Aç"
   }
 }

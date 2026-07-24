@@ -60,6 +60,7 @@ import { DownloadsPage } from '@/pages/downloads/DownloadsPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ProvidersPage } from '@/pages/providers/ProvidersPage';
 import { WidgetsPage } from './pages/widgets/WidgetsPage';
+import { WidgetHostedPage } from './pages/widgets/WidgetHostedPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
 import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
@@ -331,6 +332,12 @@ const storefrontRoute = createRoute({
   component: StorefrontPage,
 });
 
+const widgetHostedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/w/$key',
+  component: WidgetHostedPage,
+});
+
 const m3uSyncRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/m3u-sources',
@@ -467,6 +474,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   storefrontRoute,
+  widgetHostedRoute,
   setup2FARoute,
   resellerLoginRoute,
   resellerLayoutRoute.addChildren([

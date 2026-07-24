@@ -94,3 +94,45 @@ export function useDeleteWidget() {
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['widgets'] }); },
   });
 }
+
+// ── Public (hosted page — no auth) ──────────────────────────────────
+export interface PublicWidgetConfig {
+  type: WidgetType;
+  title?: string | null;
+  subtitle?: string | null;
+  accentColor: string;
+  enabled: boolean;
+  trialDurationDays?: number;
+  packages?: { id: string; name: string; durationDays: number; maxConnections: number; price: number; description?: string }[];
+}
+
+export interface WidgetSubmitResult {
+  type: WidgetType;
+  username?: string;
+  password?: string;
+  m3uUrl?: string;
+  orderId?: string;
+  message?: string | null;
+  redirectUrl?: string | null;
+}
+
+export function usePublicWidget(key: string | undefined) {
+  return useQuery({
+    queryKey: ['public-widget', key],
+    enabled: !!key,
+    retry: false,
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: PublicWidgetConfig }>(`/public/widgets/${key}`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useSubmitPublicWidget(key: string | undefined) {
+  return useMutation({
+    mutationFn: async (body: { email?: string; packageId?: string; username?: string }) => {
+      const res = await api.post<{ success: boolean; data: WidgetSubmitResult }>(`/public/widgets/${key}/submit`, body);
+      return res.data.data;
+    },
+  });
+}

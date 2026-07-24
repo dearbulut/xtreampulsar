@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Pencil, Code2, Copy, Check, List, Zap, ShoppingBag, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Pencil, Code2, Copy, Check, List, Zap, ShoppingBag, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -23,6 +23,11 @@ const TYPE_ICON: Record<WidgetType, typeof Zap> = { TRIAL: Zap, STORE: ShoppingB
 function embedSnippet(w: Widget): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://panel';
   return `<script src="${origin}/api/v1/public/widgets/embed.js" data-key="${w.publicKey}" async></script>`;
+}
+
+function hostedUrl(w: Widget): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://panel';
+  return `${origin}/w/${w.publicKey}`;
 }
 
 function emptyForm(): WidgetPayload {
@@ -64,9 +69,9 @@ export function WidgetsPage() {
     else create.mutate(payload, { onSuccess: done });
   };
 
-  const doCopy = async (w: Widget) => {
-    const ok = await copyToClipboard(embedSnippet(w));
-    if (ok) { setCopiedId(w.id); setTimeout(() => setCopiedId(null), 1500); }
+  const doCopy = async (w: Widget, which: 'embed' | 'hosted' = 'embed') => {
+    const ok = await copyToClipboard(which === 'hosted' ? hostedUrl(w) : embedSnippet(w));
+    if (ok) { const id = which === 'hosted' ? w.id + 'hosted' : w.id; setCopiedId(id); setTimeout(() => setCopiedId(null), 1500); }
   };
 
   const isStore = form.type === 'STORE' || form.type === 'RENEWAL';
@@ -106,6 +111,19 @@ export function WidgetsPage() {
                   <span className={cn('badge', w.enabled ? 'text-success bg-success/10' : 'text-muted bg-surface-2')}>
                     {w.enabled ? '●' : '○'} {t('widgets.enabled')}
                   </span>
+                </div>
+
+                <div className="rounded-lg border p-2" style={{ borderColor: w.accentColor + '55', background: w.accentColor + '0d' }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-muted inline-flex items-center gap-1"><Link2 className="w-3 h-3" /> {t('widgets.hostedLink')}</span>
+                    <div className="flex items-center gap-2">
+                      <a href={hostedUrl(w)} target="_blank" rel="noreferrer" className="text-[11px] text-primary inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> {t('widgets.openPage')}</a>
+                      <button className="text-[11px] text-primary inline-flex items-center gap-1" onClick={() => doCopy(w, 'hosted')}>
+                        {copiedId === w.id + 'hosted' ? <><Check className="w-3 h-3" /> {t('widgets.copied')}</> : <><Copy className="w-3 h-3" /> {t('widgets.copy')}</>}
+                      </button>
+                    </div>
+                  </div>
+                  <code className="block text-[11px] font-mono text-fg break-all">{hostedUrl(w)}</code>
                 </div>
 
                 <div className="rounded-lg bg-surface-2 border border-border p-2">

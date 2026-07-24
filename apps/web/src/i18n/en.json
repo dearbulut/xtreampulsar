@@ -2450,6 +2450,33 @@
     "createdOk": "Widget created",
     "updatedOk": "Widget updated",
     "deletedOk": "Deleted",
-    "saveErr": "Save failed"
+    "saveErr": "Save failed",
+    "hosted": {
+      "trialTitle": "Free trial",
+      "storeTitle": "Choose a plan",
+      "renewTitle": "Renew subscription",
+      "email": "Email",
+      "emailOptional": "Email (optional)",
+      "username": "Your username",
+      "package": "Package",
+      "getTrial": "Get free trial",
+      "buy": "Place order",
+      "renew": "Request renewal",
+      "working": "Please wait…",
+      "trialReady": "Your trial is ready!",
+      "orderReceived": "Order received. We'll contact you shortly.",
+      "renewReceived": "Renewal request received. We'll contact you shortly.",
+      "yourLogin": "Your login details",
+      "usernameL": "Username",
+      "passwordL": "Password",
+      "m3uL": "M3U URL",
+      "copy": "Copy",
+      "copied": "Copied",
+      "again": "Start over",
+      "unavailable": "This page is unavailable.",
+      "poweredBy": "Powered by"
+    },
+    "hostedLink": "Hosted page",
+    "openPage": "Open"
   }
 }
