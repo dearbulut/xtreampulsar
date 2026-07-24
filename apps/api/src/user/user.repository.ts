@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 // serveHlsSegment heartbeat) tazelenir. Bu süreden eski + endedAt=null bağlantılar
 // "hayalet" sayılır ve kapatılır. 90sn: canlı izleyen ~10-30sn'de tazeler, ağ
 // dalgalanmasında yanlış düşme yok, hayaleti hızlı temizler.
-export const STALE_CONNECTION_MS = 90_000;
+export const STALE_CONNECTION_MS = 30_000;
 
 // "Aktif bağlantı" TEK tanımı — her yerde (enforcement + tüm UI/dashboard sayaçları)
 // bunu kullan; tanım bir daha ayrışmasın. Aktif = kapanmamış (endedAt IS NULL) VE

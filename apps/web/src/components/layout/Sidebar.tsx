@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Link, useRouterState } from '@tanstack/react-router';
 import {
   Download,
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
   Shield,
   Settings,
   Wrench,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -138,6 +140,13 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
   const toggle = useUiStore((s) => s.toggleSidebar);
   const { t } = useTranslation();
 
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
+  const activeGroup = NAV.find((g) => g.items.some((i) => pathname.startsWith(i.to)))?.label;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const isGroupOpen = (label: string) => openGroups[label] ?? label === activeGroup;
+  const toggleGroup = (label: string) =>
+    setOpenGroups((p) => ({ ...p, [label]: !(p[label] ?? label === activeGroup) }));
+
   return (
     <aside
       className={cn(
@@ -176,20 +185,29 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
-        {NAV.map((group) => (
-          <div key={group.label}>
-            {!collapsed && (
-              <div className="px-3 mb-1 text-[10px] font-semibold text-muted/60 tracking-widest uppercase">
-                {t(group.label)}
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => (
-                <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
-              ))}
+        {NAV.map((group) => {
+          const open = collapsed || isGroupOpen(group.label);
+          return (
+            <div key={group.label}>
+              {!collapsed && (
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className="w-full flex items-center justify-between px-3 mb-1 text-[10px] font-semibold text-muted/60 tracking-widest uppercase hover:text-muted transition-colors"
+                >
+                  <span>{t(group.label)}</span>
+                  <ChevronDown className={cn('w-3 h-3 transition-transform', open ? '' : '-rotate-90')} />
+                </button>
+              )}
+              {open && (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User section */}
