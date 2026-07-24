@@ -57,6 +57,7 @@ import { DownloadModule } from './download/download.module';
 import { CatchupModule } from './catchup/catchup.module';
 import { RbacModule } from './rbac/rbac.module';
 import { FeaturedModule } from './featured/featured.module';
+import { YouTubeModule } from './youtube/youtube.module';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { FeaturedModule } from './featured/featured.module';
     CatchupModule,
     RbacModule,
     FeaturedModule,
+    YouTubeModule,
   ],
   controllers: [AppController],
   providers: [

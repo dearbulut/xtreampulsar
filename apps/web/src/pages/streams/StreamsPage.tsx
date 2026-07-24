@@ -54,8 +54,10 @@ import { useEnrichStream, useReorderStreams, useBulkMoveCategory } from '@/hooks
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Youtube } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { useMyPermissions } from '@/hooks/usePermissions';
+import { useYouTubeImport } from '@/hooks/useYouTube';
 import { EpisodeManagerModal } from './EpisodeManagerModal';
 import { StreamAdvancedFields, EMPTY_ADVANCED, advancedFromStream, advancedToPayload, type StreamAdvanced } from './StreamAdvancedFields';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
@@ -506,6 +508,11 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
   const [tracksStream, setTracksStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const { can } = useMyPermissions();
+  const [showYt, setShowYt] = useState(false);
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytName, setYtName] = useState('');
+  const [ytCategoryId, setYtCategoryId] = useState('');
+  const ytImport = useYouTubeImport();
   const [createForm, setCreateForm] = useState<CreateForm>({ ...EMPTY_FORM, isRadio: isRadioMode });
   const [createAdv, setCreateAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
   const [editAdv, setEditAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
@@ -912,6 +919,12 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
                 {t('streams.moveSelected', { n: selectedStreamIds.size })}
               </button>
             )}
+            {can('streams.create') && (!type || type === 'LIVE') && (
+            <button onClick={() => { setShowYt(true); setYtUrl(''); setYtName(''); setYtCategoryId(''); }} className="btn-secondary flex items-center gap-1.5 text-red-400 border-red-400/30 hover:border-red-400/60">
+              <Youtube className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('streams.youtubeImport')}</span>
+            </button>
+            )}
             {can('streams.create') && (
             <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
@@ -1119,6 +1132,37 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
       </Modal>
 
       {/* Create modal */}
+      <Modal open={showYt} onClose={() => setShowYt(false)} title={t('streams.youtubeImport')} size="md">
+        <div className="space-y-3">
+          <p className="text-xs text-muted">{t('streams.youtubeHint')}</p>
+          <div>
+            <label className="label">{t('streams.youtubeUrl')}</label>
+            <input className="input font-mono text-xs" placeholder="https://www.youtube.com/watch?v=…" value={ytUrl} onChange={(e) => setYtUrl(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">{t('streams.category')}</label>
+            <select className="input" value={ytCategoryId} onChange={(e) => setYtCategoryId(e.target.value)}>
+              <option value="">{t('streams.selectCategory')}</option>
+              {(categories ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">{t('streams.nameOptional')}</label>
+            <input className="input" placeholder={t('streams.youtubeNamePlaceholder')} value={ytName} onChange={(e) => setYtName(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <button className="btn-ghost" onClick={() => setShowYt(false)}>{t('common.cancel')}</button>
+            <button className="btn-primary" disabled={ytImport.isPending || !ytUrl.trim() || !ytCategoryId}
+              onClick={() => ytImport.mutate(
+                { url: ytUrl.trim(), categoryId: ytCategoryId, name: ytName || undefined },
+                { onSuccess: () => setShowYt(false) },
+              )}>
+              {ytImport.isPending ? t('streams.youtubeResolving') : t('streams.youtubeImportBtn')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         open={showCreate}
         onClose={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}

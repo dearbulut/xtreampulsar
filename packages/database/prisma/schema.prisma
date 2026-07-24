@@ -911,6 +911,9 @@ model Settings {
   resellerAllowChangeDns      Boolean @default(true)   // bayi DNS/sunucu URL degistirebilir
   resellerAllowChangeUsername Boolean @default(false)  // bayi kullanici adi degistirebilir
   resellerAllowChangeEmail    Boolean @default(true)   // bayi e-posta degistirebilir
+  // ─── Roadmap H: YouTube kaynagi (yt-dlp) ──────────────────────────────────
+  youtubeEnabled          Boolean  @default(false)
+  youtubeCookies          String   @default("") // cookies.txt icerigi (yasli/gizli video icin)
   updatedAt               DateTime @updatedAt
 
   @@map("settings")

@@ -191,6 +191,7 @@ export class SettingsService {
       'disallowEmptyUa', 'splitByLoad', 'randomRtmpIp', 'logoutOnIpChange',
       'recaptchaEnabled', 'resellerAllowChangeDns', 'resellerAllowChangeUsername',
       'resellerAllowChangeEmail',
+      'youtubeEnabled',
     ]);
     const NUMBER_FIELDS = new Set([
       'idleSleepMins',

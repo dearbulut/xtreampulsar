@@ -505,6 +505,16 @@ export function SettingsPage() {
                 <input type="number" min={0} className="input w-40" value={settings.streaming.ffmpegAnalyzeDurationUs}
                   onChange={(e) => updateSettings('streaming', { ffmpegAnalyzeDurationUs: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
               </Field>
+              <SectionTitle>{t('settings.youtubeTitle')}</SectionTitle>
+              <Field label={t('settings.youtubeEnabled')} hint={t('settings.youtubeEnabledHint')}>
+                <Toggle checked={settings.streaming.youtubeEnabled}
+                  onChange={(v) => updateSettings('streaming', { youtubeEnabled: v })} />
+              </Field>
+              <Field label={t('settings.youtubeCookies')} hint={t('settings.youtubeCookiesHint')}>
+                <textarea className="input font-mono text-xs min-h-[90px]" placeholder="# Netscape HTTP Cookie File"
+                  value={settings.streaming.youtubeCookies}
+                  onChange={(e) => updateSettings('streaming', { youtubeCookies: e.target.value })} />
+              </Field>
               <SectionTitle>{t('settings.videoRedirects')}</SectionTitle>
               <Field label={t('settings.streamDownUrl')}>
                 <input className="input" value={settings.streaming.streamDownUrl}
