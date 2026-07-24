@@ -61,6 +61,7 @@ import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ProvidersPage } from '@/pages/providers/ProvidersPage';
 import { WidgetsPage } from './pages/widgets/WidgetsPage';
 import { WidgetHostedPage } from './pages/widgets/WidgetHostedPage';
+import { WatchFolderPage } from './pages/watch-folder/WatchFolderPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
 import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
@@ -356,6 +357,12 @@ const widgetsRoute = createRoute({
   component: WidgetsPage,
 });
 
+const watchFolderRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/watch-folder',
+  component: WatchFolderPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -532,6 +539,7 @@ const routeTree = rootRoute.addChildren([
     m3uSyncRoute,
     providersRoute,
     widgetsRoute,
+    watchFolderRoute,
   ]),
 ]);
 

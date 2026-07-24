@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Cloud,
   Code2,
+  FolderSearch,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -78,6 +79,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.categories', to: '/categories', icon: FolderOpen },
       { label: 'nav.bouquets', to: '/bouquets', icon: BookMarked },
       { label: 'nav.downloads', to: '/downloads', icon: Download },
+      { label: 'nav.watchFolder', to: '/watch-folder', icon: FolderSearch },
     ],
   },
   {

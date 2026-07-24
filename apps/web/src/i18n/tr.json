@@ -43,7 +43,8 @@
     "downloads": "İndirmeler",
     "commissions": "Komisyonlar",
     "providers": "Sağlayıcılar",
-    "widgets": "Web Widget'ları"
+    "widgets": "Web Widget'ları",
+    "watchFolder": "İzlenen Klasör"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -2479,5 +2480,24 @@
     "hostedLink": "Hazır sayfa",
     "openPage": "Aç",
     "oneDevice": "Cihaz/IP başına tek deneme"
+  },
+  "watchFolder": {
+    "title": "İzlenen Klasör",
+    "subtitle": "Sunucudaki bir klasöre atılan medyayı otomatik içe aktar (TMDB eşleşmeli)",
+    "enable": "Otomatik içe aktarmayı aç",
+    "path": "Sunucudaki klasör yolu",
+    "pathHint": "Panelin okuyabileceği mutlak yol, ör. /data/media. Alt klasörler taranır.",
+    "bouquet": "Hedef bouquet",
+    "interval": "Tarama aralığı (dakika)",
+    "serveNote": "Dosyalar panel üzerinden sunulur (Range destekli). Klasör API konteynerinin okuyabileceği yerde olmalı.",
+    "scanNow": "Şimdi tara",
+    "imports": "Son içe aktarımlar",
+    "noImports": "Henüz içe aktarım yok",
+    "colTitle": "Başlık",
+    "colKind": "Tür",
+    "colStatus": "Durum",
+    "colWhen": "Zaman",
+    "kindMovie": "Film",
+    "kindEpisode": "Bölüm"
   }
 }

@@ -758,6 +758,10 @@ model Settings {
   // Indirme yoneticisi
   downloadSpeedKbps       Int      @default(0)  // indirme-basi max hiz KB/s (0=sinirsiz)
   downloadConcurrency     Int      @default(3)  // ayni anda max indirme
+  watchFolderEnabled      Boolean  @default(false)
+  watchFolderPath         String?
+  watchFolderBouquetId    String?
+  watchFolderIntervalMins Int      @default(5)
   downloadAutoVod         Boolean  @default(false) // tamamlaninca otomatik VOD ekle (varsayilan)
   // Anti-piracy / real-IP
   realIpMode              String   @default("auto") // auto | cf | xff-first | xff-last (Cloudflare/proxy arkasi gercek client IP)
@@ -1273,6 +1277,23 @@ model DownloadJob {
 
   @@index([status])
   @@map("download_jobs")
+}
+
+model WatchImport {
+  id            String   @id @default(cuid())
+  path          String   @unique
+  kind          String   // MOVIE | EPISODE
+  title         String
+  season        Int?
+  episode       Int?
+  streamId      String?
+  episodeId     String?
+  status        String   @default("OK") // OK | SKIPPED | ERROR
+  message       String?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("watch_imports")
 }
 
 model Widget {

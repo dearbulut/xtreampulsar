@@ -43,7 +43,8 @@
     "downloads": "Downloads",
     "commissions": "Commissions",
     "providers": "Providers",
-    "widgets": "Website Widgets"
+    "widgets": "Website Widgets",
+    "watchFolder": "Watch Folder"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -2479,5 +2480,24 @@
     "hostedLink": "Hosted page",
     "openPage": "Open",
     "oneDevice": "One trial per device/IP"
+  },
+  "watchFolder": {
+    "title": "Watch Folder",
+    "subtitle": "Auto-import media dropped into a server folder (TMDB matched)",
+    "enable": "Enable auto-import",
+    "path": "Folder path on server",
+    "pathHint": "Absolute path the panel can read, e.g. /data/media. Subfolders are scanned.",
+    "bouquet": "Target bouquet",
+    "interval": "Scan interval (minutes)",
+    "serveNote": "Files are served through the panel (Range-supported). The folder must be readable by the API container.",
+    "scanNow": "Scan now",
+    "imports": "Recent imports",
+    "noImports": "No imports yet",
+    "colTitle": "Title",
+    "colKind": "Kind",
+    "colStatus": "Status",
+    "colWhen": "When",
+    "kindMovie": "Movie",
+    "kindEpisode": "Episode"
   }
 }
