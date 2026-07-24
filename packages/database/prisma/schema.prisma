@@ -1268,3 +1268,23 @@ model DownloadJob {
   @@index([status])
   @@map("download_jobs")
 }
+
+model StreamProvider {
+  id             String    @id @default(cuid())
+  name           String
+  type           String    @default("XTREAM") // XTREAM | M3U
+  host           String
+  username       String?
+  password       String?
+  userAgent      String?
+  isActive       Boolean   @default(true)
+  status         String    @default("UNKNOWN") // ONLINE | OFFLINE | UNKNOWN
+  lastCheckedAt  DateTime?
+  lastError      String?
+  maxConnections Int?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("stream_providers")
+}

@@ -58,6 +58,7 @@ import { InvoicesPage } from '@/pages/invoices/InvoicesPage';
 import { SubtitlesPage } from '@/pages/subtitles/SubtitlesPage';
 import { DownloadsPage } from '@/pages/downloads/DownloadsPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
+import { ProvidersPage } from '@/pages/providers/ProvidersPage';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ClientLoginPage } from '@/pages/client/ClientLoginPage';
 import { ClientDashboardPage } from '@/pages/client/ClientDashboardPage';
@@ -335,6 +336,12 @@ const m3uSyncRoute = createRoute({
   component: M3uSyncPage,
 });
 
+const providersRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/providers',
+  component: ProvidersPage,
+});
+
 // ─── Reseller routes ─────────────────────────────────────────────────────────
 
 const resellerLoginRoute = createRoute({
@@ -508,6 +515,7 @@ const routeTree = rootRoute.addChildren([
     subtitlesRoute,
     downloadsRoute,
     m3uSyncRoute,
+    providersRoute,
   ]),
 ]);
 

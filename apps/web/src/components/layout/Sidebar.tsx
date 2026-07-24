@@ -18,6 +18,7 @@ import {
   Settings,
   Wrench,
   ChevronDown,
+  Cloud,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -114,6 +115,7 @@ const NAV: NavGroup[] = [
     icon: Server,
     items: [
       { label: 'nav.servers', to: '/servers', icon: Server },
+      { label: 'nav.providers', to: '/providers', icon: Cloud },
       { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
       { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },

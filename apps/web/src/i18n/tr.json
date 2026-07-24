@@ -41,7 +41,8 @@
     "invoices": "Faturalar",
     "subtitles": "Altyazılar",
     "downloads": "İndirmeler",
-    "commissions": "Komisyonlar"
+    "commissions": "Komisyonlar",
+    "providers": "Sağlayıcılar"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -2344,5 +2345,27 @@
     "date": "Tarih",
     "markPaid": "Öde (krediyle)",
     "paidToast": "Komisyon ödendi, kazanan bayiye kredi eklendi"
+  },
+  "providers": {
+    "title": "Sağlayıcılar",
+    "subtitle": "Upstream IPTV sağlayıcıları — kanal listesini kendi kataloğuna aynala",
+    "add": "Sağlayıcı ekle",
+    "addTitle": "Yeni sağlayıcı",
+    "empty": "Henüz sağlayıcı yok",
+    "urlLabel": "Xtream URL",
+    "urlHint": "Sağlayıcının tam get.php/player_api.php URL'ini yapıştır — host/kullanıcı/şifre otomatik ayıklanır",
+    "verify": "Doğrula",
+    "verifyOk": "Bağlantı başarılı",
+    "verifyFail": "Bağlantı başarısız",
+    "nameLabel": "Ad",
+    "namePlaceholder": "ör. Sağlayıcı A",
+    "userAgent": "User-Agent (opsiyonel)",
+    "user": "Kullanıcı",
+    "maxConn": "Maks bağlantı",
+    "expiry": "Bitiş",
+    "checked": "Kontrol",
+    "reverify": "Yeniden doğrula",
+    "deleteTitle": "Sağlayıcı sil",
+    "deleteConfirm": "Bu sağlayıcı silinsin mi?"
   }
 }

@@ -41,7 +41,8 @@
     "invoices": "Invoices",
     "subtitles": "Subtitles",
     "downloads": "Downloads",
-    "commissions": "Commissions"
+    "commissions": "Commissions",
+    "providers": "Providers"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -2344,5 +2345,27 @@
     "date": "Date",
     "markPaid": "Pay (in credits)",
     "paidToast": "Commission paid; credits added to the earner"
+  },
+  "providers": {
+    "title": "Providers",
+    "subtitle": "Upstream IPTV providers — mirror their lineup into your catalog",
+    "add": "Add provider",
+    "addTitle": "New provider",
+    "empty": "No providers yet",
+    "urlLabel": "Xtream URL",
+    "urlHint": "Paste the provider's full get.php/player_api.php URL — host/user/password auto-extracted",
+    "verify": "Verify",
+    "verifyOk": "Connection OK",
+    "verifyFail": "Connection failed",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Provider A",
+    "userAgent": "User-Agent (optional)",
+    "user": "User",
+    "maxConn": "Max conn",
+    "expiry": "Expiry",
+    "checked": "Checked",
+    "reverify": "Re-verify",
+    "deleteTitle": "Delete provider",
+    "deleteConfirm": "Delete this provider?"
   }
 }
