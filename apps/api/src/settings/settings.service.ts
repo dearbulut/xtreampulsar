@@ -3,13 +3,49 @@ import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 
+export interface SecurityConfig {
+  minPasswordLength: number;
+  maxLoginAttempts: number;
+  loginLockoutMins: number;
+  disallowEmptyUa: boolean;
+  floodLimitPerMin: number;
+  autoKickAfterHours: number;
+}
+
 @Injectable()
 export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getPublicConfig() {
+  // Roadmap C — guvenlik ayarlari icin kisa omurlu cache (hot-path'te DB'yi yormamak icin)
+  private secCache: { value: SecurityConfig; expires: number } | null = null;
+
+  async getSecurityConfig(): Promise<SecurityConfig> {
+    const now = Date.now();
+    if (this.secCache && this.secCache.expires > now) return this.secCache.value;
+    const s = await this.prisma.settings.upsert({
+      where: { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+      select: {
+        minPasswordLength: true, maxLoginAttempts: true, loginLockoutMins: true,
+        disallowEmptyUa: true, floodLimitPerMin: true, autoKickAfterHours: true,
+      },
+    });
+    const value: SecurityConfig = {
+      minPasswordLength: s.minPasswordLength ?? 6,
+      maxLoginAttempts: s.maxLoginAttempts ?? 5,
+      loginLockoutMins: s.loginLockoutMins ?? 15,
+      disallowEmptyUa: s.disallowEmptyUa ?? false,
+      floodLimitPerMin: s.floodLimitPerMin ?? 0,
+      autoKickAfterHours: s.autoKickAfterHours ?? 0,
+    };
+    this.secCache = { value, expires: now + 15_000 };
+    return value;
+  }
+
+    async getPublicConfig() {
     const [settings, whiteLabel] = await Promise.all([
       this.prisma.settings.upsert({
         where: { id: 'singleton' },
@@ -151,8 +187,18 @@ export class SettingsService {
       'discordAlerts', 'telegramAlerts', 'registrationOpen', 'enableGuard', 'denyInvalidStreamIds',
       'autoEnrichMetadata', 'geoBlockEnabled', 'urlHealthCheck', 'aiEnabled',
       'idleSleepEnabled',
+      // Roadmap C
+      'disallowEmptyUa', 'splitByLoad', 'randomRtmpIp', 'logoutOnIpChange',
+      'recaptchaEnabled', 'resellerAllowChangeDns', 'resellerAllowChangeUsername',
+      'resellerAllowChangeEmail',
     ]);
-    const NUMBER_FIELDS = new Set(['idleSleepMins']);
+    const NUMBER_FIELDS = new Set([
+      'idleSleepMins',
+      // Roadmap C
+      'autoKickAfterHours', 'floodLimitPerMin', 'restreamerPrebufferKb',
+      'ffmpegProbeSize', 'ffmpegAnalyzeDurationUs', 'minPasswordLength',
+      'maxLoginAttempts', 'loginLockoutMins',
+    ]);
 
     const clean: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {

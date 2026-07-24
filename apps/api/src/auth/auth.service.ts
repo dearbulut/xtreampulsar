@@ -7,6 +7,7 @@ import {
   Optional,
   NotFoundException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Reseller } from '@xtreampulsar/database';
 import { JwtService } from '@nestjs/jwt';
@@ -19,8 +20,8 @@ import { UserActivityService } from '../user/user-activity.service';
 import { TwoFactorService } from './two-factor.service';
 import { LoginDto } from './dto/login.dto';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { SettingsService } from '../settings/settings.service';
 
-const BRUTE_MAX_ATTEMPTS = 5;
 const BRUTE_WINDOW_SEC = 15 * 60;
 const RESELLER_REFRESH_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly twoFactorService: TwoFactorService,
     private readonly userActivityService: UserActivityService,
     @Optional() @Inject(REDIS_CLIENT) private readonly redis: Redis | null,
+    private readonly settings: SettingsService,
   ) {}
 
   async setup(username: string, password: string, adminKey?: string) {
@@ -64,6 +66,10 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
       throw new UnauthorizedException('Mevcut şifre yanlış');
     }
+    const { minPasswordLength } = await this.settings.getSecurityConfig();
+    if (newPassword.length < minPasswordLength) {
+      throw new BadRequestException(`Şifre en az ${minPasswordLength} karakter olmalı`);
+    }
     const hashed = await bcrypt.hash(newPassword, 12);
     await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
     return { success: true };
@@ -75,16 +81,21 @@ export class AuthService {
   async checkBrute(ip: string): Promise<void> {
     if (!this.redis || !ip) return;
     const blocked = await this.redis.get(this.blockKey(ip)).catch(() => null);
-    if (blocked) throw new ForbiddenException('Too many login attempts. Try again in 15 minutes.');
+    if (blocked) {
+      const { loginLockoutMins } = await this.settings.getSecurityConfig();
+      throw new ForbiddenException(`Too many login attempts. Try again in ${loginLockoutMins} minutes.`);
+    }
   }
 
   async recordFailedAttempt(ip: string): Promise<void> {
     if (!this.redis || !ip) return;
+    const { maxLoginAttempts, loginLockoutMins } = await this.settings.getSecurityConfig();
+    const windowSec = Math.max(1, loginLockoutMins) * 60;
     const key = this.bruteKey(ip);
     const attempts = await this.redis.incr(key).catch(() => 0);
-    await this.redis.expire(key, BRUTE_WINDOW_SEC).catch(() => {});
-    if (attempts >= BRUTE_MAX_ATTEMPTS) {
-      await this.redis.setex(this.blockKey(ip), BRUTE_WINDOW_SEC, '1').catch(() => {});
+    await this.redis.expire(key, windowSec).catch(() => {});
+    if (attempts >= Math.max(1, maxLoginAttempts)) {
+      await this.redis.setex(this.blockKey(ip), windowSec, '1').catch(() => {});
     }
   }
 
@@ -267,11 +278,13 @@ export class AuthService {
 
   async recordResellerFailedAttempt(ip: string): Promise<void> {
     if (!this.redis || !ip) return;
+    const { maxLoginAttempts, loginLockoutMins } = await this.settings.getSecurityConfig();
+    const windowSec = Math.max(1, loginLockoutMins) * 60;
     const key = this.resellerBruteKey(ip);
     const attempts = await this.redis.incr(key).catch(() => 0);
-    await this.redis.expire(key, BRUTE_WINDOW_SEC).catch(() => {});
-    if (attempts >= BRUTE_MAX_ATTEMPTS) {
-      await this.redis.setex(this.resellerBlockKey(ip), BRUTE_WINDOW_SEC, '1').catch(() => {});
+    await this.redis.expire(key, windowSec).catch(() => {});
+    if (attempts >= Math.max(1, maxLoginAttempts)) {
+      await this.redis.setex(this.resellerBlockKey(ip), windowSec, '1').catch(() => {});
     }
   }
 

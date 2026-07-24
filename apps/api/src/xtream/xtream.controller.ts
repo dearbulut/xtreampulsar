@@ -808,6 +808,12 @@ export class XtreamController {
       }
     } catch { /* non-fatal: continue on lookup error */ }
 
+    // Roadmap C — disallow-empty-UA: User-Agent'i bos gelen canli yayin isteklerini reddet
+    if (!wl && guard.disallowEmptyUa) {
+      const uaHdr = (req.headers['user-agent'] ?? '').toString().trim();
+      if (!uaHdr) { res.status(HttpStatus.FORBIDDEN).send('User-Agent required'); return; }
+    }
+
     // Strip extension to get the clean numeric external ID
     const cleanId = streamId.replace(/\.(m3u8|ts)$/i, '');
     const externalId = parseInt(cleanId, 10);

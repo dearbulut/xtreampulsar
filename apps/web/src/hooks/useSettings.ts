@@ -76,6 +76,10 @@ export interface ResellerSettings {
   defaultPackageId: string;
   tierPricing: Record<string, number>;
   creditPricing: CreditPricingConfig;
+  // Roadmap C — bayi izinleri
+  allowChangeDns: boolean;
+  allowChangeUsername: boolean;
+  allowChangeEmail: boolean;
 }
 
 export interface StreamingSettings {
@@ -99,6 +103,15 @@ export interface StreamingSettings {
   expiredUserUrl: string;
   countryLockVideo: string;
   maxConxExceedVideo: string;
+  // Roadmap C — yayin guvenligi
+  disallowEmptyUa: boolean;
+  autoKickAfterHours: number;
+  floodLimitPerMin: number;
+  restreamerPrebufferKb: number;
+  splitByLoad: boolean;
+  randomRtmpIp: boolean;
+  ffmpegProbeSize: number;
+  ffmpegAnalyzeDurationUs: number;
 }
 
 export interface SecuritySettings {
@@ -114,6 +127,14 @@ export interface SecuritySettings {
   geoBlockEnabled: boolean;
   allowedCountries: string[];
   realIpMode: string;
+  // Roadmap C — uygulama guvenligi
+  minPasswordLength: number;
+  maxLoginAttempts: number;
+  loginLockoutMins: number;
+  logoutOnIpChange: boolean;
+  recaptchaEnabled: boolean;
+  recaptchaSiteKey: string;
+  recaptchaSecretKey: string;
 }
 
 export interface DatabaseSettings {
@@ -156,9 +177,9 @@ const DEFAULTS: AllSettings = {
     telegramAlerts: false,
   },
   xtream: { port: 25461, httpsPort: 25463, outputFormats: ['m3u8', 'ts'], trialUserLimit: 0, trialDays: 7, trialMaxConnections: 1 },
-  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING },
-  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, idleSleepEnabled: false, idleSleepMins: 10, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '' },
-  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [], realIpMode: 'auto' },
+  reseller: { registrationOpen: false, minCreditWarning: 10, defaultPackageId: '', tierPricing: { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 }, creditPricing: DEFAULT_CREDIT_PRICING, allowChangeDns: true, allowChangeUsername: false, allowChangeEmail: true },
+  streaming: { ffmpegPath: '/usr/bin/ffmpeg', hlsTime: 2, hlsListSize: 5, vodSpeedLimit: 0, bufferSize: 4096, vodDownloadSpeed: 200, vodDownloadLimit: 20, blockVPN: false, priorityBackupStream: false, adminStreamingIps: [], instantCloseConn: false, enableConxExceedLog: false, priorityBackup: true, idleSleepEnabled: false, idleSleepMins: 10, streamDownUrl: '', bannedUserUrl: '', expiredUserUrl: '', countryLockVideo: '', maxConxExceedVideo: '', disallowEmptyUa: false, autoKickAfterHours: 0, floodLimitPerMin: 0, restreamerPrebufferKb: 0, splitByLoad: false, randomRtmpIp: false, ffmpegProbeSize: 0, ffmpegAnalyzeDurationUs: 0 },
+  security: { enableGuard: false, sensitivePorts: ['22', '3306', '5432'], whitelistIPs: [], openPorts: ['80', '443', '25461'], maxConnsPerIp: 10, maxHitsNormal: 100, maxHitsRestreamer: 50, blockDuration: 60, denyInvalidStreamIds: true, geoBlockEnabled: false, allowedCountries: [], realIpMode: 'auto', minPasswordLength: 6, maxLoginAttempts: 5, loginLockoutMins: 15, logoutOnIpChange: false, recaptchaEnabled: false, recaptchaSiteKey: '', recaptchaSecretKey: '' },
   database: { enableLocalBackups: false, localBackupDir: '/var/backups/xtreampulsar', autoBackupIntervalHours: 24, backupsToKeep: 7, enableRemoteBackup: false, dropboxApiKey: '', backupEncryptionKey: '' },
 };
 
@@ -221,6 +242,25 @@ interface DbSettings {
   sensitivePorts?: string[];
   whitelistIPs?: string[];
   openPorts?: string[];
+  // Roadmap C
+  disallowEmptyUa?: boolean;
+  autoKickAfterHours?: number;
+  floodLimitPerMin?: number;
+  restreamerPrebufferKb?: number;
+  splitByLoad?: boolean;
+  randomRtmpIp?: boolean;
+  ffmpegProbeSize?: number;
+  ffmpegAnalyzeDurationUs?: number;
+  minPasswordLength?: number;
+  maxLoginAttempts?: number;
+  loginLockoutMins?: number;
+  logoutOnIpChange?: boolean;
+  recaptchaEnabled?: boolean;
+  recaptchaSiteKey?: string;
+  recaptchaSecretKey?: string;
+  resellerAllowChangeDns?: boolean;
+  resellerAllowChangeUsername?: boolean;
+  resellerAllowChangeEmail?: boolean;
 }
 
 function mapDbToStore(db: DbSettings): AllSettings {
@@ -256,6 +296,9 @@ function mapDbToStore(db: DbSettings): AllSettings {
       registrationOpen: db.registrationOpen ?? false,
       tierPricing: db.tierPricing ?? { BASIC: 1, SILVER: 1, GOLD: 1, PLATINUM: 1 },
       creditPricing: db.creditPricing ?? DEFAULT_CREDIT_PRICING,
+      allowChangeDns: db.resellerAllowChangeDns ?? true,
+      allowChangeUsername: db.resellerAllowChangeUsername ?? false,
+      allowChangeEmail: db.resellerAllowChangeEmail ?? true,
     },
     streaming: {
       ...DEFAULTS.streaming,
@@ -274,6 +317,14 @@ function mapDbToStore(db: DbSettings): AllSettings {
       expiredUserUrl: db.expiredVideo ?? '',
       countryLockVideo: db.countryLockVideo ?? '',
       maxConxExceedVideo: db.maxConxExceedVideo ?? '',
+      disallowEmptyUa: db.disallowEmptyUa ?? false,
+      autoKickAfterHours: db.autoKickAfterHours ?? 0,
+      floodLimitPerMin: db.floodLimitPerMin ?? 0,
+      restreamerPrebufferKb: db.restreamerPrebufferKb ?? 0,
+      splitByLoad: db.splitByLoad ?? false,
+      randomRtmpIp: db.randomRtmpIp ?? false,
+      ffmpegProbeSize: db.ffmpegProbeSize ?? 0,
+      ffmpegAnalyzeDurationUs: db.ffmpegAnalyzeDurationUs ?? 0,
     },
     security: {
       ...DEFAULTS.security,
@@ -289,6 +340,13 @@ function mapDbToStore(db: DbSettings): AllSettings {
       geoBlockEnabled: db.geoBlockEnabled ?? false,
       allowedCountries: db.allowedCountries ?? [],
       realIpMode: db.realIpMode ?? 'auto',
+      minPasswordLength: db.minPasswordLength ?? 6,
+      maxLoginAttempts: db.maxLoginAttempts ?? 5,
+      loginLockoutMins: db.loginLockoutMins ?? 15,
+      logoutOnIpChange: db.logoutOnIpChange ?? false,
+      recaptchaEnabled: db.recaptchaEnabled ?? false,
+      recaptchaSiteKey: db.recaptchaSiteKey ?? '',
+      recaptchaSecretKey: db.recaptchaSecretKey ?? '',
     },
     database: {
       ...DEFAULTS.database,
@@ -330,6 +388,9 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     registrationOpen: settings.reseller.registrationOpen,
     tierPricing: settings.reseller.tierPricing,
     creditPricing: settings.reseller.creditPricing,
+    resellerAllowChangeDns: settings.reseller.allowChangeDns,
+    resellerAllowChangeUsername: settings.reseller.allowChangeUsername,
+    resellerAllowChangeEmail: settings.reseller.allowChangeEmail,
     // Streaming
     vodDownloadSpeed: settings.streaming.vodDownloadSpeed,
     vodDownloadLimit: settings.streaming.vodDownloadLimit,
@@ -346,6 +407,14 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     expiredVideo: settings.streaming.expiredUserUrl || null,
     countryLockVideo: settings.streaming.countryLockVideo || null,
     maxConxExceedVideo: settings.streaming.maxConxExceedVideo || null,
+    disallowEmptyUa: settings.streaming.disallowEmptyUa,
+    autoKickAfterHours: settings.streaming.autoKickAfterHours,
+    floodLimitPerMin: settings.streaming.floodLimitPerMin,
+    restreamerPrebufferKb: settings.streaming.restreamerPrebufferKb,
+    splitByLoad: settings.streaming.splitByLoad,
+    randomRtmpIp: settings.streaming.randomRtmpIp,
+    ffmpegProbeSize: settings.streaming.ffmpegProbeSize,
+    ffmpegAnalyzeDurationUs: settings.streaming.ffmpegAnalyzeDurationUs,
     // Security
     enableGuard: settings.security.enableGuard,
     maxConnsPerIp: settings.security.maxConnsPerIp,
@@ -359,6 +428,13 @@ function mapStoreToDB(settings: AllSettings): Partial<DbSettings> {
     geoBlockEnabled: settings.security.geoBlockEnabled,
     allowedCountries: settings.security.allowedCountries,
     realIpMode: settings.security.realIpMode,
+    minPasswordLength: settings.security.minPasswordLength,
+    maxLoginAttempts: settings.security.maxLoginAttempts,
+    loginLockoutMins: settings.security.loginLockoutMins,
+    logoutOnIpChange: settings.security.logoutOnIpChange,
+    recaptchaEnabled: settings.security.recaptchaEnabled,
+    recaptchaSiteKey: settings.security.recaptchaSiteKey,
+    recaptchaSecretKey: settings.security.recaptchaSecretKey,
     // Database / Backup
     enableLocalBackups: settings.database.enableLocalBackups,
     localBackupDir: settings.database.localBackupDir,

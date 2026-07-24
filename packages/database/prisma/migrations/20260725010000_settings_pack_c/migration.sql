@@ -1,0 +1,20 @@
+-- Roadmap C: Ayarlar zenginlik paketi (Yayin guvenligi / Uygulama guvenligi / Bayi izinleri)
+ALTER TABLE "settings"
+  ADD COLUMN "disallowEmptyUa"         BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "autoKickAfterHours"      INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "floodLimitPerMin"        INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "restreamerPrebufferKb"   INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "splitByLoad"             BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "randomRtmpIp"            BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "ffmpegProbeSize"         INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "ffmpegAnalyzeDurationUs" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "minPasswordLength"       INTEGER NOT NULL DEFAULT 6,
+  ADD COLUMN "maxLoginAttempts"        INTEGER NOT NULL DEFAULT 5,
+  ADD COLUMN "loginLockoutMins"        INTEGER NOT NULL DEFAULT 15,
+  ADD COLUMN "logoutOnIpChange"        BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "recaptchaEnabled"        BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "recaptchaSiteKey"        TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "recaptchaSecretKey"      TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "resellerAllowChangeDns"      BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN "resellerAllowChangeUsername" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "resellerAllowChangeEmail"    BOOLEAN NOT NULL DEFAULT true;

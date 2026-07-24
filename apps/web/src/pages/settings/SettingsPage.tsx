@@ -467,6 +467,42 @@ export function SettingsPage() {
                   disabled={!settings.streaming.idleSleepEnabled}
                   onChange={(e) => updateSettings('streaming', { idleSleepMins: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
               </Field>
+              <SectionTitle>{t('settings.cStreamTitle')}</SectionTitle>
+              <Field label={t('settings.disallowEmptyUa')} hint={t('settings.disallowEmptyUaHint')}>
+                <Toggle checked={settings.streaming.disallowEmptyUa}
+                  onChange={(v) => updateSettings('streaming', { disallowEmptyUa: v })} />
+              </Field>
+              <Field label={t('settings.autoKickAfterHours')} hint={t('settings.autoKickAfterHoursHint')}>
+                <input type="number" min={0} className="input w-32" value={settings.streaming.autoKickAfterHours}
+                  onChange={(e) => updateSettings('streaming', { autoKickAfterHours: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </Field>
+              <Field label={t('settings.floodLimitPerMin')} hint={t('settings.floodLimitPerMinHint')}>
+                <input type="number" min={0} className="input w-32" value={settings.streaming.floodLimitPerMin}
+                  onChange={(e) => updateSettings('streaming', { floodLimitPerMin: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </Field>
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-xs text-muted">
+                {t('settings.cEngineHint')}
+              </div>
+              <Field label={t('settings.restreamerPrebufferKb')}>
+                <input type="number" min={0} className="input w-32" value={settings.streaming.restreamerPrebufferKb}
+                  onChange={(e) => updateSettings('streaming', { restreamerPrebufferKb: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </Field>
+              <Field label={t('settings.splitByLoad')}>
+                <Toggle checked={settings.streaming.splitByLoad}
+                  onChange={(v) => updateSettings('streaming', { splitByLoad: v })} />
+              </Field>
+              <Field label={t('settings.randomRtmpIp')}>
+                <Toggle checked={settings.streaming.randomRtmpIp}
+                  onChange={(v) => updateSettings('streaming', { randomRtmpIp: v })} />
+              </Field>
+              <Field label={t('settings.ffmpegProbeSize')}>
+                <input type="number" min={0} className="input w-40" value={settings.streaming.ffmpegProbeSize}
+                  onChange={(e) => updateSettings('streaming', { ffmpegProbeSize: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </Field>
+              <Field label={t('settings.ffmpegAnalyzeDurationUs')}>
+                <input type="number" min={0} className="input w-40" value={settings.streaming.ffmpegAnalyzeDurationUs}
+                  onChange={(e) => updateSettings('streaming', { ffmpegAnalyzeDurationUs: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+              </Field>
               <SectionTitle>{t('settings.videoRedirects')}</SectionTitle>
               <Field label={t('settings.streamDownUrl')}>
                 <input className="input" value={settings.streaming.streamDownUrl}
@@ -564,6 +600,39 @@ export function SettingsPage() {
                   <option value="xff-first">{t('settings.realIpXffFirst')}</option>
                   <option value="xff-last">{t('settings.realIpXffLast')}</option>
                 </select>
+              </Field>
+            </div>
+            <SectionTitle>{t('settings.cAppTitle')}</SectionTitle>
+            <div className="space-y-5">
+              <Field label={t('settings.minPasswordLength')} hint={t('settings.minPasswordLengthHint')}>
+                <input type="number" min={4} max={64} className="input w-32" value={settings.security.minPasswordLength}
+                  onChange={(e) => updateSettings('security', { minPasswordLength: Math.max(4, parseInt(e.target.value, 10) || 4) })} />
+              </Field>
+              <Field label={t('settings.maxLoginAttempts')} hint={t('settings.maxLoginAttemptsHint')}>
+                <input type="number" min={1} max={50} className="input w-32" value={settings.security.maxLoginAttempts}
+                  onChange={(e) => updateSettings('security', { maxLoginAttempts: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
+              </Field>
+              <Field label={t('settings.loginLockoutMins')} hint={t('settings.loginLockoutMinsHint')}>
+                <input type="number" min={1} max={1440} className="input w-32" value={settings.security.loginLockoutMins}
+                  onChange={(e) => updateSettings('security', { loginLockoutMins: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
+              </Field>
+              <Field label={t('settings.logoutOnIpChange')} hint={t('settings.logoutOnIpChangeHint')}>
+                <Toggle checked={settings.security.logoutOnIpChange}
+                  onChange={(v) => updateSettings('security', { logoutOnIpChange: v })} />
+              </Field>
+              <Field label={t('settings.recaptchaEnabled')} hint={t('settings.recaptchaEnabledHint')}>
+                <Toggle checked={settings.security.recaptchaEnabled}
+                  onChange={(v) => updateSettings('security', { recaptchaEnabled: v })} />
+              </Field>
+              <Field label={t('settings.recaptchaSiteKey')}>
+                <input className="input font-mono" value={settings.security.recaptchaSiteKey}
+                  disabled={!settings.security.recaptchaEnabled}
+                  onChange={(e) => updateSettings('security', { recaptchaSiteKey: e.target.value })} />
+              </Field>
+              <Field label={t('settings.recaptchaSecretKey')}>
+                <input type="password" className="input font-mono" value={settings.security.recaptchaSecretKey}
+                  disabled={!settings.security.recaptchaEnabled}
+                  onChange={(e) => updateSettings('security', { recaptchaSecretKey: e.target.value })} />
               </Field>
             </div>
             <TwoFactorSection />
@@ -1086,6 +1155,22 @@ function ResellerTab({
             value={settings.reseller.minCreditWarning}
             onChange={(e) => updateSettings('reseller', { minCreditWarning: parseInt(e.target.value, 10) })}
           />
+        </Field>
+      </div>
+
+      <SectionTitle>{t('settings.cResellerTitle')}</SectionTitle>
+      <div className="space-y-5">
+        <Field label={t('settings.resellerAllowChangeDns')} hint={t('settings.resellerAllowChangeDnsHint')}>
+          <Toggle checked={settings.reseller.allowChangeDns}
+            onChange={(v) => updateSettings('reseller', { allowChangeDns: v })} />
+        </Field>
+        <Field label={t('settings.resellerAllowChangeUsername')} hint={t('settings.resellerAllowChangeUsernameHint')}>
+          <Toggle checked={settings.reseller.allowChangeUsername}
+            onChange={(v) => updateSettings('reseller', { allowChangeUsername: v })} />
+        </Field>
+        <Field label={t('settings.resellerAllowChangeEmail')} hint={t('settings.resellerAllowChangeEmailHint')}>
+          <Toggle checked={settings.reseller.allowChangeEmail}
+            onChange={(v) => updateSettings('reseller', { allowChangeEmail: v })} />
         </Field>
       </div>
 

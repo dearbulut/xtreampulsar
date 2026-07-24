@@ -11,6 +11,7 @@ export interface EffectiveGuard {
   whitelistUsernames: string[];  // enabled ? guard.whitelistUsernames : []
   maxHitsNormalUser: number;     // (Aşama 2 için taşınıyor; şimdilik sadece döndür)
   maxHitsRestreamer: number;
+  disallowEmptyUa: boolean;      // Roadmap C — User-Agent bos istekleri reddet (Settings singleton)
 }
 
 const CACHE_TTL_MS = 10_000; // 10s — her stream isteğinde DB'ye gitme
@@ -48,6 +49,7 @@ export class GuardConfigService {
       whitelistUsernames: [],
       maxHitsNormalUser: 0,
       maxHitsRestreamer: 0,
+      disallowEmptyUa: false,
     };
   }
 
@@ -59,9 +61,18 @@ export class GuardConfigService {
 
     if (!server) return this.disabled(null);
 
+    const settings = await this.prisma.settings.findUnique({
+      where: { id: 'singleton' },
+      select: { disallowEmptyUa: true },
+    });
+    const disallowEmptyUa = settings?.disallowEmptyUa ?? false;
+
     const guard = await this.prisma.serverGuard.findUnique({ where: { serverId: server.id } });
 
-    if (!guard || !guard.enabled) return this.disabled(server.id);
+    if (!guard || !guard.enabled) {
+      const base = this.disabled(server.id);
+      return { ...base, disallowEmptyUa };
+    }
 
     return {
       enabled: true,
@@ -73,6 +84,7 @@ export class GuardConfigService {
       whitelistUsernames: guard.whitelistUsernames,
       maxHitsNormalUser: guard.maxHitsNormalUser,
       maxHitsRestreamer: guard.maxHitsRestreamer,
+      disallowEmptyUa,
     };
   }
 }

@@ -849,6 +849,27 @@ model Settings {
   sensitivePorts          String[] @default([])
   whitelistIPs            String[] @default([])
   openPorts               String[] @default([])
+  // ─── Roadmap C: Yayin guvenligi ───────────────────────────────────────────
+  disallowEmptyUa         Boolean  @default(false) // User-Agent'i bos istekleri reddet (canli yayin)
+  autoKickAfterHours      Int      @default(0)      // N saatten uzun acik hatti otomatik dusur (0=kapali)
+  floodLimitPerMin        Int      @default(0)      // IP basi dakikada max yeni yayin istegi (0=kapali)
+  restreamerPrebufferKb   Int      @default(0)      // restreamer prebuffer ipucu (KB)
+  splitByLoad             Boolean  @default(false)  // yuke gore LB dagitim ipucu
+  randomRtmpIp            Boolean  @default(false)  // RTMP cikisini rastgele IP'ye bagla
+  ffmpegProbeSize         Int      @default(0)      // varsayilan ffmpeg -probesize (0=oto)
+  ffmpegAnalyzeDurationUs Int      @default(0)      // varsayilan ffmpeg -analyzeduration us (0=oto)
+  // ─── Roadmap C: Uygulama guvenligi ────────────────────────────────────────
+  minPasswordLength       Int      @default(6)      // min sifre uzunlugu (kullanici/bayi)
+  maxLoginAttempts        Int      @default(5)      // ardil basarisiz giris esigi
+  loginLockoutMins        Int      @default(15)     // esik asilinca kilit suresi (dk)
+  logoutOnIpChange        Boolean  @default(false)  // oturum IP degisince cikis (ileride devreye)
+  recaptchaEnabled        Boolean  @default(false)  // giris/kayit formunda reCAPTCHA
+  recaptchaSiteKey        String   @default("")
+  recaptchaSecretKey      String   @default("")
+  // ─── Roadmap C: Bayi izinleri ─────────────────────────────────────────────
+  resellerAllowChangeDns      Boolean @default(true)   // bayi DNS/sunucu URL degistirebilir
+  resellerAllowChangeUsername Boolean @default(false)  // bayi kullanici adi degistirebilir
+  resellerAllowChangeEmail    Boolean @default(true)   // bayi e-posta degistirebilir
   updatedAt               DateTime @updatedAt
 
   @@map("settings")
