@@ -769,6 +769,23 @@ model AdminGroup {
   @@map("admin_groups")
 }
 
+model FeaturedEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  logoUrl     String?
+  startsAt    DateTime?           // etkinlik baslangic zamani (opsiyonel)
+  streamId    String?             // ilgili yayin (plain ref; FK yok)
+  categoryId  String?             // ilgili kategori (plain ref)
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isActive, startsAt])
+  @@map("featured_events")
+}
+
 model Settings {
   id                      String   @id @default("singleton")
   vodDownloadSpeed        Int      @default(200)

@@ -7,7 +7,7 @@ import { useSettings, useUpdateSettings, useSyncSettings, useSaveSettings } from
 import type { CreditPricingConfig } from '@/hooks/useSettings';
 import { DEFAULT_CREDIT_PRICING } from '@/hooks/useSettings';
 import { CURRENCIES } from '@/lib/currency';
-import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, formatBytes } from '@/hooks/useBackup';
+import { useBackupList, useCreateBackup, useDeleteBackup, useUploadDropbox, useDownloadBackup, useRestoreBackup, formatBytes } from '@/hooks/useBackup';
 import { useQueryClient } from '@tanstack/react-query';
 import { use2FAStatus, use2FASetup, use2FAEnable, use2FADisable } from '@/hooks/useTwoFactor';
 import { useApiKeys, useCreateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
@@ -162,6 +162,7 @@ export function SettingsPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('general');
   const [deleteBackupFile, setDeleteBackupFile] = useState<string | null>(null);
+  const [restoreBackupFile, setRestoreBackupFile] = useState<string | null>(null);
   const settings = useSettings();
   const updateSettings = useUpdateSettings();
   useSyncSettings();
@@ -170,6 +171,7 @@ export function SettingsPage() {
   const { data: backupList = [], isLoading: backupsLoading } = useBackupList();
   const createBackup = useCreateBackup();
   const deleteBackup = useDeleteBackup();
+  const restoreBackup = useRestoreBackup();
   const uploadDropbox = useUploadDropbox();
   const downloadBackup = useDownloadBackup();
 
@@ -726,6 +728,13 @@ export function SettingsPage() {
                                 </button>
                               )}
                               <button
+                                title={t('settings.restore')}
+                                onClick={() => setRestoreBackupFile(b.filename)}
+                                className="p-1.5 rounded hover:bg-amber-500/10 text-amber-400 transition-colors"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                              <button
                                 title={t('settings.download')}
                                 onClick={() => { void downloadBackup(b.filename); }}
                                 className="p-1.5 rounded hover:bg-emerald-500/10 text-emerald-400 transition-colors"
@@ -767,6 +776,32 @@ export function SettingsPage() {
                         }}
                       >
                         {deleteBackup.isPending ? t('settings.deleting') : t('common.delete')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {restoreBackupFile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                  <div className="card p-6 max-w-md w-full mx-4 space-y-4">
+                    <h3 className="font-semibold text-slate-100">{t('settings.restoreBackupTitle')}</h3>
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                      {t('settings.restoreWarning')}
+                    </div>
+                    <p className="text-sm text-muted">
+                      <span className="font-mono text-slate-300">{restoreBackupFile}</span>
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <button className="btn btn-ghost" onClick={() => setRestoreBackupFile(null)}>{t('common.cancel')}</button>
+                      <button
+                        className="btn btn-primary bg-amber-600 hover:bg-amber-700"
+                        disabled={restoreBackup.isPending}
+                        onClick={() => {
+                          restoreBackup.mutate(restoreBackupFile, { onSuccess: () => setRestoreBackupFile(null) });
+                        }}
+                      >
+                        {restoreBackup.isPending ? t('settings.restoring') : t('settings.restore')}
                       </button>
                     </div>
                   </div>

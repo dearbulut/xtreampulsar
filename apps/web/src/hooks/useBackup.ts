@@ -43,6 +43,18 @@ export function useDeleteBackup() {
   });
 }
 
+export function useRestoreBackup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (filename: string) => api.post(`/backup/restore/${encodeURIComponent(filename)}`),
+    onSuccess: () => {
+      void qc.invalidateQueries();
+      toast.success('Yedek geri yüklendi');
+    },
+    onError: () => toast.error('Geri yükleme başarısız'),
+  });
+}
+
 export function useDownloadBackup() {
   return async (filename: string) => {
     const res = await api.get(`/backup/download/${encodeURIComponent(filename)}`, {

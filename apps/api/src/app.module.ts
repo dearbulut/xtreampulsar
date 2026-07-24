@@ -56,6 +56,7 @@ import { ResellerApiModule } from './reseller-api/reseller-api.module';
 import { DownloadModule } from './download/download.module';
 import { CatchupModule } from './catchup/catchup.module';
 import { RbacModule } from './rbac/rbac.module';
+import { FeaturedModule } from './featured/featured.module';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { RbacModule } from './rbac/rbac.module';
     DownloadModule,
     CatchupModule,
     RbacModule,
+    FeaturedModule,
   ],
   controllers: [AppController],
   providers: [

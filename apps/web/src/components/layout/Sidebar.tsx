@@ -44,6 +44,7 @@ import {
   HandCoins,
   KeyRound,
   Satellite,
+  Star,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'nav.channels', to: '/channels', icon: Tv },
       { label: 'nav.radio', to: '/radio', icon: Radio },
+      { label: 'nav.featured', to: '/featured', icon: Star },
       { label: 'nav.vod', to: '/vod', icon: Film },
       { label: 'nav.series', to: '/series', icon: Clapperboard },
       { label: 'nav.subtitles', to: '/subtitles', icon: Captions },
