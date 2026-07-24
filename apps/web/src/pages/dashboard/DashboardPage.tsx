@@ -70,11 +70,6 @@ function fmtMbps(v: number): string {
   return `${v} Mbps`;
 }
 
-function pctDelta(today: number, yesterday: number): number | null {
-  if (!yesterday) return today > 0 ? 100 : null;
-  return Math.round(((today - yesterday) / yesterday) * 100);
-}
-
 const ACTIVITY_ICON: Record<string, typeof LogIn> = {
   LOGIN: LogIn,
   LOGOUT: WifiOff,
@@ -120,7 +115,7 @@ export function DashboardPage() {
   const maxViewers = Math.max(...topStreams.map((s) => s.connections ?? 0), 1);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -134,7 +129,7 @@ export function DashboardPage() {
       </div>
 
       {/* Row 1 — Big live stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           title={t('dashboard.activeConnections')}
           value={activeConns.toLocaleString('tr')}
@@ -168,60 +163,26 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* Row 2 — Small info cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SmallCard
-          icon={UserPlus}
-          label={t('dashboard.newUsersToday')}
-          value={stats?.newUsersToday ?? '—'}
-          color="text-success"
-          loading={statsLoading}
-          trend={stats ? pctDelta(stats.newUsersToday, stats.newUsersYesterday) : null}
-        />
-        <SmallCard
-          icon={Link2}
-          label={t('dashboard.connectionsTodayShort')}
-          value={stats?.connectionsToday != null ? stats.connectionsToday.toLocaleString('tr') : '—'}
-          color="text-info"
-          loading={statsLoading}
-          trend={stats ? pctDelta(stats.connectionsToday, stats.connectionsYesterday) : null}
-        />
-        <SmallCard
-          icon={UserX}
-          label={t('dashboard.expiredUsers')}
-          value={stats?.expiredUsers != null ? stats.expiredUsers.toLocaleString('tr') : '—'}
-          color="text-warning"
-          loading={statsLoading}
-        />
-        <SmallCard
-          icon={ShieldCheck}
-          label={t('dashboard.streamHealth')}
-          value={stats ? `${stats.streamsUp}/${stats.totalStreams}` : '—'}
-          color={stats && stats.streamsDown > 0 ? 'text-danger' : 'text-success'}
-          loading={statsLoading}
-          sub={stats?.streamsDown ? t('dashboard.nDown', { n: stats.streamsDown }) : t('dashboard.allGood')}
-        />
-      </div>
-
-      {/* Row 2.4 — Client reports & channel requests */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link to="/client-requests" className="card card-hover p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
-            <MessageSquareWarning className="w-5 h-5" />
+      {/* Compact secondary metrics — tek ferah şerit */}
+      <div className="card p-0 overflow-hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-border">
+        {[
+          { icon: UserPlus, label: t('dashboard.newUsersToday'), value: stats?.newUsersToday ?? '—', color: 'text-success' },
+          { icon: Link2, label: t('dashboard.connectionsTodayShort'), value: stats?.connectionsToday != null ? stats.connectionsToday.toLocaleString('tr') : '—', color: 'text-info' },
+          { icon: UserX, label: t('dashboard.expiredUsers'), value: stats?.expiredUsers != null ? stats.expiredUsers.toLocaleString('tr') : '—', color: 'text-warning' },
+          { icon: ShieldCheck, label: t('dashboard.streamHealth'), value: stats ? `${stats.streamsUp}/${stats.totalStreams}` : '—', color: stats && stats.streamsDown > 0 ? 'text-danger' : 'text-success' },
+        ].map((m) => (
+          <div key={m.label} className="p-4 flex flex-col gap-1.5">
+            <span className="flex items-center gap-1.5 text-xs text-muted"><m.icon className="w-3.5 h-3.5" />{m.label}</span>
+            <span className={cn('text-xl font-bold tabular-nums', m.color)}>{m.value}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-muted">{t('dashboard.reportedChannels')}</p>
-            <p className="text-xl font-bold text-fg tabular-nums">{reqStats?.openReports ?? '—'}</p>
-          </div>
+        ))}
+        <Link to="/client-requests" className="p-4 flex flex-col gap-1.5 hover:bg-surface-2 transition-colors">
+          <span className="flex items-center gap-1.5 text-xs text-muted"><MessageSquareWarning className="w-3.5 h-3.5" />{t('dashboard.reportedChannels')}</span>
+          <span className="text-xl font-bold tabular-nums text-fg">{reqStats?.openReports ?? '—'}</span>
         </Link>
-        <Link to="/client-requests" className="card card-hover p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-info/10 text-info flex items-center justify-center shrink-0">
-            <TvMinimal className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-muted">{t('dashboard.channelRequests')}</p>
-            <p className="text-xl font-bold text-fg tabular-nums">{reqStats?.openRequests ?? '—'}</p>
-          </div>
+        <Link to="/client-requests" className="p-4 flex flex-col gap-1.5 hover:bg-surface-2 transition-colors">
+          <span className="flex items-center gap-1.5 text-xs text-muted"><TvMinimal className="w-3.5 h-3.5" />{t('dashboard.channelRequests')}</span>
+          <span className="text-xl font-bold tabular-nums text-fg">{reqStats?.openRequests ?? '—'}</span>
         </Link>
       </div>
 
@@ -523,47 +484,3 @@ export function DashboardPage() {
 }
 
 // ─── Small info card ──────────────────────────────────────────────────────
-
-function SmallCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  loading,
-  sub,
-  trend,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: string;
-  loading?: boolean;
-  sub?: string;
-  trend?: number | null;
-}) {
-  return (
-    <div className="card card-hover p-4 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-muted" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted truncate">{label}</p>
-        {loading ? (
-          <div className="h-5 w-12 bg-surface-2 rounded animate-pulse mt-1" />
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <p className={cn('text-lg font-bold tabular-nums leading-tight', color)}>{value}</p>
-              {trend != null && Number.isFinite(trend) && (
-                <span className={cn('text-[11px] font-medium tabular-nums', trend >= 0 ? 'text-success' : 'text-danger')}>
-                  {trend >= 0 ? '\u2191' : '\u2193'} {Math.abs(trend)}%
-                </span>
-              )}
-            </div>
-            {sub && <p className="text-xs text-muted">{sub}</p>}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
