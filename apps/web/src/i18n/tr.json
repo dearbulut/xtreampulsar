@@ -582,7 +582,12 @@
     "customMap": "Özel -map",
     "probeSize": "Probe size",
     "delayMinutes": "Gecikme (dakika)",
-    "transcodeProfile": "Transkodlama profili"
+    "transcodeProfile": "Transkodlama profili",
+    "cast": "Oyuncular",
+    "castPlaceholder": "Oyuncu 1, Oyuncu 2",
+    "director": "Yönetmen",
+    "durationMin": "Süre (dk)",
+    "subtitlePath": "Altyazı dosya yolu"
   },
   "categories": {
     "title": "Kategoriler",

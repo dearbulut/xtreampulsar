@@ -295,6 +295,10 @@ model Stream {
   releaseYear Int?
   tmdbRating  Float?
   tmdbGenres  String[]
+  cast            String[] @default([]) // oyuncular
+  director        String?                 // yonetmen
+  subtitlePath    String?                 // harici altyazi dosya yolu
+  targetContainer String?                 // VOD hedef konteyner (mp4/mkv)
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])

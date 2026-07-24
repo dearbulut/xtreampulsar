@@ -582,7 +582,12 @@
     "customMap": "Custom -map",
     "probeSize": "Probe size",
     "delayMinutes": "Delay (minutes)",
-    "transcodeProfile": "Transcode profile"
+    "transcodeProfile": "Transcode profile",
+    "cast": "Cast",
+    "castPlaceholder": "Actor 1, Actor 2",
+    "director": "Director",
+    "durationMin": "Duration (min)",
+    "subtitlePath": "Subtitle file path"
   },
   "categories": {
     "title": "Categories",

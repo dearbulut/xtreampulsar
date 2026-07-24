@@ -188,10 +188,16 @@ interface MetaForm {
   releaseYear: string;
   tmdbRating: string;
   tmdbGenres: string;
+  cast: string;
+  director: string;
+  durationMin: string;
+  targetContainer: string;
+  subtitlePath: string;
 }
 
 const EMPTY_META: MetaForm = {
   name: '', overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
+  cast: '', director: '', durationMin: '', targetContainer: '', subtitlePath: '',
 };
 
 function getUrlPage(): number {
@@ -528,6 +534,11 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       releaseYear: metaStream.releaseYear != null ? String(metaStream.releaseYear) : '',
       tmdbRating: metaStream.tmdbRating != null ? String(metaStream.tmdbRating) : '',
       tmdbGenres: (metaStream.tmdbGenres ?? []).join(', '),
+      cast: ((metaStream as { cast?: string[] }).cast ?? []).join(', '),
+      director: (metaStream as { director?: string }).director ?? '',
+      durationMin: (metaStream as { durationSecs?: number }).durationSecs != null ? String(Math.round(((metaStream as { durationSecs?: number }).durationSecs as number) / 60)) : '',
+      targetContainer: (metaStream as { targetContainer?: string }).targetContainer ?? '',
+      subtitlePath: (metaStream as { subtitlePath?: string }).subtitlePath ?? '',
     });
   }, [metaStream]);
 
@@ -1628,6 +1639,28 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onChange={(e) => setMetaForm((f) => ({ ...f, tmdbGenres: e.target.value }))}
             />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('streams.cast')}</label>
+              <input className="input" placeholder={t('streams.castPlaceholder')} value={metaForm.cast} onChange={(e) => setMetaForm((f) => ({ ...f, cast: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">{t('streams.director')}</label>
+              <input className="input" value={metaForm.director} onChange={(e) => setMetaForm((f) => ({ ...f, director: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">{t('streams.durationMin')}</label>
+              <input className="input" type="number" min={0} value={metaForm.durationMin} onChange={(e) => setMetaForm((f) => ({ ...f, durationMin: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">{t('streams.targetContainer')}</label>
+              <input className="input" placeholder="mp4 / mkv" value={metaForm.targetContainer} onChange={(e) => setMetaForm((f) => ({ ...f, targetContainer: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="label">{t('streams.subtitlePath')}</label>
+              <input className="input font-mono text-xs" placeholder="/var/media/subs/movie.srt" value={metaForm.subtitlePath} onChange={(e) => setMetaForm((f) => ({ ...f, subtitlePath: e.target.value }))} />
+            </div>
+          </div>
           <div className="flex gap-2 justify-end pt-3 border-t border-border">
             <button onClick={() => setMetaStream(null)} className="btn-ghost">{t('common.cancel')}</button>
             <button
@@ -1646,6 +1679,11 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                       tmdbRating: metaForm.tmdbRating ? Number(metaForm.tmdbRating) : undefined,
                       tmdbGenres: metaForm.tmdbGenres
                         ? metaForm.tmdbGenres.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+                      cast: metaForm.cast ? metaForm.cast.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+                      director: metaForm.director || undefined,
+                      durationSecs: metaForm.durationMin ? Math.round(Number(metaForm.durationMin) * 60) : undefined,
+                      targetContainer: metaForm.targetContainer || undefined,
+                      subtitlePath: metaForm.subtitlePath || undefined,
                     },
                   },
                   { onSuccess: () => setMetaStream(null) },

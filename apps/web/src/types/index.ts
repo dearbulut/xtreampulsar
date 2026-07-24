@@ -25,6 +25,26 @@ export type WorkerStatus = 'IDLE' | 'RUNNING' | 'CRASHED' | 'STOPPED';
 export type HealthStatus = 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN';
 
 export interface Stream {
+  cast?: string[];
+  director?: string | null;
+  subtitlePath?: string | null;
+  targetContainer?: string | null;
+  durationSecs?: number | null;
+  directSource?: boolean;
+  streamUserAgent?: string | null;
+  httpProxy?: string | null;
+  httpCookie?: string | null;
+  httpHeaders?: string | null;
+  customFfmpeg?: string | null;
+  customMap?: string | null;
+  probeSize?: number | null;
+  delayMinutes?: number | null;
+  transcodeProfile?: string | null;
+  generatePts?: boolean;
+  allowRecording?: boolean;
+  allowRtmpOutput?: boolean;
+  restartDays?: string[];
+  restartTime?: string | null;
   id: string;
   externalId: number;
   name: string;

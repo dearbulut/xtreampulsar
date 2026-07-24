@@ -318,7 +318,7 @@ export class XtreamService {
           plus
             ? `#EXTINF:-1 tvg-name="${s.name}" tvg-logo="${s.tvgLogo ?? ''}" group-title="${s.category.name}",${s.name}`
             : `#EXTINF:-1,${s.name}`,
-          `${baseUrl}/movie/${username}/${password}/${s.externalId}.mp4`,
+          `${baseUrl}/movie/${username}/${password}/${s.externalId}.${((s as { targetContainer?: string | null }).targetContainer || 'mp4').replace(/^\./, '')}`,
         );
       }
     }

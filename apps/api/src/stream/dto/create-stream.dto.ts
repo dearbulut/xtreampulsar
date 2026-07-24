@@ -158,4 +158,19 @@ export class CreateStreamDto {
 
   @IsOptional() @IsString()
   epgLang?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true })
+  cast?: string[];
+
+  @IsOptional() @IsString()
+  director?: string;
+
+  @IsOptional() @IsString()
+  subtitlePath?: string;
+
+  @IsOptional() @IsString()
+  targetContainer?: string;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  durationSecs?: number;
 }
