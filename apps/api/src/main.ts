@@ -41,7 +41,11 @@ async function bootstrap() {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('CORS policy violation'), false);
+        // İzinsiz origin: hata fırlatma (isteği düşürmez) — yalnız CORS başlığı
+        // eklenmez. Public widget uçları kendi Access-Control-Allow-Origin:* başlığını
+        // ayrı olarak set eder (embed cross-origin çalışsın diye). Header-tabanlı auth
+        // olduğundan bu güvenli.
+        callback(null, false);
       }
     },
     credentials: true,

@@ -19,6 +19,7 @@ import {
   Wrench,
   ChevronDown,
   Cloud,
+  Code2,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -108,6 +109,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.invoices', to: '/invoices', icon: Receipt },
       { label: 'nav.commissions', to: '/commissions', icon: HandCoins },
       { label: 'nav.storeOrders', to: '/store-orders', icon: ShoppingBag },
+      { label: 'nav.widgets', to: '/widgets', icon: Code2 },
     ],
   },
   {

@@ -50,6 +50,7 @@ import { ClientModule } from './client/client.module';
 import { ClientRequestsModule } from './client-requests/client-requests.module';
 import { M3uSyncModule } from './m3u-sync/m3u-sync.module';
 import { ProviderModule } from './provider/provider.module';
+import { WidgetModule } from './widget/widget.module';
 import { ResellerApiModule } from './reseller-api/reseller-api.module';
 import { DownloadModule } from './download/download.module';
 import { CatchupModule } from './catchup/catchup.module';
@@ -101,6 +102,7 @@ import { CatchupModule } from './catchup/catchup.module';
     ClientRequestsModule,
     M3uSyncModule,
     ProviderModule,
+    WidgetModule,
     ResellerApiModule,
     DownloadModule,
     CatchupModule,

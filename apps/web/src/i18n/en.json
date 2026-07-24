@@ -42,7 +42,8 @@
     "subtitles": "Subtitles",
     "downloads": "Downloads",
     "commissions": "Commissions",
-    "providers": "Providers"
+    "providers": "Providers",
+    "widgets": "Website Widgets"
   },
   "activityLog": {
     "LOGIN": "Logged in",
@@ -2410,5 +2411,45 @@
       "statStreams": "{{n}} streams",
       "syncError": "Sync error: {{msg}}"
     }
+  },
+  "widgets": {
+    "title": "Website Widgets",
+    "subtitle": "Embeddable trial / store / renewal widgets for your site",
+    "add": "New widget",
+    "empty": "No widgets yet",
+    "typeTRIAL": "Trial",
+    "typeSTORE": "Store",
+    "typeRENEWAL": "Renewal",
+    "name": "Name",
+    "type": "Type",
+    "wTitle": "Heading (optional)",
+    "wSubtitle": "Subtitle (optional)",
+    "accent": "Accent color",
+    "enabled": "Enabled",
+    "trialDuration": "Trial duration (days)",
+    "packages": "Packages (empty = all public)",
+    "packagesHint": "Only packages marked Public appear here.",
+    "successMsg": "Success message (optional)",
+    "redirect": "Redirect URL after success (optional)",
+    "ipLimit": "Daily limit per IP (0 = unlimited)",
+    "embed": "Embed code",
+    "embedHint": "Paste this snippet into your website where the widget should appear.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "leads": "Submissions",
+    "noLeads": "No submissions yet",
+    "colResult": "Result",
+    "colIp": "IP",
+    "colWhen": "When",
+    "colContact": "Contact",
+    "edit": "Edit",
+    "editTitle": "Edit widget",
+    "addTitle": "New widget",
+    "deleteTitle": "Delete widget",
+    "deleteConfirm": "Delete this widget?",
+    "createdOk": "Widget created",
+    "updatedOk": "Widget updated",
+    "deletedOk": "Deleted",
+    "saveErr": "Save failed"
   }
 }

@@ -1275,6 +1275,46 @@ model DownloadJob {
   @@map("download_jobs")
 }
 
+model Widget {
+  id                String   @id @default(cuid())
+  publicKey         String   @unique
+  name              String
+  type              String   @default("STORE") // TRIAL | STORE | RENEWAL
+  enabled           Boolean  @default(true)
+  title             String?
+  subtitle          String?
+  accentColor       String   @default("#6d28d9")
+  trialPackageId    String?
+  trialDurationDays Int      @default(1)
+  allowedPackageIds String[] @default([])
+  successMessage    String?
+  redirectUrl       String?
+  perIpDailyLimit   Int      @default(5)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  leads WidgetLead[]
+
+  @@map("widgets")
+}
+
+model WidgetLead {
+  id        String   @id @default(cuid())
+  widgetId  String
+  widget    Widget   @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+  type      String
+  ip        String?
+  email     String?
+  username  String?
+  result    String   @default("OK") // OK | LIMITED | ERROR
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([widgetId, createdAt])
+  @@index([ip, createdAt])
+  @@map("widget_leads")
+}
+
 model StreamProvider {
   id             String    @id @default(cuid())
   name           String

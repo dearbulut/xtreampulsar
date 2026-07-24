@@ -42,7 +42,8 @@
     "subtitles": "Altyazılar",
     "downloads": "İndirmeler",
     "commissions": "Komisyonlar",
-    "providers": "Sağlayıcılar"
+    "providers": "Sağlayıcılar",
+    "widgets": "Web Widget'ları"
   },
   "activityLog": {
     "LOGIN": "Giriş yapıldı",
@@ -2410,5 +2411,45 @@
       "statStreams": "{{n}} yayın",
       "syncError": "Senkron hatası: {{msg}}"
     }
+  },
+  "widgets": {
+    "title": "Web Sitesi Widget'ları",
+    "subtitle": "Siten için gömülebilir deneme / mağaza / yenileme widget'ları",
+    "add": "Yeni widget",
+    "empty": "Henüz widget yok",
+    "typeTRIAL": "Deneme",
+    "typeSTORE": "Mağaza",
+    "typeRENEWAL": "Yenileme",
+    "name": "Ad",
+    "type": "Tip",
+    "wTitle": "Başlık (opsiyonel)",
+    "wSubtitle": "Alt başlık (opsiyonel)",
+    "accent": "Vurgu rengi",
+    "enabled": "Aktif",
+    "trialDuration": "Deneme süresi (gün)",
+    "packages": "Paketler (boş = tüm public)",
+    "packagesHint": "Yalnız 'Public' işaretli paketler burada görünür.",
+    "successMsg": "Başarı mesajı (opsiyonel)",
+    "redirect": "Başarıdan sonra yönlendirme URL'i (opsiyonel)",
+    "ipLimit": "IP başına günlük limit (0 = sınırsız)",
+    "embed": "Gömme kodu",
+    "embedHint": "Bu kodu web sitende widget'ın görüneceği yere yapıştır.",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "leads": "Gönderimler",
+    "noLeads": "Henüz gönderim yok",
+    "colResult": "Sonuç",
+    "colIp": "IP",
+    "colWhen": "Zaman",
+    "colContact": "İletişim",
+    "edit": "Düzenle",
+    "editTitle": "Widget düzenle",
+    "addTitle": "Yeni widget",
+    "deleteTitle": "Widget sil",
+    "deleteConfirm": "Bu widget silinsin mi?",
+    "createdOk": "Widget oluşturuldu",
+    "updatedOk": "Widget güncellendi",
+    "deletedOk": "Silindi",
+    "saveErr": "Kaydetme başarısız"
   }
 }
