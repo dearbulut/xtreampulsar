@@ -11,6 +11,7 @@ interface StreamFilter {
   categoryId?: string;
   serverId?: string;
   type?: string;
+  isRadio?: boolean;
   resolution?: string;
   qualityScore?: string;
   healthStatus?: string;
@@ -29,6 +30,7 @@ export function useStreams(filter: StreamFilter = {}) {
   if (apiFilter.categoryId) params.set('categoryId', apiFilter.categoryId);
   if (apiFilter.serverId) params.set('serverId', apiFilter.serverId);
   if (apiFilter.type) params.set('type', apiFilter.type);
+  if (apiFilter.isRadio !== undefined) params.set('isRadio', apiFilter.isRadio ? 'true' : 'false');
   if (apiFilter.resolution) params.set('resolution', apiFilter.resolution);
   if (apiFilter.qualityScore) params.set('qualityScore', apiFilter.qualityScore);
   if (apiFilter.healthStatus) params.set('healthStatus', apiFilter.healthStatus);

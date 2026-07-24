@@ -282,7 +282,7 @@ export class StreamService {
   // ─── Admin CRUD ────────────────────────────────────────────────────────────
 
   async findAllWithFilters(_userId: string, query: QueryStreamDto) {
-    const { page = 1, limit = 20, search, categoryId, serverId, status, type, resolution, qualityScore, healthStatus, videoCodec, updatedAfter } = query;
+    const { page = 1, limit = 20, search, categoryId, serverId, status, type, resolution, qualityScore, healthStatus, videoCodec, updatedAfter, isRadio } = query;
 
     const where = {
       ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
@@ -290,6 +290,7 @@ export class StreamService {
       ...(serverId ? { serverId } : {}),
       ...(status ? { status: status as 'ONLINE' | 'OFFLINE' | 'BUFFERING' | 'ERROR' } : {}),
       ...(type ? { category: { type: type as 'LIVE' | 'VOD' | 'SERIES' } } : {}),
+      ...(isRadio !== undefined ? { isRadio: isRadio === 'true' || isRadio === '1' } : {}),
       ...(resolution ? { resolution: { contains: resolution, mode: 'insensitive' as const } } : {}),
       ...(qualityScore ? { qualityScore } : {}),
       ...(healthStatus ? { healthStatus } : {}),

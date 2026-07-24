@@ -76,6 +76,7 @@ const NAV: NavGroup[] = [
     icon: Film,
     items: [
       { label: 'nav.channels', to: '/channels', icon: Tv },
+      { label: 'nav.radio', to: '/radio', icon: Radio },
       { label: 'nav.vod', to: '/vod', icon: Film },
       { label: 'nav.series', to: '/series', icon: Clapperboard },
       { label: 'nav.subtitles', to: '/subtitles', icon: Captions },

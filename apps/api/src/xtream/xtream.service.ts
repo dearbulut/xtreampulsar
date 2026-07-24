@@ -86,7 +86,7 @@ export class XtreamService {
   async getLiveStreams(userId: string): Promise<XtreamLiveStream[]> {
     const streams = await this.streamService.findAllLive(userId);
     return streams.map((s, i) => {
-      const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number };
+      const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number; isRadio?: boolean };
       return {
         num: i + 1,
         name: s.name,
@@ -100,6 +100,7 @@ export class XtreamService {
         tv_archive: sc.catchupEnabled ? 1 : 0,
         direct_source: '',
         tv_archive_duration: sc.catchupEnabled ? (sc.catchupDays ?? 7) : 0,
+        is_radio: sc.isRadio ? 1 : 0,
       };
     });
   }
@@ -298,7 +299,7 @@ export class XtreamService {
     if (type === 'all' || type === 'live') {
       const streams = await this.streamService.findAllLive(userId);
       for (const s of streams) {
-        const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number };
+        const sc = s as typeof s & { catchupEnabled?: boolean; catchupDays?: number; isRadio?: boolean };
         const catchup = sc.catchupEnabled
           ? ` catchup="default" catchup-days="${sc.catchupDays ?? 7}" tv-archive="1" tv-archive-duration="${sc.catchupDays ?? 7}" catchup-source="${baseUrl}/live/${username}/${password}/${s.externalId}.ts?utc={utc}&duration={duration}"`
           : '';

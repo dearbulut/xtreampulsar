@@ -23,6 +23,10 @@ export class QueryStreamDto extends PaginationDto {
   type?: string;
 
   @IsOptional()
+  @IsIn(['true', 'false', '1', '0'])
+  isRadio?: string;
+
+  @IsOptional()
   @IsString()
   resolution?: string;
 

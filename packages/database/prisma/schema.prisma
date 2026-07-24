@@ -244,6 +244,7 @@ model Stream {
   backupUrls      String[] @default([])
   ffmpegPid       Int?
   streamMode      String       @default("PROXY") // PROXY | TRANSCODE | LOOP
+  isRadio         Boolean      @default(false) // Roadmap E: radyo istasyonu (ses-only LIVE)
   loopSources     String[]     @default([]) // LOOP modu: 24/7 dongulenen kaynak listesi (URL)
   loopShuffle     Boolean      @default(false) // LOOP: her dongude sirayi karistir
   catchupEnabled  Boolean      @default(false) // catch-up/DVR: yayini arsivle (geriye sarma)

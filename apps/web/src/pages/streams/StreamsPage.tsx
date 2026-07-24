@@ -163,6 +163,7 @@ interface CreateForm {
   serverId: string;
   tvgLogo: string;
   streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
+  isRadio: boolean;
   loopSources: string[];
   loopShuffle: boolean;
   catchupEnabled: boolean;
@@ -177,6 +178,7 @@ interface CreateForm {
 
 const EMPTY_FORM: CreateForm = {
   name: '', categoryId: '', primaryUrl: '', backupUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY',
+  isRadio: false,
   loopSources: [], loopShuffle: false, catchupEnabled: false, catchupDays: '7',
   overview: '', posterUrl: '', backdropUrl: '', releaseYear: '', tmdbRating: '', tmdbGenres: '',
 };
@@ -475,7 +477,7 @@ function SortHandle({ id }: { id: string }) {
   );
 }
 
-export function StreamsPage({ type }: { type?: StreamType }) {
+export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: StreamType; isRadio?: boolean }) {
   const { t } = useTranslation();
   const [page, setPageState] = useState(getUrlPage);
 
@@ -504,12 +506,12 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [tracksStream, setTracksStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const { can } = useMyPermissions();
-  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
+  const [createForm, setCreateForm] = useState<CreateForm>({ ...EMPTY_FORM, isRadio: isRadioMode });
   const [createAdv, setCreateAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
   const [editAdv, setEditAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
   const [editStream, setEditStream] = useState<Stream | null>(null);
   const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
-  const [editForm, setEditForm] = useState<{ name: string; categoryId: string; primaryUrl: string; serverId: string; tvgLogo: string; streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP'; catchupEnabled: boolean; catchupDays: string }>({ name: '', categoryId: '', primaryUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY', catchupEnabled: false, catchupDays: '7' });
+  const [editForm, setEditForm] = useState<{ name: string; categoryId: string; primaryUrl: string; serverId: string; tvgLogo: string; streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP'; isRadio: boolean; catchupEnabled: boolean; catchupDays: string }>({ name: '', categoryId: '', primaryUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY', isRadio: false, catchupEnabled: false, catchupDays: '7' });
   const [metaStream, setMetaStream] = useState<Stream | null>(null);
   const [metaForm, setMetaForm] = useState<MetaForm>(EMPTY_META);
   const [episodeSeries, setEpisodeSeries] = useState<Stream | null>(null);
@@ -554,6 +556,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
 
   const { data, isLoading, refetch } = useStreams({
     page, limit: 25, search, status, serverId, categoryId, type,
+    isRadio: type === 'LIVE' ? isRadioMode : undefined,
     resolution, qualityScore, healthStatus, videoCodec,
     updatedAfter: updatedAfter ? new Date(updatedAfter).toISOString() : undefined,
     refetchInterval: autoRefresh ? 5000 : false,
@@ -573,7 +576,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   );
 
   const handleRefresh = useCallback(() => void refetch(), [refetch]);
-  const pageTitle = type ? t(TYPE_TITLES[type]) : t('streams.pageTitleAll');
+  const pageTitle = isRadioMode ? t('streams.typeRadio') : (type ? t(TYPE_TITLES[type]) : t('streams.pageTitleAll'));
 
   // Sync sorted items when data changes
   useEffect(() => {
@@ -819,7 +822,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             onClick={() => restart.mutate(r.id)}
             loading={restart.isPending && restart.variables === r.id}
           />
-          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); setEditForm({ name: r.name, categoryId: r.categoryId ?? '', primaryUrl: r.primaryUrl, serverId: r.serverId ?? '', tvgLogo: r.tvgLogo ?? '', streamMode: (r.streamMode as 'PROXY' | 'TRANSCODE' | 'LOOP') ?? 'PROXY', catchupEnabled: r.catchupEnabled ?? false, catchupDays: String(r.catchupDays ?? 7) }); setEditAdv(advancedFromStream(r as unknown as Record<string, unknown>)); }} />
+          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); setEditForm({ name: r.name, categoryId: r.categoryId ?? '', primaryUrl: r.primaryUrl, serverId: r.serverId ?? '', tvgLogo: r.tvgLogo ?? '', streamMode: (r.streamMode as 'PROXY' | 'TRANSCODE' | 'LOOP') ?? 'PROXY', isRadio: r.isRadio ?? false, catchupEnabled: r.catchupEnabled ?? false, catchupDays: String(r.catchupDays ?? 7) }); setEditAdv(advancedFromStream(r as unknown as Record<string, unknown>)); }} />
           <ActionBtn icon={Activity} title={t('streams.healthReport')} color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={AudioLines} title={t('streams.tracks')} color="text-primary-light" onClick={() => setTracksStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title={t('common.delete')} color="text-red-400" onClick={() => setDeleteId(r.id)} />
@@ -1271,6 +1274,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               </div>
             </div>
           )}
+          {(!type || type === 'LIVE') && !isRadioMode && (
+            <label className="flex items-center gap-2 text-xs text-slate-300 rounded-lg border border-border p-3">
+              <input type="checkbox" className="accent-indigo-500" checked={createForm.isRadio}
+                onChange={(e) => setCreateForm((f) => ({ ...f, isRadio: e.target.checked }))} />
+              {t('streams.isRadio')}
+            </label>
+          )}
           {type !== 'VOD' && type !== 'SERIES' && (
             <div className="space-y-2 rounded-lg border border-border p-3">
               <label className="flex items-center gap-2 text-xs text-slate-300">
@@ -1384,6 +1394,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   ...(createForm.primaryUrl ? { primaryUrl: createForm.primaryUrl } : {}),
                   categoryId: createForm.categoryId,
                   streamMode: createForm.streamMode,
+                  ...((!type || type === 'LIVE') ? { isRadio: isRadioMode ? true : createForm.isRadio } : {}),
                   ...(type !== 'VOD' && type !== 'SERIES' && createForm.catchupEnabled && {
                     catchupEnabled: true,
                     catchupDays: parseInt(createForm.catchupDays, 10) || 7,
@@ -1407,7 +1418,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   ...((!type || type === 'LIVE') ? advancedToPayload(createAdv) : {}),
                 } as Partial<Stream>;
                 createStream.mutate(payload, {
-                  onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); setCreateAdv(EMPTY_ADVANCED); },
+                  onSuccess: () => { setShowCreate(false); setCreateForm({ ...EMPTY_FORM, isRadio: isRadioMode }); setCreateAdv(EMPTY_ADVANCED); },
                 });
               }}
               className="btn-primary"
@@ -1475,6 +1486,13 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               <input className="input" value={editForm.tvgLogo} onChange={(e) => setEditForm((f) => ({ ...f, tvgLogo: e.target.value }))} placeholder={t('streams.logoUrlPlaceholder')} />
             </div>
           </div>
+          {editStream && editStream.category?.type !== 'VOD' && editStream.category?.type !== 'SERIES' && (
+            <label className="flex items-center gap-2 text-xs text-slate-300 rounded-lg border border-border p-3 mb-2">
+              <input type="checkbox" className="accent-indigo-500" checked={editForm.isRadio}
+                onChange={(e) => setEditForm((f) => ({ ...f, isRadio: e.target.checked }))} />
+              {t('streams.isRadio')}
+            </label>
+          )}
           {editStream && editStream.category?.type !== 'VOD' && editStream.category?.type !== 'SERIES' && (
             <div className="space-y-2 rounded-lg border border-border p-3">
               <label className="flex items-center gap-2 text-xs text-slate-300">
@@ -1551,6 +1569,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                     serverId: editForm.serverId || undefined,
                     tvgLogo: editForm.tvgLogo,
                     streamMode: editForm.streamMode,
+                    isRadio: editForm.isRadio,
                     catchupEnabled: editForm.catchupEnabled,
                     catchupDays: parseInt(editForm.catchupDays, 10) || 7,
                     ...advancedToPayload(editAdv),

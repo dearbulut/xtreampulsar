@@ -52,6 +52,7 @@ export interface Stream {
   backupUrl?: string;
   backupUrls?: string[];
   streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP';
+  isRadio?: boolean;
   loopSources?: string[];
   loopShuffle?: boolean;
   catchupEnabled?: boolean;

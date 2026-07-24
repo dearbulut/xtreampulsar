@@ -52,6 +52,10 @@ export class CreateStreamDto {
   @IsIn(['PROXY', 'TRANSCODE', 'LOOP'])
   streamMode?: string = 'PROXY';
 
+  @IsOptional()
+  @IsBoolean()
+  isRadio?: boolean;
+
   // ─── LOOP modu (24/7 sahte-canli kanal) ────────────────────────────────────
   @IsOptional()
   @IsArray()

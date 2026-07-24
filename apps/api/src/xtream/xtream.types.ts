@@ -34,6 +34,7 @@ export interface XtreamLiveStream {
   num: number;
   name: string;
   stream_type: 'live';
+  is_radio?: number;
   stream_id: number;
   stream_icon: string;
   epg_channel_id: string;

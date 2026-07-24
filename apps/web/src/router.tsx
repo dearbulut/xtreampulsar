@@ -60,6 +60,7 @@ import { DownloadsPage } from '@/pages/downloads/DownloadsPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ProvidersPage } from '@/pages/providers/ProvidersPage';
 import { GroupsPage } from '@/pages/groups/GroupsPage';
+import { RadioPage } from '@/pages/radio/RadioPage';
 import { WidgetsPage } from './pages/widgets/WidgetsPage';
 import { WidgetHostedPage } from './pages/widgets/WidgetHostedPage';
 import { WatchFolderPage } from './pages/watch-folder/WatchFolderPage';
@@ -358,6 +359,12 @@ const groupsRoute = createRoute({
   component: GroupsPage,
 });
 
+const radioRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/radio',
+  component: RadioPage,
+});
+
 const widgetsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/widgets',
@@ -546,6 +553,7 @@ const routeTree = rootRoute.addChildren([
     m3uSyncRoute,
     providersRoute,
     groupsRoute,
+    radioRoute,
     widgetsRoute,
     watchFolderRoute,
   ]),
