@@ -26,7 +26,11 @@
       "users": "USERS",
       "epg": "EPG",
       "analytics": "ANALYTICS",
-      "management": "MANAGEMENT"
+      "management": "MANAGEMENT",
+      "customers": "CUSTOMERS",
+      "billing": "BILLING",
+      "infrastructure": "INFRASTRUCTURE",
+      "system": "SYSTEM"
     },
     "clientRequests": "Reports & Requests",
     "m3uSync": "Auto M3U Sync",

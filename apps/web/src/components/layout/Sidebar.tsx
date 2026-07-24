@@ -65,12 +65,6 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'nav.groups.servers',
-    items: [
-      { label: 'nav.servers', to: '/servers', icon: Server },
-    ],
-  },
-  {
     label: 'nav.groups.content',
     items: [
       { label: 'nav.channels', to: '/channels', icon: Tv },
@@ -83,20 +77,40 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'nav.groups.users',
-    items: [
-      { label: 'nav.users', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
-      { label: 'nav.userReports', to: '/users/report', icon: BarChart2 },
-      { label: 'nav.resellers', to: '/resellers', icon: UserCircle },
-      { label: 'layout.magDevices', to: '/mag-devices', icon: Tablet },
-    ],
-  },
-  {
     label: 'nav.groups.epg',
     items: [
       { label: 'nav.epgSources', to: '/epg', icon: Radio },
       { label: 'layout.manualMapping', to: '/epg/mappings', icon: Link2 },
       { label: 'nav.epgGuide', to: '/epg/guide', icon: CalendarDays },
+    ],
+  },
+  {
+    label: 'nav.groups.customers',
+    items: [
+      { label: 'nav.users', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
+      { label: 'nav.resellers', to: '/resellers', icon: UserCircle },
+      { label: 'layout.magDevices', to: '/mag-devices', icon: Tablet },
+      { label: 'nav.userReports', to: '/users/report', icon: BarChart2 },
+      { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
+      { label: 'nav.activationCodes', to: '/activation-codes', icon: Ticket },
+    ],
+  },
+  {
+    label: 'nav.groups.billing',
+    items: [
+      { label: 'nav.packages', to: '/packages', icon: Package },
+      { label: 'nav.invoices', to: '/invoices', icon: Receipt },
+      { label: 'nav.commissions', to: '/commissions', icon: HandCoins },
+      { label: 'nav.storeOrders', to: '/store-orders', icon: ShoppingBag },
+    ],
+  },
+  {
+    label: 'nav.groups.infrastructure',
+    items: [
+      { label: 'nav.servers', to: '/servers', icon: Server },
+      { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
+      { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
+      { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
     ],
   },
   {
@@ -107,21 +121,12 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'nav.groups.management',
+    label: 'nav.groups.system',
     items: [
-      { label: 'nav.packages', to: '/packages', icon: Package },
-      { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
-      { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
-      { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'nav.security', to: '/security', icon: Shield },
-      { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
+      { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },
-      { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
-      { label: 'nav.storeOrders', to: '/store-orders', icon: ShoppingBag },
-      { label: 'nav.invoices', to: '/invoices', icon: Receipt },
-      { label: 'nav.commissions', to: '/commissions', icon: HandCoins },
-      { label: 'nav.activationCodes', to: '/activation-codes', icon: Ticket },
       { label: 'nav.settings', to: '/settings', icon: Settings },
     ],
   },

@@ -26,7 +26,11 @@
       "users": "KULLANICILAR",
       "epg": "EPG",
       "analytics": "ANALİTİK",
-      "management": "YÖNETİM"
+      "management": "YÖNETİM",
+      "customers": "MÜŞTERİLER",
+      "billing": "FATURALANDIRMA",
+      "infrastructure": "ALTYAPI",
+      "system": "SİSTEM"
     },
     "clientRequests": "Bildirim & İstekler",
     "m3uSync": "Otomatik M3U Sync",
