@@ -106,4 +106,56 @@ export class CreateStreamDto {
   @IsArray()
   @IsString({ each: true })
   tmdbGenres?: string[];
+
+  // ─── Gelismis akis ayarlari (roadmap B) ───────────────────────────────────
+  @IsOptional() @IsBoolean()
+  directSource?: boolean;
+
+  @IsOptional() @IsString()
+  streamUserAgent?: string;
+
+  @IsOptional() @IsString()
+  httpProxy?: string;
+
+  @IsOptional() @IsString()
+  httpCookie?: string;
+
+  @IsOptional() @IsString()
+  httpHeaders?: string;
+
+  @IsOptional() @IsString()
+  customFfmpeg?: string;
+
+  @IsOptional() @IsString()
+  customMap?: string;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  probeSize?: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  delayMinutes?: number;
+
+  @IsOptional() @IsString()
+  transcodeProfile?: string;
+
+  @IsOptional() @IsBoolean()
+  generatePts?: boolean;
+
+  @IsOptional() @IsBoolean()
+  allowRecording?: boolean;
+
+  @IsOptional() @IsBoolean()
+  allowRtmpOutput?: boolean;
+
+  @IsOptional() @IsArray() @IsString({ each: true })
+  restartDays?: string[];
+
+  @IsOptional() @IsString()
+  restartTime?: string;
+
+  @IsOptional() @IsString()
+  epgSourceId?: string;
+
+  @IsOptional() @IsString()
+  epgLang?: string;
 }

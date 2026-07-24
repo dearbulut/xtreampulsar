@@ -569,7 +569,20 @@
     "tracksHint": "Bu bilgi kaynak medyadan (ffprobe) okunur; oynatıcı bu parçalar arasında geçiş yapar.",
     "titleLabel": "Başlık",
     "movieFileUrl": "Film dosyası URL’si",
-    "seriesEpisodeNote": "Diziyi kaydettikten sonra sezon ve bölümleri satırdaki 📺 ikonundan ekleyebilirsin."
+    "seriesEpisodeNote": "Diziyi kaydettikten sonra sezon ve bölümleri satırdaki 📺 ikonundan ekleyebilirsin.",
+    "directSource": "Doğrudan kaynak (proxy yok, yönlendir)",
+    "generatePts": "PTS oluştur",
+    "allowRecording": "Kayda izin ver",
+    "allowRtmpOutput": "RTMP çıkışına izin",
+    "streamUserAgent": "User-Agent",
+    "httpProxy": "HTTP proxy",
+    "httpCookie": "Cookie",
+    "httpHeaders": "Ek başlıklar (satır başı)",
+    "customFfmpeg": "Özel FFmpeg argümanları",
+    "customMap": "Özel -map",
+    "probeSize": "Probe size",
+    "delayMinutes": "Gecikme (dakika)",
+    "transcodeProfile": "Transkodlama profili"
   },
   "categories": {
     "title": "Kategoriler",

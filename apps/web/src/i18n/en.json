@@ -569,7 +569,20 @@
     "tracksHint": "Read from the source media (ffprobe); the player switches between these tracks.",
     "titleLabel": "Title",
     "movieFileUrl": "Movie file URL",
-    "seriesEpisodeNote": "After saving the series, add seasons & episodes from the 📺 icon on its row."
+    "seriesEpisodeNote": "After saving the series, add seasons & episodes from the 📺 icon on its row.",
+    "directSource": "Direct source (redirect, no proxy)",
+    "generatePts": "Generate PTS",
+    "allowRecording": "Allow recording",
+    "allowRtmpOutput": "Allow RTMP output",
+    "streamUserAgent": "User-Agent",
+    "httpProxy": "HTTP proxy",
+    "httpCookie": "Cookie",
+    "httpHeaders": "Custom headers (one per line)",
+    "customFfmpeg": "Custom FFmpeg args",
+    "customMap": "Custom -map",
+    "probeSize": "Probe size",
+    "delayMinutes": "Delay (minutes)",
+    "transcodeProfile": "Transcode profile"
   },
   "categories": {
     "title": "Categories",

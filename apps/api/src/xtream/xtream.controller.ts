@@ -575,6 +575,24 @@ export class XtreamController {
     res.status(status).send(reason);
   }
 
+  /** Per-stream Gelişmiş ayarlardan upstream istek başlıkları üretir (UA/header/cookie). */
+  private static buildUpstreamHeaders(rec: { streamUserAgent?: string | null; httpHeaders?: string | null; httpCookie?: string | null }): Record<string, string> {
+    const h: Record<string, string> = {};
+    if (rec.streamUserAgent) h['User-Agent'] = rec.streamUserAgent;
+    if (rec.httpCookie) h['Cookie'] = rec.httpCookie;
+    if (rec.httpHeaders) {
+      for (const line of rec.httpHeaders.split(/\r?\n/)) {
+        const idx = line.indexOf(':');
+        if (idx > 0) {
+          const k = line.slice(0, idx).trim();
+          const v = line.slice(idx + 1).trim();
+          if (k && v) h[k] = v;
+        }
+      }
+    }
+    return h;
+  }
+
   private proxyToUpstream(
     streamUrl: string,
     req: Request,
@@ -586,6 +604,7 @@ export class XtreamController {
       streamDownUrl?: string;
       isFallback?: boolean;
       redirectCount?: number;
+      upstreamHeaders?: Record<string, string>;
     },
   ): void {
     const onEnd = opts?.onEnd;
@@ -614,6 +633,7 @@ export class XtreamController {
           // Rewrite için gzip'siz düz metin iste (buffer + parse edilebilsin).
           'Accept-Encoding': 'identity',
           'Connection': 'keep-alive',
+          ...(opts?.upstreamHeaders ?? {}),
         },
       },
       (proxyRes) => {
@@ -798,7 +818,7 @@ export class XtreamController {
     }
 
     // Find the stream record to get its internal ID and mode
-    let streamRecord: { id: string; primaryUrl: string; streamMode: string };
+    let streamRecord: { id: string; primaryUrl: string; streamMode: string; directSource?: boolean; streamUserAgent?: string | null; httpHeaders?: string | null; httpCookie?: string | null };
     try {
       const found = await this.streamService.findByExternalId(externalId);
       if (!found) {
@@ -918,6 +938,15 @@ export class XtreamController {
       maxConnections: user.maxConnections ?? 1, guard,
     }).catch(() => {});
 
+    // ── Doğrudan kaynak: proxy yapmadan istemciyi upstream URL'ine yönlendir.
+    if (streamRecord.directSource) {
+      res.redirect(302, streamRecord.primaryUrl);
+      return;
+    }
+
+    // Per-stream upstream başlıkları (UA / ek header / cookie) — Gelişmiş ayarlar.
+    const upstreamHeaders = XtreamController.buildUpstreamHeaders(streamRecord);
+
     // ── PROXY mode: upstream'i geçir; m3u8 ise içindeki URL'leri panel proxy'sine
     //    rewrite et (aksi halde upstream'in göreli variant/segment yolları VLC'de
     //    panel URL'ine göre çözülüp 404 verirdi). FFmpeg/HLS atlanır.
@@ -928,6 +957,7 @@ export class XtreamController {
       this.proxyToUpstream(streamRecord.primaryUrl, req, res, {
         streamDownUrl: fbStreamDown,
         rewrite: { proxyPrefix, upstreamOrigin, playlistUrl: streamRecord.primaryUrl },
+        upstreamHeaders,
       });
       return;
     }

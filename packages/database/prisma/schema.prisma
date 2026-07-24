@@ -250,6 +250,24 @@ model Stream {
   catchupDays     Int          @default(7)     // arsivi kac gun tut
   workerStatus    WorkerStatus @default(IDLE)
   restartCount    Int          @default(0)
+  // ─── Gelismis akis ayarlari (Xtream UI paritesi — roadmap B) ───────────────
+  directSource      Boolean  @default(false) // istemciyi upstream URL'ine 302 yonlendir (proxy yok)
+  streamUserAgent   String?                  // upstream cekiminde kullanilacak User-Agent
+  httpProxy         String?                  // upstream icin http proxy (ip:port)
+  httpCookie        String?                  // upstream istegine eklenecek Cookie
+  httpHeaders       String?                  // ek header'lar (satir basi "K: V")
+  customFfmpeg      String?                  // TRANSCODE/LOOP icin ek ffmpeg argumanlari
+  customMap         String?                  // ozel -map argumanlari
+  probeSize         Int?                     // ffmpeg probesize/analyzeduration
+  delayMinutes      Int      @default(0)     // yayin gecikmesi (dk)
+  transcodeProfile  String?                  // transkodlama profili referansi (ileride profil tablosu)
+  generatePts       Boolean  @default(true)  // ffmpeg +genpts
+  allowRecording    Boolean  @default(true)  // catch-up/kayit izni
+  allowRtmpOutput   Boolean  @default(false) // RTMP cikisina izin
+  restartDays       String[] @default([])    // otomatik yeniden baslatma gunleri (Mon..Sun)
+  restartTime       String?                  // otomatik yeniden baslatma saati (HH:MM)
+  epgSourceId       String?                  // per-stream EPG kaynagi
+  epgLang           String?                  // per-stream EPG dili
   status          StreamStatus @default(OFFLINE)
   tvgId           String?
   tvgLogo         String?

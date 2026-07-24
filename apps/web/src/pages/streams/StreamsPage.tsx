@@ -56,6 +56,7 @@ import { DataTable, type Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
 import { EpisodeManagerModal } from './EpisodeManagerModal';
+import { StreamAdvancedFields, EMPTY_ADVANCED, advancedFromStream, advancedToPayload, type StreamAdvanced } from './StreamAdvancedFields';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
 import { useServers } from '@/hooks/useServers';
@@ -496,6 +497,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
   const [tracksStream, setTracksStream] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
+  const [createAdv, setCreateAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
+  const [editAdv, setEditAdv] = useState<StreamAdvanced>(EMPTY_ADVANCED);
   const [editStream, setEditStream] = useState<Stream | null>(null);
   const [editBackupUrls, setEditBackupUrls] = useState<string[]>([]);
   const [editForm, setEditForm] = useState<{ name: string; categoryId: string; primaryUrl: string; serverId: string; tvgLogo: string; streamMode: 'PROXY' | 'TRANSCODE' | 'LOOP'; catchupEnabled: boolean; catchupDays: string }>({ name: '', categoryId: '', primaryUrl: '', serverId: '', tvgLogo: '', streamMode: 'PROXY', catchupEnabled: false, catchupDays: '7' });
@@ -803,7 +806,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
             onClick={() => restart.mutate(r.id)}
             loading={restart.isPending && restart.variables === r.id}
           />
-          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); setEditForm({ name: r.name, categoryId: r.categoryId ?? '', primaryUrl: r.primaryUrl, serverId: r.serverId ?? '', tvgLogo: r.tvgLogo ?? '', streamMode: (r.streamMode as 'PROXY' | 'TRANSCODE' | 'LOOP') ?? 'PROXY', catchupEnabled: r.catchupEnabled ?? false, catchupDays: String(r.catchupDays ?? 7) }); }} />
+          <ActionBtn icon={Pencil} title={t('common.edit')} color="text-blue-400" onClick={() => { setEditStream(r); setEditBackupUrls(r.backupUrls ?? []); setEditForm({ name: r.name, categoryId: r.categoryId ?? '', primaryUrl: r.primaryUrl, serverId: r.serverId ?? '', tvgLogo: r.tvgLogo ?? '', streamMode: (r.streamMode as 'PROXY' | 'TRANSCODE' | 'LOOP') ?? 'PROXY', catchupEnabled: r.catchupEnabled ?? false, catchupDays: String(r.catchupDays ?? 7) }); setEditAdv(advancedFromStream(r as unknown as Record<string, unknown>)); }} />
           <ActionBtn icon={Activity} title={t('streams.healthReport')} color="text-emerald-400" onClick={() => setHealthStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={AudioLines} title={t('streams.tracks')} color="text-primary-light" onClick={() => setTracksStream({ id: r.id, name: r.name })} />
           <ActionBtn icon={Trash2} title={t('common.delete')} color="text-red-400" onClick={() => setDeleteId(r.id)} />
@@ -1275,6 +1278,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               {t('streams.seriesEpisodeNote')}
             </div>
           )}
+          {(!type || type === 'LIVE') && (
+            <StreamAdvancedFields value={createAdv} onChange={(patch) => setCreateAdv((a) => ({ ...a, ...patch }))} />
+          )}
           {(type === 'VOD' || type === 'SERIES') && (
             <div className="space-y-3 pt-3 border-t border-border">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide">{t('streams.metadataOptional')}</p>
@@ -1383,9 +1389,10 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                     tmdbGenres: createForm.tmdbGenres
                       ? createForm.tmdbGenres.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
                   } : {}),
+                  ...((!type || type === 'LIVE') ? advancedToPayload(createAdv) : {}),
                 } as Partial<Stream>;
                 createStream.mutate(payload, {
-                  onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); },
+                  onSuccess: () => { setShowCreate(false); setCreateForm(EMPTY_FORM); setCreateAdv(EMPTY_ADVANCED); },
                 });
               }}
               className="btn-primary"
@@ -1468,6 +1475,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               )}
             </div>
           )}
+          {editStream && editStream.category?.type !== 'VOD' && editStream.category?.type !== 'SERIES' && (
+            <StreamAdvancedFields value={editAdv} onChange={(patch) => setEditAdv((a) => ({ ...a, ...patch }))} />
+          )}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="label mb-0">{t('streams.backupUrls')}</label>
@@ -1528,6 +1538,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                     streamMode: editForm.streamMode,
                     catchupEnabled: editForm.catchupEnabled,
                     catchupDays: parseInt(editForm.catchupDays, 10) || 7,
+                    ...advancedToPayload(editAdv),
                   } as Partial<Stream> });
                   await updateBackupUrls.mutateAsync({ id: editStream.id, backupUrls: urls });
                   setEditStream(null);
