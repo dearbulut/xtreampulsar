@@ -54,7 +54,8 @@ export class LicenseService implements OnModuleInit {
     const serverUrl = this.config.get<string>('server.url') ?? '';
 
     if (!licenseKey) {
-      this.logger.warn('LICENSE_KEY not configured');
+      // Anahtar yok = acik kaynak / self-host modu. Guard fail-open, panel serbest calisir.
+      this.logger.log('LICENSE_KEY yok — self-host/acik kaynak modu (lisans zorlamasi kapali).');
       return null;
     }
 

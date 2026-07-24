@@ -56,6 +56,7 @@ run_with_spinner() {
 
 # ─── Argument Parsing ─────────────────────────────────────────────────────────
 LICENSE_KEY=""
+SELFHOST_MODE=false
 DOMAIN=""
 EMAIL=""
 INSTALL_DIR="/opt/xtreampulsar"
@@ -71,7 +72,8 @@ while [[ $# -gt 0 ]]; do
     --dir)     INSTALL_DIR="$2"; shift 2 ;;
     --dev)     DEV_MODE=true;    shift ;;
     --help|-h)
-      echo "Kullanım: $0 --key LICENSE_KEY [--domain DOMAIN] [--email EMAIL] [--dev]"
+      echo "Kullanım: $0 [--key LICENSE_KEY] [--domain DOMAIN] [--email EMAIL] [--dev]"
+      echo "  --key   Opsiyonel. Verilmezse açık kaynak / self-host modda (lisanssız) kurulur."
       echo "  --dev   Geliştirme modu: lisans doğrulaması atlanır, test anahtarı kullanılır"
       exit 0 ;;
     *) log_error "Bilinmeyen parametre: $1"; exit 1 ;;
@@ -95,12 +97,10 @@ echo -e "───────────────────────�
 # ─── Pre-flight Checks ───────────────────────────────────────────────────────
 log_step "▶ Ön kontroller"
 
-# License key zorunlu (dev modda opsiyonel)
+# Lisans opsiyonel: anahtar verilmezse acik-kaynak / self-host modunda kurulur (lisans yok).
 if [[ -z "$LICENSE_KEY" && "$DEV_MODE" = false ]]; then
-  log_error "--key parametresi zorunludur."
-  echo -e "Kullanım: $0 --key YOUR_LICENSE_KEY [--domain panel.example.com] [--email admin@example.com]"
-  echo -e "  Geliştirme için: $0 --dev [--domain ...] [--email ...]"
-  exit 1
+  SELFHOST_MODE=true
+  log_info "Lisans anahtari verilmedi -> acik kaynak / self-host modu (lisans dogrulamasi yok)."
 fi
 
 if [[ "$DEV_MODE" = true ]]; then
@@ -203,6 +203,9 @@ if [[ "$DEV_MODE" = true ]]; then
   LICENSE_KEY="DEV-TEST-KEY"
   LICENSE_SERVER="http://localhost:3001"
   log_info "Lisans anahtarı: $LICENSE_KEY (dev)"
+elif [[ "$SELFHOST_MODE" = true ]]; then
+  log_warning "Self-host modu: lisans dogrulamasi atlaniyor (anahtar yok, panel lisanssiz calisir)."
+  LICENSE_KEY=""
 else
   log_info "Lisans anahtarı: ${LICENSE_KEY:0:8}****"
 
