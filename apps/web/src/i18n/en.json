@@ -222,6 +222,8 @@
     "notesOptional": "Notes (optional)",
     "addNote": "Add note…",
     "bouquetsOptional": "Bouquets (optional)",
+    "tabGeneral": "General",
+    "tabBouquets": "Bouquets",
     "selectBouquet": "Select bouquets…",
     "packageBouquets": "This package includes these bouquets: {{list}}",
     "defaultBouquetHint": "If nothing is selected, the user is assigned a default bouquet (the playlist won't be empty).",
@@ -680,6 +682,15 @@
     "editTitle": "Edit group: {{name}}",
     "deleteTitle": "Delete group",
     "deleteConfirm": "Delete the group \"{{name}}\"?"
+  },
+  "bouquetSel": {
+    "search": "Search bouquets…",
+    "selectedCount": "{{n}} selected",
+    "name": "Bouquet",
+    "live": "Live",
+    "vod": "VOD",
+    "series": "Series",
+    "empty": "No bouquets"
   },
   "settings": {
     "title": "Settings",

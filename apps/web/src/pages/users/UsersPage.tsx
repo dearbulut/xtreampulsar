@@ -12,7 +12,8 @@ import { DataTable, type Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
-import { MultiSelect } from '@/components/ui/MultiSelect';
+import { CountedBouquetSelector } from '@/components/ui/CountedBouquetSelector';
+import { Tabs } from '@/components/ui/Tabs';
 import { TagInput } from '@/components/ui/TagInput';
 import { useAuthStore } from '@/store/auth.store';
 import {
@@ -115,6 +116,7 @@ export function UsersPage() {
   const [qrUserId, setQrUserId] = useState<string | null>(null);
   const [qrData, setQrData] = useState<{ qrCodeImage: string; serverUrl: string; username: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [createTab, setCreateTab] = useState('general');
   const [createForm, setCreateForm] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -518,8 +520,15 @@ export function UsersPage() {
       </div>
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('users.newUser')} size="md">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('users.newUser')} size="lg">
         <div className="space-y-4">
+          <Tabs variant="pill" active={createTab} onChange={setCreateTab}
+            tabs={[
+              { id: 'general', label: t('users.tabGeneral') },
+              { id: 'bouquets', label: t('users.tabBouquets'), badge: createForm.bouquetIds.length || undefined },
+            ]} />
+          {createTab === 'general' && (
+          <div className="space-y-4">
           {/* Package selector */}
           {packages.length > 0 && (
             <div>
@@ -593,32 +602,37 @@ export function UsersPage() {
               value={createForm.notes}
               onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
-          {bouquets.length > 0 && (
-            <div>
-              <label className="label">{t('users.bouquetsOptional')}</label>
-              <MultiSelect
-                options={bouquets.map((b) => ({ value: b.id, label: b.name }))}
-                value={createForm.bouquetIds}
-                onChange={(v) => setCreateForm((f) => ({ ...f, bouquetIds: v }))}
-                placeholder={t('users.selectBouquet')}
-              />
-              {createForm.bouquetIds.length === 0 && (() => {
-                const pkg = packages.find((p) => p.id === createForm.packageId);
-                const pkgBouquets = pkg?.bouquets ?? [];
-                if (pkg && pkgBouquets.length > 0) {
+          </div>
+          )}
+          {createTab === 'bouquets' && (
+          <div className="space-y-2">
+            {bouquets.length > 0 ? (
+              <>
+                <CountedBouquetSelector
+                  value={createForm.bouquetIds}
+                  onChange={(v) => setCreateForm((f) => ({ ...f, bouquetIds: v }))}
+                />
+                {createForm.bouquetIds.length === 0 && (() => {
+                  const pkg = packages.find((p) => p.id === createForm.packageId);
+                  const pkgBouquets = pkg?.bouquets ?? [];
+                  if (pkg && pkgBouquets.length > 0) {
+                    return (
+                      <p className="text-xs text-info mt-1.5">
+                        {t('users.packageBouquets', { list: pkgBouquets.map((b) => b.name).join(', ') })}
+                      </p>
+                    );
+                  }
                   return (
-                    <p className="text-xs text-info mt-1.5">
-                      {t('users.packageBouquets', { list: pkgBouquets.map((b) => b.name).join(', ') })}
+                    <p className="text-xs text-muted mt-1.5">
+                      {t('users.defaultBouquetHint')}
                     </p>
                   );
-                }
-                return (
-                  <p className="text-xs text-muted mt-1.5">
-                    {t('users.defaultBouquetHint')}
-                  </p>
-                );
-              })()}
-            </div>
+                })()}
+              </>
+            ) : (
+              <p className="text-xs text-muted">{t('bouquetSel.empty')}</p>
+            )}
+          </div>
           )}
           <div className="flex gap-2 justify-end pt-2">
             <button onClick={() => setShowCreate(false)} className="btn-ghost">{t('common.cancel')}</button>
@@ -1322,12 +1336,7 @@ function UserDetailModal({ userId, user, onClose, packages, onUpdate }: UserDeta
               )
             ) : (
               <div className="space-y-2">
-                <MultiSelect
-                  options={allBouquets.map((b) => ({ value: b.id, label: b.name }))}
-                  value={bouquetDraft}
-                  onChange={setBouquetDraft}
-                  placeholder={t('users.selectBouquet')}
-                />
+                <CountedBouquetSelector value={bouquetDraft} onChange={setBouquetDraft} maxHeight={280} />
                 {bouquetDraft.length === 0 && (
                   <p className="text-xs text-warning">{t('users.bouquetWarning')}</p>
                 )}

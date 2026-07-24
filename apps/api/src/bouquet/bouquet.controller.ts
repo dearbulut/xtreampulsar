@@ -27,6 +27,11 @@ export class BouquetController {
     return this.bouquetService.findAll();
   }
 
+  @Get('content-counts')
+  contentCounts() {
+    return this.bouquetService.contentCounts();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.bouquetService.findById(id);

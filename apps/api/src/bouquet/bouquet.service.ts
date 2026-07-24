@@ -16,6 +16,25 @@ export class BouquetService {
     });
   }
 
+  /** Roadmap B — bouquet basina icerik-tipi sayaclari (Kanal/Film/Dizi). */
+  async contentCounts(): Promise<Record<string, { live: number; vod: number; series: number; total: number }>> {
+    const cats = await this.prisma.category.findMany({
+      where: { bouquetId: { not: null } },
+      select: { bouquetId: true, type: true, _count: { select: { streams: true } } },
+    });
+    const map: Record<string, { live: number; vod: number; series: number; total: number }> = {};
+    for (const c of cats) {
+      if (!c.bouquetId) continue;
+      const m = (map[c.bouquetId] ??= { live: 0, vod: 0, series: 0, total: 0 });
+      const n = c._count.streams;
+      if (c.type === 'LIVE') m.live += n;
+      else if (c.type === 'VOD') m.vod += n;
+      else if (c.type === 'SERIES') m.series += n;
+      m.total += n;
+    }
+    return map;
+  }
+
   async findById(id: string) {
     const bouquet = await this.prisma.bouquet.findUnique({
       where: { id },

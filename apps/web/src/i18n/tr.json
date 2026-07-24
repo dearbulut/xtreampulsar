@@ -222,6 +222,8 @@
     "notesOptional": "Notlar (isteğe bağlı)",
     "addNote": "Not ekle…",
     "bouquetsOptional": "Bouquet'ler (isteğe bağlı)",
+    "tabGeneral": "Genel",
+    "tabBouquets": "Buketler",
     "selectBouquet": "Bouquet seçin…",
     "packageBouquets": "Bu paket şu bouquet'leri içerir: {{list}}",
     "defaultBouquetHint": "Hiçbir şey seçilmezse kullanıcıya varsayılan bouquet atanır (playlist boş kalmaz).",
@@ -680,6 +682,15 @@
     "editTitle": "Grubu düzenle: {{name}}",
     "deleteTitle": "Grubu sil",
     "deleteConfirm": "\"{{name}}\" grubunu silmek istiyor musunuz?"
+  },
+  "bouquetSel": {
+    "search": "Buket ara…",
+    "selectedCount": "{{n}} seçili",
+    "name": "Buket",
+    "live": "Kanal",
+    "vod": "Film",
+    "series": "Dizi",
+    "empty": "Buket yok"
   },
   "settings": {
     "title": "Ayarlar",

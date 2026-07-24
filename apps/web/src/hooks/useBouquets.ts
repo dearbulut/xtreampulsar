@@ -22,6 +22,19 @@ export function useBouquets() {
   });
 }
 
+export interface BouquetContentCount { live: number; vod: number; series: number; total: number }
+
+export function useBouquetContentCounts() {
+  return useQuery({
+    queryKey: ['bouquets', 'content-counts'],
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: Record<string, BouquetContentCount> }>('/bouquets/content-counts');
+      return res.data.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
 export function useCreateBouquet() {
   const qc = useQueryClient();
   return useMutation({
