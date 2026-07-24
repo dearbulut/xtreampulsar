@@ -140,7 +140,10 @@
     "offline": "Çevrimdışı",
     "responseMs": "Yanıt {{n}}ms",
     "reportedChannels": "Bildirilen Kanallar",
-    "channelRequests": "Kanal İstekleri"
+    "channelRequests": "Kanal İstekleri",
+    "onlineByCountry": "Ülkeye göre online",
+    "byRegionSubtitle": "Bölgeye göre aktif bağlantılar",
+    "noActiveConnections": "Aktif bağlantı yok"
   },
   "users": {
     "title": "Kullanıcılar",

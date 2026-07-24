@@ -140,7 +140,10 @@
     "offline": "Offline",
     "responseMs": "Response {{n}}ms",
     "reportedChannels": "Reported Channels",
-    "channelRequests": "Channel Requests"
+    "channelRequests": "Channel Requests",
+    "onlineByCountry": "Online by country",
+    "byRegionSubtitle": "Active connections by region",
+    "noActiveConnections": "No active connections"
   },
   "users": {
     "title": "Users",

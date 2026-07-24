@@ -34,6 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { StatCard } from '@/components/ui/StatCard';
+import { GeoConnectionsCard } from '@/components/dashboard/GeoConnectionsCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   useDashboard,
@@ -367,7 +368,9 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Health pie (1/3) */}
+        {/* Sağ sütun: ülke dağılımı + stream health */}
+        <div className="space-y-4">
+        <GeoConnectionsCard />
         <div className="card p-5">
           <h2 className="font-semibold text-fg mb-1">{t('dashboard.streamHealth')}</h2>
           <p className="text-xs text-muted mb-4">{t('dashboard.instantStatusDistribution')}</p>
@@ -428,6 +431,7 @@ export function DashboardPage() {
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 
