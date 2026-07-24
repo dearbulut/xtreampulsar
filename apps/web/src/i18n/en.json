@@ -22,15 +22,15 @@
     "groups": {
       "general": "GENERAL",
       "servers": "SERVERS",
-      "content": "CONTENT",
+      "content": "Content",
       "users": "USERS",
       "epg": "EPG",
-      "analytics": "ANALYTICS",
+      "analytics": "Analytics",
       "management": "MANAGEMENT",
-      "customers": "CUSTOMERS",
-      "billing": "BILLING",
-      "infrastructure": "INFRASTRUCTURE",
-      "system": "SYSTEM"
+      "customers": "Customers",
+      "billing": "Billing",
+      "infrastructure": "Infrastructure",
+      "system": "System"
     },
     "clientRequests": "Reports & Requests",
     "m3uSync": "Auto M3U Sync",

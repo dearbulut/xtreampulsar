@@ -55,19 +55,19 @@ interface NavItem {
 
 interface NavGroup {
   label: string;
+  icon: React.ElementType;
   items: NavItem[];
 }
 
+const TOP: NavItem[] = [
+  { label: 'nav.dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'nav.liveConnections', to: '/live-connections', icon: Activity },
+];
+
 const NAV: NavGroup[] = [
   {
-    label: 'nav.groups.general',
-    items: [
-      { label: 'nav.dashboard', to: '/dashboard', icon: LayoutDashboard },
-      { label: 'nav.liveConnections', to: '/live-connections', icon: Activity },
-    ],
-  },
-  {
     label: 'nav.groups.content',
+    icon: Film,
     items: [
       { label: 'nav.channels', to: '/channels', icon: Tv },
       { label: 'nav.vod', to: '/vod', icon: Film },
@@ -80,6 +80,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.epg',
+    icon: CalendarDays,
     items: [
       { label: 'nav.epgSources', to: '/epg', icon: Radio },
       { label: 'layout.manualMapping', to: '/epg/mappings', icon: Link2 },
@@ -88,6 +89,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.customers',
+    icon: Users,
     items: [
       { label: 'nav.users', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
       { label: 'nav.resellers', to: '/resellers', icon: UserCircle },
@@ -99,6 +101,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.billing',
+    icon: Receipt,
     items: [
       { label: 'nav.packages', to: '/packages', icon: Package },
       { label: 'nav.invoices', to: '/invoices', icon: Receipt },
@@ -108,6 +111,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.infrastructure',
+    icon: Server,
     items: [
       { label: 'nav.servers', to: '/servers', icon: Server },
       { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
@@ -117,6 +121,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.analytics',
+    icon: BarChart2,
     items: [
       { label: 'nav.mostWatched', to: '/analytics/most-watched', icon: Flame },
       { label: 'nav.revenueReport', to: '/analytics/revenue', icon: TrendingUp },
@@ -124,6 +129,7 @@ const NAV: NavGroup[] = [
   },
   {
     label: 'nav.groups.system',
+    icon: Settings,
     items: [
       { label: 'nav.security', to: '/security', icon: Shield },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
@@ -184,24 +190,40 @@ function SidebarContent({ collapsed, onClose }: { collapsed: boolean; onClose?: 
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
+        {/* Sabit üst maddeler */}
+        {TOP.map((item) => (
+          <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
+        ))}
+
+        <div className="h-px bg-border my-3 mx-2" />
+
+        {/* Katlanabilir gruplar */}
         {NAV.map((group) => {
-          const open = collapsed || isGroupOpen(group.label);
+          const GroupIcon = group.icon;
+          const open = isGroupOpen(group.label);
+          if (collapsed) {
+            return (
+              <div key={group.label} className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink key={item.to} item={item} collapsed onNavigate={onClose} />
+                ))}
+              </div>
+            );
+          }
           return (
             <div key={group.label}>
-              {!collapsed && (
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between px-3 mb-1 text-[10px] font-semibold text-muted/60 tracking-widest uppercase hover:text-muted transition-colors"
-                >
-                  <span>{t(group.label)}</span>
-                  <ChevronDown className={cn('w-3 h-3 transition-transform', open ? '' : '-rotate-90')} />
-                </button>
-              )}
+              <button onClick={() => toggleGroup(group.label)} className="nav-item w-full">
+                <GroupIcon className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1 truncate text-left">{t(group.label)}</span>
+                <ChevronDown
+                  className={cn('w-3.5 h-3.5 flex-shrink-0 text-muted transition-transform', open ? '' : '-rotate-90')}
+                />
+              </button>
               {open && (
-                <div className="space-y-0.5">
+                <div className="ml-[1.1rem] pl-3 border-l border-border space-y-0.5 mt-0.5 mb-1">
                   {group.items.map((item) => (
-                    <NavLink key={item.to} item={item} collapsed={collapsed} onNavigate={onClose} />
+                    <NavLink key={item.to} item={item} collapsed={false} onNavigate={onClose} />
                   ))}
                 </div>
               )}

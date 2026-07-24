@@ -22,15 +22,15 @@
     "groups": {
       "general": "GENEL",
       "servers": "SUNUCULAR",
-      "content": "İÇERİK",
+      "content": "İçerik",
       "users": "KULLANICILAR",
       "epg": "EPG",
-      "analytics": "ANALİTİK",
+      "analytics": "Analitik",
       "management": "YÖNETİM",
-      "customers": "MÜŞTERİLER",
-      "billing": "FATURALANDIRMA",
-      "infrastructure": "ALTYAPI",
-      "system": "SİSTEM"
+      "customers": "Müşteriler",
+      "billing": "Faturalandırma",
+      "infrastructure": "Altyapı",
+      "system": "Sistem"
     },
     "clientRequests": "Bildirim & İstekler",
     "m3uSync": "Otomatik M3U Sync",
