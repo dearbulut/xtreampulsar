@@ -104,7 +104,7 @@ export function ProvidersPage() {
               {p.lastSyncedAt && (
                 <div className="text-[11px] text-muted flex items-center gap-1.5 flex-wrap">
                   <Copy className="w-3 h-3" />
-                  <span>{p.lastSyncTotal ?? 0} yayın</span>
+                  <span>{t('providers.mirror.statStreams', { n: p.lastSyncTotal ?? 0 })}</span>
                   <span className="text-success">+{p.lastSyncAdded ?? 0}</span>
                   <span>~{p.lastSyncUpdated ?? 0}</span>
                   {(p.lastSyncRemoved ?? 0) > 0 && <span className="text-danger">-{p.lastSyncRemoved}</span>}
@@ -112,14 +112,14 @@ export function ProvidersPage() {
                 </div>
               )}
               {p.lastSyncStatus === 'ERROR' && p.lastSyncMessage && (
-                <div className="text-[11px] text-danger truncate" title={p.lastSyncMessage}>Senkron hatası: {p.lastSyncMessage}</div>
+                <div className="text-[11px] text-danger truncate" title={p.lastSyncMessage}>{t('providers.mirror.syncError', { msg: p.lastSyncMessage })}</div>
               )}
               {p.status === 'OFFLINE' && p.lastError && (
                 <div className="text-[11px] text-danger truncate">{p.lastError}</div>
               )}
               <div className="flex gap-2 pt-1 border-t border-border mt-1">
                 <button className="btn-ghost text-xs" onClick={() => setSyncProvider(p)}>
-                  <Copy className="w-3.5 h-3.5" /> Aynala
+                  <Copy className="w-3.5 h-3.5" /> {t('providers.mirror.button')}
                 </button>
                 <button className="btn-ghost text-xs" disabled={reverify.isPending} onClick={() => reverify.mutate(p.id)}>
                   <RefreshCw className={cn('w-3.5 h-3.5', reverify.isPending && 'animate-spin')} /> {t('providers.reverify')}
