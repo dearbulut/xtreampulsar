@@ -225,7 +225,7 @@ export function DashboardPage() {
       )}
 
       {/* Row 3 — Connection chart + Health pie */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         {/* Chart (2/3) */}
         <div className="lg:col-span-2 card p-5">
           <div className="flex items-center justify-between mb-4">
@@ -256,7 +256,7 @@ export function DashboardPage() {
               <LoadingSpinner />
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer width="100%" height={190}>
               <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="connGrad" x1="0" y1="0" x2="0" y2="1">
