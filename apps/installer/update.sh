@@ -86,7 +86,7 @@ log_success "Konteynerler güncellendi"
 # ─── Migration ───────────────────────────────────────────────────────────────
 log_step "▶ Database migration çalıştırılıyor..."
 sleep 10
-docker compose exec -T api sh -c "cd /repo/packages/database && ./node_modules/.bin/prisma migrate deploy" 2>/dev/null && \
+docker compose exec -T api sh -c "cd /repo/packages/database && npx prisma migrate deploy" 2>/dev/null && \
   log_success "Migration tamamlandı" || \
   log_warning "Migration başarısız veya gerekli değil"
 

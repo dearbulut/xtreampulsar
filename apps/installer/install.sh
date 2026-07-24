@@ -380,7 +380,7 @@ done
 
 log_info "Migration çalıştırılıyor..."
 docker compose run --rm api sh -c \
-  "cd /repo/packages/database && ./node_modules/.bin/prisma migrate deploy" \
+  "cd /repo/packages/database && npx prisma migrate deploy" \
   &>/tmp/xp_migrate.log || {
   log_warning "Migration başarısız — atlanıyor"
   log_info "Kurulum tamamlandıktan sonra: docker compose exec api npx prisma migrate deploy"

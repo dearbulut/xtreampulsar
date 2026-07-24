@@ -29,6 +29,8 @@ COPY --from=builder /repo/packages ./packages
 COPY --from=builder /repo/apps/api/dist ./apps/api/dist
 COPY --from=builder /repo/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /repo/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /repo/apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
+RUN chmod +x ./apps/api/docker-entrypoint.sh
 
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["sh", "apps/api/docker-entrypoint.sh"]
