@@ -18,6 +18,7 @@
     "migration": "Migration",
     "tools": "Advanced Tools",
     "security": "Security",
+    "groupsPerms": "Groups & Permissions",
     "settings": "Settings",
     "groups": {
       "general": "GENERAL",
@@ -657,6 +658,28 @@
     "packageCount_other": "{{count}} packages",
     "storeShow": "Show in store",
     "storeHide": "Hide from store"
+  },
+  "groups": {
+    "title": "Groups & Permissions",
+    "subtitle": "Permission groups and a granular permission matrix for admin/staff",
+    "new": "New Group",
+    "system": "System",
+    "members": "members",
+    "perms": "perms",
+    "allPerms": "All permissions",
+    "isAdmin": "Full access",
+    "isReseller": "Reseller",
+    "isBanned": "Banned",
+    "name": "Group name",
+    "description": "Description",
+    "flags": "Group type",
+    "adminHint": "A full-access group covers all permissions automatically; the matrix is disabled.",
+    "matrix": "Permission matrix",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "editTitle": "Edit group: {{name}}",
+    "deleteTitle": "Delete group",
+    "deleteConfirm": "Delete the group \"{{name}}\"?"
   },
   "settings": {
     "title": "Settings",

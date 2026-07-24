@@ -70,4 +70,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   lockDevice?: boolean;
+
+  // Roadmap D — RBAC izin grubu (bos string = grubu kaldir)
+  @IsOptional()
+  @IsString()
+  adminGroupId?: string;
 }

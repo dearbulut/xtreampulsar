@@ -55,6 +55,7 @@ import { WatchFolderModule } from './watch-folder/watch-folder.module';
 import { ResellerApiModule } from './reseller-api/reseller-api.module';
 import { DownloadModule } from './download/download.module';
 import { CatchupModule } from './catchup/catchup.module';
+import { RbacModule } from './rbac/rbac.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { CatchupModule } from './catchup/catchup.module';
     ResellerApiModule,
     DownloadModule,
     CatchupModule,
+    RbacModule,
   ],
   controllers: [AppController],
   providers: [

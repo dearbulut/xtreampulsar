@@ -59,6 +59,7 @@ import { SubtitlesPage } from '@/pages/subtitles/SubtitlesPage';
 import { DownloadsPage } from '@/pages/downloads/DownloadsPage';
 import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ProvidersPage } from '@/pages/providers/ProvidersPage';
+import { GroupsPage } from '@/pages/groups/GroupsPage';
 import { WidgetsPage } from './pages/widgets/WidgetsPage';
 import { WidgetHostedPage } from './pages/widgets/WidgetHostedPage';
 import { WatchFolderPage } from './pages/watch-folder/WatchFolderPage';
@@ -351,6 +352,12 @@ const providersRoute = createRoute({
   component: ProvidersPage,
 });
 
+const groupsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/groups',
+  component: GroupsPage,
+});
+
 const widgetsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/widgets',
@@ -538,6 +545,7 @@ const routeTree = rootRoute.addChildren([
     downloadsRoute,
     m3uSyncRoute,
     providersRoute,
+    groupsRoute,
     widgetsRoute,
     watchFolderRoute,
   ]),

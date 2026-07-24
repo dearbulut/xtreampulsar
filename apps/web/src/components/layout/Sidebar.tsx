@@ -42,6 +42,7 @@ import {
   Receipt,
   Captions,
   HandCoins,
+  KeyRound,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -138,6 +139,7 @@ const NAV: NavGroup[] = [
     icon: Settings,
     items: [
       { label: 'nav.security', to: '/security', icon: Shield },
+      { label: 'nav.groupsPerms', to: '/groups', icon: KeyRound },
       { label: 'layout.webhooks', to: '/webhooks', icon: Webhook },
       { label: 'nav.tools', to: '/tools/advanced', icon: Wrench },
       { label: 'layout.supportCenter', to: '/support', icon: Bell },

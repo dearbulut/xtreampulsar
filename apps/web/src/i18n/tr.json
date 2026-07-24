@@ -18,6 +18,7 @@
     "migration": "Migration",
     "tools": "Gelişmiş Araçlar",
     "security": "Güvenlik",
+    "groupsPerms": "Gruplar & İzinler",
     "settings": "Ayarlar",
     "groups": {
       "general": "GENEL",
@@ -657,6 +658,28 @@
     "packageCount_other": "{{count}} paket",
     "storeShow": "Mağazada göster",
     "storeHide": "Mağazadan gizle"
+  },
+  "groups": {
+    "title": "Gruplar & İzinler",
+    "subtitle": "Yönetici/personel için izin grupları ve granüler izin matrisi",
+    "new": "Yeni Grup",
+    "system": "Sistem",
+    "members": "üye",
+    "perms": "izin",
+    "allPerms": "Tüm izinler",
+    "isAdmin": "Tam yetki",
+    "isReseller": "Bayi",
+    "isBanned": "Engelli",
+    "name": "Grup adı",
+    "description": "Açıklama",
+    "flags": "Grup türü",
+    "adminHint": "Tam yetkili grup tüm izinleri otomatik kapsar; matris devre dışı.",
+    "matrix": "İzin matrisi",
+    "selectAll": "Tümünü seç",
+    "clearAll": "Temizle",
+    "editTitle": "Grubu düzenle: {{name}}",
+    "deleteTitle": "Grubu sil",
+    "deleteConfirm": "\"{{name}}\" grubunu silmek istiyor musunuz?"
   },
   "settings": {
     "title": "Ayarlar",

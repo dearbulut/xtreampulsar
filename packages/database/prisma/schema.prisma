@@ -549,6 +549,10 @@ model User {
   packageId String?
   package   Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
 
+  // Roadmap D — RBAC: yonetici/personel izin grubu (opsiyonel; yoksa role bazli davranis korunur)
+  adminGroupId String?
+  adminGroup   AdminGroup? @relation(fields: [adminGroupId], references: [id], onDelete: SetNull)
+
   connections    Connection[]
   refreshTokens  RefreshToken[]
   userBouquets   UserBouquet[]
@@ -559,6 +563,7 @@ model User {
   clientRequests ClientRequest[]
 
   @@index([packageId])
+  @@index([adminGroupId])
   @@map("users")
 }
 
@@ -744,6 +749,23 @@ model MigrationJob {
 }
 
 // ─── Settings (singleton) ────────────────────────────────────────────────────
+
+model AdminGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isAdmin     Boolean  @default(false) // tam yetki (tum izinleri bypass eder)
+  isReseller  Boolean  @default(false) // bayi paneli yetkileri
+  isBanned    Boolean  @default(false) // gruptaki tum hesaplar engelli
+  permissions String[] @default([])    // izin anahtarlari (permissions.catalog)
+  isSystem    Boolean  @default(false) // silinemez cekirdek grup
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+
+  @@map("admin_groups")
+}
 
 model Settings {
   id                      String   @id @default("singleton")

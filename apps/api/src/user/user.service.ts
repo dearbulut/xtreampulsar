@@ -370,6 +370,10 @@ export class UserService {
     if (dto.lockDevice === false) {
       data.lockedDeviceId = null;
     }
+    // Roadmap D — bos string = grubu kaldir (null)
+    if (dto.adminGroupId !== undefined) {
+      data.adminGroupId = dto.adminGroupId === '' ? null : dto.adminGroupId;
+    }
 
     const user = await this.prisma.user.update({
       where: { id },
