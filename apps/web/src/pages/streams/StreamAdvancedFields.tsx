@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, SlidersHorizontal, Clock, CalendarClock } from 'lucide-react';
+import { useEPGSources } from '@/hooks/useEPG';
 
 export interface StreamAdvanced {
   directSource: boolean;
@@ -16,12 +17,17 @@ export interface StreamAdvanced {
   probeSize: string;
   delayMinutes: string;
   transcodeProfile: string;
+  restartDays: string[];
+  restartTime: string;
+  epgSourceId: string;
+  epgLang: string;
 }
 
 export const EMPTY_ADVANCED: StreamAdvanced = {
   directSource: false, generatePts: true, allowRecording: true, allowRtmpOutput: false,
   streamUserAgent: '', httpProxy: '', httpCookie: '', httpHeaders: '',
   customFfmpeg: '', customMap: '', probeSize: '', delayMinutes: '', transcodeProfile: '',
+  restartDays: [], restartTime: '', epgSourceId: '', epgLang: '',
 };
 
 /** Bir Stream kaydından Gelişmiş alanları çıkarır (edit formu doldurmak için). */
@@ -41,6 +47,10 @@ export function advancedFromStream(r: Record<string, unknown>): StreamAdvanced {
     probeSize: r.probeSize == null ? '' : String(r.probeSize),
     delayMinutes: r.delayMinutes == null ? '' : String(r.delayMinutes),
     transcodeProfile: str(r.transcodeProfile),
+    restartDays: Array.isArray(r.restartDays) ? (r.restartDays as string[]) : [],
+    restartTime: str(r.restartTime),
+    epgSourceId: str(r.epgSourceId),
+    epgLang: str(r.epgLang),
   };
 }
 
@@ -61,6 +71,10 @@ export function advancedToPayload(a: StreamAdvanced): Record<string, unknown> {
   if (a.probeSize.trim()) p.probeSize = Number(a.probeSize) || 0;
   if (a.delayMinutes.trim()) p.delayMinutes = Number(a.delayMinutes) || 0;
   if (a.transcodeProfile.trim()) p.transcodeProfile = a.transcodeProfile.trim();
+  if (a.restartDays.length) p.restartDays = a.restartDays;
+  if (a.restartTime.trim()) p.restartTime = a.restartTime.trim();
+  if (a.epgSourceId.trim()) p.epgSourceId = a.epgSourceId.trim();
+  if (a.epgLang.trim()) p.epgLang = a.epgLang.trim();
   return p;
 }
 
@@ -70,7 +84,10 @@ export function StreamAdvancedFields({ value, onChange, defaultOpen = false }: {
   defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
+  const { data: epgSources = [] } = useEPGSources();
   const [open, setOpen] = useState(defaultOpen);
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const toggleDay = (d: string) => onChange({ restartDays: value.restartDays.includes(d) ? value.restartDays.filter((x) => x !== d) : [...value.restartDays, d] });
   const toggle = (k: keyof StreamAdvanced) => onChange({ [k]: !value[k] } as Partial<StreamAdvanced>);
   const set = (k: keyof StreamAdvanced, v: string) => onChange({ [k]: v } as Partial<StreamAdvanced>);
 
@@ -135,6 +152,39 @@ export function StreamAdvancedFields({ value, onChange, defaultOpen = false }: {
             <div>
               <label className="label">{t('streams.customMap')}</label>
               <input className="input font-mono text-xs" placeholder="-map 0:v:0 -map 0:a:1" value={value.customMap} onChange={(e) => set('customMap', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Otomatik yeniden başlat */}
+          <div className="border-t border-border pt-3">
+            <div className="label flex items-center gap-1.5 mb-1"><CalendarClock className="w-3.5 h-3.5" /> {t('streams.autoRestart')}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {DAYS.map((d) => (
+                <button type="button" key={d} onClick={() => toggleDay(d)}
+                  className={value.restartDays.includes(d) ? 'px-2 py-1 rounded text-[11px] bg-primary text-white' : 'px-2 py-1 rounded text-[11px] bg-surface-2 text-muted'}>
+                  {t(`streams.day_${d.slice(0,3).toLowerCase()}`)}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted" />
+              <input type="time" className="input w-32" value={value.restartTime} onChange={(e) => set('restartTime', e.target.value)} />
+              <span className="text-[11px] text-muted">{t('streams.autoRestartHint')}</span>
+            </div>
+          </div>
+
+          {/* EPG */}
+          <div className="border-t border-border pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('streams.epgSource')}</label>
+              <select className="input" value={value.epgSourceId} onChange={(e) => set('epgSourceId', e.target.value)}>
+                <option value="">{t('streams.epgSourceNone')}</option>
+                {epgSources.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">{t('streams.epgLang')}</label>
+              <input className="input" placeholder="tr / en" value={value.epgLang} onChange={(e) => set('epgLang', e.target.value)} />
             </div>
           </div>
         </div>

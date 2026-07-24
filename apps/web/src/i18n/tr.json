@@ -587,7 +587,19 @@
     "castPlaceholder": "Oyuncu 1, Oyuncu 2",
     "director": "Yönetmen",
     "durationMin": "Süre (dk)",
-    "subtitlePath": "Altyazı dosya yolu"
+    "subtitlePath": "Altyazı dosya yolu",
+    "autoRestart": "Otomatik yeniden başlat",
+    "autoRestartHint": "Seçili günlerde bu saatte yeniden başlat (TRANSCODE/LOOP)",
+    "epgSource": "EPG kaynağı",
+    "epgSourceNone": "— Yok —",
+    "epgLang": "EPG dili",
+    "day_mon": "Pzt",
+    "day_tue": "Sal",
+    "day_wed": "Çar",
+    "day_thu": "Per",
+    "day_fri": "Cum",
+    "day_sat": "Cmt",
+    "day_sun": "Paz"
   },
   "categories": {
     "title": "Kategoriler",

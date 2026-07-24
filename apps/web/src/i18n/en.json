@@ -587,7 +587,19 @@
     "castPlaceholder": "Actor 1, Actor 2",
     "director": "Director",
     "durationMin": "Duration (min)",
-    "subtitlePath": "Subtitle file path"
+    "subtitlePath": "Subtitle file path",
+    "autoRestart": "Auto-restart",
+    "autoRestartHint": "Restart on selected days at this time (TRANSCODE/LOOP)",
+    "epgSource": "EPG source",
+    "epgSourceNone": "— None —",
+    "epgLang": "EPG language",
+    "day_mon": "Mon",
+    "day_tue": "Tue",
+    "day_wed": "Wed",
+    "day_thu": "Thu",
+    "day_fri": "Fri",
+    "day_sat": "Sat",
+    "day_sun": "Sun"
   },
   "categories": {
     "title": "Categories",

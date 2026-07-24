@@ -360,6 +360,34 @@ export class StreamWorkerService implements OnModuleDestroy {
     }
   }
 
+  /** Her dakika: restartDays (bugun) + restartTime (HH:MM) eslesen TRANSCODE/LOOP
+   *  yayinlari zamanli yeniden baslatir. Ayar bos yayinlar icin no-op. */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async scheduledRestart(): Promise<void> {
+    const now = new Date();
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' }); // Monday..Sunday
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    let due: Array<{ id: string; name: string }> = [];
+    try {
+      due = (await this.prisma.stream.findMany({
+        where: {
+          restartTime: hhmm,
+          restartDays: { has: day },
+          streamMode: { in: ['TRANSCODE', 'LOOP'] },
+          isActive: true,
+        } as Parameters<typeof this.prisma.stream.findMany>[0]['where'],
+        select: { id: true, name: true },
+      })) as Array<{ id: string; name: string }>;
+    } catch (e) {
+      this.logger.warn(`scheduledRestart scan failed: ${(e as Error).message}`);
+      return;
+    }
+    for (const st of due) {
+      this.logger.log(`Scheduled restart: ${st.name} (${day} ${hhmm})`);
+      await this.restartWorker(st.id).catch((e) => this.logger.warn(`scheduled restart ${st.name} failed: ${(e as Error).message}`));
+    }
+  }
+
   private formatUptime(ms: number): string {
     const s = Math.floor(ms / 1000);
     const h = Math.floor(s / 3600);
