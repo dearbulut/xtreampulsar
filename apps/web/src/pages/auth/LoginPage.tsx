@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LANGUAGES } from '@/i18n/i18n';
 import { useRouter } from '@tanstack/react-router';
 import { Zap, Shield, Tv, Users, Activity, Eye, EyeOff, SmartphoneNfc } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -21,7 +22,7 @@ const FEATURES = [
 ];
 
 export function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -114,6 +115,23 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-background">
+      {/* Dil seçici (login ekranı) */}
+      <div className="fixed top-4 right-4 z-30 flex items-center gap-1">
+        {LANGUAGES.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => void i18n.changeLanguage(l.code)}
+            className={`px-2 py-1 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${
+              i18n.language === l.code ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg'
+            }`}
+            aria-label={l.label}
+          >
+            <span>{l.flag}</span>
+            <span className="font-medium">{l.code.toUpperCase()}</span>
+          </button>
+        ))}
+      </div>
       {/* Left panel */}
       <div className="hidden lg:flex flex-col justify-between w-[45%] p-12 bg-gradient-to-br from-primary/20 via-purple-900/20 to-background relative overflow-hidden">
         {/* Grid pattern */}
@@ -163,7 +181,7 @@ export function LoginPage() {
         </div>
 
         <div className="relative text-xs text-muted">
-          {t('auth.copyright')}
+          {t('auth.copyright', { year: new Date().getFullYear() })}
         </div>
       </div>
 

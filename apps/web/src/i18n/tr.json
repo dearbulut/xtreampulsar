@@ -951,7 +951,7 @@
     "feature2": "Kullanıcı ve reseller sistemi",
     "feature3": "Gerçek zamanlı analitik",
     "feature4": "Güvenli JWT kimlik doğrulama",
-    "copyright": "© 2024 XtreamPulsar. Tüm hakları saklıdır.",
+    "copyright": "© {{year}} XtreamPulsar. Tüm hakları saklıdır.",
     "twoFactorTitle": "İki Faktörlü Doğrulama",
     "twoFactorSubtitle": "Authenticator uygulamanızdaki 6 haneli kodu girin",
     "verificationCode": "Doğrulama Kodu",

@@ -951,7 +951,7 @@
     "feature2": "User and reseller system",
     "feature3": "Real-time analytics",
     "feature4": "Secure JWT authentication",
-    "copyright": "© 2024 XtreamPulsar. All rights reserved.",
+    "copyright": "© {{year}} XtreamPulsar. All rights reserved.",
     "twoFactorTitle": "Two-Factor Authentication",
     "twoFactorSubtitle": "Enter the 6-digit code from your authenticator app",
     "verificationCode": "Verification Code",
