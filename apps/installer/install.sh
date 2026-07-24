@@ -476,7 +476,7 @@ elif [[ "$SETUP_RESPONSE" == "409" ]]; then
 else
   log_warning "Admin kullanıcı oluşturulamadı (HTTP $SETUP_RESPONSE)"
   log_warning "Panele girdikten sonra manuel oluşturun:"
-  log_warning "  docker compose exec api npx ts-node scripts/create-admin.ts"
+  log_warning "  docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'YeniSifre123!'"
   ADMIN_PASSWORD="(manuel oluşturulacak)"
 fi
 
