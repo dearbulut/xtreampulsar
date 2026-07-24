@@ -61,7 +61,7 @@ export function useGeoConnections() {
       const res = await api.get<{ success: boolean; data: GeoEntry[] }>('/analytics/geo-connections');
       return res.data.data;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
 }
 

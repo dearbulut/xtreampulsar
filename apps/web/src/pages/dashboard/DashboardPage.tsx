@@ -29,7 +29,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
@@ -225,7 +224,7 @@ export function DashboardPage() {
       )}
 
       {/* Row 3 — Connection chart + Health pie */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Chart (2/3) */}
         <div className="lg:col-span-2 card p-5">
           <div className="flex items-center justify-between mb-4">
@@ -329,71 +328,59 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Sağ sütun: ülke dağılımı + stream health */}
-        <div className="space-y-4">
+        {/* Sağ sütun: ülke dağılımı */}
         <GeoConnectionsCard />
-        <div className="card p-5">
-          <h2 className="font-semibold text-fg mb-1">{t('dashboard.streamHealth')}</h2>
-          <p className="text-xs text-muted mb-4">{t('dashboard.instantStatusDistribution')}</p>
+      </div>
 
-          {statsLoading ? (
-            <div className="h-52 flex items-center justify-center">
-              <LoadingSpinner />
-            </div>
-          ) : healthPie.length === 0 ? (
-            <div className="h-52 flex flex-col items-center justify-center gap-2 text-muted text-sm">
-              <ShieldCheck className="w-8 h-8 text-success opacity-60" />
-              <span>{t('dashboard.allStreamsNormal')}</span>
-            </div>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie
-                    data={healthPie}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {healthPie.map((_, i) => (
-                      <Cell key={i} fill={HEALTH_COLORS[i % HEALTH_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(v: string) => <span className="text-xs text-muted">{v}</span>}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                    }}
-                    formatter={(val: number) => [t('dashboard.nStreams', { n: val }), '']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-
-              <div className="mt-3 space-y-2">
-                {[
-                  { label: t('dashboard.running'), value: stats?.streamsUp ?? 0, color: 'text-success' },
-                  { label: t('dashboard.down'), value: stats?.streamsDown ?? 0, color: 'text-danger' },
-                  { label: t('dashboard.slow'), value: stats?.streamsDegraded ?? 0, color: 'text-warning' },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between text-sm">
-                    <span className="text-muted">{row.label}</span>
-                    <span className={cn('font-semibold tabular-nums', row.color)}>{row.value}</span>
-                  </div>
-                ))}
+      {/* Stream Health — kompakt yatay kart */}
+      <div className="card p-5">
+        <div className="mb-4">
+          <h2 className="font-semibold text-fg">{t('dashboard.streamHealth')}</h2>
+          <p className="text-xs text-muted mt-0.5">{t('dashboard.instantStatusDistribution')}</p>
+        </div>
+        {statsLoading ? (
+          <div className="h-24 flex items-center justify-center">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <div className="flex items-center gap-6">
+            {healthPie.length === 0 ? (
+              <div className="w-24 h-24 rounded-full border-4 border-success/30 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-8 h-8 text-success" />
               </div>
-            </>
-          )}
-        </div>
-        </div>
+            ) : (
+              <div className="w-28 h-28 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={healthPie} cx="50%" cy="50%" innerRadius={34} outerRadius={52} dataKey="value" strokeWidth={0}>
+                      {healthPie.map((_, i) => (
+                        <Cell key={i} fill={HEALTH_COLORS[i % HEALTH_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }}
+                      formatter={(val: number) => [t('dashboard.nStreams', { n: val }), '']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div className="flex-1 grid grid-cols-3 gap-4">
+              {[
+                { label: t('dashboard.running'), value: stats?.streamsUp ?? 0, color: 'text-success', dot: 'bg-success' },
+                { label: t('dashboard.down'), value: stats?.streamsDown ?? 0, color: 'text-danger', dot: 'bg-danger' },
+                { label: t('dashboard.slow'), value: stats?.streamsDegraded ?? 0, color: 'text-warning', dot: 'bg-warning' },
+              ].map((row) => (
+                <div key={row.label} className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className={cn('w-2 h-2 rounded-full', row.dot)} />{row.label}
+                  </span>
+                  <span className={cn('text-2xl font-bold tabular-nums', row.color)}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Row 4 — Top streams + Recent activity */}

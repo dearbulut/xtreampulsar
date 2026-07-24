@@ -363,7 +363,7 @@ export class AnalyticsService {
       .map(([countryCode, v]) => ({ countryCode, country: v.country, count: v.count }))
       .sort((a, b) => b.count - a.count);
 
-    await this.redis.setex(cacheKey, 30, JSON.stringify(result)).catch(() => {});
+    await this.redis.setex(cacheKey, 10, JSON.stringify(result)).catch(() => {});
     return result;
   }
 
