@@ -15,8 +15,9 @@ export class CreateStreamDto {
   @IsString()
   name!: string;
 
+  @IsOptional()
   @IsUrl()
-  primaryUrl!: string;
+  primaryUrl?: string;
 
   @IsOptional()
   @IsUrl()

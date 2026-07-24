@@ -1106,7 +1106,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
       >
         <div className="space-y-3">
           <div>
-            <label className="label">{t('streams.channelNameLabel')} *</label>
+            <label className="label">{type === 'VOD' || type === 'SERIES' ? t('streams.titleLabel') : t('streams.channelNameLabel')} *</label>
             <input
               className="input"
               placeholder={t('streams.channelNamePlaceholder')}
@@ -1127,8 +1127,9 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               ))}
             </select>
           </div>
+          {type !== 'SERIES' && (
           <div>
-            <label className="label">{t('streams.sourceUrl')} *</label>
+            <label className="label">{type === 'VOD' ? t('streams.movieFileUrl') : t('streams.sourceUrl')} *</label>
             <input
               className="input font-mono text-xs"
               placeholder={t('streams.urlPlaceholder')}
@@ -1136,6 +1137,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onChange={(e) => setCreateForm((f) => ({ ...f, primaryUrl: e.target.value }))}
             />
           </div>
+          )}
+          {(!type || type === 'LIVE') && (
           <div>
             <label className="label">{t('streams.backupUrl')}</label>
             <input
@@ -1145,6 +1148,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onChange={(e) => setCreateForm((f) => ({ ...f, backupUrl: e.target.value }))}
             />
           </div>
+          )}
+          {type !== 'SERIES' && (
           <div>
             <label className="label">{t('streams.server')}</label>
             <select
@@ -1158,6 +1163,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               ))}
             </select>
           </div>
+          )}
+          {(!type || type === 'LIVE') && (
           <div>
             <label className="label">{t('streams.logoUrl')}</label>
             <input
@@ -1167,6 +1174,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               onChange={(e) => setCreateForm((f) => ({ ...f, tvgLogo: e.target.value }))}
             />
           </div>
+          )}
+          {(!type || type === 'LIVE') && (
           <div>
             <label className="label">{t('streams.streamMode')}</label>
             <div className="grid grid-cols-3 gap-2">
@@ -1196,7 +1205,8 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               ))}
             </div>
           </div>
-          {createForm.streamMode === 'LOOP' && (
+          )}
+          {(!type || type === 'LIVE') && createForm.streamMode === 'LOOP' && (
             <div className="space-y-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3">
               <p className="text-[11px] text-muted leading-snug">{t('streams.loopHint')}</p>
               <label className="flex items-center gap-2 text-xs text-slate-300">
@@ -1258,6 +1268,11 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                   <p className="text-[11px] text-muted mt-1">{t('streams.catchupHint')}</p>
                 </div>
               )}
+            </div>
+          )}
+          {type === 'SERIES' && (
+            <div className="rounded-lg border border-border p-3 text-xs text-muted leading-snug">
+              {t('streams.seriesEpisodeNote')}
             </div>
           )}
           {(type === 'VOD' || type === 'SERIES') && (
@@ -1336,7 +1351,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
               disabled={
                 createStream.isPending ||
                 !createForm.name ||
-                !createForm.primaryUrl ||
+                (type !== 'SERIES' && !createForm.primaryUrl) ||
                 !createForm.categoryId
               }
               onClick={() => {
@@ -1345,7 +1360,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
                 // forbidNonWhitelisted ile fazladan alan 400 verirdi.
                 const payload = {
                   name: createForm.name,
-                  primaryUrl: createForm.primaryUrl,
+                  ...(createForm.primaryUrl ? { primaryUrl: createForm.primaryUrl } : {}),
                   categoryId: createForm.categoryId,
                   streamMode: createForm.streamMode,
                   ...(type !== 'VOD' && type !== 'SERIES' && createForm.catchupEnabled && {

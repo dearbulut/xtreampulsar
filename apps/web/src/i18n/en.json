@@ -558,7 +558,10 @@
     "trackAudio": "Audio tracks",
     "trackSubtitle": "Subtitle tracks",
     "trackNone": "None",
-    "tracksHint": "Read from the source media (ffprobe); the player switches between these tracks."
+    "tracksHint": "Read from the source media (ffprobe); the player switches between these tracks.",
+    "titleLabel": "Title",
+    "movieFileUrl": "Movie file URL",
+    "seriesEpisodeNote": "After saving the series, add seasons & episodes from the 📺 icon on its row."
   },
   "categories": {
     "title": "Categories",

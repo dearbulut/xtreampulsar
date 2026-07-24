@@ -353,7 +353,8 @@ export class StreamService {
 
   create(dto: CreateStreamDto) {
     return this.prisma.stream.create({
-      data: dto,
+      // Series bir kapsayıcıdır; kendi URL'si olmayabilir (bölümler taşır). Yoksa boş.
+      data: { ...dto, primaryUrl: dto.primaryUrl ?? '' },
       include: { category: true },
     });
   }

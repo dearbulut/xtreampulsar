@@ -558,7 +558,10 @@
     "trackAudio": "Ses parçaları",
     "trackSubtitle": "Altyazı parçaları",
     "trackNone": "Yok",
-    "tracksHint": "Bu bilgi kaynak medyadan (ffprobe) okunur; oynatıcı bu parçalar arasında geçiş yapar."
+    "tracksHint": "Bu bilgi kaynak medyadan (ffprobe) okunur; oynatıcı bu parçalar arasında geçiş yapar.",
+    "titleLabel": "Başlık",
+    "movieFileUrl": "Film dosyası URL’si",
+    "seriesEpisodeNote": "Diziyi kaydettikten sonra sezon ve bölümleri satırdaki 📺 ikonundan ekleyebilirsin."
   },
   "categories": {
     "title": "Kategoriler",
