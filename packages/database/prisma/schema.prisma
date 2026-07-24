@@ -284,6 +284,11 @@ model Stream {
   serverId String?
   server   Server?  @relation(fields: [serverId], references: [id])
 
+  // Stream Providers mirror linkage (Increment 2)
+  providerId  String?
+  provider    StreamProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerRef String?         // upstream dedup key: "<TYPE>:<stream_id>"
+
   epgMappings    EPGMapping[]
   connections    Connection[]
   bouquetStreams BouquetStream[]
@@ -291,6 +296,7 @@ model Stream {
   episodes       Episode[]         @relation("SeriesEpisodes")
   clientRequests ClientRequest[]
 
+  @@index([providerId])
   @@map("streams")
 }
 
@@ -1283,6 +1289,23 @@ model StreamProvider {
   lastError      String?
   maxConnections Int?
   expiresAt      DateTime?
+
+  // Mirror config (Increment 2)
+  mirrorBouquetId String?
+  mirrorServerId  String?
+  outputExt       String   @default("ts")  // ts | m3u8 (LIVE cikti uzantisi)
+  dropPolicy      String   @default("KEEP") // KEEP | DISABLE | DELETE (upstream'den kaybolan yayinlar)
+  importLive      Boolean  @default(true)
+  importVod       Boolean  @default(false)
+  importSeries    Boolean  @default(false)
+  lastSyncedAt    DateTime?
+  lastSyncAdded   Int?
+  lastSyncUpdated Int?
+  lastSyncRemoved Int?
+  lastSyncTotal   Int?
+
+  streams Stream[]
+
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

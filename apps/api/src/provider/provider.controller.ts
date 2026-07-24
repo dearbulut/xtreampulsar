@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ProviderService } from './provider.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
+import { SyncProviderDto } from './dto/sync-provider.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -29,6 +30,16 @@ export class ProviderController {
   @Post(':id/verify')
   reverify(@Param('id') id: string) {
     return this.service.reverify(id);
+  }
+
+  @Get(':id/browse')
+  browse(@Param('id') id: string) {
+    return this.service.browse(id);
+  }
+
+  @Post(':id/sync')
+  sync(@Param('id') id: string, @Body() dto: SyncProviderDto) {
+    return this.service.sync(id, dto);
   }
 
   @Delete(':id')

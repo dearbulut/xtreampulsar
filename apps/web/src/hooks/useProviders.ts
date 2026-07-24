@@ -15,6 +15,56 @@ export interface Provider {
   expiresAt?: string | null;
   isActive: boolean;
   createdAt: string;
+  // Mirror (Increment 2)
+  mirrorBouquetId?: string | null;
+  mirrorServerId?: string | null;
+  outputExt?: string;
+  dropPolicy?: string;
+  importLive?: boolean;
+  importVod?: boolean;
+  importSeries?: boolean;
+  lastSyncedAt?: string | null;
+  lastSyncAdded?: number | null;
+  lastSyncUpdated?: number | null;
+  lastSyncRemoved?: number | null;
+  lastSyncTotal?: number | null;
+}
+
+export interface BrowseCategory {
+  category_id: string;
+  category_name: string;
+  count: number;
+}
+export interface BrowseTypeResult {
+  categories: BrowseCategory[];
+  total: number;
+  error?: string;
+}
+export interface ProviderBrowse {
+  live: BrowseTypeResult;
+  vod: BrowseTypeResult;
+  series: BrowseTypeResult;
+}
+
+export interface SyncPayload {
+  bouquetId?: string;
+  serverId?: string;
+  outputExt?: 'ts' | 'm3u8';
+  dropPolicy?: 'KEEP' | 'DISABLE' | 'DELETE';
+  importLive?: boolean;
+  importVod?: boolean;
+  importSeries?: boolean;
+  liveCategoryIds?: string[];
+  vodCategoryIds?: string[];
+  seriesCategoryIds?: string[];
+}
+export interface SyncResult {
+  added: number;
+  updated: number;
+  removed: number;
+  total: number;
+  bouquetId: string;
+  capped?: boolean;
 }
 
 export interface ProviderPreview {
@@ -79,5 +129,34 @@ export function useDeleteProvider() {
       void qc.invalidateQueries({ queryKey: ['providers'] });
       toast.success('Silindi');
     },
+  });
+}
+
+export function useBrowseProvider(id: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['providers', id, 'browse'],
+    enabled: enabled && !!id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await api.get<{ success: boolean; data: ProviderBrowse }>(`/providers/${id}/browse`);
+      return res.data.data;
+    },
+  });
+}
+
+export function useSyncProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: SyncPayload }) => {
+      const res = await api.post<{ success: boolean; data: SyncResult }>(`/providers/${id}/sync`, payload);
+      return res.data.data;
+    },
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ['providers'] });
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+      void qc.invalidateQueries({ queryKey: ['categories'] });
+      toast.success(`Aynalandı: +${r.added} yeni, ${r.updated} güncel, ${r.removed} kaldırıldı`);
+    },
+    onError: () => toast.error('Aynalama başarısız'),
   });
 }

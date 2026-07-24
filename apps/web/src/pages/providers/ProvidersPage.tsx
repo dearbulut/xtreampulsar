@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe, Copy } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -13,7 +13,9 @@ import {
   useReverifyProvider,
   useDeleteProvider,
   type ProviderPreview,
+  type Provider,
 } from '@/hooks/useProviders';
+import { SyncProviderModal } from './SyncProviderModal';
 
 function StatusPill({ status }: { status: string }) {
   const cfg =
@@ -44,6 +46,7 @@ export function ProvidersPage() {
   const [userAgent, setUserAgent] = useState('');
   const [previewData, setPreviewData] = useState<ProviderPreview | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [syncProvider, setSyncProvider] = useState<Provider | null>(null);
 
   const reset = () => { setUrl(''); setName(''); setUserAgent(''); setPreviewData(null); };
 
@@ -84,10 +87,23 @@ export function ProvidersPage() {
                 <div><span className="text-muted">{t('providers.expiry')}: </span><span className="text-fg">{p.expiresAt ? formatDate(p.expiresAt) : '—'}</span></div>
                 <div><span className="text-muted">{t('providers.checked')}: </span><span className="text-fg">{p.lastCheckedAt ? formatDate(p.lastCheckedAt) : '—'}</span></div>
               </div>
+              {p.lastSyncedAt && (
+                <div className="text-[11px] text-muted flex items-center gap-1.5 flex-wrap">
+                  <Copy className="w-3 h-3" />
+                  <span>{p.lastSyncTotal ?? 0} yayın</span>
+                  <span className="text-success">+{p.lastSyncAdded ?? 0}</span>
+                  <span>~{p.lastSyncUpdated ?? 0}</span>
+                  {(p.lastSyncRemoved ?? 0) > 0 && <span className="text-danger">-{p.lastSyncRemoved}</span>}
+                  <span className="text-muted/70">· {formatDate(p.lastSyncedAt)}</span>
+                </div>
+              )}
               {p.status === 'OFFLINE' && p.lastError && (
                 <div className="text-[11px] text-danger truncate">{p.lastError}</div>
               )}
               <div className="flex gap-2 pt-1 border-t border-border mt-1">
+                <button className="btn-ghost text-xs" onClick={() => setSyncProvider(p)}>
+                  <Copy className="w-3.5 h-3.5" /> Aynala
+                </button>
                 <button className="btn-ghost text-xs" disabled={reverify.isPending} onClick={() => reverify.mutate(p.id)}>
                   <RefreshCw className={cn('w-3.5 h-3.5', reverify.isPending && 'animate-spin')} /> {t('providers.reverify')}
                 </button>
@@ -170,6 +186,8 @@ export function ProvidersPage() {
         onConfirm={() => { if (deleteId) del.mutate(deleteId); setDeleteId(null); }}
         onClose={() => setDeleteId(null)}
       />
+
+      <SyncProviderModal provider={syncProvider} open={!!syncProvider} onClose={() => setSyncProvider(null)} />
     </div>
   );
 }
