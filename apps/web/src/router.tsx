@@ -42,6 +42,7 @@ import { UserReportPage } from '@/pages/users/UserReportPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { WebhooksPage } from '@/pages/webhooks/WebhooksPage';
 import { MagDevicesPage } from '@/pages/mag/MagDevicesPage';
+import { Enigma2DevicesPage } from '@/pages/enigma2/Enigma2DevicesPage';
 import { ResellerLivePage } from '@/pages/reseller/ResellerLivePage';
 import { ResellerActivityPage } from '@/pages/reseller/ResellerActivityPage';
 import { ResellerNotificationsPage } from '@/pages/reseller/ResellerNotificationsPage';
@@ -266,6 +267,12 @@ const magDevicesRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/mag-devices',
   component: MagDevicesPage,
+});
+
+const enigma2DevicesRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/enigma2-devices',
+  component: Enigma2DevicesPage,
 });
 
 const supportRoute = createRoute({
@@ -540,6 +547,7 @@ const routeTree = rootRoute.addChildren([
     profileRoute,
     webhooksRoute,
     magDevicesRoute,
+    enigma2DevicesRoute,
     supportRoute,
     clientRequestsRoute,
     activationCodesRoute,

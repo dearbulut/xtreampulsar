@@ -147,6 +147,18 @@ export interface MagDevice {
   createdAt: string;
 }
 
+export interface Enigma2Device {
+  id: string;
+  mac: string;
+  deviceName?: string | null;
+  boxType?: string | null;
+  oeVersion: string;
+  userId?: string | null;
+  user?: { id: string; username: string; status: string } | null;
+  lastSeen?: string;
+  createdAt: string;
+}
+
 // ─── Reseller ─────────────────────────────────────────────────────────────
 
 export type ResellerTier = 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM';

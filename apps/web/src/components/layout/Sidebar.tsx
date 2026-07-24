@@ -43,6 +43,7 @@ import {
   Captions,
   HandCoins,
   KeyRound,
+  Satellite,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -102,6 +103,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.users', to: '/users', icon: Users, badge: 'HOT', badgeVariant: 'hot' },
       { label: 'nav.resellers', to: '/resellers', icon: UserCircle },
       { label: 'layout.magDevices', to: '/mag-devices', icon: Tablet },
+      { label: 'nav.enigma2', to: '/enigma2-devices', icon: Satellite },
       { label: 'nav.userReports', to: '/users/report', icon: BarChart2 },
       { label: 'nav.clientRequests', to: '/client-requests', icon: MessageSquareWarning },
       { label: 'nav.activationCodes', to: '/activation-codes', icon: Ticket },

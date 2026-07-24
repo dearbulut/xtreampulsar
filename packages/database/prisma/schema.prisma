@@ -558,6 +558,7 @@ model User {
   refreshTokens  RefreshToken[]
   userBouquets   UserBouquet[]
   magDevices     MagDevice[]
+  enigma2Devices Enigma2Device[]
   apiKeys        ApiKey[]
   activityLogs   UserActivityLog[]
   playlists      UserPlaylist[]
@@ -1007,6 +1008,24 @@ model MagDevice {
 
   @@index([mac])
   @@map("mag_devices")
+}
+
+model Enigma2Device {
+  id           String   @id @default(cuid())
+  mac          String   @unique   // STB MAC adresi
+  deviceName   String?            // kullanici tanimli ad
+  boxType      String?            // model (VU+ Zero, Dreambox One, …)
+  oeVersion    String   @default("OE2.0") // OE1.6 | OE2.0
+  token        String?
+  lastSeen     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([mac])
+  @@index([userId])
+  @@map("enigma2_devices")
 }
 
 // ─── ApiKey ──────────────────────────────────────────────────────────────────
