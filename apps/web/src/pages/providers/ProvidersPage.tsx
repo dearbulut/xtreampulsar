@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe, Copy } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe, Copy, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -16,6 +16,13 @@ import {
   type Provider,
 } from '@/hooks/useProviders';
 import { SyncProviderModal } from './SyncProviderModal';
+
+function fmtInterval(min?: number): string {
+  const m = min ?? 720;
+  if (m % 1440 === 0) return `${m / 1440}g`;
+  if (m % 60 === 0) return `${m / 60}s`;
+  return `${m}dk`;
+}
 
 function StatusPill({ status }: { status: string }) {
   const cfg =
@@ -78,7 +85,14 @@ export function ProvidersPage() {
                   <Server className="w-4 h-4 text-muted shrink-0" />
                   <span className="font-medium text-fg truncate">{p.name}</span>
                 </div>
-                <StatusPill status={p.status} />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {p.autoSync && (
+                    <span className="badge inline-flex items-center gap-1 text-primary bg-primary/10" title="Otomatik yenileme açık">
+                      <Clock className="w-3 h-3" /> {fmtInterval(p.syncIntervalMinutes)}
+                    </span>
+                  )}
+                  <StatusPill status={p.status} />
+                </div>
               </div>
               <div className="text-xs text-muted font-mono truncate">{p.host}</div>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -96,6 +110,9 @@ export function ProvidersPage() {
                   {(p.lastSyncRemoved ?? 0) > 0 && <span className="text-danger">-{p.lastSyncRemoved}</span>}
                   <span className="text-muted/70">· {formatDate(p.lastSyncedAt)}</span>
                 </div>
+              )}
+              {p.lastSyncStatus === 'ERROR' && p.lastSyncMessage && (
+                <div className="text-[11px] text-danger truncate" title={p.lastSyncMessage}>Senkron hatası: {p.lastSyncMessage}</div>
               )}
               {p.status === 'OFFLINE' && p.lastError && (
                 <div className="text-[11px] text-danger truncate">{p.lastError}</div>

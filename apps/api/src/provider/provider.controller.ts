@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ProviderService } from './provider.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { SyncProviderDto } from './dto/sync-provider.dto';
+import { UpdateProviderDto } from './dto/update-provider.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -40,6 +41,11 @@ export class ProviderController {
   @Post(':id/sync')
   sync(@Param('id') id: string, @Body() dto: SyncProviderDto) {
     return this.service.sync(id, dto);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateProviderDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')

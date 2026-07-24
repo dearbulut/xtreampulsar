@@ -28,6 +28,11 @@ export interface Provider {
   lastSyncUpdated?: number | null;
   lastSyncRemoved?: number | null;
   lastSyncTotal?: number | null;
+  autoSync?: boolean;
+  syncIntervalMinutes?: number;
+  skipKeywords?: string[];
+  lastSyncStatus?: string | null;
+  lastSyncMessage?: string | null;
 }
 
 export interface BrowseCategory {
@@ -57,6 +62,25 @@ export interface SyncPayload {
   liveCategoryIds?: string[];
   vodCategoryIds?: string[];
   seriesCategoryIds?: string[];
+  skipKeywords?: string[];
+  autoSync?: boolean;
+  syncIntervalMinutes?: number;
+}
+
+export interface UpdateProviderPayload {
+  name?: string;
+  userAgent?: string;
+  isActive?: boolean;
+  autoSync?: boolean;
+  syncIntervalMinutes?: number;
+  skipKeywords?: string[];
+  dropPolicy?: 'KEEP' | 'DISABLE' | 'DELETE';
+  outputExt?: 'ts' | 'm3u8';
+  mirrorBouquetId?: string;
+  mirrorServerId?: string;
+  importLive?: boolean;
+  importVod?: boolean;
+  importSeries?: boolean;
 }
 export interface SyncResult {
   added: number;
@@ -158,5 +182,18 @@ export function useSyncProvider() {
       toast.success(`Aynalandı: +${r.added} yeni, ${r.updated} güncel, ${r.removed} kaldırıldı`);
     },
     onError: () => toast.error('Aynalama başarısız'),
+  });
+}
+
+export function useUpdateProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateProviderPayload }) =>
+      api.patch(`/providers/${id}`, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['providers'] });
+      toast.success('Ayarlar güncellendi');
+    },
+    onError: () => toast.error('Güncelleme başarısız'),
   });
 }

@@ -1304,6 +1304,13 @@ model StreamProvider {
   lastSyncRemoved Int?
   lastSyncTotal   Int?
 
+  // Auto-sync + filtreleme (Increment 3)
+  autoSync            Boolean  @default(false)
+  syncIntervalMinutes Int      @default(720)   // otomatik yenileme aralıği (dk)
+  skipKeywords        String[] @default([])    // ad/kategori bu kelimeleri iceriyorsa atla
+  lastSyncStatus      String?                  // OK | ERROR | RUNNING
+  lastSyncMessage     String?
+
   streams Stream[]
 
   createdAt      DateTime  @default(now())

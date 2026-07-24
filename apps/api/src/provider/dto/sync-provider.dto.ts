@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SyncProviderDto {
   @IsOptional()
@@ -44,4 +44,19 @@ export class SyncProviderDto {
   @IsArray()
   @IsString({ each: true })
   seriesCategoryIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  skipKeywords?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  autoSync?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  @Max(43200)
+  syncIntervalMinutes?: number;
 }

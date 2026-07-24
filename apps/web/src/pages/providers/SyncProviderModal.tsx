@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, Tv, Film, Clapperboard, AlertTriangle, Loader2 } from 'lucide-react';
+import { RefreshCw, Tv, Film, Clapperboard, AlertTriangle, Loader2, Filter, Clock } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import { useBouquets } from '@/hooks/useBouquets';
@@ -67,6 +67,9 @@ export function SyncProviderModal({ provider, open, onClose }: { provider: Provi
   const [serverId, setServerId] = useState('');
   const [outputExt, setOutputExt] = useState<'ts' | 'm3u8'>('ts');
   const [dropPolicy, setDropPolicy] = useState<'KEEP' | 'DISABLE' | 'DELETE'>('KEEP');
+  const [skipRaw, setSkipRaw] = useState('');
+  const [autoSync, setAutoSync] = useState(false);
+  const [intervalMin, setIntervalMin] = useState(720);
   const [types, setTypes] = useState<Record<TypeKey, boolean>>({ live: true, vod: false, series: false });
   const [sel, setSel] = useState<Record<TypeKey, Set<string>>>({ live: new Set(), vod: new Set(), series: new Set() });
   const initRef = useRef(false);
@@ -79,6 +82,9 @@ export function SyncProviderModal({ provider, open, onClose }: { provider: Provi
     setServerId(provider.mirrorServerId ?? '');
     setOutputExt((provider.outputExt as 'ts' | 'm3u8') ?? 'ts');
     setDropPolicy((provider.dropPolicy as 'KEEP' | 'DISABLE' | 'DELETE') ?? 'KEEP');
+    setSkipRaw((provider.skipKeywords ?? []).join('\n'));
+    setAutoSync(provider.autoSync ?? false);
+    setIntervalMin(provider.syncIntervalMinutes ?? 720);
     setTypes({ live: provider.importLive ?? true, vod: provider.importVod ?? false, series: provider.importSeries ?? false });
     setSel({ live: new Set(), vod: new Set(), series: new Set() });
   }, [open, provider]);
@@ -129,6 +135,7 @@ export function SyncProviderModal({ provider, open, onClose }: { provider: Provi
   if (!provider) return null;
 
   const run = () => {
+    const skipKeywords = skipRaw.split(/[\n,]/).map((k) => k.trim()).filter(Boolean);
     const payload: SyncPayload = {
       bouquetId: bouquetId || undefined,
       serverId: serverId || undefined,
@@ -140,6 +147,9 @@ export function SyncProviderModal({ provider, open, onClose }: { provider: Provi
       liveCategoryIds: buildIds('live'),
       vodCategoryIds: buildIds('vod'),
       seriesCategoryIds: buildIds('series'),
+      skipKeywords,
+      autoSync,
+      syncIntervalMinutes: intervalMin,
     };
     sync.mutate({ id: provider.id, payload }, { onSuccess: () => onClose() });
   };
@@ -221,6 +231,38 @@ export function SyncProviderModal({ provider, open, onClose }: { provider: Provi
               </div>
             );
           })}
+        </div>
+
+        {/* Filtreleme + otomatik yenileme */}
+        <div className="card p-3 space-y-3">
+          <div>
+            <label className="label flex items-center gap-1.5"><Filter className="w-3.5 h-3.5" /> Atlanacak kelimeler</label>
+            <textarea
+              className="input font-mono text-xs min-h-[64px]"
+              placeholder={'XXX\nADULT\nTEST\n(her satıra bir kelime — ad veya kategori içeriyorsa atlanır)'}
+              value={skipRaw}
+              onChange={(e) => setSkipRaw(e.target.value)}
+            />
+            <p className="text-[11px] text-muted mt-1">Büyük/küçük harf duyarsız. Örn. "xxx" → adında/kategorisinde xxx geçen yayınlar aynalanmaz.</p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="accent-primary" checked={autoSync} onChange={(e) => setAutoSync(e.target.checked)} />
+            <Clock className="w-4 h-4 text-muted" />
+            <span className="text-sm font-medium text-fg">Otomatik yenile</span>
+          </label>
+          {autoSync && (
+            <div className="pl-6">
+              <label className="label">Aralık</label>
+              <select className="input" value={intervalMin} onChange={(e) => setIntervalMin(Number(e.target.value))}>
+                <option value={60}>Saatte bir</option>
+                <option value={180}>3 saatte bir</option>
+                <option value={360}>6 saatte bir</option>
+                <option value={720}>12 saatte bir</option>
+                <option value={1440}>Günde bir</option>
+              </select>
+              <p className="text-[11px] text-muted mt-1">Kayıtlı ayarlarla (bu penceredeki seçimler) periyodik çalışır.</p>
+            </div>
+          )}
         </div>
       </div>
 

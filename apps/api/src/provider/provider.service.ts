@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import * as http from 'http';
 import * as https from 'https';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProviderDto } from './dto/create-provider.dto';
 import { SyncProviderDto } from './dto/sync-provider.dto';
+import { UpdateProviderDto } from './dto/update-provider.dto';
 
 interface VerifyResult {
   ok: boolean;
@@ -48,6 +50,7 @@ const MAX_SYNC_STREAMS = 60000;
 @Injectable()
 export class ProviderService {
   private readonly logger = new Logger(ProviderService.name);
+  private readonly syncing = new Set<string>();
   constructor(private readonly prisma: PrismaService) {}
 
   /** Xtream URL'inden host (scheme+host+port) + username + password ayıklar. */
@@ -191,7 +194,26 @@ export class ProviderService {
   }
 
   /** Upstream kanallarını/kategorilerini kendi kataloğuna aynalar (upsert + drop policy). */
+  /** Genel giriş: eşzamanlılık koruması + hata durum kaydı ile mirror çalıştırır. */
   async sync(id: string, dto: SyncProviderDto) {
+    if (this.syncing.has(id)) throw new ConflictException('Bu sağlayıcı için senkron zaten çalışıyor');
+    this.syncing.add(id);
+    try {
+      return await this.runSync(id, dto);
+    } catch (e) {
+      await this.prisma.streamProvider
+        .update({
+          where: { id },
+          data: { lastSyncStatus: 'ERROR', lastSyncMessage: String((e as Error).message).slice(0, 300) } as Parameters<typeof this.prisma.streamProvider.update>[0]['data'],
+        })
+        .catch(() => undefined);
+      throw e;
+    } finally {
+      this.syncing.delete(id);
+    }
+  }
+
+  private async runSync(id: string, dto: SyncProviderDto) {
     const p = await this.prisma.streamProvider.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('Sağlayıcı bulunamadı');
     if (!p.username || !p.password) throw new BadRequestException('Sağlayıcıda username/password yok');
@@ -199,6 +221,7 @@ export class ProviderService {
     const pc = p as unknown as {
       outputExt?: string; dropPolicy?: string; importLive?: boolean; importVod?: boolean; importSeries?: boolean;
       mirrorBouquetId?: string | null; mirrorServerId?: string | null;
+      skipKeywords?: string[]; autoSync?: boolean; syncIntervalMinutes?: number;
     };
 
     const outputExt = (dto.outputExt ?? pc.outputExt ?? 'ts') === 'm3u8' ? 'm3u8' : 'ts';
@@ -206,6 +229,14 @@ export class ProviderService {
     const importLive = dto.importLive ?? pc.importLive ?? true;
     const importVod = dto.importVod ?? pc.importVod ?? false;
     const importSeries = dto.importSeries ?? pc.importSeries ?? false;
+    const skipKeywords = (dto.skipKeywords ?? pc.skipKeywords ?? []).map((k) => k.trim().toLowerCase()).filter(Boolean);
+    const autoSync = dto.autoSync ?? pc.autoSync ?? false;
+    const syncIntervalMinutes = Math.max(15, dto.syncIntervalMinutes ?? pc.syncIntervalMinutes ?? 720);
+    const matchesSkip = (name: string, cat: string): boolean => {
+      if (!skipKeywords.length) return false;
+      const hay = `${name} ${cat}`.toLowerCase();
+      return skipKeywords.some((k) => hay.includes(k));
+    };
 
     // Hedef bouquet & server çözümle (varsa doğrula).
     let bouquetId = dto.bouquetId ?? pc.mirrorBouquetId ?? null;
@@ -284,6 +315,7 @@ export class ProviderService {
         if (seen.has(ref)) continue;
 
         const catName = catNames.get(cid) || 'Uncategorized';
+        if (matchesSkip(s.name || '', catName)) continue;
         try {
           const localCatId = await ensureCategory(catName, type);
           const primaryUrl = buildUrl(type, sid, s.container_extension);
@@ -358,11 +390,16 @@ export class ProviderService {
         importLive,
         importVod,
         importSeries,
+        skipKeywords,
+        autoSync,
+        syncIntervalMinutes,
         lastSyncedAt: new Date(),
         lastSyncAdded: added,
         lastSyncUpdated: updated,
         lastSyncRemoved: removed,
         lastSyncTotal: seen.size,
+        lastSyncStatus: 'OK',
+        lastSyncMessage: null,
       } as Parameters<typeof this.prisma.streamProvider.update>[0]['data'],
     });
 
@@ -374,6 +411,58 @@ export class ProviderService {
       bouquetId,
       capped: processed >= MAX_SYNC_STREAMS,
     };
+  }
+
+  /** Ayar güncelleme (auto-sync toggle, aralık, skip kelimeler, mirror config). */
+  async update(id: string, dto: UpdateProviderDto) {
+    const p = await this.prisma.streamProvider.findUnique({ where: { id } });
+    if (!p) throw new NotFoundException('Sağlayıcı bulunamadı');
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.userAgent !== undefined) data.userAgent = dto.userAgent || null;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.autoSync !== undefined) data.autoSync = dto.autoSync;
+    if (dto.syncIntervalMinutes !== undefined) data.syncIntervalMinutes = Math.max(15, dto.syncIntervalMinutes);
+    if (dto.skipKeywords !== undefined) data.skipKeywords = dto.skipKeywords.map((k) => k.trim()).filter(Boolean);
+    if (dto.dropPolicy !== undefined) data.dropPolicy = dto.dropPolicy;
+    if (dto.outputExt !== undefined) data.outputExt = dto.outputExt;
+    if (dto.mirrorBouquetId !== undefined) data.mirrorBouquetId = dto.mirrorBouquetId || null;
+    if (dto.mirrorServerId !== undefined) data.mirrorServerId = dto.mirrorServerId || null;
+    if (dto.importLive !== undefined) data.importLive = dto.importLive;
+    if (dto.importVod !== undefined) data.importVod = dto.importVod;
+    if (dto.importSeries !== undefined) data.importSeries = dto.importSeries;
+    return this.prisma.streamProvider.update({
+      where: { id },
+      data: data as Parameters<typeof this.prisma.streamProvider.update>[0]['data'],
+    });
+  }
+
+  /** Her 5 dk: autoSync açık ve aralığı dolmuş sağlayıcıları kayıtlı ayarlarıyla aynalar. */
+  @Cron('*/5 * * * *')
+  async scheduledSync(): Promise<void> {
+    let due: Array<{ id: string; name: string }> = [];
+    try {
+      const all = (await this.prisma.streamProvider.findMany({
+        where: { autoSync: true } as Parameters<typeof this.prisma.streamProvider.findMany>[0]['where'],
+      })) as unknown as Array<{ id: string; name: string; syncIntervalMinutes?: number; lastSyncedAt?: Date | null }>;
+      const now = Date.now();
+      due = all.filter((pr) => {
+        if (this.syncing.has(pr.id)) return false;
+        const interval = (pr.syncIntervalMinutes ?? 720) * 60_000;
+        return !pr.lastSyncedAt || now - new Date(pr.lastSyncedAt).getTime() >= interval;
+      });
+    } catch (e) {
+      this.logger.warn(`scheduledSync scan failed: ${(e as Error).message}`);
+      return;
+    }
+    for (const pr of due) {
+      this.logger.log(`Auto-sync provider: ${pr.name}`);
+      try {
+        await this.sync(pr.id, {});
+      } catch (e) {
+        this.logger.warn(`auto-sync ${pr.name} failed: ${(e as Error).message}`);
+      }
+    }
   }
 
   private async getOrCreateDefaultBouquet(): Promise<string> {
