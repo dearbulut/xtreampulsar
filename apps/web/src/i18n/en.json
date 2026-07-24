@@ -1595,7 +1595,14 @@
     "resellerCount_other": "{{count}} resellers",
     "badgeLabel": "Custom badge (name + color)",
     "badgePlaceholder": "e.g. ADMIN, VIP",
-    "badgeHint": "If empty, the tier badge is shown"
+    "badgeHint": "If empty, the tier badge is shown",
+    "billingModel": "Billing model",
+    "billingCredits": "Credits (pay per use)",
+    "billingUsers": "Slots (user count)",
+    "billingCreditsHint": "Each sale deducts credits by package cost",
+    "billingUsersHint": "Fixed slots; renewals free, expired users free their slot. Slot count = max users above.",
+    "slotsValidUntil": "Slots valid until",
+    "slotsValidUntilHint": "No new users after this date (empty = no expiry)"
   },
   "security": {
     "tabBlocks": "Active Blocks",

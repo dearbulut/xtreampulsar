@@ -137,6 +137,8 @@ export interface Reseller {
   credits: number;
   maxUsers: number;
   tier: ResellerTier;
+  billingModel?: string;
+  slotsValidUntil?: string | null;
   badgeText?: string | null;
   badgeColor?: string | null;
   isActive: boolean;

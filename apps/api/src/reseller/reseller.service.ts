@@ -33,7 +33,7 @@ export class ResellerService {
       select: {
         id: true, username: true, email: true, credits: true,
         tier: true, isActive: true, parentId: true, notes: true, createdAt: true,
-        badgeText: true, badgeColor: true,
+        badgeText: true, badgeColor: true, billingModel: true, slotsValidUntil: true, maxUsers: true,
         _count: { select: { users: true } },
         parent: { select: { id: true, username: true } },
         children: {
@@ -205,6 +205,8 @@ export class ResellerService {
           password: hashed,
           credits: dto.credits ?? 0,
           tier: (dto.tier ?? 'BASIC') as 'BASIC' | 'SILVER' | 'GOLD' | 'PLATINUM',
+          ...((dto as { billingModel?: string }).billingModel ? { billingModel: (dto as { billingModel?: string }).billingModel } : {}),
+          ...((dto as { slotsValidUntil?: string }).slotsValidUntil ? { slotsValidUntil: new Date((dto as { slotsValidUntil?: string }).slotsValidUntil as string) } : {}),
           ...(dto.parentId ? { parent: { connect: { id: dto.parentId } } } : {}),
         },
         select: { id: true, username: true, email: true, credits: true, tier: true, createdAt: true },
@@ -718,18 +720,26 @@ export class ResellerService {
     const [reseller, userCount] = await Promise.all([
       this.prisma.reseller.findUnique({
         where: { id: resellerId },
-        select: { credits: true, tier: true, maxUsers: true },
+        select: { credits: true, tier: true, maxUsers: true, billingModel: true, slotsValidUntil: true },
       }),
       this.prisma.user.count({ where: { resellerId, deletedAt: null } }),
     ]);
     if (!reseller) throw new NotFoundException('Reseller not found');
 
-    if (reseller.maxUsers > 0 && userCount >= reseller.maxUsers) {
-      throw new BadRequestException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
+    const usersMode = (reseller as { billingModel?: string }).billingModel === 'USERS';
+    const slotsValidUntil = (reseller as { slotsValidUntil?: Date | null }).slotsValidUntil ?? null;
+    if (usersMode && slotsValidUntil && slotsValidUntil < new Date()) {
+      throw new BadRequestException('Slot geçerlilik süreniz doldu — yöneticinizle iletişime geçin');
+    }
+    const slotCount = usersMode
+      ? await this.prisma.user.count({ where: { resellerId, deletedAt: null, isTrial: false, expiresAt: { gt: new Date() } } })
+      : userCount;
+    if (reseller.maxUsers > 0 && slotCount >= reseller.maxUsers) {
+      throw new BadRequestException(usersMode ? `Slot doldu (maks: ${reseller.maxUsers})` : `Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
     }
 
-    const creditCost = await this.getCreditCost(reseller.tier, dto.durationDays, dto.durationHours);
-    if (reseller.credits < creditCost) {
+    const creditCost = usersMode ? 0 : await this.getCreditCost(reseller.tier, dto.durationDays, dto.durationHours);
+    if (!usersMode && reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
     }
 
@@ -793,7 +803,7 @@ export class ResellerService {
     dto: { username?: string; password?: string; packageId: string; notes?: string },
   ) {
     const [reseller, pkg, userCount] = await Promise.all([
-      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true, maxUsers: true } }),
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true, maxUsers: true, billingModel: true, slotsValidUntil: true } }),
       this.prisma.package.findUnique({
         where: { id: dto.packageId },
         select: { id: true, name: true, durationDays: true, maxConnections: true, creditCost: true, isActive: true },
@@ -804,13 +814,21 @@ export class ResellerService {
     if (!reseller) throw new NotFoundException('Reseller not found');
     if (!pkg || !pkg.isActive) throw new NotFoundException('Paket bulunamadı veya aktif değil');
 
-    if (reseller.maxUsers > 0 && userCount >= reseller.maxUsers) {
-      throw new BadRequestException(`Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
+    const usersMode = (reseller as { billingModel?: string }).billingModel === 'USERS';
+    const slotsValidUntil = (reseller as { slotsValidUntil?: Date | null }).slotsValidUntil ?? null;
+    if (usersMode && slotsValidUntil && slotsValidUntil < new Date()) {
+      throw new BadRequestException('Slot geçerlilik süreniz doldu — yöneticinizle iletişime geçin');
+    }
+    const slotCount = usersMode
+      ? await this.prisma.user.count({ where: { resellerId, deletedAt: null, isTrial: false, expiresAt: { gt: new Date() } } })
+      : userCount;
+    if (reseller.maxUsers > 0 && slotCount >= reseller.maxUsers) {
+      throw new BadRequestException(usersMode ? `Slot doldu (maks: ${reseller.maxUsers})` : `Kullanıcı kotanızı aştınız (maks: ${reseller.maxUsers})`);
     }
 
     const multiplier = await this.getTierMultiplier(reseller.tier);
-    const adjustedCost = Math.max(1, Math.ceil(pkg.creditCost * multiplier));
-    if (reseller.credits < adjustedCost) {
+    const adjustedCost = usersMode ? 0 : Math.max(1, Math.ceil(pkg.creditCost * multiplier));
+    if (!usersMode && reseller.credits < adjustedCost) {
       throw new PaymentRequiredException(
         `Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${adjustedCost})`,
       );
@@ -895,16 +913,17 @@ export class ResellerService {
 
   async extendUser(resellerId: string, userId: string, days: number) {
     const [reseller, user] = await Promise.all([
-      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true } }),
+      this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, tier: true, billingModel: true } }),
       this.prisma.user.findFirst({ where: { id: userId, resellerId, deletedAt: null }, select: { id: true, username: true, expiresAt: true } }),
     ]);
 
     if (!reseller) throw new NotFoundException('Reseller not found');
     if (!user) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    const creditCost = await this.getCreditCost(reseller.tier, days);
+    const usersMode = (reseller as { billingModel?: string }).billingModel === 'USERS';
+    const creditCost = usersMode ? 0 : await this.getCreditCost(reseller.tier, days);
 
-    if (reseller.credits < creditCost) {
+    if (!usersMode && reseller.credits < creditCost) {
       throw new PaymentRequiredException(`Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${creditCost})`);
     }
 
@@ -956,13 +975,14 @@ export class ResellerService {
     if (action === 'extend') {
       const addDays = days ?? 30;
       const addMs = addDays * 86_400_000;
+      const reseller = await this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true, billingModel: true } });
+      if (!reseller) throw new NotFoundException('Reseller not found');
+      const usersMode = (reseller as { billingModel?: string }).billingModel === 'USERS';
       const creditCostPerUser = Math.ceil(addDays / 30);
-      const totalCost = creditCostPerUser * users.length;
-
-      const reseller = await this.prisma.reseller.findUnique({ where: { id: resellerId }, select: { credits: true } });
-      if (!reseller || reseller.credits < totalCost) {
+      const totalCost = usersMode ? 0 : creditCostPerUser * users.length;
+      if (!usersMode && reseller.credits < totalCost) {
         throw new PaymentRequiredException(
-          `Yetersiz kredi (bakiye: ${reseller?.credits ?? 0}, gerekli: ${totalCost})`,
+          `Yetersiz kredi (bakiye: ${reseller.credits}, gerekli: ${totalCost})`,
         );
       }
 

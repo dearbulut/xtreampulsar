@@ -49,4 +49,12 @@ export class UpdateResellerDto {
   @IsOptional()
   @IsString()
   badgeColor?: string | null;
+
+  @IsOptional()
+  @IsIn(['CREDITS', 'USERS'])
+  billingModel?: string;
+
+  @IsOptional()
+  @IsString()
+  slotsValidUntil?: string | null;
 }

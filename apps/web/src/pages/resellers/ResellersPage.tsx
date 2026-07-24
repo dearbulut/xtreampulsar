@@ -35,7 +35,7 @@ export function ResellersPage() {
     username: '', email: '', password: '', credits: 0, tier: 'BASIC', notes: '', parentId: '',
   });
   const [editForm, setEditForm] = useState({
-    tier: 'BASIC', isActive: true, parentId: '', notes: '', maxUsers: 0, badgeText: '', badgeColor: '#6366f1',
+    tier: 'BASIC', isActive: true, parentId: '', notes: '', maxUsers: 0, badgeText: '', badgeColor: '#6366f1', billingModel: 'CREDITS', slotsValidUntil: '',
   });
 
   const { data: resellers, isLoading } = useResellers();
@@ -54,6 +54,8 @@ export function ResellersPage() {
       maxUsers: r.maxUsers ?? 0,
       badgeText: r.badgeText ?? '',
       badgeColor: r.badgeColor ?? '#6366f1',
+      billingModel: r.billingModel ?? 'CREDITS',
+      slotsValidUntil: r.slotsValidUntil ? String(r.slotsValidUntil).slice(0, 10) : '',
     });
   };
 
@@ -372,6 +374,25 @@ export function ResellersPage() {
             <p className="text-xs text-muted mt-1">{t('resellersAdmin.zeroUnlimited')}</p>
           </div>
           <div>
+            <label className="label">{t('resellersAdmin.billingModel')}</label>
+            <select className="input" value={editForm.billingModel}
+              onChange={(e) => setEditForm((f) => ({ ...f, billingModel: e.target.value }))}>
+              <option value="CREDITS">{t('resellersAdmin.billingCredits')}</option>
+              <option value="USERS">{t('resellersAdmin.billingUsers')}</option>
+            </select>
+            <p className="text-xs text-muted mt-1">
+              {editForm.billingModel === 'USERS' ? t('resellersAdmin.billingUsersHint') : t('resellersAdmin.billingCreditsHint')}
+            </p>
+          </div>
+          {editForm.billingModel === 'USERS' && (
+            <div>
+              <label className="label">{t('resellersAdmin.slotsValidUntil')}</label>
+              <input type="date" className="input" value={editForm.slotsValidUntil}
+                onChange={(e) => setEditForm((f) => ({ ...f, slotsValidUntil: e.target.value }))} />
+              <p className="text-xs text-muted mt-1">{t('resellersAdmin.slotsValidUntilHint')}</p>
+            </div>
+          )}
+          <div>
             <label className="label">{t('resellersAdmin.badgeLabel')}</label>
             <div className="flex gap-2 items-center">
               <input className="input flex-1" placeholder={t('resellersAdmin.badgePlaceholder')} maxLength={16}
@@ -410,6 +431,8 @@ export function ResellersPage() {
                     maxUsers: editForm.maxUsers,
                     badgeText: editForm.badgeText || null,
                     badgeColor: editForm.badgeText ? (editForm.badgeColor || null) : null,
+                    billingModel: editForm.billingModel,
+                    slotsValidUntil: editForm.billingModel === 'USERS' ? (editForm.slotsValidUntil || null) : null,
                   },
                   { onSuccess: () => setEditReseller(null) },
                 );

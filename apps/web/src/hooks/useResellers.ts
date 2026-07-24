@@ -56,7 +56,7 @@ export function useCreateReseller() {
 export function useUpdateReseller() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; tier?: string; isActive?: boolean; parentId?: string | null; notes?: string; maxUsers?: number; badgeText?: string | null; badgeColor?: string | null }) =>
+    mutationFn: ({ id, ...data }: { id: string; tier?: string; isActive?: boolean; parentId?: string | null; notes?: string; maxUsers?: number; badgeText?: string | null; badgeColor?: string | null; billingModel?: string; slotsValidUntil?: string | null }) =>
       api.put<{ success: boolean; data: Reseller }>(`/resellers/${id}`, data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['resellers'] });

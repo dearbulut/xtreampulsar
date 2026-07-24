@@ -1,0 +1,2 @@
+ALTER TABLE "resellers" ADD COLUMN "billingModel" TEXT NOT NULL DEFAULT 'CREDITS';
+ALTER TABLE "resellers" ADD COLUMN "slotsValidUntil" TIMESTAMP(3);

@@ -409,6 +409,8 @@ model Reseller {
   password  String
   credits   Int          @default(0)
   maxUsers  Int          @default(0)
+  billingModel    String       @default("CREDITS") // CREDITS | USERS
+  slotsValidUntil DateTime?
   tier      ResellerTier @default(BASIC)
   isActive   Boolean      @default(true)
   notes      String?

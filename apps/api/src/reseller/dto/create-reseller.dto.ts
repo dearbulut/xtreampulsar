@@ -42,4 +42,12 @@ export class CreateResellerDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsIn(['CREDITS', 'USERS'])
+  billingModel?: string;
+
+  @IsOptional()
+  @IsString()
+  slotsValidUntil?: string;
 }

@@ -1595,7 +1595,14 @@
     "resellerCount_other": "{{count}} reseller",
     "badgeLabel": "Özel rozet (isim + renk)",
     "badgePlaceholder": "ör. ADMIN, VIP",
-    "badgeHint": "Boş bırakılırsa tier rozeti gösterilir"
+    "badgeHint": "Boş bırakılırsa tier rozeti gösterilir",
+    "billingModel": "Faturalama modeli",
+    "billingCredits": "Kredi (kullandıkça öde)",
+    "billingUsers": "Slot (kullanıcı sayısı)",
+    "billingCreditsHint": "Her satışta paket maliyetince kredi düşülür",
+    "billingUsersHint": "Sabit slot; yenileme ücretsiz, süresi dolan kullanıcı slotu boşaltır. Slot sayısı = üstteki maks. kullanıcı.",
+    "slotsValidUntil": "Slot geçerlilik tarihi",
+    "slotsValidUntilHint": "Bu tarihten sonra yeni kullanıcı açılamaz (boş = süresiz)"
   },
   "security": {
     "tabBlocks": "Aktif Bloklar",
