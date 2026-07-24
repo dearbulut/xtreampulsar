@@ -8,7 +8,7 @@ interface Props {
   title: string;
   description?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 }
 
 const sizes = {
@@ -16,6 +16,8 @@ const sizes = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-2xl',
+  '2xl': 'max-w-4xl',
+  '3xl': 'max-w-6xl',
 };
 
 export function Modal({ open, onClose, title, description, children, size = 'md' }: Props) {
@@ -28,6 +30,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
             'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
             'bg-surface border border-border rounded-2xl shadow-2xl',
             'p-6 w-full animate-fade-in',
+            'max-h-[90vh] overflow-y-auto',
             sizes[size],
           )}
         >

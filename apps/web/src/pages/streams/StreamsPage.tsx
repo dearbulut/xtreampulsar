@@ -1116,7 +1116,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         open={showCreate}
         onClose={() => { setShowCreate(false); setCreateForm(EMPTY_FORM); }}
         title={t('streams.addTitle', { kind: type === 'VOD' ? t('streams.kindMovie') : type === 'SERIES' ? t('streams.kindSeries') : t('streams.kindChannel') })}
-        size="md"
+        size="2xl"
       >
         <div className="space-y-3">
           <div>
@@ -1432,7 +1432,7 @@ export function StreamsPage({ type }: { type?: StreamType }) {
         open={!!editStream}
         onClose={() => setEditStream(null)}
         title={editStream ? t('streams.editTitle', { name: editStream.name }) : ''}
-        size="md"
+        size="2xl"
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
