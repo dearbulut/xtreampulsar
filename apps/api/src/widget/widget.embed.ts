@@ -13,6 +13,22 @@ export const WIDGET_EMBED_JS = `(function(){
   var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
   var accent = '#6d28d9';
 
+  function deviceFp(){
+    try {
+      var parts = [navigator.userAgent, navigator.language, navigator.platform, screen.width + 'x' + screen.height, screen.colorDepth, new Date().getTimezoneOffset(), (navigator.hardwareConcurrency || 0)];
+      try {
+        var cv = document.createElement('canvas'); var cx = cv.getContext('2d');
+        cx.textBaseline = 'top'; cx.font = '14px Arial'; cx.fillStyle = '#f60'; cx.fillRect(0,0,60,20);
+        cx.fillStyle = '#069'; cx.fillText('xp-fp', 2, 2);
+        parts.push(cv.toDataURL().slice(-64));
+      } catch(e){}
+      var str = parts.join('|'); var h = 5381;
+      for (var i=0;i<str.length;i++){ h = (((h<<5)+h) ^ str.charCodeAt(i)) >>> 0; }
+      return 'd' + h.toString(16) + str.length.toString(16);
+    } catch(e){ return ''; }
+  }
+  var fp = deviceFp();
+
   function esc(v){ v = (v==null?'':String(v)); return v.replace(/[&<>"]/g, function(c){ return c=='&'?'&amp;':c=='<'?'&lt;':c=='>'?'&gt;':'&quot;'; }); }
   function css(a){ return '<style>'
     + '.w{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:380px;border:1px solid #e5e7eb;border-radius:16px;padding:20px;background:#fff;color:#111;box-shadow:0 6px 24px rgba(0,0,0,.08)}'
@@ -33,6 +49,7 @@ export const WIDGET_EMBED_JS = `(function(){
   function q(sel){ return root.querySelector(sel); }
 
   function post(payload, done){
+    if(!payload.deviceId){ payload.deviceId = fp; }
     var b = [];
     for (var k in payload){ if(payload.hasOwnProperty(k)){ b.push(encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]==null?'':payload[k])); } }
     fetch(api + '/submit', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body: b.join('&') })

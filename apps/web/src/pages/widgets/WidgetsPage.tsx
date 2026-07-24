@@ -31,7 +31,7 @@ function hostedUrl(w: Widget): string {
 }
 
 function emptyForm(): WidgetPayload {
-  return { name: '', type: 'STORE', enabled: true, accentColor: '#6d28d9', trialDurationDays: 1, allowedPackageIds: [], perIpDailyLimit: 5 };
+  return { name: '', type: 'STORE', enabled: true, accentColor: '#6d28d9', trialDurationDays: 1, allowedPackageIds: [], perIpDailyLimit: 5, oneTrialPerDevice: true };
 }
 
 export function WidgetsPage() {
@@ -57,7 +57,7 @@ export function WidgetsPage() {
     setForm({
       name: w.name, type: w.type, enabled: w.enabled, title: w.title ?? '', subtitle: w.subtitle ?? '',
       accentColor: w.accentColor, trialDurationDays: w.trialDurationDays, allowedPackageIds: w.allowedPackageIds ?? [],
-      successMessage: w.successMessage ?? '', redirectUrl: w.redirectUrl ?? '', perIpDailyLimit: w.perIpDailyLimit,
+      successMessage: w.successMessage ?? '', redirectUrl: w.redirectUrl ?? '', perIpDailyLimit: w.perIpDailyLimit, oneTrialPerDevice: w.oneTrialPerDevice ?? true,
     });
     setShowForm(true);
   };
@@ -188,9 +188,15 @@ export function WidgetsPage() {
           </div>
 
           {form.type === 'TRIAL' && (
-            <div>
-              <label className="label">{t('widgets.trialDuration')}</label>
-              <input type="number" min={1} max={365} className="input" value={form.trialDurationDays ?? 1} onChange={(e) => setForm({ ...form, trialDurationDays: Number(e.target.value) })} />
+            <div className="space-y-2">
+              <div>
+                <label className="label">{t('widgets.trialDuration')}</label>
+                <input type="number" min={1} max={365} className="input" value={form.trialDurationDays ?? 1} onChange={(e) => setForm({ ...form, trialDurationDays: Number(e.target.value) })} />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="accent-primary" checked={form.oneTrialPerDevice ?? true} onChange={(e) => setForm({ ...form, oneTrialPerDevice: e.target.checked })} />
+                <span className="text-sm text-fg">{t('widgets.oneDevice')}</span>
+              </label>
             </div>
           )}
 

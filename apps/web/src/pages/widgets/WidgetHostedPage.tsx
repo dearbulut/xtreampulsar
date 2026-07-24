@@ -11,6 +11,20 @@ function hexToRgba(hex: string, a: number): string {
   return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})`;
 }
 
+function deviceFp(): string {
+  try {
+    const parts: (string | number)[] = [navigator.userAgent, navigator.language, (navigator as { platform?: string }).platform ?? '', `${screen.width}x${screen.height}`, screen.colorDepth, new Date().getTimezoneOffset(), (navigator as { hardwareConcurrency?: number }).hardwareConcurrency ?? 0];
+    try {
+      const cv = document.createElement('canvas'); const cx = cv.getContext('2d');
+      if (cx) { cx.textBaseline = 'top'; cx.font = '14px Arial'; cx.fillStyle = '#f60'; cx.fillRect(0, 0, 60, 20); cx.fillStyle = '#069'; cx.fillText('xp-fp', 2, 2); parts.push(cv.toDataURL().slice(-64)); }
+    } catch { /* ignore */ }
+    const str = parts.join('|');
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) h = (((h << 5) + h) ^ str.charCodeAt(i)) >>> 0;
+    return 'd' + h.toString(16) + str.length.toString(16);
+  } catch { return ''; }
+}
+
 export function WidgetHostedPage() {
   const { t } = useTranslation();
   const { key } = useParams({ strict: false }) as { key?: string };
@@ -46,7 +60,7 @@ export function WidgetHostedPage() {
   const run = () => {
     setResult(null);
     submit.mutate(
-      { email: email.trim() || undefined, username: username.trim() || undefined, packageId: packageId || undefined },
+      { email: email.trim() || undefined, username: username.trim() || undefined, packageId: packageId || undefined, deviceId: deviceFp() },
       { onSuccess: (r) => setResult(r) },
     );
   };

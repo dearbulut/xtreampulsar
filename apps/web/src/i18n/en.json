@@ -2477,6 +2477,7 @@
       "poweredBy": "Powered by"
     },
     "hostedLink": "Hosted page",
-    "openPage": "Open"
+    "openPage": "Open",
+    "oneDevice": "One trial per device/IP"
   }
 }

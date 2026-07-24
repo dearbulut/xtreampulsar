@@ -36,4 +36,7 @@ export class CreateWidgetDto {
 
   @IsOptional() @IsInt() @Min(0) @Max(1000)
   perIpDailyLimit?: number;
+
+  @IsOptional() @IsBoolean()
+  oneTrialPerDevice?: boolean;
 }

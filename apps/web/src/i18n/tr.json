@@ -2477,6 +2477,7 @@
       "poweredBy": "Destekleyen"
     },
     "hostedLink": "Hazır sayfa",
-    "openPage": "Aç"
+    "openPage": "Aç",
+    "oneDevice": "Cihaz/IP başına tek deneme"
   }
 }

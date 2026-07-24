@@ -1290,6 +1290,7 @@ model Widget {
   successMessage    String?
   redirectUrl       String?
   perIpDailyLimit   Int      @default(5)
+  oneTrialPerDevice Boolean  @default(true)  // ayni cihaz/IP tek deneme alabilir
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -1308,10 +1309,12 @@ model WidgetLead {
   username  String?
   result    String   @default("OK") // OK | LIMITED | ERROR
   message   String?
+  deviceId  String?
   createdAt DateTime @default(now())
 
   @@index([widgetId, createdAt])
   @@index([ip, createdAt])
+  @@index([widgetId, deviceId])
   @@map("widget_leads")
 }
 

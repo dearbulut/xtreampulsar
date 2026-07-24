@@ -19,6 +19,7 @@ export interface Widget {
   successMessage?: string | null;
   redirectUrl?: string | null;
   perIpDailyLimit: number;
+  oneTrialPerDevice: boolean;
   createdAt: string;
 }
 
@@ -46,6 +47,7 @@ export interface WidgetPayload {
   successMessage?: string;
   redirectUrl?: string;
   perIpDailyLimit?: number;
+  oneTrialPerDevice?: boolean;
 }
 
 export function useWidgets() {
@@ -130,7 +132,7 @@ export function usePublicWidget(key: string | undefined) {
 
 export function useSubmitPublicWidget(key: string | undefined) {
   return useMutation({
-    mutationFn: async (body: { email?: string; packageId?: string; username?: string }) => {
+    mutationFn: async (body: { email?: string; packageId?: string; username?: string; deviceId?: string }) => {
       const res = await api.post<{ success: boolean; data: WidgetSubmitResult }>(`/public/widgets/${key}/submit`, body);
       return res.data.data;
     },

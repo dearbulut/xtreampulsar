@@ -10,6 +10,7 @@ interface SubmitBody {
   email?: string;
   packageId?: string;
   username?: string;
+  deviceId?: string;
 }
 
 // Prisma client Mac'te (arm64) generate edilemediğinden widget/widgetLead delegeleri
@@ -67,6 +68,7 @@ export class WidgetService {
         successMessage: dto.successMessage ?? null,
         redirectUrl: dto.redirectUrl ?? null,
         perIpDailyLimit: dto.perIpDailyLimit ?? 5,
+        oneTrialPerDevice: dto.oneTrialPerDevice ?? true,
       },
     });
   }
@@ -87,6 +89,7 @@ export class WidgetService {
     set('successMessage', dto.successMessage);
     set('redirectUrl', dto.redirectUrl);
     set('perIpDailyLimit', dto.perIpDailyLimit);
+    set('oneTrialPerDevice', dto.oneTrialPerDevice);
     return this.db.widget.update({ where: { id }, data });
   }
 
@@ -141,15 +144,29 @@ export class WidgetService {
       start.setHours(0, 0, 0, 0);
       const count = await this.db.widgetLead.count({ where: { widgetId, ip, createdAt: { gte: start } } });
       if (count >= limit) {
-        await this.log(widgetId, type, ip, body.email, body.username, 'LIMITED', 'rate limit');
+        await this.log(widgetId, type, ip, body.email, body.username, 'LIMITED', 'rate limit', body.deviceId);
         throw new ForbiddenException('Günlük limite ulaşıldı, lütfen daha sonra tekrar deneyin');
+      }
+    }
+
+    // Trial: ayni cihaz (fingerprint) veya IP daha once basarili deneme aldiysa engelle.
+    if (type === 'TRIAL' && w.oneTrialPerDevice !== false) {
+      const or: Array<Record<string, unknown>> = [];
+      if (body.deviceId) or.push({ deviceId: body.deviceId });
+      if (ip) or.push({ ip });
+      if (or.length) {
+        const prior = await this.db.widgetLead.count({ where: { widgetId, type: 'TRIAL', result: 'OK', OR: or } });
+        if (prior > 0) {
+          await this.log(widgetId, type, ip, body.email, body.username, 'LIMITED', 'device already claimed', body.deviceId);
+          throw new ForbiddenException('Bu cihaz zaten bir deneme aldı');
+        }
       }
     }
 
     try {
       if (type === 'TRIAL') {
         const res = await this.users.createTrialUser({ durationDays: Number(w.trialDurationDays ?? 1) });
-        await this.log(widgetId, type, ip, body.email, res.user.username, 'OK', null);
+        await this.log(widgetId, type, ip, body.email, res.user.username, 'OK', null, body.deviceId);
         return {
           type,
           username: res.user.username,
@@ -170,7 +187,7 @@ export class WidgetService {
           desiredUsername: renew ? username : undefined,
           note: renew ? `[YENİLEME] ${username}` : undefined,
         });
-        await this.log(widgetId, type, ip, email, username || null, 'OK', order.id);
+        await this.log(widgetId, type, ip, email, username || null, 'OK', order.id, body.deviceId);
         return {
           type,
           orderId: order.id,
@@ -181,7 +198,7 @@ export class WidgetService {
 
       throw new BadRequestException('Bilinmeyen widget tipi');
     } catch (e) {
-      await this.log(widgetId, type, ip, body.email, body.username, 'ERROR', (e as Error).message);
+      await this.log(widgetId, type, ip, body.email, body.username, 'ERROR', (e as Error).message, body.deviceId);
       throw e;
     }
   }
@@ -194,6 +211,7 @@ export class WidgetService {
     username?: string | null,
     result = 'OK',
     message?: string | null,
+    deviceId?: string | null,
   ) {
     return this.db.widgetLead
       .create({
@@ -205,6 +223,7 @@ export class WidgetService {
           username: username ?? null,
           result,
           message: message ? message.slice(0, 300) : null,
+          deviceId: deviceId ?? null,
         },
       })
       .catch(() => undefined);
