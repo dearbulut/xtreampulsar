@@ -57,9 +57,10 @@ export class YouTubeService {
     const cookies = await this.cookiesFile();
     // Her alan ayri --print -> her biri kendi satirinda (embedded \n'e guvenme).
     const args = [
+      // NOT: yt-dlp EJS yalnizca deno/bun destekler (node degil). Su an JS runtime
+      // yok; cogu video/canli icin calisir, bazi yuksek formatlar eksik olabilir.
+      // Gelecekte gerekirse imaja deno/bun (musl) eklenip buraya --js-runtimes verilir.
       '--no-warnings', '--no-playlist',
-      // yt-dlp artik YouTube icin bir JS runtime ister; container'daki node'u kullan.
-      '--js-runtimes', `node:${process.execPath}`,
       '-f', 'b',
       '--print', '%(title)s',
       '--print', '%(is_live)s',
