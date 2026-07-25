@@ -57,7 +57,10 @@ export class YouTubeService {
     const cookies = await this.cookiesFile();
     // Her alan ayri --print -> her biri kendi satirinda (embedded \n'e guvenme).
     const args = [
-      '--no-warnings', '--no-playlist', '-f', 'best',
+      '--no-warnings', '--no-playlist',
+      // yt-dlp artik YouTube icin bir JS runtime ister; container'daki node'u kullan.
+      '--js-runtimes', `node:${process.execPath}`,
+      '-f', 'b',
       '--print', '%(title)s',
       '--print', '%(is_live)s',
       '--print', '%(thumbnail)s',
