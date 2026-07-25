@@ -34,36 +34,60 @@ export class YouTubeService {
     return file;
   }
 
+  private async ytVersion(): Promise<string | null> {
+    try {
+      const { stdout } = await execFileP('yt-dlp', ['--version'], { timeout: 10_000 });
+      return stdout.trim();
+    } catch {
+      return null;
+    }
+  }
+
   /** yt-dlp ile bir YouTube (veya desteklenen) URL'i dogrudan oynatilabilir akisa cozer. */
   async resolve(url: string): Promise<YtResolveResult> {
     if (!/^https?:\/\//i.test(url)) throw new BadRequestException('Geçersiz URL');
+
+    const version = await this.ytVersion();
+    if (!version) {
+      throw new BadRequestException(
+        'yt-dlp sunucuda bulunamadı. API imajını yt-dlp ile yeniden derleyin (docker compose up -d --build api).',
+      );
+    }
+
     const cookies = await this.cookiesFile();
+    // Her alan ayri --print -> her biri kendi satirinda (embedded \n'e guvenme).
     const args = [
       '--no-warnings', '--no-playlist', '-f', 'best',
-      '--print', '%(title)s\n%(is_live)s\n%(thumbnail)s\n%(urls)s',
+      '--print', '%(title)s',
+      '--print', '%(is_live)s',
+      '--print', '%(thumbnail)s',
+      '--print', 'urls',
     ];
     if (cookies) args.push('--cookies', cookies);
     args.push(url);
 
     try {
-      const { stdout } = await execFileP('yt-dlp', args, { timeout: 45_000, maxBuffer: 1024 * 1024 });
-      const lines = stdout.trim().split('\n');
-      const title = lines[0]?.trim() || 'YouTube';
-      const isLive = (lines[1]?.trim() || '').toLowerCase() === 'true';
-      const thumbnail = lines[2]?.trim() || '';
-      const mediaUrl = (lines[3]?.trim() || '').split(/\s+/)[0] || '';
-      if (!mediaUrl) throw new BadRequestException('Akış URL’i çözülemedi');
+      const { stdout } = await execFileP('yt-dlp', args, { timeout: 60_000, maxBuffer: 4 * 1024 * 1024 });
+      const lines = stdout.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+      // urls son satir(lar)da; ilk 3 alan sabit.
+      const title = lines[0] || 'YouTube';
+      const isLive = (lines[1] || '').toLowerCase() === 'true';
+      const thumbnail = /^https?:\/\//i.test(lines[2] || '') ? lines[2] : '';
+      const mediaUrl = [...lines].reverse().find((l) => /^https?:\/\//i.test(l) && l !== thumbnail) || '';
+      if (!mediaUrl) throw new Error('Akış URL’i alınamadı (format bulunamadı).');
       return { title, url: mediaUrl, isLive, thumbnail };
     } catch (err) {
-      this.logger.error(`yt-dlp resolve failed: ${(err as Error).message}`);
-      throw new BadRequestException('YouTube URL çözülemedi (yt-dlp). Gizli/yaşlı içerik için cookies gerekebilir.');
+      const e = err as { stderr?: string; message?: string };
+      const detail = (e.stderr || e.message || '').split('\n').filter(Boolean).slice(-1)[0] || 'bilinmeyen hata';
+      this.logger.error(`yt-dlp resolve failed (v${version}): ${e.stderr || e.message}`);
+      throw new BadRequestException(`YouTube çözümlenemedi: ${detail.slice(0, 240)}`);
     } finally {
       if (cookies) await fs.unlink(cookies).catch(() => {});
     }
   }
 
-  /** Cozulen URL'i bir LIVE stream olarak ice aktarir. */
   async importStream(dto: { url: string; categoryId: string; name?: string; streamMode?: string }) {
+    if (!dto.categoryId) throw new BadRequestException('Kategori seçilmedi');
     const resolved = await this.resolve(dto.url);
     const stream = await this.prisma.stream.create({
       data: {

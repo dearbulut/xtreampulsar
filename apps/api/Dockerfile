@@ -18,7 +18,10 @@ RUN pnpm --filter @xtreampulsar/api build
 
 FROM node:20-alpine
 WORKDIR /repo
-RUN apk add --no-cache ffmpeg aria2 openssl postgresql-client yt-dlp
+RUN apk add --no-cache ffmpeg aria2 openssl postgresql-client wget ca-certificates \
+ && wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_musllinux \
+ && chmod +x /usr/local/bin/yt-dlp \
+ && /usr/local/bin/yt-dlp --version
 
 ENV NODE_ENV=production
 
