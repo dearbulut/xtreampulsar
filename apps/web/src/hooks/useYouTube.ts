@@ -2,6 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
+function serverMsg(e: unknown, fallback: string): string {
+  const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  if (Array.isArray(m)) return m.join(', ');
+  return m || fallback;
+}
+
 export interface YtResolveResult {
   title: string;
   url: string;
@@ -15,7 +21,7 @@ export function useYouTubeResolve() {
       const res = await api.post<{ success: boolean; data: YtResolveResult }>('/youtube/resolve', { url });
       return res.data.data;
     },
-    onError: () => toast.error('YouTube URL çözülemedi'),
+    onError: (e) => toast.error(serverMsg(e, 'YouTube URL çözülemedi'), { duration: 8000 }),
   });
 }
 
@@ -28,6 +34,6 @@ export function useYouTubeImport() {
       void qc.invalidateQueries({ queryKey: ['streams'] });
       toast.success('YouTube kaynağı yayın olarak eklendi');
     },
-    onError: () => toast.error('İçe aktarma başarısız'),
+    onError: (e) => toast.error(serverMsg(e, 'İçe aktarma başarısız'), { duration: 8000 }),
   });
 }
