@@ -156,6 +156,22 @@ export function useDeleteProvider() {
   });
 }
 
+export function usePurgeProviderStreams() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.delete<{ success: boolean; data: { deleted: number } }>(`/providers/${id}/streams`);
+      return res.data.data;
+    },
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ['providers'] });
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+      toast.success(`${data?.deleted ?? 0} yayın silindi`);
+    },
+    onError: () => toast.error('İçerik silinemedi'),
+  });
+}
+
 export function useBrowseProvider(id: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['providers', id, 'browse'],

@@ -131,6 +131,22 @@ export class ProviderService {
     });
   }
 
+  /** Bu saglayicidan aynalanan TUM yayinlari siler (saglayici kalir). */
+  async purgeStreams(id: string): Promise<{ deleted: number }> {
+    const provider = await this.prisma.streamProvider.findUnique({ where: { id } });
+    if (!provider) throw new NotFoundException('Sağlayıcı bulunamadı');
+    const where = { providerId: id } as Parameters<typeof this.prisma.stream.deleteMany>[0]['where'];
+    const res = await this.prisma.stream.deleteMany({ where });
+    await this.prisma.streamProvider.update({
+      where: { id },
+      data: {
+        lastSyncAdded: 0, lastSyncUpdated: 0, lastSyncRemoved: 0, lastSyncTotal: 0,
+        lastSyncStatus: 'PURGED', lastSyncMessage: `${res.count} yayın silindi`,
+      } as Parameters<typeof this.prisma.streamProvider.update>[0]['data'],
+    }).catch(() => {});
+    return { deleted: res.count };
+  }
+
   async reverify(id: string) {
     const p = await this.prisma.streamProvider.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('Sağlayıcı bulunamadı');

@@ -2569,6 +2569,9 @@
     "expiry": "Expiry",
     "checked": "Checked",
     "reverify": "Re-verify",
+    "purgeContent": "Delete content",
+    "purgeTitle": "Delete mirrored content",
+    "purgeConfirm": "ALL {{n}} streams mirrored from this provider will be deleted. The provider stays; you can re-mirror. Continue?",
     "deleteTitle": "Delete provider",
     "deleteConfirm": "Delete this provider?",
     "mirror": {

@@ -48,6 +48,11 @@ export class ProviderController {
     return this.service.update(id, dto);
   }
 
+  @Delete(':id/streams')
+  purgeStreams(@Param('id') id: string) {
+    return this.service.purgeStreams(id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);

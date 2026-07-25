@@ -2569,6 +2569,9 @@
     "expiry": "Bitiş",
     "checked": "Kontrol",
     "reverify": "Yeniden doğrula",
+    "purgeContent": "İçeriği sil",
+    "purgeTitle": "Aynalanan içeriği sil",
+    "purgeConfirm": "Bu sağlayıcıdan aynalanan {{n}} yayının TAMAMI silinecek. Sağlayıcı kalır, tekrar aynalayabilirsiniz. Devam edilsin mi?",
     "deleteTitle": "Sağlayıcı sil",
     "deleteConfirm": "Bu sağlayıcı silinsin mi?",
     "mirror": {

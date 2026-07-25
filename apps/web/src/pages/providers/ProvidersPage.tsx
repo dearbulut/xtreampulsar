@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe, Copy, Clock } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Server, CheckCircle2, XCircle, HelpCircle, Globe, Copy, Clock, Eraser } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,6 +12,7 @@ import {
   useCreateProvider,
   useReverifyProvider,
   useDeleteProvider,
+  usePurgeProviderStreams,
   type ProviderPreview,
   type Provider,
 } from '@/hooks/useProviders';
@@ -46,6 +47,7 @@ export function ProvidersPage() {
   const create = useCreateProvider();
   const reverify = useReverifyProvider();
   const del = useDeleteProvider();
+  const purge = usePurgeProviderStreams();
 
   const [showAdd, setShowAdd] = useState(false);
   const [url, setUrl] = useState('');
@@ -53,6 +55,7 @@ export function ProvidersPage() {
   const [userAgent, setUserAgent] = useState('');
   const [previewData, setPreviewData] = useState<ProviderPreview | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [purgeProvider, setPurgeProvider] = useState<{ id: string; n: number } | null>(null);
   const [syncProvider, setSyncProvider] = useState<Provider | null>(null);
 
   const reset = () => { setUrl(''); setName(''); setUserAgent(''); setPreviewData(null); };
@@ -124,6 +127,11 @@ export function ProvidersPage() {
                 <button className="btn-ghost text-xs" disabled={reverify.isPending} onClick={() => reverify.mutate(p.id)}>
                   <RefreshCw className={cn('w-3.5 h-3.5', reverify.isPending && 'animate-spin')} /> {t('providers.reverify')}
                 </button>
+                {(p.lastSyncTotal ?? 0) > 0 && (
+                  <button className="btn-ghost text-xs text-amber-400" onClick={() => setPurgeProvider({ id: p.id, n: p.lastSyncTotal ?? 0 })}>
+                    <Eraser className="w-3.5 h-3.5" /> {t('providers.purgeContent')}
+                  </button>
+                )}
                 <button className="btn-ghost text-xs text-danger ml-auto" onClick={() => setDeleteId(p.id)}>
                   <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                 </button>
@@ -202,6 +210,15 @@ export function ProvidersPage() {
         message={t('providers.deleteConfirm')}
         onConfirm={() => { if (deleteId) del.mutate(deleteId); setDeleteId(null); }}
         onClose={() => setDeleteId(null)}
+      />
+
+      <ConfirmDialog
+        open={!!purgeProvider}
+        title={t('providers.purgeTitle')}
+        message={t('providers.purgeConfirm', { n: purgeProvider?.n ?? 0 })}
+        confirmLabel={t('providers.purgeContent')}
+        onConfirm={() => { if (purgeProvider) purge.mutate(purgeProvider.id); setPurgeProvider(null); }}
+        onClose={() => setPurgeProvider(null)}
       />
 
       <SyncProviderModal provider={syncProvider} open={!!syncProvider} onClose={() => setSyncProvider(null)} />
