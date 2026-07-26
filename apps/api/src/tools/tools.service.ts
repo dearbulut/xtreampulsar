@@ -1,4 +1,9 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  BadRequestException,
+} from '@nestjs/common';
 import * as os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -7,6 +12,56 @@ import * as path from 'path';
 import type Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS_CLIENT } from '../redis/redis.module';
+
+// ─── Toplu URL / DNS degistirme (roadmap J) ──────────────────────────────────
+
+/** Uzerinde arama-degistirme yapilabilen akis URL alanlari. */
+export const URL_FIELDS = [
+  'primaryUrl',
+  'backupUrl',
+  'backupUrls',
+  'loopSources',
+] as const;
+export type UrlField = (typeof URL_FIELDS)[number];
+
+export interface ReplaceUrlOptions {
+  search: string;
+  replace: string;
+  streamType?: 'LIVE' | 'VOD' | 'SERIES' | 'ALL';
+  categoryId?: string;
+  serverId?: string;
+  fields?: UrlField[];
+  /** Varsayilan TRUE — yazma islemi ancak acikca false gonderilirse yapilir. */
+  dryRun?: boolean;
+  /** Degisen ve o an calisan yayinlari IDLE'a cekerek yeniden baslat. */
+  restartAffected?: boolean;
+}
+
+export interface ReplaceUrlSample {
+  id: string;
+  name: string;
+  field: UrlField;
+  before: string;
+  after: string;
+}
+
+export interface ReplaceUrlResult {
+  dryRun: boolean;
+  scanned: number;
+  matched: number;
+  updated: number;
+  restarted: number;
+  runningAffected: number;
+  byField: Record<string, number>;
+  samples: ReplaceUrlSample[];
+}
+
+/** Tek seferde DB'den cekilen akis sayisi. */
+const REPLACE_SCAN_BATCH = 500;
+/** Es zamanli update sayisi. */
+const REPLACE_WRITE_CHUNK = 50;
+/** Onizlemede gosterilen ornek sayisi. */
+const REPLACE_SAMPLE_LIMIT = 20;
 
 @Injectable()
 export class ToolsService {
@@ -178,6 +233,161 @@ export class ToolsService {
     }
 
     return { deleted: filteredDeleted };
+  }
+
+  // ─── Toplu URL / DNS degistir (roadmap J) ────────────────────────────────────
+
+  /**
+   * Akis URL alanlarinda duz-metin arama/degistirme yapar (regex DEGIL).
+   * Varsayilan olarak dryRun=true: hicbir sey yazilmaz, yalnizca kac kaydin
+   * etkilenecegi ve ornek onizlemeler doner. Yazmak icin dryRun:false sart.
+   */
+  async replaceUrl(opts: ReplaceUrlOptions): Promise<ReplaceUrlResult> {
+    const search = (opts.search ?? '').trim();
+    if (search.length < 3) {
+      throw new BadRequestException(
+        'Aranan metin en az 3 karakter olmali (kazara toplu degisiklik korumasi)',
+      );
+    }
+    const replace = opts.replace ?? '';
+    const requested = opts.fields?.length ? opts.fields : [...URL_FIELDS];
+    const fields = requested.filter((f): f is UrlField =>
+      (URL_FIELDS as readonly string[]).includes(f),
+    );
+    if (!fields.length) {
+      throw new BadRequestException('En az bir URL alani secilmeli');
+    }
+    const dryRun = opts.dryRun !== false;
+
+    const where: Record<string, unknown> = {};
+    if (opts.categoryId) {
+      where.categoryId = opts.categoryId;
+    } else if (opts.streamType && opts.streamType !== 'ALL') {
+      where.category = { type: opts.streamType };
+    }
+    if (opts.serverId) where.serverId = opts.serverId;
+
+    const byField: Record<string, number> = {};
+    const samples: ReplaceUrlSample[] = [];
+    const affectedRunning: string[] = [];
+    let scanned = 0;
+    let matched = 0;
+    let updated = 0;
+    let cursor: string | undefined;
+
+    const swap = (v: string): string => v.split(search).join(replace);
+
+    for (;;) {
+      const batch = await this.prisma.stream.findMany({
+        where: where as never,
+        take: REPLACE_SCAN_BATCH,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          workerStatus: true,
+          primaryUrl: true,
+          backupUrl: true,
+          backupUrls: true,
+          loopSources: true,
+        },
+      });
+      if (!batch.length) break;
+      cursor = batch[batch.length - 1].id;
+      scanned += batch.length;
+
+      const pending: Array<{ id: string; data: Record<string, unknown> }> = [];
+
+      for (const row of batch) {
+        const s = row as unknown as Record<string, unknown> & {
+          id: string;
+          name: string;
+          workerStatus: string | null;
+        };
+        const data: Record<string, unknown> = {};
+        let hit = false;
+
+        for (const f of fields) {
+          const raw = s[f];
+
+          if (Array.isArray(raw)) {
+            const arr = raw as string[];
+            const hits = arr.filter((v) => typeof v === 'string' && v.includes(search));
+            if (!hits.length) continue;
+            data[f] = arr.map((v) => (typeof v === 'string' ? swap(v) : v));
+            hit = true;
+            byField[f] = (byField[f] ?? 0) + hits.length;
+            if (samples.length < REPLACE_SAMPLE_LIMIT) {
+              samples.push({
+                id: s.id, name: s.name, field: f,
+                before: hits[0], after: swap(hits[0]),
+              });
+            }
+            continue;
+          }
+
+          if (typeof raw !== 'string' || !raw.includes(search)) continue;
+          const next = swap(raw);
+          // primaryUrl zorunlu alan — bosa dusurup akisi bozmayalim.
+          if (f === 'primaryUrl' && !next.trim()) continue;
+          data[f] = next;
+          hit = true;
+          byField[f] = (byField[f] ?? 0) + 1;
+          if (samples.length < REPLACE_SAMPLE_LIMIT) {
+            samples.push({ id: s.id, name: s.name, field: f, before: raw, after: next });
+          }
+        }
+
+        if (!hit) continue;
+        matched++;
+        if (s.workerStatus === 'RUNNING') affectedRunning.push(s.id);
+        pending.push({ id: s.id, data });
+      }
+
+      if (!dryRun && pending.length) {
+        for (let i = 0; i < pending.length; i += REPLACE_WRITE_CHUNK) {
+          const chunk = pending.slice(i, i + REPLACE_WRITE_CHUNK);
+          const results = await Promise.allSettled(
+            chunk.map((u) =>
+              this.prisma.stream.update({
+                where: { id: u.id },
+                data: u.data as never,
+              }),
+            ),
+          );
+          updated += results.filter((r) => r.status === 'fulfilled').length;
+          for (const r of results) {
+            if (r.status === 'rejected') {
+              this.logger.warn(`replaceUrl update hatasi: ${String(r.reason)}`);
+            }
+          }
+        }
+      }
+
+      if (batch.length < REPLACE_SCAN_BATCH) break;
+    }
+
+    let restarted = 0;
+    if (!dryRun && opts.restartAffected && affectedRunning.length) {
+      // restartAllStreams ile ayni mantik: RUNNING -> IDLE, worker otomatik toplar.
+      const r = await this.prisma.stream.updateMany({
+        where: { id: { in: affectedRunning }, workerStatus: 'RUNNING' },
+        data: { workerStatus: 'IDLE' },
+      });
+      restarted = r.count;
+    }
+
+    this.logger.log(
+      `replaceUrl${dryRun ? ' [onizleme]' : ''}: "${search}" -> "${replace}" | ` +
+        `tarandi=${scanned} eslesti=${matched} guncellendi=${updated} yeniden_baslatildi=${restarted}`,
+    );
+
+    return {
+      dryRun, scanned, matched, updated, restarted,
+      runningAffected: affectedRunning.length,
+      byField, samples,
+    };
   }
 
   // ─── Restart All Streams ─────────────────────────────────────────────────────

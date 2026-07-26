@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
-import { ToolsService } from './tools.service';
+import { ToolsService, type ReplaceUrlOptions } from './tools.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -97,6 +97,13 @@ export class ToolsController {
   @Get('system-stats')
   systemStats() {
     return this.toolsService.systemStats();
+  }
+
+  // POST /tools/replace-url
+  // Toplu URL/DNS degistirme. Varsayilan dryRun=true (onizleme).
+  @Post('replace-url')
+  replaceUrl(@Body() body: ReplaceUrlOptions) {
+    return this.toolsService.replaceUrl(body);
   }
 
   // POST /tools/iptv-check

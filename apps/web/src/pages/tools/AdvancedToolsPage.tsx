@@ -19,10 +19,11 @@ import {
   Wrench,
   Layers,
   Clock,
-  Eraser
+  Eraser,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries, useProbeVodDurations, useSanitizeNames } from '@/hooks/useTools';
+import { useFixUsersOutput, useStreamsToJson, useSetStreamServer, useCleanDatabase, useRestartAllStreams, useReencodeVods, useBulkSeriesImport, useSystemStats, useIptvCheck, useFixStreamTypes, useRegroupSeries, useProbeVodDurations, useSanitizeNames, useReplaceUrl, REPLACE_URL_FIELDS, type ReplaceUrlField } from '@/hooks/useTools';
 import { useServers } from '@/hooks/useServers';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -41,7 +42,8 @@ type ToolId =
   | 'fix-types'
   | 'regroup-series'
   | 'probe-durations'
-  | 'sanitize-names';
+  | 'sanitize-names'
+  | 'replace-url';
 
 const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'fix-users', icon: Users, label: 'Fix Users Output' },
@@ -57,6 +59,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: 'regroup-series', icon: Layers, label: 'Regroup Series' },
   { id: 'probe-durations', icon: Clock, label: 'VOD Durations' },
   { id: 'sanitize-names', icon: Eraser, label: 'Sanitize Names' },
+  { id: 'replace-url', icon: Link2, label: 'Replace URL / DNS' },
 ];
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -789,6 +792,304 @@ function SanitizeNamesPanel() {
   );
 }
 
+// ─── Panel: Replace URL / DNS (toplu) ────────────────────────────────────────
+
+const FIELD_LABEL: Record<ReplaceUrlField, string> = {
+  primaryUrl: 'primaryUrl',
+  backupUrl: 'backupUrl',
+  backupUrls: 'backupUrls[]',
+  loopSources: 'loopSources[]',
+};
+
+function ReplaceUrlPanel() {
+  const { t } = useTranslation();
+  const { data: servers = [] } = useServers();
+  const [streamType, setStreamType] = useState<'ALL' | 'LIVE' | 'VOD' | 'SERIES'>('ALL');
+  const { data: categories = [] } = useCategories(streamType === 'ALL' ? undefined : streamType);
+  const [search, setSearch] = useState('');
+  const [replace, setReplace] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [serverId, setServerId] = useState('');
+  const [fields, setFields] = useState<ReplaceUrlField[]>([...REPLACE_URL_FIELDS]);
+  const [restartAffected, setRestartAffected] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const mutation = useReplaceUrl();
+
+  const result = mutation.data;
+  const preview = result?.dryRun ? result : null;
+  const applied = result && !result.dryRun ? result : null;
+
+  const toggleField = (f: ReplaceUrlField) => {
+    setConfirmed(false);
+    setFields((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
+  };
+
+  const body = () => ({
+    search,
+    replace,
+    streamType,
+    categoryId: categoryId || undefined,
+    serverId: serverId || undefined,
+    fields,
+    restartAffected,
+  });
+
+  const canRun = search.trim().length >= 3 && fields.length > 0;
+
+  const handlePreview = () => {
+    setConfirmed(false);
+    void mutation.mutateAsync({ ...body(), dryRun: true }).catch(() => undefined);
+  };
+
+  const handleApply = () => {
+    void mutation
+      .mutateAsync({ ...body(), dryRun: false })
+      .then(() => setConfirmed(false))
+      .catch(() => undefined);
+  };
+
+  return (
+    <div>
+      <PanelTitle icon={Link2}>Replace URL / DNS</PanelTitle>
+      <PanelDesc>{t('tools.replaceUrlDesc')}</PanelDesc>
+
+      <div className="mb-6 flex items-start gap-2 px-4 py-3 rounded-lg bg-warning/10 border border-warning/30 text-warning text-sm">
+        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <span>{t('tools.replaceUrlWarn')}</span>
+      </div>
+
+      <div className="space-y-4 max-w-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('tools.replaceSearch')}</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setConfirmed(false);
+              }}
+              placeholder="eski.dns.com:8080"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('tools.replaceWith')}</label>
+            <input
+              type="text"
+              value={replace}
+              onChange={(e) => {
+                setReplace(e.target.value);
+                setConfirmed(false);
+              }}
+              placeholder="yeni.dns.com:8080"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('tools.streamType')}</label>
+            <select
+              value={streamType}
+              onChange={(e) => {
+                setStreamType(e.target.value as 'ALL' | 'LIVE' | 'VOD' | 'SERIES');
+                setCategoryId('');
+                setConfirmed(false);
+              }}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="ALL">{t('tools.typeAll')}</option>
+              <option value="LIVE">{t('tools.typeLive')}</option>
+              <option value="VOD">VOD</option>
+              <option value="SERIES">{t('tools.typeSeries')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('tools.category')}</label>
+            <select
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                setConfirmed(false);
+              }}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{t('tools.allCategories')}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">{t('tools.server')}</label>
+            <select
+              value={serverId}
+              onChange={(e) => {
+                setServerId(e.target.value);
+                setConfirmed(false);
+              }}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{t('tools.allServers')}</option>
+              {servers.map((sv) => (
+                <option key={sv.id} value={sv.id}>
+                  {sv.name} ({sv.ip})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-muted mb-2">{t('tools.replaceFields')}</label>
+          <div className="flex flex-wrap gap-3">
+            {REPLACE_URL_FIELDS.map((f) => (
+              <label
+                key={f}
+                className="flex items-center gap-2 cursor-pointer text-sm text-fg font-mono"
+              >
+                <input
+                  type="checkbox"
+                  checked={fields.includes(f)}
+                  onChange={() => toggleField(f)}
+                  className="accent-primary"
+                />
+                {FIELD_LABEL[f]}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer text-sm text-fg">
+          <input
+            type="checkbox"
+            checked={restartAffected}
+            onChange={(e) => setRestartAffected(e.target.checked)}
+            className="accent-primary"
+          />
+          {t('tools.replaceRestart')}
+        </label>
+
+        <div className="flex items-center gap-3">
+          <RunButton onClick={handlePreview} loading={mutation.isPending} disabled={!canRun}>
+            <RefreshCw className="w-4 h-4" />
+            {t('tools.replacePreview')}
+          </RunButton>
+        </div>
+
+        {mutation.isError && (
+          <div className="flex items-start gap-2 px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{t('tools.replaceUrlError')}</span>
+          </div>
+        )}
+
+        {result && (
+          <div className="rounded-lg border border-border bg-surface-2 p-4 space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-muted">{t('tools.replaceScanned')}</div>
+                <div className="font-mono font-bold text-fg">{result.scanned}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">{t('tools.replaceMatched')}</div>
+                <div className="font-mono font-bold text-primary">{result.matched}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">{t('tools.replaceUpdated')}</div>
+                <div className="font-mono font-bold text-fg">{result.updated}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">{t('tools.replaceRunning')}</div>
+                <div className="font-mono font-bold text-fg">
+                  {result.restarted > 0 ? result.restarted : result.runningAffected}
+                </div>
+              </div>
+            </div>
+
+            {Object.keys(result.byField).length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs font-mono">
+                {Object.entries(result.byField).map(([f, n]) => (
+                  <span
+                    key={f}
+                    className="px-2 py-1 rounded bg-surface border border-border text-muted"
+                  >
+                    {f}: <span className="text-fg font-bold">{n}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {result.samples.length > 0 && (
+              <div className="max-h-72 overflow-auto rounded border border-border">
+                <table className="w-full text-xs">
+                  <thead className="bg-surface sticky top-0">
+                    <tr className="text-left text-muted">
+                      <th className="px-2 py-1.5 font-medium">{t('tools.replaceColStream')}</th>
+                      <th className="px-2 py-1.5 font-medium">{t('tools.replaceColField')}</th>
+                      <th className="px-2 py-1.5 font-medium">{t('tools.replaceColBefore')}</th>
+                      <th className="px-2 py-1.5 font-medium">{t('tools.replaceColAfter')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.samples.map((sm, i) => (
+                      <tr key={`${sm.id}-${sm.field}-${i}`} className="border-t border-border">
+                        <td className="px-2 py-1.5 text-fg">{sm.name}</td>
+                        <td className="px-2 py-1.5 font-mono text-muted">{sm.field}</td>
+                        <td className="px-2 py-1.5 font-mono text-danger break-all">{sm.before}</td>
+                        <td className="px-2 py-1.5 font-mono text-success break-all">{sm.after}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {preview && preview.matched > 0 && (
+              <div className="pt-1 space-y-3 border-t border-border">
+                <label className="flex items-start gap-2 cursor-pointer text-sm text-fg">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                    className="accent-primary mt-0.5"
+                  />
+                  {t('tools.replaceConfirm', { count: preview.matched })}
+                </label>
+                <button
+                  onClick={handleApply}
+                  disabled={!confirmed || mutation.isPending}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-danger text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-danger/90 transition-colors"
+                >
+                  {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {t('tools.replaceApply')}
+                </button>
+              </div>
+            )}
+
+            {preview && preview.matched === 0 && (
+              <p className="text-sm text-muted">{t('tools.replaceNoMatch')}</p>
+            )}
+          </div>
+        )}
+
+        {applied && (
+          <SuccessBox>
+            {t('tools.replaceSuccess', {
+              count: applied.updated,
+              restarted: applied.restarted,
+            })}
+          </SuccessBox>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function IptvCheckPanel() {
   const { t } = useTranslation();
   const [host, setHost] = useState('');
@@ -996,6 +1297,7 @@ export function AdvancedToolsPage() {
           {active === 'regroup-series' && <RegroupSeriesPanel />}
           {active === 'probe-durations' && <ProbeDurationsPanel />}
           {active === 'sanitize-names' && <SanitizeNamesPanel />}
+          {active === 'replace-url' && <ReplaceUrlPanel />}
         </div>
       </div>
     </div>

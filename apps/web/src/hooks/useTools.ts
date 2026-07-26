@@ -291,3 +291,56 @@ export function useSanitizeNames() {
     },
   });
 }
+
+// ─── Toplu URL / DNS Değiştir ────────────────────────────────────────────────
+
+export const REPLACE_URL_FIELDS = [
+  'primaryUrl',
+  'backupUrl',
+  'backupUrls',
+  'loopSources',
+] as const;
+export type ReplaceUrlField = (typeof REPLACE_URL_FIELDS)[number];
+
+export interface ReplaceUrlBody {
+  search: string;
+  replace: string;
+  streamType?: 'LIVE' | 'VOD' | 'SERIES' | 'ALL';
+  categoryId?: string;
+  serverId?: string;
+  fields?: ReplaceUrlField[];
+  dryRun?: boolean;
+  restartAffected?: boolean;
+}
+
+export interface ReplaceUrlSample {
+  id: string;
+  name: string;
+  field: ReplaceUrlField;
+  before: string;
+  after: string;
+}
+
+export interface ReplaceUrlResult {
+  dryRun: boolean;
+  scanned: number;
+  matched: number;
+  updated: number;
+  restarted: number;
+  runningAffected: number;
+  byField: Record<string, number>;
+  samples: ReplaceUrlSample[];
+}
+
+export function useReplaceUrl() {
+  return useMutation({
+    mutationFn: async (body: ReplaceUrlBody) => {
+      const res = await api.post<{ success: boolean; data: ReplaceUrlResult }>(
+        '/tools/replace-url',
+        body,
+        { timeout: 180_000 },
+      );
+      return res.data.data;
+    },
+  });
+}
