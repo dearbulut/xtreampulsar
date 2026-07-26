@@ -2720,7 +2720,7 @@
   "transcode": {
     "title": "Transcode Profilleri",
     "subtitle": "FFmpeg kodlama ön ayarları ve ABR (çoklu bit hızı) tanımları",
-    "notice": "Profiller şu an sadece tanımlanır ve akışlara atanır; yayın hattına uygulanması ayrı bir adımda devreye alınacak. \"Komut önizleme\" ile üretilecek ffmpeg satırını şimdiden görebilirsiniz.",
+    "notice": "Profiller TRANSCODE modundaki yayınlara uygulanır. Profil atadıktan veya değiştirdikten sonra yayını yeniden başlatın — ffmpeg yalnızca yeniden başlarken yeni argümanları alır. Profil atanmamış yayınlar eskisi gibi passthrough (kopyalama) çalışır. ABR profillerinde oynatıcıya master.m3u8 sunulur.",
     "addProfile": "Profil Ekle",
     "editProfile": "Profili Düzenle",
     "empty": "Henüz transcode profili yok",

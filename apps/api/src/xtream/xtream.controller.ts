@@ -969,11 +969,17 @@ export class XtreamController {
     }
 
     // ── TRANSCODE mode: serve pre-transcoded HLS segments ───────────────────
+    // Roadmap I adim 2: profil ABR ise worker <dir>/master.m3u8 + <dir>/vN/index.m3u8
+    // uretir; tek varyantta eskisi gibi <dir>/index.m3u8. Ikisini de destekle.
     const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
-    const hlsFile = path.join(hlsBase, streamRecord.id, 'index.m3u8');
+    const hlsDir = path.join(hlsBase, streamRecord.id);
+    const masterFile = path.join(hlsDir, 'master.m3u8');
+    const singleFile = path.join(hlsDir, 'index.m3u8');
+    const hlsReady = (): boolean =>
+      fs.existsSync(masterFile) || fs.existsSync(singleFile);
 
     // Auto-start: if worker is idle/stopped and HLS file is absent, start it and wait up to 5s
-    if (!fs.existsSync(hlsFile) && this.workerService) {
+    if (!hlsReady() && this.workerService) {
       try {
         const dbStream = await this.prisma.stream.findUnique({
           where: { id: streamRecord.id },
@@ -985,7 +991,7 @@ export class XtreamController {
           // Poll up to 5 seconds (10 × 500ms) for HLS file
           for (let i = 0; i < 10; i++) {
             await new Promise<void>((r) => setTimeout(r, 500));
-            if (fs.existsSync(hlsFile)) break;
+            if (hlsReady()) break;
           }
         }
       } catch (err) {
@@ -993,7 +999,7 @@ export class XtreamController {
       }
     }
 
-    if (!fs.existsSync(hlsFile) && this.workerService) {
+    if (!hlsReady() && this.workerService) {
       // Worker started but HLS still not ready — return 503 so player retries
       const dbStream2 = await this.prisma.stream.findUnique({
         where: { id: streamRecord.id },
@@ -1005,19 +1011,24 @@ export class XtreamController {
       }
     }
 
-    if (fs.existsSync(hlsFile)) {
-      // Use load-balanced server IP if available, otherwise default
-      const optimalServer = await this.lbService.getOptimalServer().catch(() => null);
-      const baseUrl = optimalServer
-        ? `http://${optimalServer.serverIp}:25461`
-        : (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-
-      const raw = fs.readFileSync(hlsFile, 'utf-8');
+    if (hlsReady()) {
+      const baseUrl = await this.hlsBaseUrl();
       const tokenSuffix = connectionId ? `?token=${activeToken}` : '';
-      const fixed = raw.replace(
-        /^([^#\r\n][^\r\n]*\.ts)$/gm,
-        `${baseUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
-      );
+      const isAbr = fs.existsSync(masterFile);
+      const raw = fs.readFileSync(isAbr ? masterFile : singleFile, 'utf-8');
+
+      // ABR master'da satirlar "v0/index.m3u8" gibi goreli varyant playlist'leri;
+      // tek varyantta ".ts" segment adlari. Ikisi de mutlak + token'li olmali —
+      // goreli cozumleme query string'i tasimaz ve segment 403 alirdi.
+      const fixed = isAbr
+        ? raw.replace(
+            /^([^#\r\n][^\r\n]*\.m3u8)$/gm,
+            `${baseUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
+          )
+        : raw.replace(
+            /^([^#\r\n][^\r\n]*\.ts)$/gm,
+            `${baseUrl}/hls/${streamRecord.id}/$1${tokenSuffix}`,
+          );
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
       res.setHeader('Cache-Control', 'no-cache, no-store');
@@ -1103,6 +1114,38 @@ export class XtreamController {
     });
   }
 
+  // ─── HLS servis yardimcilari ───────────────────────────────────────────────
+
+  /** Manifest icindeki mutlak URL'ler icin taban adres (LB varsa optimal sunucu). */
+  private async hlsBaseUrl(): Promise<string> {
+    const optimalServer = await this.lbService.getOptimalServer().catch(() => null);
+    return optimalServer
+      ? `http://${optimalServer.serverIp}:25461`
+      : (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+  }
+
+  /** Segment/varyant erisimi icin token zinciri: zorunlu + kick listesi + gecerlilik.
+   *  Reddederse yaniti kendisi yazar ve false doner. */
+  private async segmentTokenOk(
+    token: string | undefined,
+    res: Response,
+  ): Promise<boolean> {
+    if (!token) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Token required' });
+      return false;
+    }
+    const kicked = await this.redis.get(`kicked:${token}`).catch(() => null);
+    if (kicked) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Connection terminated' });
+      return false;
+    }
+    if (!(await this.userService.validateSegmentToken(token))) {
+      res.status(HttpStatus.FORBIDDEN).json({ error: 'Invalid or expired token' });
+      return false;
+    }
+    return true;
+  }
+
   // ─── HLS segment serve ─────────────────────────────────────────────────────
 
   @Get('hls/:streamId/:segment')
@@ -1159,6 +1202,58 @@ export class XtreamController {
     res.setHeader('Cache-Control', 'no-cache, no-store');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.sendFile(segmentFile);
+  }
+
+  // ─── ABR varyant servisi (roadmap I) ───────────────────────────────────────
+  // ABR profilinde ffmpeg <dir>/vN/index.m3u8 + <dir>/vN/segNNNNN.ts uretir.
+  // master.m3u8 bu route'a mutlak URL ile isaret eder; varyant playlist'indeki
+  // segment satirlari da burada mutlak + token'li hale getirilir.
+  @Get('hls/:streamId/:variant/:file')
+  async serveHlsVariant(
+    @Param('streamId') streamId: string,
+    @Param('variant') variant: string,
+    @Param('file') file: string,
+    @Query('token') token: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    if (!(await this.segmentTokenOk(token, res))) return;
+
+    // Varyant klasoru DAIMA v<sayi> — path traversal icin tek gecerli desen.
+    if (!/^v\d+$/.test(variant)) {
+      res.status(HttpStatus.NOT_FOUND).send('Not found');
+      return;
+    }
+    const safeFile = path.basename(file);
+    const hlsBase = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
+    const target = path.join(hlsBase, streamId, variant, safeFile);
+
+    if (!fs.existsSync(target)) {
+      res.status(HttpStatus.NOT_FOUND).send('Not found');
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    if (safeFile.endsWith('.m3u8')) {
+      const baseUrl = await this.hlsBaseUrl();
+      const raw = fs.readFileSync(target, 'utf-8');
+      const fixed = raw.replace(
+        /^([^#\r\n][^\r\n]*\.ts)$/gm,
+        `${baseUrl}/hls/${streamId}/${variant}/$1?token=${token}`,
+      );
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.send(fixed);
+      return;
+    }
+
+    // Heartbeat: analitik canli izleyiciyi gorsun.
+    void this.prisma.connection
+      .updateMany({ where: { token }, data: { updatedAt: new Date() } })
+      .catch(() => { /* bayat token — yok say */ });
+
+    res.setHeader('Content-Type', 'video/MP2T');
+    res.sendFile(target);
   }
 
   // ─── VOD ───────────────────────────────────────────────────────────────────

@@ -195,6 +195,20 @@ function buildSingle(i: BuildHlsArgsInput, p: TranscodeProfileLike | null): stri
     if (passthrough) args.push('-map', '0:s?');
   }
 
+  // ─── Tam passthrough: TEK '-c copy' ────────────────────────────────────────
+  // Ayri '-c:v copy -c:a copy' yazarsak map'lenen altyazi akisi codec'siz kalir ve
+  // ffmpeg onu yeniden kodlamaya calisip coker. Tek '-c copy' hepsini kopyalar.
+  if (passthrough) {
+    args.push('-c', 'copy');
+    if (p?.threads) args.push('-threads', String(p.threads));
+    args.push('-max_muxing_queue_size', '1024');
+    args.push(...hlsArgs(p, i.segmentPattern));
+    args.push(...splitArgs(p?.extraArgs));
+    args.push(...splitArgs(i.customFfmpeg));
+    args.push(i.outputFile);
+    return args;
+  }
+
   // ─── Video ─────────────────────────────────────────────────────────────────
   if (videoOff) {
     args.push('-vn');
@@ -276,7 +290,7 @@ function buildAbr(
   });
 
   variants.forEach((v, n) => {
-    args.push('-map', 'a:0?');
+    args.push('-map', '0:a:0?');
     args.push(`-c:a:${n}`, aCodec);
     const ab = v.audioBitrate ?? p.audioBitrate ?? undefined;
     if (ab) args.push(`-b:a:${n}`, `${ab}k`);

@@ -421,7 +421,7 @@ export function TranscodeProfilesPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-200/80">
+      <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3 text-xs text-sky-200/80">
         {t('transcode.notice')}
       </div>
 

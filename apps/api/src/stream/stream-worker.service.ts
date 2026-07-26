@@ -13,6 +13,22 @@ import { EventsGateway } from '../gateway/events.gateway';
 import { NotificationService } from '../notification/notification.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { activeConnectionWhere } from '../user/user.repository';
+import {
+  buildHlsArgs,
+  abrVariantDirs,
+  type TranscodeProfileLike,
+} from '../transcode/ffmpeg-args.builder';
+
+/** Profil atanmamis TRANSCODE yayinlar icin: eski (roadmap I oncesi) davranisin
+ *  birebir karsiligi — tam passthrough, segment silme kapali. */
+const LEGACY_PASSTHROUGH: TranscodeProfileLike = {
+  name: 'passthrough',
+  videoCodec: 'copy',
+  audioCodec: 'copy',
+  hlsSegmentSec: 4,
+  hlsListSize: 10,
+  hlsDeleteSegments: false,
+};
 
 const MAX_RESTARTS = 3;
 const RESTART_DELAY_MS = 2000;
@@ -47,6 +63,7 @@ export class StreamWorkerService implements OnModuleDestroy {
   async startWorker(streamId: string, overrideUrl?: string): Promise<void> {
     const stream = await this.prisma.stream.findUnique({
       where: { id: streamId },
+      include: { transcodeProfile: true },
     });
     if (!stream) throw new NotFoundException(`Stream ${streamId} not found`);
 
@@ -73,6 +90,8 @@ export class StreamWorkerService implements OnModuleDestroy {
     const segmentPattern = path.join(outputDir, 'seg%05d.ts');
 
     let args: string[];
+    let isAbr = false;
+    let profileLabel = '-';
     if ((stream.streamMode ?? 'PROXY') === 'LOOP') {
       // 24/7 sahte-canli kanal: kaynak listesini concat demuxer + sonsuz dongu ile
       // birlestir, uniform H.264/AAC'ye yeniden kodla (heterojen kaynaklar sorunsuz
@@ -115,28 +134,64 @@ export class StreamWorkerService implements OnModuleDestroy {
         outputFile,
       ];
     } else {
-      args = [
-        '-i', activeUrl,
-        // Tum ses parcalarini koru: -map olmadan ffmpeg tek ses secer ve
-        // cok-dilli/dublaj parcalari duserdi. -map 0:a? ile hepsini gecir
-        // (? = ses yoksa hata verme). Ilk video + tum ses + (varsa) altyazi.
-        '-map', '0:v:0?',
-        '-map', '0:a?',
-        '-map', '0:s?',
-        '-c', 'copy',
-        '-f', 'hls',
-        '-hls_time', '4',
-        '-hls_list_size', '10',
-        '-hls_flags', 'append_list',
-        '-hls_segment_filename', segmentPattern,
+      // ─── TRANSCODE (roadmap I adim 2) ──────────────────────────────────────
+      // Argumanlar artik akisa atanmis TranscodeProfile'dan uretiliyor. Profil
+      // yoksa LEGACY_PASSTHROUGH ile eski davranis birebir korunur; boylece
+      // mevcut kurulumlar guncellemeden etkilenmez.
+      const assigned = (
+        stream as unknown as { transcodeProfile?: TranscodeProfileLike | null }
+      ).transcodeProfile;
+      const profile: TranscodeProfileLike = assigned ?? LEGACY_PASSTHROUGH;
+
+      const settings = await this.prisma.settings
+        .findUnique({
+          where: { id: 'singleton' },
+          select: { ffmpegProbeSize: true, ffmpegAnalyzeDurationUs: true },
+        })
+        .catch(() => null);
+
+      // ABR: varyant alt klasorlerini ffmpeg'den ONCE olustur (hls muxer bunlari
+      // kendisi yaratmaz, yoksa "No such file or directory" ile coker).
+      const variantDirs = abrVariantDirs(profile);
+      for (const d of variantDirs) {
+        fs.mkdirSync(path.join(outputDir, d), { recursive: true });
+      }
+      isAbr = variantDirs.length > 1;
+
+      // Mod degisiminde (ABR <-> tek varyant) bayat playlist kalmasin: yoksa
+      // controller yanlis manifest'i servis eder.
+      try {
+        fs.rmSync(path.join(outputDir, isAbr ? 'index.m3u8' : 'master.m3u8'), {
+          force: true,
+        });
+      } catch {
+        /* yok say */
+      }
+
+      profileLabel = `${profile.name ?? '(isimsiz)'}${isAbr ? ` [ABR x${variantDirs.length}]` : ''}`;
+
+      args = buildHlsArgs({
+        profile,
+        inputUrl: activeUrl,
         outputFile,
-      ];
+        segmentPattern,
+        outputDir,
+        userAgent: stream.streamUserAgent,
+        headers: stream.httpHeaders,
+        cookie: stream.httpCookie,
+        customMap: stream.customMap,
+        customFfmpeg: stream.customFfmpeg,
+        generatePts: stream.generatePts,
+        probeSize: stream.probeSize || settings?.ffmpegProbeSize || null,
+        analyzeDurationUs: settings?.ffmpegAnalyzeDurationUs || null,
+      });
     }
 
     this.logger.log(`Starting worker for stream ${streamId}`);
     this.logger.log(`FFmpeg path: ${this.ffmpegPath}`);
     this.logger.log(`Output dir: ${outputDir}`);
     this.logger.log(`Stream URL: ${stream.primaryUrl}`);
+    this.logger.log(`Transcode profili: ${profileLabel}`);
     this.logger.log(`FFmpeg args: ${args.join(' ')}`);
 
     if (path.isAbsolute(this.ffmpegPath) && !fs.existsSync(this.ffmpegPath)) {
