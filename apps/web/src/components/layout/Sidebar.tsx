@@ -36,6 +36,7 @@ import {
   X,
   MessageSquareWarning,
   Rss,
+  SlidersHorizontal,
   Ticket,
   Flame,
   ShoppingBag,
@@ -131,6 +132,7 @@ const NAV: NavGroup[] = [
       { label: 'nav.systemHealth', to: '/system-health', icon: Activity },
       { label: 'nav.migration', to: '/migration', icon: ArrowRightLeft },
       { label: 'nav.m3uSync', to: '/m3u-sources', icon: Rss },
+      { label: 'nav.transcodeProfiles', to: '/transcode-profiles', icon: SlidersHorizontal, perm: 'streams.view' },
     ],
   },
   {

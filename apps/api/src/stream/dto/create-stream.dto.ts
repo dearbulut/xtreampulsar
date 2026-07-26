@@ -8,6 +8,7 @@ import {
   IsString,
   IsUrl,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -139,8 +140,9 @@ export class CreateStreamDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0)
   delayMinutes?: number;
 
-  @IsOptional() @IsString()
-  transcodeProfile?: string;
+  /** roadmap I: TranscodeProfile id — null gonderilirse profil kaldirilir */
+  @IsOptional() @ValidateIf((_o, v) => v !== null) @IsString()
+  transcodeProfileId?: string | null;
 
   @IsOptional() @IsBoolean()
   generatePts?: boolean;

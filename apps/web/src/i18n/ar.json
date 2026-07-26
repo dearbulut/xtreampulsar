@@ -33,7 +33,8 @@
     "systemHealth": "صحة النظام",
     "invoices": "الفواتير",
     "subtitles": "الترجمات",
-    "commissions": "العمولات"
+    "commissions": "العمولات",
+    "transcodeProfiles": "ملفات إعادة الترميز"
   },
   "common": {
     "save": "حفظ",
@@ -66,7 +67,10 @@
     "rows": "صفوف",
     "saved": "تم الحفظ",
     "copy": "نسخ",
-    "copied": "تم النسخ"
+    "copied": "تم النسخ",
+    "clone": "نسخ",
+    "sortOrder": "الترتيب",
+    "none": "لا يوجد"
   },
   "dashboard": {
     "title": "لوحة التحكم",

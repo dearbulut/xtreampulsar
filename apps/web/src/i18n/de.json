@@ -33,7 +33,8 @@
     "systemHealth": "Systemzustand",
     "invoices": "Rechnungen",
     "subtitles": "Untertitel",
-    "commissions": "Provisionen"
+    "commissions": "Provisionen",
+    "transcodeProfiles": "Transcode-Profile"
   },
   "common": {
     "save": "Speichern",
@@ -66,7 +67,10 @@
     "rows": "Zeilen",
     "saved": "Gespeichert",
     "copy": "Kopieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "clone": "Klonen",
+    "sortOrder": "Reihenfolge",
+    "none": "Keine"
   },
   "dashboard": {
     "title": "Dashboard",

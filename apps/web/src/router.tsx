@@ -62,6 +62,7 @@ import { M3uSyncPage } from '@/pages/m3u-sync/M3uSyncPage';
 import { ProvidersPage } from '@/pages/providers/ProvidersPage';
 import { GroupsPage } from '@/pages/groups/GroupsPage';
 import { RadioPage } from '@/pages/radio/RadioPage';
+import { TranscodeProfilesPage } from '@/pages/transcode/TranscodeProfilesPage';
 import { FeaturedEventsPage } from '@/pages/featured/FeaturedEventsPage';
 import { WidgetsPage } from './pages/widgets/WidgetsPage';
 import { WidgetHostedPage } from './pages/widgets/WidgetHostedPage';
@@ -367,6 +368,12 @@ const groupsRoute = createRoute({
   component: GroupsPage,
 });
 
+const transcodeProfilesRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/transcode-profiles',
+  component: TranscodeProfilesPage,
+});
+
 const radioRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/radio',
@@ -569,6 +576,7 @@ const routeTree = rootRoute.addChildren([
     providersRoute,
     groupsRoute,
     radioRoute,
+    transcodeProfilesRoute,
     featuredRoute,
     widgetsRoute,
     watchFolderRoute,

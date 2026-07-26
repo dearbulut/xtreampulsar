@@ -39,7 +39,7 @@ export interface Stream {
   customMap?: string | null;
   probeSize?: number | null;
   delayMinutes?: number | null;
-  transcodeProfile?: string | null;
+  transcodeProfileId?: string | null;
   generatePts?: boolean;
   allowRecording?: boolean;
   allowRtmpOutput?: boolean;

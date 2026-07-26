@@ -25,6 +25,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { MigrationModule } from './migration/migration.module';
 import { XtreamModule } from './xtream/xtream.module';
 import { ToolsModule } from './tools/tools.module';
+import { TranscodeModule } from './transcode/transcode.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
 import { GatewayModule } from './gateway/gateway.module';
@@ -81,6 +82,7 @@ import { YouTubeModule } from './youtube/youtube.module';
     MigrationModule,
     XtreamModule,
     ToolsModule,
+    TranscodeModule,
     SettingsModule,
     AuditModule,
     GatewayModule,

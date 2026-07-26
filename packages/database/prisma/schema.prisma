@@ -261,7 +261,8 @@ model Stream {
   customMap         String?                  // ozel -map argumanlari
   probeSize         Int?                     // ffmpeg probesize/analyzeduration
   delayMinutes      Int      @default(0)     // yayin gecikmesi (dk)
-  transcodeProfile  String?                  // transkodlama profili referansi (ileride profil tablosu)
+  transcodeProfileId String?                 // roadmap I: TranscodeProfile referansi (TRANSCODE modunda kullanilir)
+  transcodeProfile  TranscodeProfile? @relation(fields: [transcodeProfileId], references: [id], onDelete: SetNull)
   generatePts       Boolean  @default(true)  // ffmpeg +genpts
   allowRecording    Boolean  @default(true)  // catch-up/kayit izni
   allowRtmpOutput   Boolean  @default(false) // RTMP cikisina izin
@@ -320,7 +321,65 @@ model Stream {
   clientRequests ClientRequest[]
 
   @@index([providerId])
+  @@index([transcodeProfileId])
   @@map("streams")
+}
+
+
+// ─── Transcode Profile (roadmap I) ───────────────────────────────────────────
+// Yeniden kullanilabilir ffmpeg kodlama profili. Akisa atanir, TRANSCODE modunda
+// ffmpeg argumanlari buradan uretilir. ABR acikken cok-varyantli HLS uretilir.
+model TranscodeProfile {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  isDefault   Boolean @default(false) // yeni TRANSCODE akislarinda on-secili
+  isActive    Boolean @default(true)
+  isSystem    Boolean @default(false) // hazir profil — silinemez, adi degistirilemez
+  sortOrder   Int     @default(0)
+
+  // ─── Video ────────────────────────────────────────────────────────────────
+  videoCodec   String  @default("copy") // copy | libx264 | libx265 | h264_nvenc | hevc_nvenc | h264_qsv | h264_vaapi
+  videoPreset  String? @default("veryfast")
+  videoBitrate Int?    // kbps — -b:v
+  maxBitrate   Int?    // kbps — -maxrate
+  bufSize      Int?    // kbps — -bufsize
+  crf          Int?    // sabit kalite (videoBitrate ile birlikte kullanilmaz)
+  width        Int?    // olcekleme hedefi (yalniz biri verilirse en-boy korunur)
+  height       Int?
+  fps          Int?
+  gopSize      Int?    // -g
+  pixFmt       String? @default("yuv420p")
+  videoProfile String? // baseline | main | high
+  videoTune    String? // zerolatency | film | animation
+
+  // ─── Audio ────────────────────────────────────────────────────────────────
+  audioCodec    String @default("copy") // copy | aac | mp3 | ac3
+  audioBitrate  Int?   // kbps
+  audioChannels Int?   // 1 | 2 | 6
+  audioRate     Int?   // Hz (44100 | 48000)
+
+  // ─── HLS cikis ────────────────────────────────────────────────────────────
+  hlsSegmentSec     Int     @default(4)
+  hlsListSize       Int     @default(10)
+  hlsDeleteSegments Boolean @default(true)
+
+  // ─── ABR (cok-bitrate HLS) ────────────────────────────────────────────────
+  abrEnabled  Boolean @default(false)
+  abrVariants Json?   // [{ name, width, height, videoBitrate, maxBitrate, audioBitrate }]
+
+  // ─── Donanim / diger ──────────────────────────────────────────────────────
+  hwAccel   String? // none | cuda | qsv | vaapi — girise -hwaccel
+  threads   Int?
+  extraArgs String? // cikistan once eklenen serbest ffmpeg argumanlari
+
+  streams Stream[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("transcode_profiles")
 }
 
 model Episode {

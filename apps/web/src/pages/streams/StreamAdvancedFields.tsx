@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, SlidersHorizontal, Clock, CalendarClock } from 'lucide-react';
 import { useEPGSources } from '@/hooks/useEPG';
+import { useTranscodeProfileOptions } from '@/hooks/useTranscodeProfiles';
 
 export interface StreamAdvanced {
   directSource: boolean;
@@ -16,7 +17,7 @@ export interface StreamAdvanced {
   customMap: string;
   probeSize: string;
   delayMinutes: string;
-  transcodeProfile: string;
+  transcodeProfileId: string;
   restartDays: string[];
   restartTime: string;
   epgSourceId: string;
@@ -26,7 +27,7 @@ export interface StreamAdvanced {
 export const EMPTY_ADVANCED: StreamAdvanced = {
   directSource: false, generatePts: true, allowRecording: true, allowRtmpOutput: false,
   streamUserAgent: '', httpProxy: '', httpCookie: '', httpHeaders: '',
-  customFfmpeg: '', customMap: '', probeSize: '', delayMinutes: '', transcodeProfile: '',
+  customFfmpeg: '', customMap: '', probeSize: '', delayMinutes: '', transcodeProfileId: '',
   restartDays: [], restartTime: '', epgSourceId: '', epgLang: '',
 };
 
@@ -46,7 +47,7 @@ export function advancedFromStream(r: Record<string, unknown>): StreamAdvanced {
     customMap: str(r.customMap),
     probeSize: r.probeSize == null ? '' : String(r.probeSize),
     delayMinutes: r.delayMinutes == null ? '' : String(r.delayMinutes),
-    transcodeProfile: str(r.transcodeProfile),
+    transcodeProfileId: str(r.transcodeProfileId),
     restartDays: Array.isArray(r.restartDays) ? (r.restartDays as string[]) : [],
     restartTime: str(r.restartTime),
     epgSourceId: str(r.epgSourceId),
@@ -70,7 +71,8 @@ export function advancedToPayload(a: StreamAdvanced): Record<string, unknown> {
   if (a.customMap.trim()) p.customMap = a.customMap.trim();
   if (a.probeSize.trim()) p.probeSize = Number(a.probeSize) || 0;
   if (a.delayMinutes.trim()) p.delayMinutes = Number(a.delayMinutes) || 0;
-  if (a.transcodeProfile.trim()) p.transcodeProfile = a.transcodeProfile.trim();
+  // roadmap I: bos ise profili kaldir (null gonder)
+  p.transcodeProfileId = a.transcodeProfileId.trim() || null;
   if (a.restartDays.length) p.restartDays = a.restartDays;
   if (a.restartTime.trim()) p.restartTime = a.restartTime.trim();
   if (a.epgSourceId.trim()) p.epgSourceId = a.epgSourceId.trim();
@@ -85,6 +87,7 @@ export function StreamAdvancedFields({ value, onChange, defaultOpen = false }: {
 }) {
   const { t } = useTranslation();
   const { data: epgSources = [] } = useEPGSources();
+  const { data: transcodeProfiles = [] } = useTranscodeProfileOptions();
   const [open, setOpen] = useState(defaultOpen);
   const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const toggleDay = (d: string) => onChange({ restartDays: value.restartDays.includes(d) ? value.restartDays.filter((x) => x !== d) : [...value.restartDays, d] });
@@ -142,8 +145,16 @@ export function StreamAdvancedFields({ value, onChange, defaultOpen = false }: {
                 <input className="input" type="number" min={0} value={value.delayMinutes} onChange={(e) => set('delayMinutes', e.target.value)} />
               </div>
               <div>
-                <label className="label">{t('streams.transcodeProfile')}</label>
-                <input className="input" placeholder="copy" value={value.transcodeProfile} onChange={(e) => set('transcodeProfile', e.target.value)} />
+                <label className="label">{t('transcode.profileLabel')}</label>
+                <select className="input" value={value.transcodeProfileId} onChange={(e) => set('transcodeProfileId', e.target.value)}>
+                  <option value="">{t('transcode.profileNone')}</option>
+                  {transcodeProfiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.isDefault ? ' \u2605' : ''}{p.abrEnabled ? ' (ABR)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted mt-1">{t('transcode.profileHint')}</p>
               </div>
             </div>
           </div>
