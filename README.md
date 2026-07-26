@@ -15,7 +15,7 @@ Telegram: https://t.me/bulutworksdev
 [![Built with TypeScript](https://img.shields.io/badge/TypeScript-96%25-3178C6?logo=typescript&logoColor=white)](#tech-stack)
 [![NestJS](https://img.shields.io/badge/API-NestJS-E0234E?logo=nestjs&logoColor=white)](#tech-stack)
 [![React](https://img.shields.io/badge/UI-React%2018-61DAFB?logo=react&logoColor=black)](#tech-stack)
-[![Docker](https://img.shields.io/badge/deploy-Docker-2496ED?logo=docker&logoColor=white)](#-quick-start-docker)
+[![Docker](https://img.shields.io/badge/deploy-Docker-2496ED?logo=docker&logoColor=white)](#-install)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
 <sub>A **Bulutworks** signature project · [xtreampulsar.com](https://xtreampulsar.com)</sub>
@@ -45,10 +45,10 @@ Try the full panel right now — no install required. This is a shared **demo in
 If you searched for an *"XtreamUI alternative"*, *"XUI.ONE alternative"*, a *"Docker IPTV panel"*, or a *"self-hosted Xtream Codes server"* — this is it.
 
 ```bash
-git clone https://github.com/dearbulut/xtreampulsar.git
-cd xtreampulsar && cp .env.example .env      # set your passwords & secrets
-docker compose up -d --build                 # go live
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh | sudo bash
 ```
+
+One command on a fresh Ubuntu server: Docker, secrets, database, panel, firewall and your **admin account** — done. [Full install guide ↓](#-install)
 
 ---
 
@@ -148,29 +148,168 @@ XtreamPulsar is a complete IPTV operations platform, not just a stream proxy. Ev
 
 ---
 
-## 🐳 Quick start (Docker)
+## 🐳 Install
 
-**Requirements:** a Linux server with Docker + Docker Compose, and a domain pointed at it.
+**Requirements:** Ubuntu 22.04 / 24.04 · 2 GB RAM · 20 GB disk · 2 CPU cores · root access.
+A domain is optional — you only need one if you want HTTPS.
+
+### Option A — one command (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh | sudo bash
+```
+
+The installer does everything for you:
+
+1. Installs Docker + Docker Compose if missing
+2. Clones the repo to `/opt/xtreampulsar`
+3. Generates `.env` with strong random secrets (DB, Redis, JWT)
+4. Builds and starts every service (API, Web, Postgres, Redis, NGINX)
+5. Applies all database migrations
+6. Opens firewall ports `22, 80, 443, 25461`
+7. **Creates the `admin` account and prints its password**
+
+No license key is required — running it without `--key` installs in open-source / self-host mode.
+
+**With a domain and free Let's Encrypt SSL:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh -o install.sh
+sudo bash install.sh --domain panel.example.com --email you@example.com
+```
+
+| Flag | Required | Description |
+|---|:---:|---|
+| `--domain` | no | Panel domain — enables NGINX HTTPS + Let's Encrypt |
+| `--email` | no | E-mail for Let's Encrypt notices |
+| `--dir` | no | Install directory (default `/opt/xtreampulsar`) |
+| `--key` | no | Commercial license key. Omit for self-host mode |
+
+### Option B — manual Docker Compose
+
+Use this if you already run Docker your own way, or you're developing.
 
 ```bash
 # 1. Clone
 git clone https://github.com/dearbulut/xtreampulsar.git
 cd xtreampulsar
 
-# 2. Configure — open .env and set strong values for:
-#    POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SECRET, JWT_REFRESH_SECRET
+# 2. Configure — set strong values for POSTGRES_PASSWORD,
+#    REDIS_PASSWORD, JWT_SECRET, JWT_REFRESH_SECRET, ADMIN_API_KEY
 cp .env.example .env
+nano .env
 
 # 3. Launch (API + Web + Postgres + Redis + NGINX)
 docker compose up -d --build
 
-# 4. Apply database migrations
-docker compose exec api npx prisma migrate deploy
+# 4. Create your first admin — the manual route does NOT create one for you
+docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'YourStrongPassword1!'
 ```
 
-Then open your panel in the browser and finish setup. Point any Xtream-compatible player at `http://your-domain:port/player_api.php?username=...&password=...`.
+> 💡 **Migrations run automatically** every time the API container starts, so you never need to run
+> `prisma migrate deploy` by hand — not on install, not after an update.
 
-> ⚠️ **Never commit your `.env`.** It's already in `.gitignore`. Always change every default secret before exposing the panel to the internet.
+> ⚠️ **Never commit your `.env`.** It's already in `.gitignore`. Change every default secret before
+> exposing the panel to the internet.
+
+---
+
+## 🔑 First login
+
+| | |
+|---|---|
+| **Panel** | `http://YOUR_SERVER_IP/` (or `https://your-domain` if you used `--domain`) |
+| **Username** | `admin` |
+| **Password** | Printed by the installer at the end — or the one you passed to `reset-admin` |
+| **Xtream API** | `http://YOUR_SERVER_IP:25461` |
+| **Player URL** | `http://YOUR_SERVER_IP:25461/player_api.php?username=USER&password=PASS` |
+
+The installer shows the admin password **only once**, in the green "Erişim Bilgileri" box at the end.
+Save it, then change it from **Settings → Profile** after your first login.
+
+Lost it? See below — nothing is unrecoverable.
+
+---
+
+## 🛠️ Troubleshooting
+
+<details>
+<summary><b>I can't log in / no admin account was created</b></summary>
+
+This is by far the most common issue, and there's a one-line fix. Run it from your install
+directory (`/opt/xtreampulsar`, or wherever you cloned):
+
+```bash
+docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'NewPassword1!'
+```
+
+The same command **creates** the first admin if none exists and **resets the password** if the
+account is already there. Then log in with `admin` / `NewPassword1!`.
+</details>
+
+<details>
+<summary><b>Login returns HTTP 500, or logs say <code>column ... does not exist</code></b></summary>
+
+Your database schema is older than the code. Current versions apply migrations automatically at
+API startup, so pulling and restarting is enough:
+
+```bash
+git pull
+docker compose up -d --build
+docker compose logs -f api      # watch for "migrations applied"
+```
+
+To force it manually:
+
+```bash
+docker compose exec api npx prisma migrate deploy
+```
+</details>
+
+<details>
+<summary><b><code>cd: /opt/xtreampulsar: No such file or directory</code></b></summary>
+
+`/opt/xtreampulsar` only exists if you used the one-command installer. If you cloned the repo
+yourself, your install lives in that clone directory. Find it with:
+
+```bash
+docker inspect $(docker compose ls -q 2>/dev/null | head -1) 2>/dev/null ||   find / -maxdepth 4 -name docker-compose.yml -path '*xtreampulsar*' 2>/dev/null
+```
+
+Every `docker compose ...` command must be run **inside** that directory.
+</details>
+
+<details>
+<summary><b>Containers are running but the panel doesn't open</b></summary>
+
+```bash
+docker compose ps                    # all services should be "Up"/"healthy"
+docker compose logs --tail=100 api   # look for the real error
+sudo ufw status                      # ports 80, 443, 25461 must be allowed
+```
+
+If a cloud provider firewall (DigitalOcean, Hetzner, AWS Security Groups) sits in front of the
+server, open the same ports there too.
+</details>
+
+<details>
+<summary><b>Health check, logs, update and uninstall</b></summary>
+
+```bash
+cd /opt/xtreampulsar
+
+sudo ./health-check.sh          # containers, API, DB, Redis, disk, RAM, ports, firewall
+docker compose logs -f api      # live API logs
+sudo ./update.sh                # backup + pull + rebuild + migrate + health check
+sudo ./uninstall.sh             # removes everything (asks twice)
+```
+
+Manual update without the installer scripts: `git pull && docker compose up -d --build`.
+</details>
+
+**Still stuck?** [Open an issue](https://github.com/dearbulut/xtreampulsar/issues/new/choose) with the
+output of `docker compose ps` and `docker compose logs --tail=100 api` — that's almost always enough
+to diagnose it. For quick questions: [Telegram](https://t.me/bulutworksdev).
 
 ---
 

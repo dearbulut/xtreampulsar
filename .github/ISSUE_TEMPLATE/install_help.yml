@@ -1,0 +1,78 @@
+name: 🆘 Install / setup help
+description: The panel will not install, start or let you log in
+title: "[Help] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most setup problems have a documented fix — please try these first, they solve the majority of reports:
+
+        | Symptom | Fix |
+        |---|---|
+        | Cannot log in / no admin user | `docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'NewPassword1!'` |
+        | HTTP 500 on login, `column ... does not exist` | `git pull && docker compose up -d --build` (migrations run automatically at startup) |
+        | `cd: /opt/xtreampulsar: No such file or directory` | That path only exists for the one-command installer; use your clone directory |
+        | Panel does not open | Check ports 80 / 443 / 25461 in `ufw` **and** in your cloud provider firewall |
+
+        Full guide: [README → Troubleshooting](https://github.com/dearbulut/xtreampulsar#%EF%B8%8F-troubleshooting)
+
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What have you already tried?
+      options:
+        - label: Ran the `reset-admin` command above
+          required: false
+        - label: Pulled the latest `main` and rebuilt
+          required: false
+        - label: Checked `docker compose ps` — all services are up
+          required: false
+        - label: Checked firewall / cloud provider ports
+          required: false
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install?
+      options:
+        - One-command installer (curl ... | sudo bash)
+        - Manual git clone + docker compose
+        - Local development (pnpm dev)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What goes wrong?
+      description: Describe where the install stops or what error you see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: containers
+    attributes:
+      label: Container status
+      description: "Output of: `docker compose ps`"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: API logs
+      description: "Output of: `docker compose logs --tail=100 api` (redact secrets, IPs and license keys)"
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Server
+      placeholder: Ubuntu 24.04 - 4 GB RAM - Docker 27.3.1 - Hetzner VPS
+    validations:
+      required: true

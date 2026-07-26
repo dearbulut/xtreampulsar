@@ -15,14 +15,37 @@ Production-ready bash installer scripts for XtreamPulsar Panel.
 ## Hızlı Kurulum
 
 ```bash
-curl -fsSL https://install.xtreampulsar.com | bash -s -- --key YOUR_LICENSE_KEY
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh | sudo bash
 ```
+
+Lisans anahtari zorunlu degildir; `--key` verilmezse acik kaynak / self-host modunda kurulur.
+Ticari lisansiniz varsa:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh -o install.sh
+sudo bash install.sh --key YOUR_LICENSE_KEY
+```
+
+### Kurulum sonunda ne olur?
+
+Script bittiginde ekranda **Erişim Bilgileri** kutusu cikar:
+
+```
+Panel URL       : http://SUNUCU_IP
+Xtream API      : http://SUNUCU_IP:25461
+Admin Kullanıcı : admin
+Admin Şifre     : <otomatik üretilen şifre>
+Kurulum Dizini  : /opt/xtreampulsar
+```
+
+> Admin sifresi **yalnizca bir kez** gosterilir. Kaydedin, ilk girisin ardindan
+> **Ayarlar → Profil**'den degistirin. Kaybederseniz asagidaki `reset-admin` komutu ile sifirlayabilirsiniz.
 
 ### Domain ve SSL ile kurulum
 
 ```bash
-curl -fsSL https://install.xtreampulsar.com | bash -s -- \
-  --key YOUR_LICENSE_KEY \
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh -o install.sh
+sudo bash install.sh \
   --domain panel.example.com \
   --email admin@example.com
 ```
@@ -31,7 +54,6 @@ curl -fsSL https://install.xtreampulsar.com | bash -s -- \
 
 ```bash
 sudo bash apps/installer/install.sh \
-  --key YOUR_LICENSE_KEY \
   --domain panel.example.com \
   --email admin@example.com
 ```
@@ -40,7 +62,7 @@ sudo bash apps/installer/install.sh \
 
 | Parametre | Zorunlu | Açıklama |
 |---|---|---|
-| `--key` | Evet | Lisans anahtarı |
+| `--key` | Hayır | Ticari lisans anahtarı. Verilmezse self-host modu |
 | `--domain` | Hayır | Panel domain (SSL için) |
 | `--email` | Hayır | Let's Encrypt e-posta adresi |
 | `--dir` | Hayır | Kurulum dizini (varsayılan: `/opt/xtreampulsar`) |
@@ -50,7 +72,8 @@ sudo bash apps/installer/install.sh \
 Ayrı bir sunucuya load balancer node kurulumu:
 
 ```bash
-curl -fsSL https://install.xtreampulsar.com/lb | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/lb-install.sh -o lb-install.sh
+sudo bash lb-install.sh \
   --main-ip ANA_SUNUCU_IP \
   --lb-token PANEL_DEN_URETILEN_TOKEN
 ```
@@ -146,12 +169,33 @@ docker compose logs -f postgres
 # Servisleri yeniden başlat
 docker compose restart
 
-# Migration manuel çalıştır
+# Migration manuel çalıştır (normalde API açılışta otomatik uygular)
 docker compose exec api npx prisma migrate deploy
+```
+
+### Panele giriş yapamıyorum / admin oluşmadı
+
+En sik karsilasilan durum. Kurulum dizininde su komutu calistirin — admin yoksa **olusturur**,
+varsa **sifresini sifirlar**:
+
+```bash
+cd /opt/xtreampulsar
+docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'YeniSifre123!'
+```
+
+### Girişte HTTP 500 / `column ... does not exist`
+
+Veritabani semasi koddan eski. Guncel surumlerde migration'lar API konteyneri acilirken otomatik
+uygulanir; guncelleyip yeniden baslatmak yeterli:
+
+```bash
+cd /opt/xtreampulsar
+git pull && docker compose up -d --build
+docker compose logs -f api
 ```
 
 ## Destek
 
-- Dokümantasyon: https://docs.xtreampulsar.com
-- E-posta: support@xtreampulsar.com
-- GitHub Issues: https://github.com/xtreampulsar/xtreampulsar/issues
+- Kurulum & sorun giderme: [README → Install](../../README.md#-install)
+- GitHub Issues: https://github.com/dearbulut/xtreampulsar/issues/new/choose
+- Telegram: https://t.me/bulutworksdev

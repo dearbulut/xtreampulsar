@@ -1,0 +1,125 @@
+name: 🐛 Bug report
+description: Something in XtreamPulsar is broken or behaves unexpectedly
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+        **Before you file:** most install and login problems are covered in the
+        [Troubleshooting section of the README](https://github.com/dearbulut/xtreampulsar#%EF%B8%8F-troubleshooting).
+        If you cannot log in or no admin account was created, this one-liner usually fixes it:
+        `docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'NewPassword1!'`
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched [existing issues](https://github.com/dearbulut/xtreampulsar/issues?q=is%3Aissue) and this is not a duplicate
+          required: true
+        - label: I read the README troubleshooting section
+          required: true
+        - label: I am on the latest `main` (`git pull && docker compose up -d --build`)
+          required: false
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem, and what you expected instead.
+      placeholder: |
+        What I did:
+        What I expected:
+        What actually happened:
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Users -> Create
+        2. Fill in ...
+        3. Click Save
+        4. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install?
+      options:
+        - One-command installer (curl ... | sudo bash)
+        - Manual git clone + docker compose
+        - Local development (pnpm dev)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the panel?
+      options:
+        - Install / update / Docker
+        - Login / authentication / 2FA
+        - Streams, VOD, Series
+        - Xtream API / player compatibility
+        - Users & lines / packages / bouquets
+        - Resellers, billing, WHMCS
+        - EPG / playlists / catch-up & DVR
+        - Security / anti-piracy
+        - Panel UI (web)
+        - Multi-server / load balancer
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: API logs
+      description: "Output of: `docker compose logs --tail=100 api` (redact secrets, IPs and license keys)"
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: containers
+    attributes:
+      label: Container status
+      description: "Output of: `docker compose ps`"
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: "Output of: `git rev-parse --short HEAD` (run inside your install directory)"
+      placeholder: e.g. dc01bb9
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker version, and browser if the problem is in the panel UI
+      placeholder: Ubuntu 24.04 - Docker 27.3.1 - Chrome 131
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or extra context
+      description: Drag & drop images here if they help.
+    validations:
+      required: false

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Install & troubleshooting guide
+    url: https://github.com/dearbulut/xtreampulsar#-install
+    about: One-command install, first-login credentials and fixes for the most common problems.
+  - name: 💬 Telegram — talk to the maintainer
+    url: https://t.me/bulutworksdev
+    about: Quick questions, commercial licensing and general chat.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/dearbulut/xtreampulsar/security/advisories/new
+    about: Please report security issues privately, never as a public issue.
