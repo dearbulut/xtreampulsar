@@ -88,6 +88,12 @@ pnpm build
 4. Describe **what** and **why** in the PR description; screenshots for UI changes.
 5. Don't commit `.env`, build output, or generated Prisma clients.
 
+## Supporting the project
+
+Code is not the only contribution that helps. A ⭐ star, a well-written bug report or a docs fix
+are all valuable. If you would rather support it financially, the donation addresses are in
+[DONATE.md](./DONATE.md) — entirely voluntary, and unrelated to licensing or support priority.
+
 ## Security issues
 
 Please **do not** open a public issue for vulnerabilities — follow [SECURITY.md](./SECURITY.md)

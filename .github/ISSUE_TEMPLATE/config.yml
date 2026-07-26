@@ -9,3 +9,6 @@ contact_links:
   - name: 🔒 Report a security vulnerability
     url: https://github.com/dearbulut/xtreampulsar/security/advisories/new
     about: Please report security issues privately, never as a public issue.
+  - name: 💜 Support the project
+    about: XtreamPulsar is free to self-host. Star the repo, or see DONATE.md if you want to chip in.
+    url: https://github.com/dearbulut/xtreampulsar/blob/main/DONATE.md

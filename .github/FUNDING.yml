@@ -1,2 +1,6 @@
 # Support XtreamPulsar — a Bulutworks project
-custom: ["https://xtreampulsar.com"]
+# GitHub's "Sponsor" button only accepts URLs here, so the crypto addresses
+# themselves live in DONATE.md.
+custom:
+  - "https://github.com/dearbulut/xtreampulsar/blob/main/DONATE.md"
+  - "https://xtreampulsar.com"

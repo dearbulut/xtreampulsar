@@ -338,6 +338,23 @@ Contributions, bug reports, and feature ideas are welcome — see [CONTRIBUTING.
 
 ---
 
+## 💜 Support the project
+
+XtreamPulsar is free to self-host and always will be. If it saves you time or money, a donation
+helps cover test servers, domains and demo bandwidth. Full details and safety notes:
+**[DONATE.md](./DONATE.md)**.
+
+| Coin | Network | Address |
+|---|---|---|
+| **USDT** | Tron (TRC20) | `TN9CUKG8UAkipPq3bL5Sr13aTVmSeV1ajY` |
+| **BTC** | Bitcoin mainnet | `1MvCv9bePbkfJNx1e8DWjiSbia1uimjvMR` |
+| **BNB** | BNB Smart Chain (BEP20) | `0x8d186a007e71ccd2c6fca98328112e77c696309a` |
+
+> ⚠️ Check the **network** before sending — crypto transfers are irreversible. These addresses are
+> official only as published in this repository on the `main` branch.
+
+---
+
 ## 📄 License
 
 XtreamPulsar is **source-available** under the **[Business Source License 1.1](./LICENSE)**.
