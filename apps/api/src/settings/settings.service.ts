@@ -66,6 +66,8 @@ export class SettingsService {
       primaryColor: whiteLabel?.primaryColor ?? null,
       resellerHost: settings.resellerPanelHost ?? null,
       clientHost: settings.clientPanelHost ?? null,
+      // Salt-okunur demo sunucusu mu? (DemoModeGuard ile ayni env degiskeni)
+      demoMode: process.env.DEMO_MODE === 'true',
     };
   }
 

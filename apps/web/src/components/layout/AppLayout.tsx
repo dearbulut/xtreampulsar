@@ -1,7 +1,9 @@
 import { Outlet, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { Eye } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useDemoMode } from '@/hooks/useDemoMode';
 
 const ROUTE_TITLE_KEYS: Record<string, string[]> = {
   '/dashboard': ['nav.dashboard'],
@@ -36,12 +38,20 @@ export function AppLayout() {
   const location = useRouterState({ select: (s) => s.location });
   const keys = ROUTE_TITLE_KEYS[location.pathname];
   const breadcrumb = keys ? keys.map((k) => t(k)) : [location.pathname];
+  const demoMode = useDemoMode();
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0">
         <Header breadcrumb={breadcrumb} />
+        {demoMode && (
+          <div className="flex items-center gap-2 px-5 py-2 text-sm border-b border-amber-500/30 bg-amber-500/10 text-amber-300">
+            <Eye size={15} className="shrink-0" />
+            <span className="font-medium">{t('demo.bannerTitle')}</span>
+            <span className="opacity-80">{t('demo.bannerDesc')}</span>
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-5">
           <Outlet />
         </main>

@@ -2793,5 +2793,9 @@
     "profileLabel": "Transcode profile",
     "profileNone": "No profile (copy)",
     "profileHint": "Only used in TRANSCODE mode."
+  },
+  "demo": {
+    "bannerTitle": "Demo mode",
+    "bannerDesc": "This panel is read-only; changes are not saved."
   }
 }

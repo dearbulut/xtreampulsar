@@ -430,5 +430,9 @@
       "pendingCredits": "Ausstehende Credits",
       "paidCredits": "Bezahlte Credits"
     }
+  },
+  "demo": {
+    "bannerTitle": "Demo-Modus",
+    "bannerDesc": "Dieses Panel ist schreibgeschuetzt; Aenderungen werden nicht gespeichert."
   }
 }
