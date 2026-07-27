@@ -50,6 +50,29 @@ sudo bash install.sh \
   --email admin@example.com
 ```
 
+### Sonradan SSL ekleme (IP ile kurduysanız)
+
+`--domain` vermeden kurulum yaptıysanız panel HTTP üzerinden çalışır. Sonradan bir
+domain aldığınızda, A kaydını bu sunucuya yönlendirdikten sonra:
+
+```bash
+cd /opt/xtreampulsar && git pull
+sudo bash apps/installer/enable-ssl.sh \
+  --domain panel.example.com \
+  --email admin@example.com
+```
+
+Script sırayla: DNS'i doğrular, `/.well-known/acme-challenge/` yolunu açar ve dışarıdan
+okunduğunu test eder, Let's Encrypt sertifikasını alır, SSL'li nginx config'ini
+aktifleştirir ve her gün 03:00'te çalışan otomatik yenileme cron'unu kurar.
+Tekrar tekrar çalıştırılabilir (idempotent).
+
+`--staging` ile Let's Encrypt test ortamını kullanabilirsiniz (rate limit'e takılmadan
+deneme için), `--alt ikinci.example.com` ile ek domain ekleyebilirsiniz.
+
+> SSL açıldıktan sonra port 80 HTTPS'e yönlenir. Düz HTTP isteyen Xtream istemcileri
+> için **port 25461** açık kalmaya devam eder.
+
 ### Yerel dosyadan kurulum
 
 ```bash
