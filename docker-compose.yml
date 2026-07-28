@@ -63,6 +63,7 @@ services:
       SERVER_PORT: ${SERVER_PORT:-25461}
       FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
       HLS_OUTPUT_PATH: ${HLS_OUTPUT_PATH:-/tmp/xtreampulsar/hls}
+      HEALTH_PROBE_USER_AGENT: ${HEALTH_PROBE_USER_AGENT:-}
       MEDIA_PATH: ${MEDIA_PATH:-/data/media}
       ARCHIVE_PATH: ${ARCHIVE_PATH:-/data/archive}
       MIGRATION_DATA_PATH: ${MIGRATION_DATA_PATH:-/data/migrations}

@@ -8,6 +8,18 @@ import { NotificationService } from '../notification/notification.service';
 
 type HealthStatus = 'up' | 'down' | 'degraded';
 
+/** Kaynak yoklarken kullanilan varsayilan User-Agent. Cogu IPTV kaynagi bos ya
+ *  da bilinmeyen UA'yi reddeder; akisin kendi streamUserAgent'i varsa o kazanir. */
+const DEFAULT_PROBE_UA =
+  process.env.HEALTH_PROBE_USER_AGENT || 'VLC/3.0.20 LibVLC/3.0.20';
+
+/** Kaynak yoklamasinda kullanilan, akis duzeyi upstream ayarlari. */
+interface ProbeAuth {
+  streamUserAgent?: string | null;
+  httpHeaders?: string | null;
+  httpCookie?: string | null;
+}
+
 @Injectable()
 export class StreamHealthService {
   private readonly logger = new Logger(StreamHealthService.name);
@@ -34,7 +46,15 @@ export class StreamHealthService {
   async checkStream(streamId: string): Promise<{ status: HealthStatus; responseTime: number | null }> {
     const stream = await this.prisma.stream.findUnique({
       where: { id: streamId },
-      select: { id: true, name: true, primaryUrl: true, streamMode: true },
+      select: {
+        id: true,
+        name: true,
+        primaryUrl: true,
+        streamMode: true,
+        streamUserAgent: true,
+        httpHeaders: true,
+        httpCookie: true,
+      },
     });
     if (!stream) return { status: 'down', responseTime: null };
 
@@ -49,7 +69,7 @@ export class StreamHealthService {
     let errorMessage: string | undefined;
 
     try {
-      const { ok, statusCode } = await this.httpHead(url, 5000);
+      const { ok, statusCode } = await this.probeSource(url, 5000, stream);
       responseTime = Date.now() - start;
       if (ok) {
         status = responseTime > 3000 ? 'degraded' : 'up';
@@ -99,6 +119,16 @@ export class StreamHealthService {
         // upstream gerçekten erişilemiyorsa bildirim gönder.
         if ((stream.streamMode ?? 'PROXY') === 'PROXY') {
           this.logger.warn(`PROXY stream ${stream.name} 3 kez erişilemedi (worker restart atlandı)`);
+          await this.notificationService.notifyStreamDown(streamId, stream.name).catch(() => {});
+        } else if (this.workerService.getWorkerStats(streamId).running) {
+          // Saglik kontrolu kaynaga DISARIDAN bakar; worker'in kendisi hala
+          // ayakta olabilir (kaynak tarafi UA/IP filtresi, gecici 5xx, CDN
+          // hiccup). Calisan bir FFmpeg'i oldurmek yayini gercekten bozar ve
+          // "Running / 00h 00m 11s" restart dongusune sokar. Bu yuzden sadece
+          // isaretle + bildir, sureci elleme.
+          this.logger.warn(
+            `Stream ${stream.name} 3 saglik kontrolunu gecemedi ama FFmpeg worker calisiyor — restart atlandi`,
+          );
           await this.notificationService.notifyStreamDown(streamId, stream.name).catch(() => {});
         } else {
           this.logger.error(`Stream ${stream.name} failed 3 checks — restarting`);
@@ -246,17 +276,64 @@ export class StreamHealthService {
     return out;
   }
 
-  private httpHead(url: string, timeoutMs: number): Promise<{ ok: boolean; statusCode?: number }> {
+  /** "K: V" satirlarini header nesnesine cevirir. */
+  private static parseHeaderLines(raw?: string | null): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const line of (raw ?? '').split(/\r?\n/)) {
+      const t = line.trim();
+      const i = t.indexOf(':');
+      if (i > 0) out[t.slice(0, i).trim()] = t.slice(i + 1).trim();
+    }
+    return out;
+  }
+
+  /**
+   * Kaynagi bir oynatici gibi yoklar.
+   *
+   * Eskiden burada ciplak bir HTTP HEAD vardi ve akisin kendi upstream
+   * ayarlari (User-Agent / ek header / cookie) hic gonderilmiyordu. IPTV
+   * kaynaklarinin cogu HEAD'i ya da bilinmeyen UA'yi reddeder; bu yuzden
+   * calisan yayinlar "HTTP 403/502 — down" olarak isaretleniyordu (sahte
+   * negatif). Artik akisin kendi basliklariyla `Range: bytes=0-1` GET
+   * gonderiyoruz ve yanit basligi gelir gelmez baglantiyi kapatiyoruz —
+   * canli akis indirilmez.
+   */
+  private probeSource(
+    url: string,
+    timeoutMs: number,
+    auth: ProbeAuth,
+  ): Promise<{ ok: boolean; statusCode?: number }> {
     return new Promise((resolve, reject) => {
       const mod = url.startsWith('https://') ? https : http;
-      const timer = setTimeout(() => { req.destroy(); reject(new Error('timeout')); }, timeoutMs);
-      const req = mod.request(url, { method: 'HEAD' }, (res) => {
+      const headers: Record<string, string> = {
+        Accept: '*/*',
+        Range: 'bytes=0-1',
+        ...StreamHealthService.parseHeaderLines(auth.httpHeaders),
+      };
+      headers['User-Agent'] = auth.streamUserAgent?.trim() || DEFAULT_PROBE_UA;
+      const cookie = auth.httpCookie?.trim();
+      if (cookie) headers.Cookie = cookie;
+
+      let settled = false;
+      const finish = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
-        res.resume();
+        fn();
+      };
+
+      const timer = setTimeout(
+        () => finish(() => { req.destroy(); reject(new Error('timeout')); }),
+        timeoutMs,
+      );
+
+      const req = mod.request(url, { method: 'GET', headers }, (res) => {
         const sc = res.statusCode ?? 0;
-        resolve({ ok: sc >= 200 && sc < 400, statusCode: sc });
+        // Canli akisi indirmeden kes; res.resume() sonsuza kadar okurdu.
+        res.destroy();
+        finish(() => resolve({ ok: sc >= 200 && sc < 400, statusCode: sc }));
       });
-      req.on('error', (err) => { clearTimeout(timer); reject(err); });
+      req.on('error', (err) => finish(() => reject(err)));
       req.end();
     });
   }
