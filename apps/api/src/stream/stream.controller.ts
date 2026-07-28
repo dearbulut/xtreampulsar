@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   Controller,
   Get,
@@ -146,12 +148,55 @@ export class StreamController {
   async getPreviewUrl(@Param('id') id: string) {
     const stream = await this.prisma.stream.findUnique({
       where: { id },
-      select: { id: true, primaryUrl: true, name: true, streamMode: true, externalId: true },
+      select: {
+        id: true,
+        primaryUrl: true,
+        name: true,
+        streamMode: true,
+        externalId: true,
+        workerStatus: true,
+        streamUserAgent: true,
+        httpHeaders: true,
+        httpCookie: true,
+      },
     });
     if (!stream) throw new NotFoundException('Stream not found');
 
     const token = randomUUID();
-    await this.redis.setex(`preview:${token}`, 300, JSON.stringify({ primaryUrl: stream.primaryUrl, streamId: stream.id }));
+    // Onizleme proxy'si kaynaga giderken akisin KENDI upstream basliklarini
+    // kullanmali; cogu IPTV kaynagi UA/cookie filtreler ve aksi halde 403 doner.
+    await this.redis.setex(
+      `preview:${token}`,
+      300,
+      JSON.stringify({
+        primaryUrl: stream.primaryUrl,
+        streamId: stream.id,
+        streamUserAgent: stream.streamUserAgent,
+        httpHeaders: stream.httpHeaders,
+        httpCookie: stream.httpCookie,
+      }),
+    );
+
+    // ── TRANSCODE: panelin KENDI HLS ciktisini onizle ─────────────────────────
+    // Onceden burada da ham kaynak URL'i proxy'lenirdi. Iki sorun vardi:
+    //   1. Kaynaga IKINCI bir upstream baglantisi acilirdi — TRANSCODE modunun
+    //      tum amaci olan "tek baglanti, N izleyici" carpani bozulurdu.
+    //   2. Ham MPEG-TS'i tarayici oynatamaz; hls.js manifest bekler, <video>
+    //      0:00'da asili kalirken XHR sinirsiz indirmeye devam ederdi.
+    // Worker zaten segmentleri uretiyor; onizleme de onlari okumali.
+    if ((stream.streamMode ?? 'PROXY') === 'TRANSCODE') {
+      const hlsUrl = await this.transcodePreviewUrl(stream.id, stream.workerStatus);
+      if (hlsUrl) {
+        return {
+          token,
+          previewProxyUrl: hlsUrl,
+          hlsUrl: stream.primaryUrl,
+          name: stream.name,
+          streamMode: stream.streamMode,
+          externalId: stream.externalId,
+        };
+      }
+    }
 
     return {
       token,
@@ -161,6 +206,37 @@ export class StreamController {
       streamMode: stream.streamMode,
       externalId: stream.externalId,
     };
+  }
+
+  /** TRANSCODE yayinin panel tarafindaki HLS manifestini dondurur; worker
+   *  uyuyorsa uyandirip kisa sure bekler. Cikti hazir degilse null. */
+  private async transcodePreviewUrl(
+    streamId: string,
+    workerStatus: string | null | undefined,
+  ): Promise<string | null> {
+    const base = process.env.HLS_OUTPUT_PATH ?? '/tmp/xtreampulsar/hls';
+    const dir = path.join(base, streamId);
+    const master = path.join(dir, 'master.m3u8');
+    const single = path.join(dir, 'index.m3u8');
+    const ready = (): 'master.m3u8' | 'index.m3u8' | null => {
+      if (fs.existsSync(master)) return 'master.m3u8';
+      if (fs.existsSync(single)) return 'index.m3u8';
+      return null;
+    };
+
+    if (!ready() && (workerStatus === 'IDLE' || workerStatus === 'STOPPED')) {
+      try {
+        await this.workerService.startWorker(streamId);
+      } catch {
+        return null;
+      }
+      for (let i = 0; i < 10 && !ready(); i++) {
+        await new Promise<void>((r) => setTimeout(r, 500));
+      }
+    }
+
+    const file = ready();
+    return file ? `/hls/${streamId}/${file}` : null;
   }
 
   @Get(':id/stats')
