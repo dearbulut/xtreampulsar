@@ -293,19 +293,59 @@ if [[ -f "$REPO_ROOT/docker-compose.yml" ]]; then
   fi
 else
   log_info "Yerel kaynak bulunamadı, GitHub'dan indiriliyor..."
+  # $INSTALL_DIR onceki yarim bir kurulumdan doluysa `git clone` REDDEDER.
+  # Bu yuzden gecici dizine klonlayip uzerine kopyaliyoruz; .env korunur.
+  XP_SRC="$(mktemp -d /tmp/xp-src.XXXXXX)"
+  rmdir "$XP_SRC"
   run_with_spinner "Kaynak indiriliyor" \
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+    git clone --depth 1 "$REPO_URL" "$XP_SRC"
+  cp -r "$XP_SRC/." "$INSTALL_DIR/"
+  rm -rf "$XP_SRC"
   log_success "Kaynak GitHub'dan indirildi"
 fi
 
 # ── [FIX #1] Gizli anahtarlar üret — REDIS_PASSWORD dahil ──────────────────
-DB_PASSWORD=$(generate_password)
-REDIS_PASSWORD=$(openssl rand -hex 32)
-JWT_SECRET=$(openssl rand -hex 32)
-JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-ADMIN_API_KEY=$(generate_password)
+# ÖNEMLİ: Kurulum ikinci kez çalıştırıldığında (ilk deneme yarıda kaldıysa)
+# yeni bir DB_PASSWORD üretmek ölümcüldür. postgres_data volume'u ilk denemede
+# ESKİ şifreyle oluşturulmuştur ve PostgreSQL POSTGRES_PASSWORD'u YALNIZCA boş
+# bir veri dizinini ilklerken uygular. Yeni şifre .env'e yazılır ama role hiç
+# işlenmez; sonuç:
+#   "Authentication failed against database server at `postgres`"
+# ve buna bağlı olarak admin oluşturmada HTTP 504.
+# Çözüm: .env varsa oradaki gizli anahtarları yeniden kullan.
+ENV_FILE="$INSTALL_DIR/.env"
+
+read_env() {  # read_env ANAHTAR → .env'deki mevcut değeri basar (yoksa bos)
+  [[ -f "$ENV_FILE" ]] || return 0
+  sed -n "s/^$1=//p" "$ENV_FILE" | head -1
+}
+
+if [[ -f "$ENV_FILE" ]]; then
+  log_info "Mevcut .env bulundu — gizli anahtarlar korunuyor (yedek: .env.bak)"
+  cp "$ENV_FILE" "${ENV_FILE}.bak"
+fi
+
+DB_PASSWORD="$(read_env POSTGRES_PASSWORD)"
+[[ -n "$DB_PASSWORD" ]] || DB_PASSWORD=$(generate_password)
+
+REDIS_PASSWORD="$(read_env REDIS_PASSWORD)"
+[[ -n "$REDIS_PASSWORD" ]] || REDIS_PASSWORD=$(openssl rand -hex 32)
+
+JWT_SECRET="$(read_env JWT_SECRET)"
+[[ -n "$JWT_SECRET" ]] || JWT_SECRET=$(openssl rand -hex 32)
+
+JWT_REFRESH_SECRET="$(read_env JWT_REFRESH_SECRET)"
+[[ -n "$JWT_REFRESH_SECRET" ]] || JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+
+ADMIN_API_KEY="$(read_env ADMIN_API_KEY)"
+[[ -n "$ADMIN_API_KEY" ]] || ADMIN_API_KEY=$(generate_password)
+
+CONTROL_JWT_SECRET="$(read_env CONTROL_JWT_SECRET)"
+[[ -n "$CONTROL_JWT_SECRET" ]] || CONTROL_JWT_SECRET=$(openssl rand -hex 32)
+
+# Admin sifresi her kurulumda yeniden uretilir; kullanici zaten varsa
+# /auth/setup 409 doner ve asagida "mevcut sifre degistirilmedi" yazilir.
 ADMIN_PASSWORD=$(generate_password)
-CONTROL_JWT_SECRET=$(openssl rand -hex 32)
 
 if [[ -n "$DOMAIN" ]]; then
   SERVER_URL="http://${DOMAIN}"
@@ -416,12 +456,40 @@ for i in $(seq 1 12); do
   sleep 5
 done
 
+# ── Rol şifresini .env ile ZORLA eşitle ──────────────────────────────────────
+# pg_isready kimlik doğrulaması YAPMAZ; eski volume üzerinde de "hazır" der.
+# Veri dizini önceki bir kurulumdan kalmışsa roldeki şifre .env'dekiyle
+# uyuşmaz. Konteyner içindeki unix soketi `trust` ile açıldığı için şifreyi
+# bilmeden ALTER USER çalıştırabiliriz. Yeni kurulumda bu bir no-op'tur.
+log_info "Veritabanı kimlik bilgileri .env ile eşitleniyor..."
+if docker compose exec -T postgres \
+     psql -v ON_ERROR_STOP=1 -U xtreampulsar -d postgres \
+     -c "ALTER USER xtreampulsar WITH PASSWORD '${DB_PASSWORD}';" \
+     </dev/null &>/tmp/xp_pgauth.log; then
+  log_success "Veritabanı kimlik bilgileri eşitlendi"
+else
+  log_warning "Rol şifresi güncellenemedi (log: /tmp/xp_pgauth.log)"
+fi
+
+# TCP üzerinden gerçek kimlik doğrulama testi — API'nin yapacağının aynısı.
+if ! docker compose exec -T -e PGPASSWORD="$DB_PASSWORD" postgres \
+       psql -h 127.0.0.1 -U xtreampulsar -d xtreampulsar -c 'SELECT 1' \
+       </dev/null &>/dev/null; then
+  log_error "PostgreSQL kimlik doğrulaması başarısız."
+  log_error "Muhtemelen ESKİ bir kurulumdan kalan veri hacmi var."
+  log_error "Verileriniz önemli değilse hacmi sıfırlayıp tekrar deneyin:"
+  log_error "  cd $INSTALL_DIR && docker compose down -v && sudo bash apps/installer/install.sh --key <ANAHTAR>"
+  exit 1
+fi
+
 log_info "Migration çalıştırılıyor..."
 docker compose run --rm -T api sh -c \
   "cd /repo/packages/database && npx prisma migrate deploy" \
   </dev/null &>/tmp/xp_migrate.log || {
-  log_warning "Migration başarısız — atlanıyor"
-  log_info "Kurulum tamamlandıktan sonra: docker compose exec api npx prisma migrate deploy"
+  log_error "Migration başarısız — panel bu haliyle çalışmaz, kurulum durduruluyor."
+  tail -30 /tmp/xp_migrate.log >&2
+  log_error "Tam log: /tmp/xp_migrate.log"
+  exit 1
 }
 log_success "Veritabanı hazır"
 
@@ -499,12 +567,22 @@ log_success "Firewall kuralları uygulandı (22, 80, 443, 25461)"
 
 # ─── [FIX #4] Admin kullanıcı — /auth/setup endpoint ────────────────────────
 log_info "Admin kullanıcı oluşturuluyor..."
-SETUP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "http://localhost/api/v1/auth/setup" \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-Key: ${ADMIN_API_KEY}" \
-  -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-  --max-time 15 2>/dev/null || echo "000")
+# API ilk isteklerde hala isiniyor olabilir; tek denemede 504 almak yeterli
+# bir kanit degil. 6 kez, artan bekleme ile dene.
+SETUP_RESPONSE="000"
+for i in $(seq 1 6); do
+  SETUP_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "http://localhost/api/v1/auth/setup" \
+    -H "Content-Type: application/json" \
+    -H "X-Admin-Key: ${ADMIN_API_KEY}" \
+    -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+    --max-time 30 2>/dev/null || echo "000")
+  if [[ "$SETUP_RESPONSE" == "201" || "$SETUP_RESPONSE" == "409" ]]; then
+    break
+  fi
+  log_info "Admin oluşturma yeniden deneniyor ($i/6, HTTP $SETUP_RESPONSE)..."
+  sleep 10
+done
 
 if [[ "$SETUP_RESPONSE" == "201" ]]; then
   log_success "Admin kullanıcı oluşturuldu"
@@ -513,7 +591,9 @@ elif [[ "$SETUP_RESPONSE" == "409" ]]; then
   ADMIN_PASSWORD="(mevcut şifre değiştirilmedi)"
 else
   log_warning "Admin kullanıcı oluşturulamadı (HTTP $SETUP_RESPONSE)"
-  log_warning "Panele girdikten sonra manuel oluşturun:"
+  log_warning "API loglarını kontrol edin:"
+  log_warning "  cd $INSTALL_DIR && docker compose logs --tail=50 api"
+  log_warning "Ardından manuel oluşturun (bu dizinden çalıştırın: cd $INSTALL_DIR):"
   log_warning "  docker compose exec api node apps/api/dist/scripts/reset-admin.js admin 'YeniSifre123!'"
   ADMIN_PASSWORD="(manuel oluşturulacak)"
 fi
