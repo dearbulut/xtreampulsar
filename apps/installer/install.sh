@@ -1,6 +1,32 @@
 #!/bin/bash
 set -euo pipefail
 
+# ─── curl | bash koruması ────────────────────────────────────────────────────
+# Betik `curl ... | sudo bash` ile calistirildiginda bash onu STDIN'den okur.
+# `docker compose exec` gibi stdin tuketen komutlar betigin okunmamis kismini
+# yutar; kurulum 6/9 adiminda hicbir hata vermeden sessizce sonlanir.
+# Ayrica bu kipte ${BASH_SOURCE[0]} tanimsizdir ve `set -u` yuzunden patlar.
+# Cozum: kendimizi gecici bir dosyaya indirip oradan yeniden calistirmak.
+INSTALLER_URL="${INSTALLER_URL:-https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh}"
+if [[ -z "${XP_REEXEC:-}" && ! -r "${BASH_SOURCE[0]:-}" ]]; then
+  XP_SELF="$(mktemp /tmp/xp-install.XXXXXX.sh)"
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$INSTALLER_URL" -o "$XP_SELF"
+  elif command -v wget &>/dev/null; then
+    wget -qO "$XP_SELF" "$INSTALLER_URL"
+  else
+    echo "curl ya da wget gerekli: apt-get update && apt-get install -y curl" >&2
+    exit 1
+  fi
+  [[ -s "$XP_SELF" ]] || { echo "Kurulum betigi indirilemedi: $INSTALLER_URL" >&2; exit 1; }
+  export XP_REEXEC=1 XP_SELF
+  exec bash "$XP_SELF" "$@"
+fi
+# Yeniden calistirma sonrasi gecici kopyayi temizle.
+if [[ -n "${XP_SELF:-}" ]]; then
+  trap 'rm -f "$XP_SELF"' EXIT
+fi
+
 # ─── Colors & Symbols ────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -192,9 +218,21 @@ fi
 
 # ─── Step 4/9: Lisans Doğrulama ──────────────────────────────────────────────
 log_step "[4/9] Lisans doğrulanıyor..."
-SERVER_IP=$(curl -s --max-time 10 ifconfig.me 2>/dev/null || \
-            curl -s --max-time 10 api.ipify.org 2>/dev/null || \
+# Once IPv4 denenir; sunucu yalnizca IPv6 ise oraya duser.
+SERVER_IP=$(curl -s -4 --max-time 10 ifconfig.me 2>/dev/null || \
+            curl -s -4 --max-time 10 api.ipify.org 2>/dev/null || \
+            curl -s    --max-time 10 ifconfig.me 2>/dev/null || \
             hostname -I | awk '{print $1}')
+
+# IPv6 adresleri URL icinde koseli parantez ister: http://[2001:db8::1]
+# SERVER_IP ham deger olarak kalir (lisans istegi, sertifika CN);
+# URL kurarken SERVER_HOST kullanilir.
+if [[ "$SERVER_IP" == *:* ]]; then
+  SERVER_HOST="[${SERVER_IP}]"
+  log_warning "Sunucuda IPv4 yok; panel yalnizca IPv6 uzerinden erisilebilir olacak."
+else
+  SERVER_HOST="$SERVER_IP"
+fi
 
 log_info "Sunucu IP: $SERVER_IP"
 
@@ -238,7 +276,7 @@ fi
 log_step "[5/9] Kurulum dosyaları hazırlanıyor..."
 mkdir -p "$INSTALL_DIR"
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" &>/dev/null && pwd)"
 REPO_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"  # apps/installer → 2 üst dizin = repo root
 
 log_info "Script dizini : $SCRIPT_DIR"
@@ -272,13 +310,13 @@ CONTROL_JWT_SECRET=$(openssl rand -hex 32)
 if [[ -n "$DOMAIN" ]]; then
   SERVER_URL="http://${DOMAIN}"
 else
-  SERVER_URL="http://${SERVER_IP}"
+  SERVER_URL="http://${SERVER_HOST}"
 fi
 
 if [[ -n "$DOMAIN" ]]; then
   CORS_ORIGINS="https://${DOMAIN},http://${DOMAIN}"
 else
-  CORS_ORIGINS="http://${SERVER_IP}"
+  CORS_ORIGINS="http://${SERVER_HOST}"
 fi
 
 cat > "$INSTALL_DIR/.env" <<ENV
@@ -355,7 +393,7 @@ else
       -subj "/CN=${SERVER_IP}" &>/dev/null
     log_info "IP için self-signed sertifika oluşturuldu (tarayıcıda uyarı verir)"
   fi
-  log_warning "Domain belirtilmedi. Panel HTTP üzerinden erişilebilir: http://${SERVER_IP}"
+  log_warning "Domain belirtilmedi. Panel HTTP üzerinden erişilebilir: http://${SERVER_HOST}"
 fi
 
 # ─── Step 6/9: Veritabanı Başlat ─────────────────────────────────────────────
@@ -366,7 +404,7 @@ run_with_spinner "PostgreSQL ve Redis başlatılıyor" \
 
 log_info "PostgreSQL hazır olana kadar bekleniyor (max 60s)..."
 for i in $(seq 1 12); do
-  if docker compose exec -T postgres pg_isready -U xtreampulsar &>/dev/null; then
+  if docker compose exec -T postgres pg_isready -U xtreampulsar </dev/null &>/dev/null; then
     log_success "PostgreSQL hazır"
     break
   fi
@@ -379,9 +417,9 @@ for i in $(seq 1 12); do
 done
 
 log_info "Migration çalıştırılıyor..."
-docker compose run --rm api sh -c \
+docker compose run --rm -T api sh -c \
   "cd /repo/packages/database && npx prisma migrate deploy" \
-  &>/tmp/xp_migrate.log || {
+  </dev/null &>/tmp/xp_migrate.log || {
   log_warning "Migration başarısız — atlanıyor"
   log_info "Kurulum tamamlandıktan sonra: docker compose exec api npx prisma migrate deploy"
 }
@@ -492,7 +530,7 @@ echo -e "${RESET}"
 echo -e "${BOLD}Erişim Bilgileri${RESET}"
 echo -e "────────────────────────────────────────────────────────────────"
 echo -e "  Panel URL       : ${CYAN}${PANEL_URL}${RESET}"
-echo -e "  Xtream API      : ${CYAN}http://${SERVER_IP}:25461${RESET}"
+echo -e "  Xtream API      : ${CYAN}http://${SERVER_HOST}:25461${RESET}"
 echo -e "  Admin Kullanıcı : ${BOLD}admin${RESET}"
 echo -e "  Admin Şifre     : ${BOLD}${YELLOW}${ADMIN_PASSWORD}${RESET}"
 echo -e "  Kurulum Dizini  : ${INSTALL_DIR}"

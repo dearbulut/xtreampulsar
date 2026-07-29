@@ -159,6 +159,10 @@ A domain is optional — you only need one if you want HTTPS.
 curl -fsSL https://raw.githubusercontent.com/dearbulut/xtreampulsar/main/apps/installer/install.sh | sudo bash
 ```
 
+> The command is a **single line** and starts with `curl -fsSL`. If you only paste the URL,
+> bash replies `No such file or directory` — it is trying to run the URL as a filename.
+> If `curl` is missing: `sudo apt update && sudo apt install -y curl`.
+
 The installer does everything for you:
 
 1. Installs Docker + Docker Compose if missing

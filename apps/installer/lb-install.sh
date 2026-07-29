@@ -133,7 +133,7 @@ log_step "[4/5] Load balancer yapılandırılıyor..."
 mkdir -p "$INSTALL_DIR/nginx"
 
 # docker-compose.lb.yml indir veya yerel kopyayı kullan
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 if [[ -f "$SCRIPT_DIR/../../docker-compose.lb.yml" ]]; then
   cp "$SCRIPT_DIR/../../docker-compose.lb.yml" "$INSTALL_DIR/"
   [[ -f "$SCRIPT_DIR/../../nginx/nginx.lb.conf" ]] && \
