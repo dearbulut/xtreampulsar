@@ -52,6 +52,13 @@ while [[ $# -gt 0 ]]; do
     --dir)       INSTALL_DIR="$2"; shift 2 ;;
     --help|-h)
       echo "Kullanım: $0 --main-ip ANA_SUNUCU_IP --lb-token TOKEN [--domain LB_DOMAIN] [--ssh-key PATH]"
+      echo ""
+      echo "  --lb-token  Ana panelden alinan ADMIN oturum anahtari (accessToken)."
+      echo "              Almak icin:"
+      echo "                curl -s -X POST http://ANA_SUNUCU_IP/api/v1/auth/login \\"
+      echo "                  -H 'Content-Type: application/json' \\"
+      echo "                  -d '{\"username\":\"admin\",\"password\":\"SIFRE\"}'"
+      echo "              Donen JSON icindeki accessToken degerini kullanin."
       exit 0 ;;
     *) log_error "Bilinmeyen parametre: $1"; exit 1 ;;
   esac
@@ -70,7 +77,12 @@ if [[ -z "$MAIN_IP" ]]; then
   exit 1
 fi
 if [[ -z "$LB_TOKEN" ]]; then
-  log_error "--lb-token zorunludur (panel Admin → Sunucular → LB Token)"
+  log_error "--lb-token zorunludur — ana panelden alinan ADMIN accessToken."
+  log_error "Almak icin ana sunucuda ya da kendi bilgisayarinizda:"
+  log_error "  curl -s -X POST http://${MAIN_IP}/api/v1/auth/login \\"
+  log_error "    -H 'Content-Type: application/json' \\"
+  log_error "    -d '{\"username\":\"admin\",\"password\":\"SIFRE\"}'"
+  log_error "Donen JSON icindeki accessToken degerini --lb-token ile verin."
   exit 1
 fi
 
@@ -132,20 +144,45 @@ fi
 log_step "[4/5] Load balancer yapılandırılıyor..."
 mkdir -p "$INSTALL_DIR/nginx"
 
-# docker-compose.lb.yml indir veya yerel kopyayı kullan
+# Yapilandirma dosyalari: yerel depodan kopyala, yoksa GitHub'dan indir.
+#
+# ONEMLI: docker-compose.lb.yml, nginx konteynerine ./nginx/nginx.lb.conf
+# dosyasini /etc/nginx/nginx.conf olarak baglar. Bu dosya yoksa Docker onun
+# yerine BOS BIR DIZIN olusturur ve nginx "is a directory" ile hic acilmaz.
+# Bu yuzden iki dosya da ZORUNLUDUR; ikisi de ayni kaynaktan alinir.
+LB_RAW_BASE="${LB_RAW_BASE:-https://raw.githubusercontent.com/dearbulut/xtreampulsar/main}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/../../docker-compose.lb.yml" ]]; then
-  cp "$SCRIPT_DIR/../../docker-compose.lb.yml" "$INSTALL_DIR/"
-  [[ -f "$SCRIPT_DIR/../../nginx/nginx.lb.conf" ]] && \
-    cp "$SCRIPT_DIR/../../nginx/nginx.lb.conf" "$INSTALL_DIR/nginx/"
+REPO_ROOT="$SCRIPT_DIR/../.."
+
+fetch_lb_file() {  # fetch_lb_file DEPO_ICI_YOL HEDEF_YOL
+  local rel="$1" dest="$2"
+  if [[ -f "$REPO_ROOT/$rel" ]]; then
+    cp "$REPO_ROOT/$rel" "$dest"
+    return 0
+  fi
+  curl -fsSL "$LB_RAW_BASE/$rel" -o "$dest" 2>>/tmp/xp_lb.log
+}
+
+if [[ -f "$REPO_ROOT/docker-compose.lb.yml" ]]; then
+  log_info "Yapilandirma yerel depodan kopyalaniyor..."
 else
-  log_info "docker-compose.lb.yml indiriliyor..."
-  curl -fsSL "https://raw.githubusercontent.com/xtreampulsar/xtreampulsar/main/docker-compose.lb.yml" \
-    -o "$INSTALL_DIR/docker-compose.lb.yml" 2>/tmp/xp_lb.log || {
-    log_error "docker-compose.lb.yml indirilemedi. Manuel kopyalayın: $INSTALL_DIR/"
-    exit 1
-  }
+  log_info "Yapilandirma GitHub'dan indiriliyor..."
 fi
+
+if ! fetch_lb_file "docker-compose.lb.yml" "$INSTALL_DIR/docker-compose.lb.yml"; then
+  log_error "docker-compose.lb.yml alinamadi (kaynak: $LB_RAW_BASE)"
+  log_error "Depoyu klonlayip betigi klasor icinden calistirin:"
+  log_error "  git clone https://github.com/dearbulut/xtreampulsar.git /opt/xtreampulsar-src"
+  log_error "  cd /opt/xtreampulsar-src && sudo bash apps/installer/lb-install.sh --main-ip $MAIN_IP --lb-token <TOKEN>"
+  exit 1
+fi
+
+if ! fetch_lb_file "nginx/nginx.lb.conf" "$INSTALL_DIR/nginx/nginx.lb.conf"; then
+  log_error "nginx/nginx.lb.conf alinamadi — nginx bu dosya olmadan baslamaz."
+  log_error "Depoyu klonlayip betigi klasor icinden calistirin (yukaridaki komutlar)."
+  exit 1
+fi
+log_success "Yapilandirma dosyalari hazir"
 
 # Self-signed sertifika oluştur (domain yoksa)
 mkdir -p "$INSTALL_DIR/nginx/ssl"
@@ -177,23 +214,41 @@ log_success "Load balancer servisleri başlatıldı"
 
 # ─── Ana sunucuya kayıt ──────────────────────────────────────────────────────
 log_step "▶ Ana sunucuya kayıt yapılıyor..."
-REGISTER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "http://${MAIN_IP}:3000/api/v1/servers" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${LB_TOKEN}" \
-  -d "{
-    \"name\": \"LB-${LB_IP}\",
-    \"ip\": \"${LB_IP}\",
-    \"port\": 25461,
-    \"role\": \"LOAD_BALANCER\"
-  }" 2>/dev/null || echo "000")
+# NOT: api servisi docker-compose.yml'de 3000 portunu yalnizca `expose` eder,
+# `ports` ile YAYINLAMAZ — yani ana sunucunun 3000'i disaridan erisilebilir
+# degildir. Kayit istegi nginx uzerinden (80) gitmelidir. Ozel kurulumlar icin
+# 25461 ve 3000 yedek olarak denenir.
+REGISTER_BODY="{\"name\":\"LB-${LB_IP}\",\"ip\":\"${LB_IP}\",\"port\":25461,\"role\":\"LOAD_BALANCER\"}"
+REGISTER_RESPONSE="000"
+for BASE in "http://${MAIN_IP}" "http://${MAIN_IP}:25461" "http://${MAIN_IP}:3000"; do
+  REGISTER_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+    -X POST "${BASE}/api/v1/servers" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${LB_TOKEN}" \
+    -d "$REGISTER_BODY" --max-time 15 2>/dev/null || echo "000")
+  # 2xx = kaydedildi, 409 = zaten kayitli, 401/403 = ulastik ama token kotu.
+  # Hepsinde ana sunucuya ULASILMIS demektir; baska port denemenin anlami yok.
+  # NOT: `[[ ... ]] && break` yazilmaz — test basarisiz olunca donen 1,
+  # `set -e` altinda betigi sessizce sonlandirir.
+  if [[ "$REGISTER_RESPONSE" =~ ^(200|201|409|401|403)$ ]]; then
+    break
+  fi
+done
 
-if [[ "$REGISTER_RESPONSE" == "200" || "$REGISTER_RESPONSE" == "201" ]]; then
-  log_success "Ana sunucuya kayıt başarılı"
-else
-  log_warning "Ana sunucuya otomatik kayıt başarısız (HTTP: $REGISTER_RESPONSE)"
-  log_warning "Panel → Sunucular → Yeni Sunucu'dan manuel ekleyebilirsiniz"
-fi
+case "$REGISTER_RESPONSE" in
+  200|201) log_success "Ana sunucuya kayıt başarılı" ;;
+  409)     log_success "Bu IP zaten kayıtlı — mevcut kayıt korundu" ;;
+  401|403)
+    log_warning "Token geçersiz veya yetkisiz (HTTP $REGISTER_RESPONSE)."
+    log_warning "--lb-token degeri ADMIN accessToken olmalidir:"
+    log_warning "  curl -s -X POST http://${MAIN_IP}/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"SIFRE\"}'"
+    log_warning "Panel → Sunucular → Sunucu Ekle ile elle de ekleyebilirsiniz." ;;
+  *)
+    log_warning "Ana sunucuya otomatik kayıt başarısız (HTTP: $REGISTER_RESPONSE)"
+    log_warning "Panel → Sunucular → Sunucu Ekle ile elle ekleyin:"
+    log_warning "  Ad: LB-${LB_IP}  |  IP: ${LB_IP}  |  Port: 25461  |  Rol: Load Balancer"
+    log_warning "  API Secret alanini BOS birakin (LB uzerinde panel API'si calismaz)." ;;
+esac
 
 # ─── Firewall ────────────────────────────────────────────────────────────────
 ufw allow 22/tcp    &>/dev/null
@@ -214,5 +269,10 @@ echo -e "  LB IP          : ${CYAN}${LB_IP}${RESET}"
 echo -e "  Ana Sunucu     : ${CYAN}${MAIN_IP}${RESET}"
 echo -e "  Kurulum Dizini : ${INSTALL_DIR}"
 echo -e "  HLS Sync       : Her ${BOLD}5 saniye${RESET}"
+echo -e "  Panel Kaydi    : HTTP ${REGISTER_RESPONSE}"
+echo ""
+echo -e "${BOLD}Kontrol${RESET}: Panel > Sunucular sayfasinda ${CYAN}${LB_IP}${RESET} gorunmelidir."
+echo -e "Gorunmuyorsa Sunucu Ekle ile elle ekleyin — Rol: ${BOLD}Load Balancer${RESET},"
+echo -e "Port: ${BOLD}25461${RESET}, API Secret alanini ${BOLD}bos birakin${RESET}."
 echo ""
 echo -e "Loglar: ${BOLD}cd $INSTALL_DIR && docker compose -f docker-compose.lb.yml logs -f${RESET}"
