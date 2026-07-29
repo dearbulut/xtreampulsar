@@ -176,11 +176,8 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
     <Modal
       open={open}
       onClose={onClose}
-      title={t('streams.bulkEditTitle', 'Toplu duzenleme')}
-      description={t(
-        'streams.bulkEditHint',
-        'Yalnizca isaretledigin alanlar gonderilir; digerlerine dokunulmaz.',
-      )}
+      title={t('streams.bulkEditTitle')}
+      description={t('streams.bulkEditHint')}
       size="xl"
     >
       {/* Kapsam */}
@@ -196,7 +193,7 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
               setConfirming(false);
             }}
           />
-          {t('streams.bulkScopeSelected', 'Secili yayinlar')} ({selectedIds.length})
+          {t('streams.bulkScopeSelected')} ({selectedIds.length})
         </label>
         <label className="flex items-center gap-2 text-sm text-fg">
           <input
@@ -208,11 +205,11 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
               setConfirming(false);
             }}
           />
-          {t('streams.bulkScopeFilter', 'Filtreye uyan tum yayinlar')} ({totalMatching})
+          {t('streams.bulkScopeFilter')} ({totalMatching})
         </label>
         {wholeCatalog ? (
           <div className="text-xs text-amber-400">
-            {t('streams.bulkScopeAllWarn', 'Hicbir filtre yok: islem TUM katalogu kapsar.')}
+            {t('streams.bulkScopeAllWarn')}
           </div>
         ) : null}
       </div>
@@ -221,7 +218,7 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
       <div>
         {row(
           'streamMode',
-          t('streams.streamMode', 'Yayin modu'),
+          t('streams.streamMode'),
           <select
             className="input w-full"
             value={form.streamMode}
@@ -231,39 +228,36 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
             <option value="TRANSCODE">TRANSCODE (FFmpeg)</option>
             <option value="LOOP">LOOP</option>
           </select>,
-          t(
-            'streams.bulkModeHint',
-            'TRANSCODE: kaynaga tek baglanti acilir, N izleyici onu paylasir. PROXY: her izleyici ayri bir upstream baglanti tuketir.',
-          ),
+          t('streams.bulkModeHint'),
         )}
 
         {row(
           'transcodeProfileId',
-          t('streams.transcodeProfile', 'Transcode profili'),
+          t('streams.transcodeProfile'),
           <select
             className="input w-full"
             value={form.transcodeProfileId}
             onChange={(e) => setForm((f) => ({ ...f, transcodeProfileId: e.target.value }))}
           >
-            <option value="">{t('streams.bulkProfileNone', '- profil yok (kaldir) -')}</option>
+            <option value="">{t('streams.bulkProfileNone')}</option>
             {(profiles ?? []).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>,
-          t('streams.bulkProfileHint', 'Profil yoksa FFmpeg kopyalama (copy) kullanilir.'),
+          t('streams.bulkProfileHint'),
         )}
 
         {row(
           'categoryId',
-          t('streams.category', 'Kategori'),
+          t('streams.category'),
           <select
             className="input w-full"
             value={form.categoryId}
             onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
           >
-            <option value="">{t('common.select', 'Sec...')}</option>
+            <option value="">{t('common.select')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -274,14 +268,14 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
 
         {row(
           'isActive',
-          t('streams.status', 'Durum'),
+          t('streams.status'),
           <select
             className="input w-full"
             value={form.isActive ? '1' : '0'}
             onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.value === '1' }))}
           >
-            <option value="1">{t('common.active', 'Aktif')}</option>
-            <option value="0">{t('common.inactive', 'Pasif')}</option>
+            <option value="1">{t('common.active')}</option>
+            <option value="0">{t('common.inactive')}</option>
           </select>,
         )}
 
@@ -294,24 +288,24 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
             placeholder="VLC/3.0.20 LibVLC/3.0.20"
             onChange={(e) => setForm((f) => ({ ...f, streamUserAgent: e.target.value }))}
           />,
-          t('streams.bulkUaHint', 'Bos birakilirsa alan temizlenir.'),
+          t('streams.bulkUaHint'),
         )}
 
         {row(
           'httpHeaders',
-          t('streams.httpHeaders', 'Ek HTTP basliklari'),
+          t('streams.httpHeaders'),
           <textarea
             className="input w-full h-20 font-mono text-xs"
             value={form.httpHeaders}
             placeholder={'Referer: https://ornek.com\nX-Token: abc'}
             onChange={(e) => setForm((f) => ({ ...f, httpHeaders: e.target.value }))}
           />,
-          t('streams.bulkHeadersHint', 'Her satir "Anahtar: Deger" biciminde.'),
+          t('streams.bulkHeadersHint'),
         )}
 
         {row(
           'httpCookie',
-          'Cookie',
+          t('streams.cookie'),
           <input
             className="input w-full font-mono text-xs"
             value={form.httpCookie}
@@ -324,16 +318,13 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
       <div className="pt-4 mt-2 border-t border-border">
         {confirming ? (
           <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
-            {t('streams.bulkConfirm', {
-              defaultValue: '{{n}} yayin guncellenecek. Onayliyor musun?',
-              n: matched ?? targetCount,
-            })}
+            {t('streams.bulkConfirm', { n: matched ?? targetCount })}
           </div>
         ) : null}
 
         <div className="flex justify-end gap-2">
           <button className="btn-ghost" onClick={onClose}>
-            {t('common.cancel', 'Vazgec')}
+            {t('common.cancel')}
           </button>
           {confirming ? (
             <button
@@ -341,7 +332,7 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
               disabled={bulkUpdate.isPending}
               onClick={() => void handleApply()}
             >
-              {t('common.apply', 'Uygula')}
+              {t('common.apply')}
             </button>
           ) : (
             <button
@@ -349,7 +340,7 @@ export function BulkEditModal({ open, onClose, selectedIds, filter, totalMatchin
               disabled={nothingToDo || targetCount === 0}
               onClick={() => void handlePreview()}
             >
-              {t('streams.bulkPreview', 'Devam')}
+              {t('streams.bulkPreview')}
             </button>
           )}
         </div>

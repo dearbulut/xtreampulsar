@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import i18n from 'i18next';
 
 interface StreamMetadata {
   id: string;
@@ -122,9 +123,9 @@ export function useBulkUpdateStreams() {
       return res.data.data;
     },
     onSuccess: (d) => {
-      toast.success(`${d.updated} yayin guncellendi`);
+      toast.success(i18n.t('streams.bulkUpdated', { n: d.updated }));
       void qc.invalidateQueries({ queryKey: ['streams'] });
     },
-    onError: () => toast.error('Toplu guncelleme basarisiz'),
+    onError: () => toast.error(i18n.t('streams.bulkUpdateFailed')),
   });
 }

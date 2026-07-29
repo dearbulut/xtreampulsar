@@ -98,7 +98,9 @@
     "copied": "Copied",
     "clone": "Clone",
     "sortOrder": "Sort order",
-    "none": "None"
+    "none": "None",
+    "select": "Select...",
+    "apply": "Apply"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -621,7 +623,25 @@
     "day_thu": "Thu",
     "day_fri": "Fri",
     "day_sat": "Sat",
-    "day_sun": "Sun"
+    "day_sun": "Sun",
+    "bulkEdit": "Bulk edit",
+    "bulkEditTitle": "Bulk edit",
+    "bulkEditHint": "Only the fields you tick are sent; everything else is left untouched.",
+    "bulkScopeSelected": "Selected streams",
+    "bulkScopeFilter": "All streams matching the filter",
+    "bulkScopeAllWarn": "No filter applied: this will affect the ENTIRE catalog.",
+    "bulkModeHint": "TRANSCODE: one connection to the source, shared by N viewers. PROXY: every viewer opens its own upstream connection.",
+    "bulkProfileNone": "- no profile (remove) -",
+    "bulkProfileHint": "Without a profile, FFmpeg copy is used.",
+    "bulkUaHint": "Leave empty to clear the field.",
+    "bulkHeadersHint": "One \"Key: Value\" per line.",
+    "bulkPreview": "Continue",
+    "bulkConfirm": "{{n}} streams will be updated. Continue?",
+    "bulkUpdated": "{{n}} streams updated",
+    "bulkUpdateFailed": "Bulk update failed",
+    "category": "Category",
+    "status": "Status",
+    "cookie": "Cookie"
   },
   "categories": {
     "title": "Categories",

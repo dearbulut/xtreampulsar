@@ -926,11 +926,11 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
               <button
                 onClick={() => setShowBulkEdit(true)}
                 className="btn-secondary flex items-center gap-1.5 text-sm"
-                title={t('streams.bulkEditTitle', 'Toplu duzenleme')}
+                title={t('streams.bulkEditTitle')}
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span className="hidden sm:inline">
-                  {t('streams.bulkEdit', 'Toplu duzenle')}
+                  {t('streams.bulkEdit')}
                 </span>
               </button>
             )}

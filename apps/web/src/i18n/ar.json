@@ -70,7 +70,9 @@
     "copied": "تم النسخ",
     "clone": "نسخ",
     "sortOrder": "الترتيب",
-    "none": "لا يوجد"
+    "none": "لا يوجد",
+    "select": "اختر...",
+    "apply": "تطبيق"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -132,7 +134,25 @@
     "trackAudio": "مسارات الصوت",
     "trackSubtitle": "مسارات الترجمة",
     "trackNone": "لا يوجد",
-    "tracksHint": "تُقرأ من وسائط المصدر (ffprobe)؛ يتنقّل المشغّل بين هذه المسارات."
+    "tracksHint": "تُقرأ من وسائط المصدر (ffprobe)؛ يتنقّل المشغّل بين هذه المسارات.",
+    "bulkEdit": "تحرير جماعي",
+    "bulkEditTitle": "التحرير الجماعي",
+    "bulkEditHint": "يتم إرسال الحقول المحددة فقط؛ ولا تُمس الحقول الأخرى.",
+    "bulkScopeSelected": "البثوث المحددة",
+    "bulkScopeFilter": "كل البثوث المطابقة للمرشح",
+    "bulkScopeAllWarn": "لا يوجد مرشح: ستشمل العملية الفهرس بالكامل.",
+    "bulkModeHint": "TRANSCODE: اتصال واحد بالمصدر يتشاركه عدة مشاهدين. PROXY: كل مشاهد يفتح اتصالاً منفصلاً بالمصدر.",
+    "bulkProfileNone": "- بدون ملف تعريف (إزالة) -",
+    "bulkProfileHint": "بدون ملف تعريف يُستخدم نسخ FFmpeg.",
+    "bulkUaHint": "اتركه فارغاً لمسح الحقل.",
+    "bulkHeadersHint": "كل سطر بصيغة \"المفتاح: القيمة\".",
+    "bulkPreview": "متابعة",
+    "bulkConfirm": "سيتم تحديث {{n}} بثاً. هل تريد المتابعة؟",
+    "bulkUpdated": "تم تحديث {{n}} بثاً",
+    "bulkUpdateFailed": "فشل التحديث الجماعي",
+    "category": "الفئة",
+    "status": "الحالة",
+    "cookie": "كوكي"
   },
   "categories": {
     "title": "الفئات",

@@ -98,7 +98,9 @@
     "copied": "Kopyalandı",
     "clone": "Kopyala",
     "sortOrder": "Sıra",
-    "none": "Yok"
+    "none": "Yok",
+    "select": "Seç...",
+    "apply": "Uygula"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -621,7 +623,25 @@
     "day_thu": "Per",
     "day_fri": "Cum",
     "day_sat": "Cmt",
-    "day_sun": "Paz"
+    "day_sun": "Paz",
+    "bulkEdit": "Toplu düzenle",
+    "bulkEditTitle": "Toplu düzenleme",
+    "bulkEditHint": "Yalnızca işaretlediğin alanlar gönderilir; diğerlerine dokunulmaz.",
+    "bulkScopeSelected": "Seçili yayınlar",
+    "bulkScopeFilter": "Filtreye uyan tüm yayınlar",
+    "bulkScopeAllWarn": "Hiçbir filtre yok: işlem TÜM katalogu kapsar.",
+    "bulkModeHint": "TRANSCODE: kaynağa tek bağlantı açılır, N izleyici onu paylaşır. PROXY: her izleyici ayrı bir upstream bağlantı tüketir.",
+    "bulkProfileNone": "— profil yok (kaldır) —",
+    "bulkProfileHint": "Profil yoksa FFmpeg kopyalama (copy) kullanılır.",
+    "bulkUaHint": "Boş bırakılırsa alan temizlenir.",
+    "bulkHeadersHint": "Her satır \"Anahtar: Değer\" biçiminde.",
+    "bulkPreview": "Devam",
+    "bulkConfirm": "{{n}} yayın güncellenecek. Onaylıyor musun?",
+    "bulkUpdated": "{{n}} yayın güncellendi",
+    "bulkUpdateFailed": "Toplu güncelleme başarısız",
+    "category": "Kategori",
+    "status": "Durum",
+    "cookie": "Çerez"
   },
   "categories": {
     "title": "Kategoriler",

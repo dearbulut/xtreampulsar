@@ -70,7 +70,9 @@
     "copied": "Kopiert",
     "clone": "Klonen",
     "sortOrder": "Reihenfolge",
-    "none": "Keine"
+    "none": "Keine",
+    "select": "Auswählen...",
+    "apply": "Übernehmen"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -132,7 +134,25 @@
     "trackAudio": "Audiospuren",
     "trackSubtitle": "Untertitelspuren",
     "trackNone": "Keine",
-    "tracksHint": "Aus den Quellmedien gelesen (ffprobe); der Player wechselt zwischen diesen Spuren."
+    "tracksHint": "Aus den Quellmedien gelesen (ffprobe); der Player wechselt zwischen diesen Spuren.",
+    "bulkEdit": "Massenbearbeitung",
+    "bulkEditTitle": "Massenbearbeitung",
+    "bulkEditHint": "Nur die angehakten Felder werden gesendet; alle anderen bleiben unverändert.",
+    "bulkScopeSelected": "Ausgewählte Streams",
+    "bulkScopeFilter": "Alle Streams, die dem Filter entsprechen",
+    "bulkScopeAllWarn": "Kein Filter gesetzt: betrifft den GESAMTEN Katalog.",
+    "bulkModeHint": "TRANSCODE: eine Verbindung zur Quelle, die sich N Zuschauer teilen. PROXY: jeder Zuschauer öffnet eine eigene Upstream-Verbindung.",
+    "bulkProfileNone": "- kein Profil (entfernen) -",
+    "bulkProfileHint": "Ohne Profil wird FFmpeg-Copy verwendet.",
+    "bulkUaHint": "Leer lassen, um das Feld zu löschen.",
+    "bulkHeadersHint": "Pro Zeile ein \"Schlüssel: Wert\".",
+    "bulkPreview": "Weiter",
+    "bulkConfirm": "{{n}} Streams werden aktualisiert. Fortfahren?",
+    "bulkUpdated": "{{n}} Streams aktualisiert",
+    "bulkUpdateFailed": "Massenaktualisierung fehlgeschlagen",
+    "category": "Kategorie",
+    "status": "Status",
+    "cookie": "Cookie"
   },
   "categories": {
     "title": "Kategorien",
