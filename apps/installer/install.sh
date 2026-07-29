@@ -343,6 +343,12 @@ ADMIN_API_KEY="$(read_env ADMIN_API_KEY)"
 CONTROL_JWT_SECRET="$(read_env CONTROL_JWT_SECRET)"
 [[ -n "$CONTROL_JWT_SECRET" ]] || CONTROL_JWT_SECRET=$(openssl rand -hex 32)
 
+# Node metrik ucunun (/api/v1/node/metrics) paylasilan siri. Panelde
+# Sunucular > Sunucu Guvenligi > "API Secret (Node Anahtari)" alanina AYNI
+# deger girilmelidir; girilmezse kartta CPU/RAM/Disk gosterilemez.
+NODE_SECRET="$(read_env NODE_SECRET)"
+[[ -n "$NODE_SECRET" ]] || NODE_SECRET=$(generate_password)
+
 # Admin sifresi her kurulumda yeniden uretilir; kullanici zaten varsa
 # /auth/setup 409 doner ve asagida "mevcut sifre degistirilmedi" yazilir.
 ADMIN_PASSWORD=$(generate_password)
@@ -383,6 +389,11 @@ LICENSE_ENFORCE=false
 LICENSE_OFFLINE_GRACE_HOURS=72
 ADMIN_API_KEY=${ADMIN_API_KEY}
 DEV_MODE=${DEV_MODE}
+
+# ─── Node metrikleri ──────────────────────────────────────────────────────
+# Panel > Sunucular > (sunucu) > Sunucu Güvenliği > API Secret (Node Anahtarı)
+# alanına bu değerin AYNISI yazılmalıdır.
+NODE_SECRET=${NODE_SECRET}
 
 # ─── Support / Control Panel ─────────────────────────────────────────────────
 # Destek talepleri bizim control panelimize düşer. Müşteri sunucusunda bu URL
@@ -614,6 +625,9 @@ echo -e "  Xtream API      : ${CYAN}http://${SERVER_HOST}:25461${RESET}"
 echo -e "  Admin Kullanıcı : ${BOLD}admin${RESET}"
 echo -e "  Admin Şifre     : ${BOLD}${YELLOW}${ADMIN_PASSWORD}${RESET}"
 echo -e "  Kurulum Dizini  : ${INSTALL_DIR}"
+echo -e "  Node Anahtarı   : ${BOLD}${NODE_SECRET}${RESET}"
+echo -e "    ${CYAN}Panel > Sunucular > (sunucu) > Sunucu Güvenliği > API Secret${RESET}"
+echo -e "    ${CYAN}alanına bu değeri girin; CPU/RAM/Disk grafikleri böyle çalışır.${RESET}"
 echo ""
 echo -e "${BOLD}Faydalı Komutlar${RESET}"
 echo -e "────────────────────────────────────────────────────────────────"

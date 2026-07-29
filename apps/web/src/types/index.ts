@@ -209,10 +209,13 @@ export interface Server {
   ip: string;
   port: number;
   role: 'MAIN' | 'LOAD_BALANCER';
-  status: 'ONLINE' | 'OFFLINE';
   maxClients: number;
-  currentClients: number;
+  // API `GET /servers` ile birlikte gonderir (aktif baglanti sayisi).
+  // NOT: eskiden burada `status` ve `currentClients` vardi ama API bunlari HIC
+  // gondermiyordu; kartlar bu yuzden hep "Offline" ve "NaN%" gosteriyordu.
+  currentClients?: number;
   isOnline: boolean;
+  hasSecret?: boolean;
   location?: string;
   lastCheckedAt?: string;
   responseTime?: number;

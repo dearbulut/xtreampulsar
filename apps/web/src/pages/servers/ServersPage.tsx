@@ -366,8 +366,9 @@ export function ServersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {servers.map((srv) => {
-            const isOnline = srv.status === 'ONLINE';
-            const connPct = srv.maxClients > 0 ? Math.round((srv.currentClients / srv.maxClients) * 100) : 0;
+            const isOnline = srv.isOnline === true;
+            const current = srv.currentClients ?? 0;
+            const connPct = srv.maxClients > 0 ? Math.round((current / srv.maxClients) * 100) : 0;
             const healthRes = healthResults[srv.id];
 
             return (
@@ -420,7 +421,7 @@ export function ServersPage() {
                   {/* Sparkline */}
                   <div className="h-10 mb-3 -mx-1">
                     <MiniSparkline
-                      data={sparkSeed(srv.currentClients)}
+                      data={sparkSeed(current)}
                       color={isOnline ? '#22c55e' : '#ef4444'}
                     />
                   </div>
@@ -428,7 +429,7 @@ export function ServersPage() {
                   {/* Stats */}
                   <div className="grid grid-cols-3 gap-2 mb-4 text-center">
                     <div>
-                      <div className="text-lg font-bold text-slate-200 tabular-nums">{srv.currentClients}</div>
+                      <div className="text-lg font-bold text-slate-200 tabular-nums">{current}</div>
                       <div className="text-[10px] text-muted">{t('servers.connected')}</div>
                     </div>
                     <div>

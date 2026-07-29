@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ServerHealthService {
+  private static readonly PROBE_PATHS = ['/api/v1/health', '/health'];
+
   private readonly logger = new Logger(ServerHealthService.name);
 
   constructor(
@@ -39,15 +41,26 @@ export class ServerHealthService {
     let isOnline = false;
     let responseTime: number | null = null;
 
-    try {
-      await this.http.axiosRef.get(
-        `http://${server.ip}:${server.port}/health`,
-        { timeout: 5000 },
-      );
-      isOnline = true;
-      responseTime = Date.now() - start;
-    } catch {
-      isOnline = false;
+    // Panelin kendi sağlık ucu global `api/v1` önekindedir; 25461 portundaki
+    // nginx bloğunda ise sade `/health` proxy'lenir. İkisini de dene.
+    // validateStatus: HTTP yanıtı gelmesi sunucunun AYAKTA olduğunu gösterir —
+    // eski nginx konfigürasyonunda /health location'ı yok ve 404 dönüyordu;
+    // axios bunu fırlatıp sunucuyu sonsuza dek "Offline" gösteriyordu.
+    // 5xx gerçek bir arıza sayılır (nginx ayakta, API çökmüş).
+    for (const path of ServerHealthService.PROBE_PATHS) {
+      try {
+        const res = await this.http.axiosRef.get(
+          `http://${server.ip}:${server.port}${path}`,
+          { timeout: 5000, validateStatus: () => true },
+        );
+        if (res.status < 500) {
+          isOnline = true;
+          responseTime = Date.now() - start;
+          break;
+        }
+      } catch {
+        // bağlantı reddedildi / zaman aşımı → sonraki yolu dene
+      }
     }
 
     await this.prisma.server.update({

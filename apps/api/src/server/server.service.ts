@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeConnectionWhere } from '../user/user.repository';
 import { CreateServerDto } from './dto/create-server.dto';
@@ -10,20 +11,67 @@ export class ServerService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.server.findMany({
-      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
-    });
+  /**
+   * Bir sunucunun "aktif bağlantı" filtresi.
+   *
+   * Connection.serverId çoğunlukla NULL'dur: proxy/HLS yolu bağlantıyı
+   * oluştururken sunucu bilgisini yazmaz. Bu yüzden sahibi yazılmamış
+   * bağlantıları YAYININ bağlı olduğu sunucudan türetiyoruz; hiçbir sunucuya
+   * bağlanamayanlar da birincil (ilk MAIN) sunucuya sayılır. Aksi hâlde
+   * tek sunuculu kurulumda kart her zaman 0 gösterirdi.
+   */
+  private connectionWhere(serverId: string, isPrimary: boolean): Prisma.ConnectionWhereInput {
+    const or: Prisma.ConnectionWhereInput[] = [
+      { serverId },
+      { serverId: null, stream: { serverId } },
+    ];
+    if (isPrimary) or.push({ serverId: null, stream: { serverId: null } });
+    return { ...activeConnectionWhere(), OR: or };
   }
 
-  async findById(id: string) {
+  /** apiSecret istemciye HİÇ dönmez; yalnızca "tanımlı mı" bilgisi döner. */
+  private mask<T extends { apiSecret?: string | null }>(server: T) {
+    const { apiSecret, ...rest } = server;
+    return { ...rest, hasSecret: Boolean(apiSecret) };
+  }
+
+  async findAll() {
+    const servers = await this.prisma.server.findMany({
+      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+    });
+    const primaryId = servers.find((s) => s.role === 'MAIN')?.id ?? servers[0]?.id;
+    const counts = await Promise.all(
+      servers.map((s) =>
+        this.prisma.connection
+          .count({ where: this.connectionWhere(s.id, s.id === primaryId) })
+          .catch(() => 0),
+      ),
+    );
+    return servers.map((s, i) => ({ ...this.mask(s), currentClients: counts[i] }));
+  }
+
+  /** Dahili kullanım — apiSecret dahil ham kayıt. */
+  private async findRaw(id: string) {
     const server = await this.prisma.server.findUnique({ where: { id } });
     if (!server) throw new NotFoundException(`Server ${id} not found`);
     return server;
   }
 
-  create(dto: CreateServerDto) {
-    return this.prisma.server.create({ data: dto });
+  async findById(id: string) {
+    const server = await this.findRaw(id);
+    const primary = await this.prisma.server.findFirst({
+      where: { role: 'MAIN' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    const currentClients = await this.prisma.connection
+      .count({ where: this.connectionWhere(server.id, server.id === primary?.id) })
+      .catch(() => 0);
+    return { ...this.mask(server), currentClients };
+  }
+
+  async create(dto: CreateServerDto) {
+    return this.mask(await this.prisma.server.create({ data: dto }));
   }
 
   /**
@@ -52,8 +100,13 @@ export class ServerService {
     };
     if (!server) return { ...base, systemReason: 'not-found' };
 
+    const primary = await this.prisma.server.findFirst({
+      where: { role: 'MAIN' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
     base.connections = await this.prisma.connection
-      .count({ where: { serverId, ...activeConnectionWhere() } })
+      .count({ where: this.connectionWhere(serverId, serverId === primary?.id) })
       .catch(() => 0);
 
     if (!server.apiSecret) return { ...base, systemReason: 'no-secret' };
@@ -84,12 +137,12 @@ export class ServerService {
     return { ...base, cpu: sys.cpu, memory: sys.memory, disk: sys.disk, rxMbps: sys.rxMbps, txMbps: sys.txMbps, uptime: sys.uptime, systemAvailable: sys.ok, systemReason: sys.reason };
   }
   async update(id: string, dto: UpdateServerDto) {
-    await this.findById(id);
-    return this.prisma.server.update({ where: { id }, data: dto });
+    await this.findRaw(id);
+    return this.mask(await this.prisma.server.update({ where: { id }, data: dto }));
   }
 
   async remove(id: string): Promise<void> {
-    await this.findById(id);
+    await this.findRaw(id);
     await this.prisma.server.delete({ where: { id } });
   }
 }

@@ -48,6 +48,11 @@ services:
       LICENSE_ENFORCE: ${LICENSE_ENFORCE:-false}
       LICENSE_OFFLINE_GRACE_HOURS: ${LICENSE_OFFLINE_GRACE_HOURS:-72}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      # Bu sunucunun node metrik ucu (/api/v1/node/metrics) icin paylasilan sir.
+      # Panelde Sunucular > Sunucu Guvenligi > "API Secret (Node Anahtari)"
+      # alanina AYNI deger yazilmalidir; aksi halde CPU/RAM/Disk gosterilemez.
+      # Tanimsizsa uc 403 doner (dormant-safe).
+      NODE_SECRET: ${NODE_SECRET:-}
       # Destek sistemi — kendi sunucumuzda (panel.xtreampulsar.com) control panel
       # kendi API'mizdir: Docker DNS ile api servisine loopback yerine servis adıyla ulaş.
       CONTROL_PANEL_URL: ${CONTROL_PANEL_URL:-http://api:3000}
