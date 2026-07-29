@@ -55,8 +55,14 @@ export class GuardConfigService {
 
   private async resolve(): Promise<EffectiveGuard> {
     // Ana sunucuyu bul: role MAIN, yoksa en eski kayıt.
+    // orderBy OLMADAN findFirst, Postgres'te rastgele bir satir dondurebilir.
+    // Birden fazla MAIN kaydi varsa (eski kurulumlardan kalabilir) anti-restream
+    // ve IP limiti ayarlari her istekte baska bir sunucudan cozumlenirdi.
     const server =
-      (await this.prisma.server.findFirst({ where: { role: 'MAIN' } })) ??
+      (await this.prisma.server.findFirst({
+        where: { role: 'MAIN' },
+        orderBy: { createdAt: 'asc' },
+      })) ??
       (await this.prisma.server.findFirst({ orderBy: { createdAt: 'asc' } }));
 
     if (!server) return this.disabled(null);

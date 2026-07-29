@@ -1912,6 +1912,7 @@
     "max": "Maks",
     "occupancy": "Doluluk",
     "roleMain": "Ana Sunucu",
+    "mainAlreadyExists": "Zaten bir ana sunucu tanımlı ({{name}}). Ek sunucuları Load Balancer rolü ile ekleyin.",
     "roleLoadBalancer": "Yük Dağıtıcı",
     "editServer": "Sunucuyu Düzenle",
     "details": "Detaylar",

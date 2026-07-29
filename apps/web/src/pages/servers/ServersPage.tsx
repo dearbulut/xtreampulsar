@@ -257,10 +257,21 @@ export function ServersPage() {
   const [healthResults, setHealthResults] = useState<Record<string, { ms: number; ok: boolean } | null>>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
+  // Panelde yalnizca bir ana sunucu olabilir (API ikinci MAIN'i 409 ile reddeder).
+  // Duzenlenen kayit zaten MAIN ise secenek acik kalmalidir.
+  const existingMain = servers.find((s) => s.role === 'MAIN');
+  const mainTaken = Boolean(existingMain) && existingMain?.id !== editTarget;
+
   const f = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const openAdd = () => { setForm(FORM_DEFAULT); setEditTarget(null); setEditTab('details'); setShowAdd(true); };
+  const openAdd = () => {
+    // Ana sunucu zaten kayitliysa yeni kayit varsayilan olarak Load Balancer olur.
+    setForm({ ...FORM_DEFAULT, role: existingMain ? 'LOAD_BALANCER' : 'MAIN' });
+    setEditTarget(null);
+    setEditTab('details');
+    setShowAdd(true);
+  };
   const openEdit = (s: (typeof servers)[0]) => {
     setForm({ name: s.name, ip: s.ip, port: String(s.port), maxClients: String(s.maxClients), role: s.role as 'MAIN' | 'LOAD_BALANCER', location: s.location ?? '', apiSecret: '' });
     setEditTarget(s.id);
@@ -533,9 +544,14 @@ export function ServersPage() {
               <div>
                 <label className="label">{t('servers.role')}</label>
                 <select className="input" value={form.role} onChange={f('role')}>
-                  <option value="MAIN">{t('servers.roleMain')}</option>
+                  <option value="MAIN" disabled={mainTaken}>{t('servers.roleMain')}</option>
                   <option value="LOAD_BALANCER">{t('servers.roleLoadBalancer')}</option>
                 </select>
+                {mainTaken && (
+                  <p className="text-[11px] text-muted mt-1">
+                    {t('servers.mainAlreadyExists', { name: existingMain?.name ?? '' })}
+                  </p>
+                )}
               </div>
               <div className="col-span-2">
                 <label className="label">{t('servers.locationOptional')}</label>

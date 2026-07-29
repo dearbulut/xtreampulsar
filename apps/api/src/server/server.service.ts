@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { activeConnectionWhere } from '../user/user.repository';
@@ -27,6 +27,45 @@ export class ServerService {
     ];
     if (isPrimary) or.push({ serverId: null, stream: { serverId: null } });
     return { ...activeConnectionWhere(), OR: or };
+  }
+
+  /**
+   * Birincil (ana) sunucu: rolu MAIN olan EN ESKI kayit. `createdAt` siralamasi
+   * olmadan Postgres rastgele sira dondurebilir; orderBy burada zorunludur.
+   */
+  private primaryServer() {
+    return this.prisma.server.findFirst({
+      where: { role: 'MAIN' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true },
+    });
+  }
+
+  /**
+   * Panelde YALNIZCA BIR ana sunucu olabilir.
+   *
+   * Coklu MAIN desteklenmiyor: ikinci bir MAIN kaydi hem anlamsiz (panel tek
+   * makinede calisir) hem de zararli — guard ayarlari, baglanti sayimi ve
+   * metrikler "birincil sunucu"ya gore cozumlenir; ikinci bir MAIN bunlari
+   * belirsizlestirir. Ayrica o makinede panel calismadigi icin kart sonsuza
+   * dek "Offline" gorunur ve kullanici paneli bozuk sanir.
+   *
+   * Ek sunucular LOAD_BALANCER rolu ile eklenmelidir.
+   */
+  private async assertSingleMain(role: string | undefined, excludeId?: string) {
+    if (role !== 'MAIN') return;
+    const existing = await this.prisma.server.findFirst({
+      where: { role: 'MAIN', ...(excludeId ? { id: { not: excludeId } } : {}) },
+      orderBy: { createdAt: 'asc' },
+      select: { name: true, ip: true },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Zaten bir ana sunucu tanimli: ${existing.name} (${existing.ip}). ` +
+          'Panelde yalnizca bir ana sunucu olabilir; ek sunuculari "Load Balancer" ' +
+          'rolu ile ekleyin. Ana sunucuyu degistirmek istiyorsaniz mevcut kaydi duzenleyin.',
+      );
+    }
   }
 
   /** apiSecret istemciye HİÇ dönmez; yalnızca "tanımlı mı" bilgisi döner. */
@@ -59,11 +98,7 @@ export class ServerService {
 
   async findById(id: string) {
     const server = await this.findRaw(id);
-    const primary = await this.prisma.server.findFirst({
-      where: { role: 'MAIN' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
+    const primary = await this.primaryServer();
     const currentClients = await this.prisma.connection
       .count({ where: this.connectionWhere(server.id, server.id === primary?.id) })
       .catch(() => 0);
@@ -71,6 +106,8 @@ export class ServerService {
   }
 
   async create(dto: CreateServerDto) {
+    // DTO'da rol varsayilani MAIN'dir; rol hic gonderilmese bile kontrol et.
+    await this.assertSingleMain(dto.role ?? 'MAIN');
     return this.mask(await this.prisma.server.create({ data: dto }));
   }
 
@@ -100,11 +137,7 @@ export class ServerService {
     };
     if (!server) return { ...base, systemReason: 'not-found' };
 
-    const primary = await this.prisma.server.findFirst({
-      where: { role: 'MAIN' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
+    const primary = await this.primaryServer();
     base.connections = await this.prisma.connection
       .count({ where: this.connectionWhere(serverId, serverId === primary?.id) })
       .catch(() => 0);
@@ -138,6 +171,8 @@ export class ServerService {
   }
   async update(id: string, dto: UpdateServerDto) {
     await this.findRaw(id);
+    // Rol gonderilmemisse mevcut rol korunur — kontrol yalnizca MAIN icin calisir.
+    await this.assertSingleMain(dto.role, id);
     return this.mask(await this.prisma.server.update({ where: { id }, data: dto }));
   }
 

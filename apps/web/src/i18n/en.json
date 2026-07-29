@@ -1912,6 +1912,7 @@
     "max": "Max",
     "occupancy": "Occupancy",
     "roleMain": "Main Server",
+    "mainAlreadyExists": "A main server already exists ({{name}}). Add additional servers with the Load Balancer role.",
     "roleLoadBalancer": "Load Balancer",
     "editServer": "Edit Server",
     "details": "Details",
