@@ -1516,6 +1516,9 @@ model StreamProvider {
   mirrorBouquetId String?
   mirrorServerId  String?
   outputExt       String    @default("ts") // ts | m3u8 (LIVE cikti uzantisi)
+  // Import edilen YENI yayinlarin baslangic modu. Mevcut yayinlarin modu
+  // senkronizasyonda DEGISTIRILMEZ (elle yapilan toplu duzenleme korunur).
+  defaultStreamMode String  @default("PROXY") // PROXY | TRANSCODE | LOOP
   dropPolicy      String    @default("KEEP") // KEEP | DISABLE | DELETE (upstream'den kaybolan yayinlar)
   importLive      Boolean   @default(true)
   importVod       Boolean   @default(false)

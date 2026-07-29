@@ -29,6 +29,7 @@ import {
   Film,
   ListVideo,
   AudioLines,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStreamHealth, useManualHealthCheck } from '@/hooks/useStreamHealth';
@@ -59,6 +60,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useMyPermissions } from '@/hooks/usePermissions';
 import { useYouTubeImport } from '@/hooks/useYouTube';
 import { EpisodeManagerModal } from './EpisodeManagerModal';
+import { BulkEditModal } from './BulkEditModal';
 import { StreamAdvancedFields, EMPTY_ADVANCED, advancedFromStream, advancedToPayload, type StreamAdvanced } from './StreamAdvancedFields';
 import { useStreams, useStartStream, useStopStream, useRestartStream, useDeleteStream, useCreateStream, useUpdateStream, useUpdateStreamBackupUrls } from '@/hooks/useStreams';
 import { useCategories } from '@/hooks/useCategories';
@@ -525,6 +527,7 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
   const [selectedStreamIds, setSelectedStreamIds] = useState<Set<string>>(new Set());
   const [showBulkMove, setShowBulkMove] = useState(false);
   const [bulkMoveCatId, setBulkMoveCatId] = useState('');
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [sortedItems, setSortedItems] = useState<Stream[]>([]);
   const reorderDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -919,6 +922,18 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
                 {t('streams.moveSelected', { n: selectedStreamIds.size })}
               </button>
             )}
+            {can('streams.edit') && (
+              <button
+                onClick={() => setShowBulkEdit(true)}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+                title={t('streams.bulkEditTitle', 'Toplu duzenleme')}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {t('streams.bulkEdit', 'Toplu duzenle')}
+                </span>
+              </button>
+            )}
             {can('streams.create') && (!type || type === 'LIVE') && (
             <button onClick={() => { setShowYt(true); setYtUrl(''); setYtName(''); setYtCategoryId(''); }} className="btn-secondary flex items-center gap-1.5 text-red-400 border-red-400/30 hover:border-red-400/60">
               <Youtube className="w-4 h-4" />
@@ -1050,6 +1065,16 @@ export function StreamsPage({ type, isRadio: isRadioMode = false }: { type?: Str
       </div>
 
       {/* Bulk move modal */}
+      <BulkEditModal
+        open={showBulkEdit}
+        onClose={() => setShowBulkEdit(false)}
+        selectedIds={[...selectedStreamIds]}
+        filter={{ search, status, serverId, categoryId, type, healthStatus,
+          isRadio: type === 'LIVE' ? isRadioMode : undefined }}
+        totalMatching={data?.total ?? 0}
+        categories={categories ?? []}
+      />
+
       <Modal open={showBulkMove} onClose={() => setShowBulkMove(false)} title={t('streams.moveStreamsTitle', { n: selectedStreamIds.size })} size="sm">
         <div className="space-y-4">
           <p className="text-sm text-muted">{t('streams.selectTargetCategory')}</p>

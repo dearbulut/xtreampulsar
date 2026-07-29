@@ -25,6 +25,10 @@ export class UpdateProviderDto {
   @IsOptional() @IsIn(['ts', 'm3u8'])
   outputExt?: string;
 
+  /** Import edilen YENI yayinlarin baslangic modu; mevcut yayinlar etkilenmez. */
+  @IsOptional() @IsIn(['PROXY', 'TRANSCODE', 'LOOP'])
+  defaultStreamMode?: string;
+
   @IsOptional() @IsString()
   mirrorBouquetId?: string;
 

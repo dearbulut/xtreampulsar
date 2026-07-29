@@ -238,10 +238,15 @@ export class ProviderService {
       outputExt?: string; dropPolicy?: string; importLive?: boolean; importVod?: boolean; importSeries?: boolean;
       mirrorBouquetId?: string | null; mirrorServerId?: string | null;
       skipKeywords?: string[]; autoSync?: boolean; syncIntervalMinutes?: number;
+      defaultStreamMode?: string;
     };
 
     const outputExt = (dto.outputExt ?? pc.outputExt ?? 'ts') === 'm3u8' ? 'm3u8' : 'ts';
     const dropPolicy = (['KEEP', 'DISABLE', 'DELETE'].includes(dto.dropPolicy ?? '') ? dto.dropPolicy : (pc.dropPolicy ?? 'KEEP')) as 'KEEP' | 'DISABLE' | 'DELETE';
+    // Import edilen YENI yayinlarin baslangic modu. Mevcut yayinlara dokunmuyoruz.
+    const defaultStreamMode = ['PROXY', 'TRANSCODE', 'LOOP'].includes(pc.defaultStreamMode ?? '')
+      ? (pc.defaultStreamMode as string)
+      : 'PROXY';
     const importLive = dto.importLive ?? pc.importLive ?? true;
     const importVod = dto.importVod ?? pc.importVod ?? false;
     const importSeries = dto.importSeries ?? pc.importSeries ?? false;
@@ -338,7 +343,6 @@ export class ProviderService {
           const data: Record<string, unknown> = {
             name: s.name || `#${sid}`,
             primaryUrl,
-            streamMode: 'PROXY',
             tvgLogo: s.stream_icon || s.cover || null,
             tvgId: s.epg_channel_id || null,
             categoryId: localCatId,
@@ -350,6 +354,10 @@ export class ProviderService {
 
           const existId = existingByRef.get(ref);
           if (existId) {
+            // DIKKAT: streamMode / transcodeProfileId burada BILEREK yok. Onceden
+            // her sync 'PROXY' yaziyordu; boylece kullanicinin elle (ya da toplu
+            // duzenlemeyle) TRANSCODE'a aldigi 14 bin kanal her yenilemede geri
+            // donuyordu. Mod artik yalnizca yayin ilk olusturulurken belirlenir.
             await this.prisma.stream.update({
               where: { id: existId },
               data: data as Parameters<typeof this.prisma.stream.update>[0]['data'],
@@ -357,7 +365,9 @@ export class ProviderService {
             updated++;
           } else {
             await this.prisma.stream.create({
-              data: data as Parameters<typeof this.prisma.stream.create>[0]['data'],
+              data: { ...data, streamMode: defaultStreamMode } as Parameters<
+                typeof this.prisma.stream.create
+              >[0]['data'],
             });
             added++;
           }
@@ -442,6 +452,7 @@ export class ProviderService {
     if (dto.skipKeywords !== undefined) data.skipKeywords = dto.skipKeywords.map((k) => k.trim()).filter(Boolean);
     if (dto.dropPolicy !== undefined) data.dropPolicy = dto.dropPolicy;
     if (dto.outputExt !== undefined) data.outputExt = dto.outputExt;
+    if (dto.defaultStreamMode !== undefined) data.defaultStreamMode = dto.defaultStreamMode;
     if (dto.mirrorBouquetId !== undefined) data.mirrorBouquetId = dto.mirrorBouquetId || null;
     if (dto.mirrorServerId !== undefined) data.mirrorServerId = dto.mirrorServerId || null;
     if (dto.importLive !== undefined) data.importLive = dto.importLive;

@@ -1,11 +1,12 @@
 import * as http from 'http';
 import * as https from 'https';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@xtreampulsar/database';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
 import { QueryStreamDto } from './dto/query-stream.dto';
+import { BulkStreamFilterDto, BulkUpdateStreamsDto } from './dto/bulk-update-stream.dto';
 
 @Injectable()
 export class StreamService {
@@ -405,6 +406,70 @@ export class StreamService {
       data: { categoryId: targetCategoryId },
     });
     return result.count;
+  }
+
+  // ─── Toplu duzenleme ───────────────────────────────────────────────────────
+
+  /** Toplu duzenleme filtresini Prisma `where` nesnesine cevirir. */
+  private static bulkWhere(f?: BulkStreamFilterDto): Prisma.StreamWhereInput {
+    if (!f) return {};
+    return {
+      ...(f.search ? { name: { contains: f.search, mode: 'insensitive' as const } } : {}),
+      ...(f.categoryId ? { categoryId: f.categoryId } : {}),
+      ...(f.serverId ? { serverId: f.serverId } : {}),
+      ...(f.providerId ? { providerId: f.providerId } : {}),
+      ...(f.type ? { category: { type: f.type as 'LIVE' | 'VOD' | 'SERIES' } } : {}),
+      ...(f.status ? { status: f.status as 'ONLINE' | 'OFFLINE' | 'BUFFERING' | 'ERROR' } : {}),
+      ...(f.healthStatus ? { healthStatus: f.healthStatus } : {}),
+      ...(f.streamMode ? { streamMode: f.streamMode } : {}),
+      ...(f.isRadio !== undefined ? { isRadio: f.isRadio } : {}),
+      ...(f.isActive !== undefined ? { isActive: f.isActive } : {}),
+    };
+  }
+
+  /**
+   * Bir yayin kumesini tek istekte gunceller. Kume ya acikca secilen id'ler ya
+   * da yayin listesindeki filtrenin AYNISI ile belirlenir — 14 bin kanali tek
+   * tek secmek mumkun olmadigi icin ikinci yol sart.
+   *
+   * Once kac kayit etkilenecegini sayar; `dryRun` ile UI onay ekraninda bu sayi
+   * gosterilebilir. Verilmeyen alanlara dokunulmaz.
+   */
+  async bulkUpdate(dto: BulkUpdateStreamsDto, dryRun = false): Promise<{ matched: number; updated: number }> {
+    const ids = dto.streamIds ?? [];
+    const filterWhere = StreamService.bulkWhere(dto.filter);
+    const usingIds = ids.length > 0;
+
+    if (!usingIds && Object.keys(filterWhere).length === 0 && !dto.confirmAll) {
+      // Bos filtre = tum katalog. Kazara tetiklemeye karsi acik onay istiyoruz.
+      throw new BadRequestException(
+        'Hedef belirtilmedi: streamIds ya da filter verin, yoksa confirmAll=true gonderin',
+      );
+    }
+
+    const where: Prisma.StreamWhereInput = usingIds ? { id: { in: ids } } : filterWhere;
+
+    const data: Prisma.StreamUpdateManyMutationInput = {};
+    const d = dto.data ?? {};
+    if (d.streamMode !== undefined) data.streamMode = d.streamMode;
+    if (d.isActive !== undefined) data.isActive = d.isActive;
+    if (d.streamUserAgent !== undefined) data.streamUserAgent = d.streamUserAgent || null;
+    if (d.httpHeaders !== undefined) data.httpHeaders = d.httpHeaders || null;
+    if (d.httpCookie !== undefined) data.httpCookie = d.httpCookie || null;
+    // Bos string => iliskiyi kaldir. updateMany skaler alan bekledigi icin
+    // transcodeProfileId/categoryId dogrudan yazilir (Prisma bunu destekler).
+    const scalar = data as Record<string, unknown>;
+    if (d.transcodeProfileId !== undefined) scalar.transcodeProfileId = d.transcodeProfileId || null;
+    if (d.categoryId) scalar.categoryId = d.categoryId;
+
+    const matched = await this.prisma.stream.count({ where });
+    if (dryRun || Object.keys(data).length === 0) return { matched, updated: 0 };
+
+    const result = await this.prisma.stream.updateMany({ where, data });
+    this.logger.log(
+      `bulkUpdate: ${result.count} yayin guncellendi (${usingIds ? `${ids.length} secili` : 'filtre'}) -> ${JSON.stringify(data)}`,
+    );
+    return { matched, updated: result.count };
   }
 
   async cloneStream(id: string, overrides?: Partial<{ name: string; primaryUrl: string }>) {

@@ -67,3 +67,64 @@ export function useBulkMoveCategory() {
     onError: () => toast.error('Taşıma başarısız'),
   });
 }
+
+// ─── Toplu duzenleme ─────────────────────────────────────────────────────────
+
+/** Toplu duzenlemede hedef kumeyi belirleyen filtre (yayin listesiyle ayni). */
+export interface BulkStreamFilter {
+  search?: string;
+  categoryId?: string;
+  serverId?: string;
+  providerId?: string;
+  type?: string;
+  status?: string;
+  healthStatus?: string;
+  streamMode?: string;
+  isRadio?: boolean;
+  isActive?: boolean;
+}
+
+/** Uygulanacak degisiklikler; verilmeyen alanlara dokunulmaz. */
+export interface BulkStreamData {
+  streamMode?: string;
+  transcodeProfileId?: string;
+  categoryId?: string;
+  isActive?: boolean;
+  streamUserAgent?: string;
+  httpHeaders?: string;
+  httpCookie?: string;
+}
+
+export interface BulkUpdatePayload {
+  streamIds?: string[];
+  filter?: BulkStreamFilter;
+  confirmAll?: boolean;
+  data: BulkStreamData;
+}
+
+/** Kac yayinin etkilenecegini sorar; hicbir sey yazmaz (onay ekrani icin). */
+export async function previewBulkUpdate(payload: BulkUpdatePayload): Promise<number> {
+  const res = await api.patch<{ data: { matched: number } }>(
+    '/streams/bulk-update?dryRun=1',
+    { ...payload, data: payload.data ?? {} },
+  );
+  return res.data.data.matched;
+}
+
+export function useBulkUpdateStreams() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: BulkUpdatePayload) => {
+      const res = await api.patch<{ data: { matched: number; updated: number } }>(
+        '/streams/bulk-update',
+        payload,
+      );
+      return res.data.data;
+    },
+    onSuccess: (d) => {
+      toast.success(`${d.updated} yayin guncellendi`);
+      void qc.invalidateQueries({ queryKey: ['streams'] });
+    },
+    onError: () => toast.error('Toplu guncelleme basarisiz'),
+  });
+}

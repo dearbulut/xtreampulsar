@@ -15,6 +15,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type Redis from 'ioredis';
@@ -27,6 +28,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { UpdateStreamDto } from './dto/update-stream.dto';
 import { QueryStreamDto } from './dto/query-stream.dto';
+import { BulkUpdateStreamsDto } from './dto/bulk-update-stream.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -37,6 +39,8 @@ import { CurrentUser, JwtUser } from '../common/decorators/current-user.decorato
 @Controller('streams')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class StreamController {
+  private readonly logger = new Logger(StreamController.name);
+
   constructor(
     private readonly streamService: StreamService,
     private readonly workerService: StreamWorkerService,
@@ -104,6 +108,45 @@ export class StreamController {
   @RequirePermission('streams.edit')
   bulkMoveCategory(@Body() body: { streamIds: string[]; categoryId: string }) {
     return this.streamService.bulkMoveCategory(body.streamIds, body.categoryId);
+  }
+
+  /**
+   * Toplu duzenleme. Hedef ya `streamIds` ya da yayin listesindeki filtrenin
+   * aynisi; ikincisi 14 bin kanali tek istekte donusturmek icin var.
+   * `?dryRun=1` sadece kac kaydin etkilenecegini doner (onay ekrani icin).
+   */
+  @Patch('bulk-update')
+  @Roles('ADMIN')
+  @RequirePermission('streams.edit')
+  async bulkUpdate(@Body() dto: BulkUpdateStreamsDto, @Query('dryRun') dryRun?: string) {
+    const dry = dryRun === '1' || dryRun === 'true';
+    const result = await this.streamService.bulkUpdate(dto, dry);
+    if (!dry && result.updated > 0) await this.reconcileWorkers();
+    return result;
+  }
+
+  /**
+   * Toplu duzenleme sonrasi: modu artik TRANSCODE/LOOP olmayan ama hala ffmpeg
+   * surecleri calisan yayinlari durdurur. Calisan worker sayisi uzerinden
+   * gidiyoruz (genelde bir avuc), etkilenen kume kac bin olursa olsun maliyet
+   * ayni kaliyor.
+   */
+  private async reconcileWorkers(): Promise<void> {
+    const running = this.workerService.runningStreamIds();
+    if (running.length === 0) return;
+    const stale = await this.prisma.stream.findMany({
+      where: {
+        id: { in: running },
+        OR: [{ streamMode: { notIn: ['TRANSCODE', 'LOOP'] } }, { isActive: false }],
+      },
+      select: { id: true },
+    });
+    for (const s of stale) {
+      await this.workerService.stopWorker(s.id).catch(() => {});
+    }
+    if (stale.length > 0) {
+      this.logger.log(`bulk-update sonrasi ${stale.length} worker durduruldu`);
+    }
   }
 
   // ─── Parametric `:id` routes ──────────────────────────────────────────────

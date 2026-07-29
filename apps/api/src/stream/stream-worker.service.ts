@@ -386,6 +386,11 @@ export class StreamWorkerService implements OnModuleDestroy {
    *  ayarlanan sure kadar bos kaldiktan sonra uyutur (CPU/RAM tasarrufu). Ayar
    *  kapaliyken (default) hicbir sey yapmaz — dormant-safe. */
   @Cron(CronExpression.EVERY_MINUTE)
+  /** Su an calisan (ffmpeg sureci ayakta) yayin id'leri. */
+  runningStreamIds(): string[] {
+    return [...this.workers.keys()];
+  }
+
   async reapIdleWorkers(): Promise<void> {
     if (this.workers.size === 0) return;
 
