@@ -64,6 +64,22 @@ export class UpdateService {
         { headers: { 'User-Agent': 'XtreamPulsar-Panel/1.0' } },
       );
 
+      // 404 = henuz release yayinlanmamis (ya da private repo, token yok). Bu bir
+      // hata degil, sadece "guncelleme yok" durumu — sessizce onbellekle, log basma.
+      if (res.status === 404) {
+        this.cached = {
+          currentVersion,
+          latestVersion: currentVersion,
+          hasUpdate: false,
+          releaseNotes: '',
+          releaseUrl: '',
+          publishedAt: '',
+          checkedAt: new Date().toISOString(),
+        };
+        this.cacheTime = now;
+        return this.cached;
+      }
+
       if (!res.ok) throw new Error(`GitHub API ${res.status}`);
       const release = await res.json() as GithubRelease;
       const latestVersion = release.tag_name.replace(/^v/, '');

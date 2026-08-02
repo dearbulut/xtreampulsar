@@ -47,3 +47,6 @@ coverage/
 
 # pnpm
 .pnpm-debug.log
+
+# Handover doc — contains real passwords/IPs/API keys, must never be committed
+DEVIR_BELGESI.md

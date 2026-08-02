@@ -921,7 +921,7 @@ export class UserService {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'XtreamPulsar <noreply@xtreampulsar.io>',
+          from: 'XtreamPulsar <noreply@xtreampulsar.com>',
           to: [user.reseller.email],
           subject: `${urgency}: ${user.username} kullanıcısı ${days} gün içinde sona eriyor`,
           html: `<p>Merhaba ${user.reseller.username},</p><p><strong>${user.username}</strong> kullanıcısının aboneliği <strong>${days} gün içinde</strong> sona erecek.</p><p>Kullanıcıyı yenilemek için panele giriş yapın.</p>`,
@@ -1136,9 +1136,9 @@ export class UserService {
         take: 20,
       }),
       this.prisma.$queryRaw<Array<{ day: Date; count: bigint }>>`
-        SELECT DATE_TRUNC('day', "created_at") AS day, COUNT(*)::bigint AS count
+        SELECT DATE_TRUNC('day', "createdAt") AS day, COUNT(*)::bigint AS count
         FROM users
-        WHERE created_at >= ${thirtyDaysAgo} AND deleted_at IS NULL
+        WHERE "createdAt" >= ${thirtyDaysAgo} AND "deletedAt" IS NULL
         GROUP BY 1
         ORDER BY 1 ASC
       `,
@@ -1194,9 +1194,9 @@ export class UserService {
         take: 5,
       }),
       this.prisma.$queryRaw<Array<{ total_seconds: number }>>`
-        SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("ended_at", NOW()) - "started_at"))), 0)::int AS total_seconds
+        SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("endedAt", NOW()) - "startedAt"))), 0)::int AS total_seconds
         FROM connections
-        WHERE "user_id" = ${userId}
+        WHERE "userId" = ${userId}
       `,
     ]);
 

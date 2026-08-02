@@ -922,12 +922,12 @@ export class AnalyticsService {
     const topConnRows = await safe('topConn', () =>
       this.prisma.$queryRaw<Array<{ user_id: string; total_connections: bigint; total_duration: bigint; last_seen: Date }>>`
         SELECT
-          user_id,
+          "userId" AS user_id,
           COUNT(*)::bigint AS total_connections,
-          SUM(EXTRACT(EPOCH FROM (COALESCE(ended_at, updated_at) - started_at)))::bigint AS total_duration,
-          MAX(updated_at) AS last_seen
+          SUM(EXTRACT(EPOCH FROM (COALESCE("endedAt", "updatedAt") - "startedAt")))::bigint AS total_duration,
+          MAX("updatedAt") AS last_seen
         FROM connections
-        GROUP BY user_id
+        GROUP BY "userId"
         ORDER BY total_connections DESC
         LIMIT 10
       `, []);

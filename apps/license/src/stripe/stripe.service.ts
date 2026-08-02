@@ -165,15 +165,15 @@ export class StripeService {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'XtreamPulsar <noreply@xtreampulsar.io>',
+          from: 'XtreamPulsar <noreply@xtreampulsar.com>',
           to: [email],
           subject: `[XtreamPulsar] ${tier} Lisansınız Hazır`,
           html: `
             <h2>XtreamPulsar'a Hoş Geldiniz!</h2>
             <p>Lisans anahtarınız: <strong style="font-size:1.2em;letter-spacing:2px">${key}</strong></p>
             <p>Tier: <strong>${tier}</strong></p>
-            <p>Paneli kurmak için <a href="https://docs.xtreampulsar.io/install">kurulum kılavuzunu</a> takip edin.</p>
-            <p>Sorularınız için <a href="mailto:support@xtreampulsar.io">support@xtreampulsar.io</a></p>
+            <p>Paneli kurmak için <a href="https://docs.xtreampulsar.com/install">kurulum kılavuzunu</a> takip edin.</p>
+            <p>Sorularınız için <a href="mailto:support@xtreampulsar.com">support@xtreampulsar.com</a></p>
           `,
         }),
       });

@@ -24,7 +24,7 @@ export class NotificationService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'XtreamPulsar <noreply@xtreampulsar.io>',
+          from: 'XtreamPulsar <noreply@xtreampulsar.com>',
           to: [to],
           subject,
           html,
