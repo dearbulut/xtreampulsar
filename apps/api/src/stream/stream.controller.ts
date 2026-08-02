@@ -18,6 +18,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import { StreamService } from './stream.service';
@@ -60,6 +61,25 @@ export class StreamController {
   @Get()
   findAll(@Query() query: QueryStreamDto, @CurrentUser() user: JwtUser) {
     return this.streamService.findAllWithFilters(user.id, query);
+  }
+
+  /**
+   * Filtreye uyan TUM yayinlari tek istekte doner (sayfalama YOK).
+   *
+   * `GET /streams` 100'luk sayfalarla sinirli oldugundan tum katalogu cekmek
+   * onlarca istek gerektiriyor ve rate-limit'e takiliyordu. Bu uc, filtreye
+   * uyan her yayini yalin bir `select` ile tek sorguda dondurur; pahali
+   * izlenme zenginlestirmesini atlar ve throttle'dan muaftir.
+   *
+   * `GET /streams` ile ayni filtreleri kabul eder (search, categoryId, type,
+   * status, serverId, ...); page/limit yok sayilir.
+   */
+  @Get('all')
+  @Roles('ADMIN')
+  @RequirePermission('streams.view')
+  @SkipThrottle()
+  findAllUnpaged(@Query() query: QueryStreamDto) {
+    return this.streamService.findAllForExport(query);
   }
 
   @Post()

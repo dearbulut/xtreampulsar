@@ -282,10 +282,10 @@ export class StreamService {
 
   // ─── Admin CRUD ────────────────────────────────────────────────────────────
 
-  async findAllWithFilters(_userId: string, query: QueryStreamDto) {
-    const { page = 1, limit = 20, search, categoryId, serverId, status, type, resolution, qualityScore, healthStatus, videoCodec, updatedAfter, isRadio } = query;
-
-    const where = {
+  /** Yayin listesi filtrelerini (findAll + export ortak kullanir) Prisma `where`e cevirir. */
+  private buildFilterWhere(query: QueryStreamDto): Prisma.StreamWhereInput {
+    const { search, categoryId, serverId, status, type, resolution, qualityScore, healthStatus, videoCodec, updatedAfter, isRadio } = query;
+    return {
       ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
       ...(categoryId ? { categoryId } : {}),
       ...(serverId ? { serverId } : {}),
@@ -298,6 +298,58 @@ export class StreamService {
       ...(videoCodec ? { videoCodec: { contains: videoCodec, mode: 'insensitive' as const } } : {}),
       ...(updatedAfter ? { updatedAt: { gte: new Date(updatedAfter) } } : {}),
     };
+  }
+
+  /**
+   * Filtreye uyan TUM yayinlari tek istekte doner — sayfalama YOK.
+   *
+   * Neden ayri bir yol: `findAllWithFilters` her yayin icin bugunku izlenme ve
+   * son-izlenme (connection.groupBy) hesaplar; bu, binlerce satirda pahalidir ve
+   * istemcinin 100'luk sayfalarla tum katalogu cekmesi rate-limit'e takilir.
+   * Burada o zenginlestirmeyi ATLIYORUZ ve yalin bir `select` donuyoruz; boylece
+   * 14 bin kanal bile tek, ucuz sorguyla gelir.
+   */
+  async findAllForExport(query: QueryStreamDto) {
+    const where = this.buildFilterWhere(query);
+    try {
+      const items = await this.prisma.stream.findMany({
+        where,
+        select: {
+          id: true,
+          externalId: true,
+          name: true,
+          primaryUrl: true,
+          backupUrl: true,
+          backupUrls: true,
+          streamMode: true,
+          isRadio: true,
+          status: true,
+          healthStatus: true,
+          qualityScore: true,
+          resolution: true,
+          videoCodec: true,
+          tvgId: true,
+          tvgLogo: true,
+          sortOrder: true,
+          isActive: true,
+          categoryId: true,
+          serverId: true,
+          updatedAt: true,
+          category: { select: { id: true, name: true, type: true } },
+        },
+        orderBy: [{ category: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+      });
+      return { items, total: items.length };
+    } catch (err) {
+      this.logger.error(`findAllForExport: ${(err as Error).message}`);
+      return { items: [], total: 0 };
+    }
+  }
+
+  async findAllWithFilters(_userId: string, query: QueryStreamDto) {
+    const { page = 1, limit = 20 } = query;
+
+    const where = this.buildFilterWhere(query);
 
     try {
       const startOfToday = new Date();
